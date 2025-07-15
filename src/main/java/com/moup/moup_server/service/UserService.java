@@ -14,4 +14,11 @@ public class UserService {
         return userRepository.createUser(user);
     }
 
+    public User findByProviderId(String providerId) {
+        return userRepository.findByProviderId(providerId);
+    }
+
+    public int register(User user) {
+        return userRepository.createUser(user);
+    }
 }

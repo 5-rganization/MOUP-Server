@@ -25,6 +25,15 @@ public interface UserRepository {
      * @param id
      * @return User
      */
-    @Select("SELECT * FROM USERS WHERE id = #{id}")
+    @Select("SELECT * FROM users WHERE id = #{id}")
     Optional<User> findById(Long id);
+
+    /**
+     * 소셜 로그인 id를 통해 DB에서 유저 검색하기
+     * 
+     * @param providerId
+     * @return
+     */
+    @Select("SELECT * FROM users WHERE provider_id = #{providerId}")
+    User findByProviderId(String providerId);
 }

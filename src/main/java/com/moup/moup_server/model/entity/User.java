@@ -12,13 +12,13 @@ import lombok.NonNull;
 @Getter
 @NoArgsConstructor
 public class User {
-    private @NonNull Long id;
+    private Long id;
     @Enumerated(EnumType.STRING)
     @Column(name = "provider")
     private Login provider;
-    private @NonNull String providerId;
+    private String providerId;
     @Enumerated(EnumType.STRING)
     @Column(name = "role")
-    private @NonNull Role role;
-    private @NonNull String createdAt;
+    private Role role;
+    private String createdAt;
 }
