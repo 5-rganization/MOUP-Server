@@ -1,8 +1,8 @@
-INSERT INTO users (provider, provider_id, role) VALUES ('LOGIN_GOOGLE', 'google_user_1', 'ROLE_WORKER');
-INSERT INTO users (provider, provider_id, role) VALUES ('LOGIN_GOOGLE', 'google_user_2', 'ROLE_WORKER');
-INSERT INTO users (provider, provider_id, role) VALUES ('LOGIN_GOOGLE', 'google_user_3', 'ROLE_WORKER');
-INSERT INTO users (provider, provider_id, role) VALUES ('LOGIN_GOOGLE', 'google_user_4', 'ROLE_WORKER');
-INSERT INTO users (provider, provider_id, role) VALUES ('LOGIN_GOOGLE', 'google_user_5', 'ROLE_WORKER');
+INSERT INTO users (provider, provider_id, username, role) VALUES ('LOGIN_GOOGLE', 'google_user_1', 'moup_1', 'ROLE_WORKER');
+INSERT INTO users (provider, provider_id, username, role) VALUES ('LOGIN_GOOGLE', 'google_user_2', 'moup_2','ROLE_WORKER');
+INSERT INTO users (provider, provider_id, username, role) VALUES ('LOGIN_GOOGLE', 'google_user_3', 'moup_3','ROLE_WORKER');
+INSERT INTO users (provider, provider_id, username, role) VALUES ('LOGIN_GOOGLE', 'google_user_4', 'moup_4','ROLE_WORKER');
+INSERT INTO users (provider, provider_id, username, role) VALUES ('LOGIN_GOOGLE', '123456789012-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com', 'moup_1','ROLE_WORKER');
 INSERT INTO routines (user_id, routine_name, alarm_time) VALUES (1, 'Routine_1', '16:15:00');
 INSERT INTO routines (user_id, routine_name, alarm_time) VALUES (2, 'Routine_2', '15:00:00');
 INSERT INTO routines (user_id, routine_name, alarm_time) VALUES (3, 'Routine_3', '15:30:00');

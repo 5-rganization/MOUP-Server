@@ -6,6 +6,7 @@ CREATE TABLE `users` (
 	`id` BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
     `provider` ENUM('LOGIN_GOOGLE', 'LOGIN_APPLE') NOT NULL,
     `provider_id` VARCHAR(100) NOT NULL,
+    `username` VARCHAR(100) NOT NULL,
     `role` ENUM('ROLE_WORKER', 'ROLE_OWNER') DEFAULT 'ROLE_WORKER',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
     UNIQUE KEY `unique_provider` (`provider`, `provider_id`)

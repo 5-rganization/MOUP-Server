@@ -17,6 +17,7 @@ public class User {
     @Column(name = "provider")
     private Login provider;
     private String providerId;
+    private String username;
     @Enumerated(EnumType.STRING)
     @Column(name = "role")
     private Role role;
