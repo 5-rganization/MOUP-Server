@@ -1,24 +1,24 @@
-name: Deploy to Raspberry Pi
+name: Deploy to Raspberry Pi with password
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-            - name: SSH deploy to Raspberry Pi Server
-              uses: appleboy/ssh-action@v0.1.7
-              with:
-                  host: ${{ secrets.RPI_HOST }}
-                  username: ${{ secrets.RPI_USER }}
-                  password: ${{ secrets.RPI_PASS }}
-                  port: ${{ secrets.RPI_PORT }}
-                  script: |                    
-                      cd /home/pi/MOUP-Server
-                      git pull origin main
-                      ./gradlew build -x test
-                      pkill -f 'java.*MOUP' || true
-                      nohup java -jar build/libs/*.jar > app.log 2>&1 &
+    - name: Install sshpass
+      run: sudo apt-get update && sudo apt-get install -y sshpass
+
+    - name: Deploy via SSH with password
+      run: |
+        sshpass -p "${{ secrets.RPI_PASSWORD }}" ssh -o StrictHostKeyChecking=no -p ${{ secrets.RPI_PORT }} ${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }} << 'EOF'
+          cd /home/${{ secrets.RPI_USER }}/MOUP-Server
+          git pull origin main
+          ./gradlew build -x test
+          pkill -f 'java.*MOUP' || true
+          nohup java -jar build/libs/*.jar > app.log 2>&1 &
+        EOF
