@@ -1,4 +1,4 @@
-package com.moup.moup_server.common;
+package com.moup.server.common;
 
 public enum Login {
     LOGIN_GOOGLE,

@@ -1,16 +1,17 @@
-package com.moup.moup_server.model.entity;
+package com.moup.server.model.entity;
 
-import com.moup.moup_server.common.Login;
-import com.moup.moup_server.common.Role;
+import com.moup.server.common.Login;
+import com.moup.server.common.Role;
 import jakarta.persistence.Column;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.NonNull;
+import lombok.ToString;
 
 @Getter
 @NoArgsConstructor
+@ToString
 public class User {
     private Long id;
     @Enumerated(EnumType.STRING)
@@ -18,8 +19,10 @@ public class User {
     private Login provider;
     private String providerId;
     private String username;
+    private String nickname;
     @Enumerated(EnumType.STRING)
     @Column(name = "role")
     private Role role;
+    private String profileImg;
     private String createdAt;
 }

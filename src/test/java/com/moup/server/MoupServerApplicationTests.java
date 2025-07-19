@@ -1,4 +1,4 @@
-package com.moup.moup_server;
+package com.moup.server;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

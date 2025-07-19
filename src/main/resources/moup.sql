@@ -7,7 +7,9 @@ CREATE TABLE `users` (
     `provider` ENUM('LOGIN_GOOGLE', 'LOGIN_APPLE') NOT NULL,
     `provider_id` VARCHAR(100) NOT NULL,
     `username` VARCHAR(100) NOT NULL,
-    `role` ENUM('ROLE_WORKER', 'ROLE_OWNER') DEFAULT 'ROLE_WORKER',
+    `nickname` VARCHAR(100) NOT NULL,
+    `role` ENUM('ROLE_WORKER', 'ROLE_OWNER', 'ROLE_ADMIN') DEFAULT 'ROLE_WORKER',
+    `profile_img` VARCHAR(255),
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
     UNIQUE KEY `unique_provider` (`provider`, `provider_id`)
 );

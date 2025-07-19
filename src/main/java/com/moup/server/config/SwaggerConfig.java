@@ -1,4 +1,4 @@
-package com.moup.moup_server.config;
+package com.moup.server.config;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -16,6 +16,6 @@ public class SwaggerConfig {
                 .info(new Info()
                         .title("MOUP Server")
                         .description("MOUP API 명세서 입니다.")
-                        .version("v1.0.0"));
+                        .version("v1.0.1"));
     }
 }

@@ -1,5 +1,6 @@
-package com.moup.moup_server.util;
+package com.moup.server.util;
 
+import com.moup.server.model.entity.User;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
@@ -25,10 +26,11 @@ public class JwtUtil {
         this.key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String createToken(Long userId, String role) {
+    public String createToken(User user) {
         return Jwts.builder()
-                .subject(String.valueOf(userId))
-                .claim("role", role)
+                .subject(String.valueOf(user.getId()))
+                .claim("role", user.getRole().name())
+                .claim("username", user.getUsername())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
                 .signWith(key)
@@ -44,6 +46,24 @@ public class JwtUtil {
                 .getSubject());
     }
 
+    public String getUsername(String token) {
+        return (String) Jwts.parser()
+                .verifyWith((SecretKey) key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .get("username");
+    }
+
+    public String getUserRole(String token) {
+        return (String) Jwts.parser()
+                .verifyWith((SecretKey) key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .get("role");
+    }
+
     public boolean isValidToken(String token) {
         try {
             Jwts.parser().verifyWith((SecretKey) key).build().parseSignedClaims(token);
@@ -53,4 +73,5 @@ public class JwtUtil {
             return false;
         }
     }
+
 }

@@ -1,4 +1,4 @@
-package com.moup.moup_server;
+package com.moup.server;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
