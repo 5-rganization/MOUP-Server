@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,5 +17,8 @@ jobs:
                   password: ${{ secrets.RPI_PASS }}
                   port: ${{ secrets.RPI_PORT }}
                   script: |                    
-                      cd pi
-                      sudo ./deploy.sh
+                      cd /home/pi/MOUP-Server
+                      git pull origin main
+                      ./gradlew build -x test
+                      pkill -f 'java.*MOUP' || true
+                      nohup java -jar build/libs/*.jar > app.log 2>&1 &
