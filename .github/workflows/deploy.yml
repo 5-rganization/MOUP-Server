@@ -13,18 +13,10 @@ jobs:
     - name: Deploy Spring Boot on Raspberry Pi using screen
       run: |
         sshpass -p "${{ secrets.RPI_PASSWORD }}" ssh -o StrictHostKeyChecking=no -p ${{ secrets.RPI_PORT }} ${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }} << 'EOF'
-          # 1. 작업 디렉토리로 이동
           cd /home/${{ secrets.RPI_USER }}/MOUP-Server
-
-          # 2. 최신 코드 가져오기
           git pull origin main
-
-          # 3. 빌드 (테스트 제외)
           ./gradlew build -x test
-
-          # 4. 기존 screen 세션 종료 (있다면)
           screen -S spring-server -X quit || true
-
-          # 5. 새 screen 세션 생성 및 jar 실행
-          screen -dmS spring-server java -jar build/libs/MOUP_Server-0.0.1-SNAPSHOT.jar
+          cd build/libs
+          screen -dmS spring-server java -jar MOUP_Server-0.0.1-SNAPSHOT.jar
         EOF
