@@ -2,24 +2,20 @@ name: Deploy to Raspberry Pi
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: SSH deploy to Raspberry Pi
-      uses: appleboy/ssh-action@v0.1.5
-      with:
-        host: ${{ secrets.RPI_HOST }}
-        username: ${{ secrets.RPI_USER }}
-        port: ${{ secrets.RPI_PORT }}
-        key: ${{ secrets.RPI_SSH_KEY }}
-        script: |
-          cd /home/pi/MOUP-Server
-          git pull origin main
-          ./gradlew build -x test
-          pkill -f 'java.*MOUP' || true
-          nohup java -jar build/libs/*.jar > app.log 2>&1 &
+            - name: SSH deploy to Raspberry Pi Server
+              uses: appleboy/ssh-action@v0.1.7
+              with:
+                  host: ${{ secrets.RPI_HOST }}
+                  username: ${{ secrets.RPI_USER }}
+                  password: ${{ secrets.RPI_PASS }}
+                  port: ${{ secrets.RPI_PORT }}
+                  script: |                    
+                      cd pi
+                      sudo ./deploy.sh
