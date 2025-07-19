@@ -20,5 +20,5 @@ jobs:
           git pull origin main
           ./gradlew build -x test
           pkill -f 'java.*MOUP' || true
-          nohup java -jar build/libs/*.jar > app.log 2>&1 &
+          nohup java -jar build/libs/MOUP_Server-0.0.1-SNAPSHOT.jar &
         EOF
