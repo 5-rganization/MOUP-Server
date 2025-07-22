@@ -5,3 +5,4 @@
 ### ✔ Soft Delete 여부 검토
 
 - 예: `users`, `workspaces`, `works` 등에서 실제 삭제 대신 `is_deleted` 컬럼으로 관리 → 추적성, 복구 가능
+  - 계정 탈퇴 시 3일의 유예 기간 있으므로 개발 확정
