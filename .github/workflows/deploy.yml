@@ -17,5 +17,5 @@ jobs:
           git pull origin main
           ./gradlew build -x test
           screen -S spring-server -X quit || true
-          screen -dmS spring-server bash -c 'set -a && source .env && java -jar build/libs/MOUP_Server-0.0.1-SNAPSHOT.jar > app.log 2>&1'
+          screen -dmS spring-server bash -c 'set -a && source .env && java -jar MOUP_Server.jar --spring.profiles.active=prod > app.log 2>&1'
         EOF
