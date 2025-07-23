@@ -14,8 +14,8 @@ import lombok.Setter;
 @Builder
 @Schema(description = "로그인 요청 DTO")
 public class LoginRequest {
-    @Schema(description = "소셜 로그인 타입", example = "LOGIN_GOOGLE")
+    @Schema(description = "소셜 로그인 타입", example = "LOGIN_GOOGLE", requiredMode = Schema.RequiredMode.REQUIRED)
     private String provider;
-    @Schema(description = "소셜 로그인 ID 또는 토큰", example = "123456789012-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com")
+    @Schema(description = "소셜 로그인 ID 또는 토큰", example = "123456789012-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com", requiredMode = Schema.RequiredMode.REQUIRED)
     private String providerId;
 }
