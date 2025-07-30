@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.Map;
 
 /**
  * @author neoskyclad
@@ -51,7 +52,7 @@ public class UserController {
                 .createdAt(user.getCreatedAt())
                 .build();
 
-        return ResponseEntity.ok(userProfile);
+        return ResponseEntity.ok(Map.of("userProfile", userProfile));
     }
 
 //    @DeleteMapping()

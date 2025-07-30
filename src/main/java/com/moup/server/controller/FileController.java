@@ -1,5 +1,6 @@
 package com.moup.server.controller;
 
+import com.moup.server.exception.InvalidFileExtensionException;
 import com.moup.server.model.entity.User;
 import com.moup.server.service.IdentityService;
 import com.moup.server.service.S3Service;
@@ -17,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
+import java.util.Map;
 
 /**
  * @author neoskyclad
@@ -38,6 +39,7 @@ public class FileController {
     @Operation(summary = "프로필 이미지 업로드", description = "현재 로그인된 유저의 프로필 이미지를 갱신")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "프로필 이미지 업로드 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 파일 형식"),
             @ApiResponse(responseCode = "401", description = "인증 실패 - 토큰 없음 또는 유효하지 않음"),
             @ApiResponse(responseCode = "404", description = "존재하지 않는 유저"),
             @ApiResponse(responseCode = "500", description = "서버 오류"),
@@ -46,6 +48,12 @@ public class FileController {
             @Parameter(description = "업로드할 프로필 이미지 파일", required = true)
             @RequestParam("file") MultipartFile file
     ) {
+        // 이미지 타입인지 파일 검증
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new InvalidFileExtensionException();
+        }
+        
         Long userId = identityService.getCurrentUserId();
         User user = userService.findByUserId(userId);
 
@@ -64,6 +72,6 @@ public class FileController {
             throw new RuntimeException(e);
         }
 
-        return ResponseEntity.ok(imageUrl);
+        return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
     }
 }
