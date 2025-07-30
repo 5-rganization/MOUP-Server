@@ -9,7 +9,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.UUID;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 @Service
 @RequiredArgsConstructor
@@ -20,8 +22,26 @@ public class S3Service {
     @Value("${cloud.aws.s3.bucket}")
     private String bucket;
 
-    public String saveFile(MultipartFile file) throws IOException {
-        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+    public String saveFile(MultipartFile file) throws IOException, NoSuchAlgorithmException {
+        String originalFileName = file.getOriginalFilename();
+        String dataToHash = originalFileName + System.currentTimeMillis();
+
+        // SHA-256 해싱
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hashBytes = digest.digest(dataToHash.getBytes(StandardCharsets.UTF_8));
+
+        StringBuilder sb = new StringBuilder();
+        for (byte b : hashBytes) {
+            sb.append(String.format("%02x", b));
+        }
+
+        // 확장자 유지
+        String extension = "";
+        if (originalFileName != null && originalFileName.contains(".")) {
+            extension = originalFileName.substring(originalFileName.lastIndexOf("."));
+        }
+
+        String fileName = sb.toString() + extension;
         String fileUrl = "https://" + bucket + ".s3.amazonaws.com/" + fileName;
 
         ObjectMetadata metadata = new ObjectMetadata();
@@ -32,13 +52,18 @@ public class S3Service {
         return fileUrl;
     }
 
-    public void deleteFile(String fileUrl) {
-        String fileName = fileUrl.substring(fileUrl.lastIndexOf("/") + 1);
+    private String extractKeyFromUrl(String fileUrl) {
+        return fileUrl.substring(fileUrl.indexOf(".amazonaws.com/") + ".amazonaws.com/".length());
+    }
 
-        amazonS3Client.deleteObject(new DeleteObjectRequest(bucket, fileName));
+    public void deleteFile(String fileUrl) {
+        String key = extractKeyFromUrl(fileUrl);
+        amazonS3Client.deleteObject(new DeleteObjectRequest(bucket, key));
     }
 
     public boolean doesFileExist(String fileUrl) {
-        return amazonS3Client.doesObjectExist(bucket, fileUrl);
+        String key = extractKeyFromUrl(fileUrl);
+        return amazonS3Client.doesObjectExist(bucket, key);
     }
+
 }

@@ -49,7 +49,7 @@ public class FileController {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findByUserId(userId);
 
-        // 기존 이미지가 있다면 삭제
+        // 기존 이미지가 있다면 해당 파일 삭제
         if (user.getProfileImg() != null && s3Service.doesFileExist(user.getProfileImg())) {
             s3Service.deleteFile(user.getProfileImg());
         }
@@ -58,7 +58,8 @@ public class FileController {
         String imageUrl = "";
         try {
             imageUrl = s3Service.saveFile(file);
-        } catch (IOException e) {
+            userService.updateProfileImg(userId, imageUrl);
+        } catch (Exception e) {
             // 500 에러 던지기
             throw new RuntimeException(e);
         }
