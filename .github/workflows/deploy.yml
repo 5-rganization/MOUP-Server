@@ -27,6 +27,8 @@ jobs:
           
           # Load environment variables from .bashrc and then from .env
           source ~/.bashrc
+          set -a && source .env
+          echo $KEYSTORE_PASSWORD
           
           # Run the Spring Boot application in the background, redirecting output to app.log
           nohup java -jar build/libs/MOUP_Server-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod > app.log 2>&1 &
