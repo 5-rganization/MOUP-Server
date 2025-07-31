@@ -23,12 +23,11 @@ jobs:
           ./gradlew build -x test
           
           # Kill any existing Spring Boot process
-          pkill -f "java -jar MOUP_Server.jar" || true
+          pkill -f 'java.*MOUP' || true
           
           # Load environment variables from .bashrc and then from .env
           source ~/.bashrc
-          set -a && source .env
           
           # Run the Spring Boot application in the background, redirecting output to app.log
-          nohup java -jar MOUP_Server.jar --spring.profiles.active=prod > app.log 2>&1 &
+          nohup java -jar build/libs/MOUP_Server-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod > app.log 2>&1 &
         EOF
