@@ -25,7 +25,7 @@ jobs:
           # Kill any existing Spring Boot process
           pkill -f 'java.*MOUP' || true
           
-          # .env 파일 생성 (GitHub Secrets에서 가져옴)
+          # .env 파일 생성
           echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > .env
           echo "DATABASE_USERNAME=${{ secrets.DATABASE_USERNAME }}" >> .env
           echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
@@ -35,8 +35,7 @@ jobs:
           echo "AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }}" >> .env
           echo "AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }}" >> .env
 
-          # .bashrc 및 .env 파일의 환경 변수 로드
-          source ~/.bashrc
+          # .env 파일의 환경 변수 로드
           set -a && source .env
           
           # 환경 변수 로드 확인 (선택 사항, 민감 정보 노출 주의)
