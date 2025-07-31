@@ -1,4 +1,4 @@
-name: Deploy to Raspberry Pi with screen
+name: Deploy Moup-Server to Raspberry Pi
 
 on:
   push:
@@ -10,12 +10,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Deploy Spring Boot on Raspberry Pi using screen
+    - name: Deploy Spring Boot on Raspberry Pi
       run: |
         sshpass -p "${{ secrets.RPI_PASSWORD }}" ssh -o StrictHostKeyChecking=no -p ${{ secrets.RPI_PORT }} ${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }} << 'EOF'
+          # Navigate to the project directory
           cd /home/${{ secrets.RPI_USER }}/MOUP-Server
+          
+          # Pull the latest changes
           git pull origin main
+          
+          # Build the Spring Boot application, skipping tests
           ./gradlew build -x test
-          screen -S spring-server -X quit || true
-          screen -dmS spring-server bash -c 'set -a && source .env && java -jar MOUP_Server.jar --spring.profiles.active=prod > app.log 2>&1'
+          
+          # Kill any existing Spring Boot process
+          pkill -f "java -jar MOUP_Server.jar" || true
+          
+          # Load environment variables from .bashrc and then from .env
+          source ~/.bashrc
+          set -a && source .env
+          
+          # Run the Spring Boot application in the background, redirecting output to app.log
+          nohup java -jar MOUP_Server.jar --spring.profiles.active=prod > app.log 2>&1 &
         EOF
