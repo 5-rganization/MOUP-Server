@@ -12,12 +12,18 @@ public class SwaggerConfig {
     @Bean
     GroupedOpenApi authOpenApi() {
         String[] paths = {"/auth/**"};
-        return GroupedOpenApi.builder().group("Auth 관련 API").pathsToMatch(paths).build();
+        return GroupedOpenApi.builder().group("인증 관련 API").pathsToMatch(paths).build();
     }
 
     @Bean
     GroupedOpenApi userOpenApi() {
-        String[] paths = {"/user/**"};
+        String[] paths = {"/users/**"};
         return GroupedOpenApi.builder().group("유저 관련 API").pathsToMatch(paths).build();
+    }
+
+    @Bean
+    GroupedOpenApi fileOpenApi() {
+        String[] paths = {"/files/**"};
+        return GroupedOpenApi.builder().group("파일 관련 API").pathsToMatch(paths).build();
     }
 }

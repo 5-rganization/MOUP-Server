@@ -1,15 +1,12 @@
 package com.moup.server.service;
 
 import com.moup.server.exception.DuplicateUserException;
-import com.moup.server.exception.ErrorCode;
 import com.moup.server.exception.UserNotFoundException;
 import com.moup.server.model.dto.RegisterRequest;
 import com.moup.server.model.entity.User;
 import com.moup.server.repository.UserRepository;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -33,5 +30,9 @@ public class UserService {
     public User findByUserId(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(UserNotFoundException::new);
+    }
+
+    public void updateProfileImg(Long userId, String profileImg) {
+        userRepository.updateProfileImg(userId, profileImg);
     }
 }

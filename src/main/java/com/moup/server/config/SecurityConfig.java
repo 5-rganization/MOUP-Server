@@ -20,7 +20,7 @@ public class SecurityConfig {
     private final String[] NO_AUTH_URL = {"/auth/**"};
     private final String[] ADMIN_AUTH_URL = {"/v3/api-docs/**", "/swagger-ui/**", "/swagger-resources/**",
             "/swagger-ui.html"};
-    private final String[] USER_AUTH_URL = {"/user/**"};
+    private final String[] USER_AUTH_URL = {"/users/**, /files/**"};
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtFilter jwtFilter) throws Exception {

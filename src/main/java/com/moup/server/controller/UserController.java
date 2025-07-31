@@ -1,8 +1,10 @@
 package com.moup.server.controller;
 
+import com.amazonaws.services.s3.AmazonS3Client;
 import com.moup.server.model.dto.UserProfileResponse;
 import com.moup.server.model.entity.User;
 import com.moup.server.service.IdentityService;
+import com.moup.server.service.S3Service;
 import com.moup.server.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -10,10 +12,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.util.Map;
 
 /**
  * @author neoskyclad
@@ -23,13 +26,13 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "User-Controller", description = "유저 정보 관리 API 엔드포인트")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/user")
+@RequestMapping("/users")
 public class UserController {
 
     private final UserService userService;
     private final IdentityService identityService;
 
-    @GetMapping("/profile")
+    @GetMapping("/profiles")
     @Operation(summary = "프로필 조회", description = "현재 로그인된 유저의 프로필 이미지, 닉네임, 역할 조회")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "프로필 조회 성공"),
@@ -41,8 +44,6 @@ public class UserController {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findByUserId(userId);
 
-        System.out.println(user.toString());
-
         UserProfileResponse userProfile = UserProfileResponse.builder()
                 .username(user.getUsername())
                 .nickname(user.getNickname())
@@ -51,7 +52,7 @@ public class UserController {
                 .createdAt(user.getCreatedAt())
                 .build();
 
-        return ResponseEntity.ok(userProfile);
+        return ResponseEntity.ok(Map.of("userProfile", userProfile));
     }
 
 //    @DeleteMapping()
