@@ -1,4 +1,4 @@
-name: Deploy Moup-Server to Raspberry Pi
+name: Deploy to Raspberry Pi
 
 on:
   push:
@@ -25,8 +25,23 @@ jobs:
           # Kill any existing Spring Boot process
           pkill -f 'java.*MOUP' || true
           
-          # Load environment variables from .bashrc and then from .env
+          # .env 파일 생성 (GitHub Secrets에서 가져옴)
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > .env
+          echo "DATABASE_USERNAME=${{ secrets.DATABASE_USERNAME }}" >> .env
+          echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
+          echo "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" >> .env
+          echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> .env
+          echo "S3_BUCKET_NAME=${{ secrets.S3_BUCKET_NAME }}" >> .env
+          echo "AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }}" >> .env
+          echo "AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }}" >> .env
+
+          # .bashrc 및 .env 파일의 환경 변수 로드
           source ~/.bashrc
+          set -a && source .env
+          
+          # 환경 변수 로드 확인 (선택 사항, 민감 정보 노출 주의)
+          # echo "Debug: KEYSTORE_PASSWORD is $KEYSTORE_PASSWORD" 
+          # echo "Debug: DATABASE_URL is $DATABASE_URL"
           
           # Run the Spring Boot application in the background, redirecting output to app.log
           nohup java -jar build/libs/MOUP_Server-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod > app.log 2>&1 &
