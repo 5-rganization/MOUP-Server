@@ -16,7 +16,7 @@ public class RegisterRequest {
     @Schema(description = "소셜 로그인 타입", example = "LOGIN_GOOGLE")
     private String provider;
     @Schema(description = "소셜 로그인 ID 또는 토큰", example = "123456789012-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com")
-    private String providerId;
+    private String idToken;
     @Schema(description = "유저 이름", example = "moup123")
     private String username;
     @Schema(description = "닉네임", example = "neoskyclad")

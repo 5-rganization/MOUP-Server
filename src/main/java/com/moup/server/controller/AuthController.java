@@ -6,6 +6,7 @@ import com.moup.server.exception.UserNotFoundException;
 import com.moup.server.model.dto.LoginRequest;
 import com.moup.server.model.dto.RegisterRequest;
 import com.moup.server.model.entity.User;
+import com.moup.server.service.AuthService;
 import com.moup.server.service.UserService;
 import com.moup.server.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -40,6 +41,7 @@ import java.util.Map;
 @RequestMapping("/auth")
 public class AuthController {
 
+    private final AuthService authService;
     private final UserService userService;
     private final JwtUtil jwtUtil;
 
@@ -59,9 +61,20 @@ public class AuthController {
             )
     )
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        // 로그인 auth 로직
-        User user = userService.findByProviderId(loginRequest.getProviderId());
+        String idToken = loginRequest.getIdToken();
+        // 토큰 유효성 검증
+        if (!authService.validateToken(idToken)) {
+            
+        }
+        
+        // 토큰 파싱 후 사용자 확인
+//        User user = userService.findByProviderId(loginRequest.getProviderId());
+        
+        // 1. 없으면 회원가입 -> 자동으로
+        
+        // 2. 있으면 그대로 로그인
 
+        // Access Token 반환
         String token = jwtUtil.createToken(user);
 
         HttpHeaders headers = new HttpHeaders();
@@ -92,7 +105,7 @@ public class AuthController {
 
         LoginRequest loginRequest = LoginRequest.builder().
                 provider(registerRequest.getProvider())
-                .providerId(registerRequest.getProviderId())
+                .idToken(registerRequest.getIdToken())
                 .build();
 
         return login(loginRequest);
