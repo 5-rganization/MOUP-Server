@@ -1,5 +1,6 @@
 package com.moup.server.service;
 
+import com.moup.server.common.Login;
 import com.moup.server.exception.DuplicateUserException;
 import com.moup.server.exception.UserNotFoundException;
 import com.moup.server.model.dto.RegisterRequest;
@@ -22,8 +23,8 @@ public class UserService {
         }
     }
 
-    public User findByProviderId(String providerId) {
-        return userRepository.findByProviderId(providerId)
+    public User findByProviderAndId(Login provider, String providerId) {
+        return userRepository.findByProviderAndId(provider, providerId)
                 .orElseThrow(UserNotFoundException::new);
     }
 

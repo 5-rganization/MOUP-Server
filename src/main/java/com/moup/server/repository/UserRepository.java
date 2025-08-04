@@ -1,5 +1,6 @@
 package com.moup.server.repository;
 
+import com.moup.server.common.Login;
 import com.moup.server.model.dto.RegisterRequest;
 import com.moup.server.model.entity.User;
 import org.apache.ibatis.annotations.Insert;
@@ -33,8 +34,8 @@ public interface UserRepository {
      * @param providerId
      * @return User
      */
-    @Select("SELECT * FROM users WHERE provider_id = #{providerId}")
-    Optional<User> findByProviderId(String providerId);
+    @Select("SELECT * FROM users WHERE provider = #{provider} AND provider_id = #{providerId}")
+    Optional<User> findByProviderAndId(Login provider, String providerId);
 
     /**
      * 유저 이름을 통해 DB에서 유저 검색하기

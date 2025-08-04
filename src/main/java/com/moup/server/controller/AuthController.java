@@ -1,11 +1,12 @@
 package com.moup.server.controller;
 
-import com.moup.server.exception.DuplicateUserException;
-import com.moup.server.exception.ErrorCode;
-import com.moup.server.exception.UserNotFoundException;
+import com.moup.server.common.Login;
 import com.moup.server.model.dto.LoginRequest;
 import com.moup.server.model.dto.RegisterRequest;
 import com.moup.server.model.entity.User;
+import com.moup.server.service.AuthService;
+import com.moup.server.service.AuthServiceFactory;
+import com.moup.server.service.GoogleAuthService;
 import com.moup.server.service.UserService;
 import com.moup.server.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,11 +15,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.Arrays;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -40,6 +40,7 @@ import java.util.Map;
 @RequestMapping("/auth")
 public class AuthController {
 
+    private final AuthServiceFactory authServiceFactory;
     private final UserService userService;
     private final JwtUtil jwtUtil;
 
@@ -59,9 +60,33 @@ public class AuthController {
             )
     )
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        // 로그인 auth 로직
-        User user = userService.findByProviderId(loginRequest.getProviderId());
+        Login provider = Login.valueOf(loginRequest.getProvider());
+        String idToken = loginRequest.getIdToken();
 
+        String providerId = "";
+
+        try {
+            AuthService service = authServiceFactory.getService(provider);
+
+            Map<String, Object> userInfo = service.verifyIdToken(idToken);
+            providerId = userInfo.get("userId").toString();
+
+        } catch (GeneralSecurityException | IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        // 토큰 파싱 후 사용자 확인
+        User user = userService.findByProviderAndId(provider, providerId);
+
+        // 1. 없으면 회원가입 -> 자동으로
+        if (user == null) {
+
+        } else {
+
+        }
+        // 2. 있으면 그대로 로그인
+
+        // Access Token 반환
         String token = jwtUtil.createToken(user);
 
         HttpHeaders headers = new HttpHeaders();
@@ -92,7 +117,7 @@ public class AuthController {
 
         LoginRequest loginRequest = LoginRequest.builder().
                 provider(registerRequest.getProvider())
-                .providerId(registerRequest.getProviderId())
+                .idToken(registerRequest.getIdToken())
                 .build();
 
         return login(loginRequest);
