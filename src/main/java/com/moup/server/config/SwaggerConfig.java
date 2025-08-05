@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@OpenAPIDefinition(info = @io.swagger.v3.oas.annotations.info.Info(title = "MOUP Server", description = "MOUP API 명세서 입니다.", version = "v1.0.2"))
+@OpenAPIDefinition(info = @io.swagger.v3.oas.annotations.info.Info(title = "MOUP Server", description = "MOUP API 명세서 입니다.", version = "v1.0.5"))
 public class SwaggerConfig {
 
     @Bean

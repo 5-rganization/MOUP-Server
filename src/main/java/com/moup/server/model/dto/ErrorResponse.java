@@ -14,8 +14,8 @@ import lombok.Getter;
 @Builder
 @Schema(description = "에러 응답 DTO")
 public class ErrorResponse {
-    @Schema(description = "에러 코드")
+    @Schema(description = "에러 코드", example = "ERROR_400")
     private String errorCode;
-    @Schema(description = "에러 메시지")
+    @Schema(description = "에러 메시지", example = "에러 메시지 입니다.")
     private String errorMessage;
 }
