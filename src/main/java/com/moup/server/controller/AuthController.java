@@ -6,10 +6,10 @@ import com.moup.server.model.dto.ErrorResponse;
 import com.moup.server.model.dto.LoginRequest;
 import com.moup.server.model.dto.LoginResponse;
 import com.moup.server.model.dto.RegisterRequest;
+import com.moup.server.model.dto.RegisterResponse;
 import com.moup.server.model.entity.User;
 import com.moup.server.service.AuthService;
 import com.moup.server.service.AuthServiceFactory;
-import com.moup.server.service.GoogleAuthService;
 import com.moup.server.service.UserService;
 import com.moup.server.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,7 +21,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import lombok.RequiredArgsConstructor;
-import org.checkerframework.checker.units.qual.C;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -51,27 +50,10 @@ public class AuthController {
     @PostMapping("/login")
     @Operation(summary = "로그인", description = "소셜 로그인 타입과 아이디를 입력 받아서 로그인")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "로그인 성공", content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = LoginResponse.class)
-            )),
-            @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ErrorResponse.class)
-            )),
-            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ErrorResponse.class)
-            )),
-    })
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            description = "로그인을 위한 요청 데이터",
-            required = true,
-            content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = LoginRequest.class)
-            )
-    )
+            @ApiResponse(responseCode = "200", description = "로그인 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginResponse.class))),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "로그인을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginRequest.class)))
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
         Login provider = loginRequest.getProvider();
         String idToken = loginRequest.getIdToken();
@@ -97,29 +79,18 @@ public class AuthController {
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.AUTHORIZATION, "Bearer " + token);
 
-        LoginResponse loginResponse = LoginResponse.builder()
-                .userId(providerId).build();
+        LoginResponse loginResponse = LoginResponse.builder().userId(providerId).build();
 
-        return ResponseEntity.ok()
-                .headers(headers)
-                .body(loginResponse);
+        return ResponseEntity.ok().headers(headers).body(loginResponse);
     }
 
     @PostMapping("/register")
     @Operation(summary = "회원가입", description = "소셜 로그인 정보, 닉네임, 역할을 받아서 회원가입")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "회원가입 성공"),
-            @ApiResponse(responseCode = "409", description = "중복된 유저"),
-            @ApiResponse(responseCode = "500", description = "서버 오류"),
-    })
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            description = "회원가입을 위한 요청 데이터",
-            required = true,
-            content = @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = RegisterRequest.class)
-            )
-    )
+            @ApiResponse(responseCode = "200", description = "회원가입 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RegisterResponse.class))),
+            @ApiResponse(responseCode = "409", description = "중복된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "회원가입을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RegisterRequest.class)))
     public ResponseEntity<?> createUser(@RequestBody RegisterRequest registerRequest) {
         Login provider = registerRequest.getProvider();
         String idToken = registerRequest.getIdToken();
@@ -138,21 +109,18 @@ public class AuthController {
             throw new RuntimeException(e);
         }
 
-        User user = User.builder()
-                .provider(provider)
-                .providerId(providerId)
-                .username(username)
-                .nickname(registerRequest.getNickname())
-                .role(Role.valueOf(registerRequest.getRole()))
-                .build();
+        User user = User.builder().provider(provider).providerId(providerId).username(username)
+                .nickname(registerRequest.getNickname()).role(Role.valueOf(registerRequest.getRole())).build();
 
         userService.createUser(user);
 
-        LoginRequest loginRequest = LoginRequest.builder().
-                provider(provider)
-                .idToken(idToken)
-                .build();
+        String token = jwtUtil.createToken(user);
 
-        return login(loginRequest);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+
+        RegisterResponse registerResponse = RegisterResponse.builder().userId(providerId).role(user.getRole()).build();
+
+        return ResponseEntity.ok().headers(headers).body(registerResponse);
     }
 }
