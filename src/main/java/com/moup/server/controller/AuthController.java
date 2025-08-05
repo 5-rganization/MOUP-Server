@@ -1,6 +1,7 @@
 package com.moup.server.controller;
 
 import com.moup.server.common.Login;
+import com.moup.server.common.Role;
 import com.moup.server.model.dto.LoginRequest;
 import com.moup.server.model.dto.RegisterRequest;
 import com.moup.server.model.entity.User;
@@ -29,7 +30,7 @@ import java.util.Map;
 
 /**
  * @author neoskyclad
- *
+ * <p>
  * 유저 토큰 관리를 위한 Controller
  * <p>- 로그인</p>
  * <p>- 회원가입</p>
@@ -60,16 +61,16 @@ public class AuthController {
             )
     )
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        Login provider = Login.valueOf(loginRequest.getProvider());
+        Login provider = loginRequest.getProvider();
         String idToken = loginRequest.getIdToken();
-
         String providerId = "";
 
         try {
+            // Factory에서 주입 받아서 공통 로직 수행 -> OCP 지키기
             AuthService service = authServiceFactory.getService(provider);
 
             Map<String, Object> userInfo = service.verifyIdToken(idToken);
-            providerId = userInfo.get("userId").toString();
+            providerId = service.getProviderId(userInfo);
 
         } catch (GeneralSecurityException | IOException e) {
             throw new RuntimeException(e);
@@ -77,14 +78,6 @@ public class AuthController {
 
         // 토큰 파싱 후 사용자 확인
         User user = userService.findByProviderAndId(provider, providerId);
-
-        // 1. 없으면 회원가입 -> 자동으로
-        if (user == null) {
-
-        } else {
-
-        }
-        // 2. 있으면 그대로 로그인
 
         // Access Token 반환
         String token = jwtUtil.createToken(user);
@@ -113,11 +106,36 @@ public class AuthController {
             )
     )
     public ResponseEntity<?> createUser(@RequestBody RegisterRequest registerRequest) {
-        userService.createUser(registerRequest);
+        Login provider = registerRequest.getProvider();
+        String idToken = registerRequest.getIdToken();
+        String providerId = "";
+        String username = "";
+
+        try {
+            // Factory에서 주입 받아서 공통 로직 수행 -> OCP 지키기
+            AuthService service = authServiceFactory.getService(provider);
+
+            Map<String, Object> userInfo = service.verifyIdToken(idToken);
+            providerId = service.getProviderId(userInfo);
+            username = service.getUsername(userInfo);
+
+        } catch (GeneralSecurityException | IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        User user = User.builder()
+                .provider(provider)
+                .providerId(providerId)
+                .username(username)
+                .nickname(registerRequest.getNickname())
+                .role(Role.valueOf(registerRequest.getRole()))
+                .build();
+
+        userService.createUser(user);
 
         LoginRequest loginRequest = LoginRequest.builder().
-                provider(registerRequest.getProvider())
-                .idToken(registerRequest.getIdToken())
+                provider(provider)
+                .idToken(idToken)
                 .build();
 
         return login(loginRequest);

@@ -59,4 +59,14 @@ public class GoogleAuthService implements AuthService {
             throw new GeneralSecurityException("Invalid ID token");
         }
     }
+
+    @Override
+    public String getProviderId(Map<String, Object> userInfo) {
+        return userInfo.get("sub").toString();
+    }
+
+    @Override
+    public String getUsername(Map<String, Object> userInfo) {
+        return userInfo.get("name").toString();
+    }
 }

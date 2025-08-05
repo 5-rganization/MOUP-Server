@@ -17,7 +17,7 @@ public interface UserRepository {
      * DB에 유저 정보 저장
      */
     @Insert("INSERT INTO users (provider, provider_id, username, nickname, role) VALUES (#{provider}, #{providerId}, #{username}, #{nickname}, #{role})")
-    void createUser(RegisterRequest registerRequest);
+    void createUser(User user);
 
     /**
      * id를 통해 DB에서 유저 가져오기
