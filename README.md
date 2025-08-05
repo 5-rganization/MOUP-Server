@@ -1,4 +1,5 @@
 # ERD
+https://www.erdcloud.com/d/T9FbqKsnaQiGiQJKf
 ![ERDiagram](./readme_img/ERD.png)
 ---
 ## 이슈
