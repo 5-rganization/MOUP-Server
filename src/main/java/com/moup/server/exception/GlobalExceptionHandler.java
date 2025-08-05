@@ -1,9 +1,9 @@
 package com.moup.server.exception;
 
+import com.moup.server.model.dto.ErrorResponse;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -28,8 +28,13 @@ public class GlobalExceptionHandler {
     }
 
     ResponseEntity<?> response(ErrorCode errorCode) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .errorCode(errorCode.getCode())
+                .errorMessage(errorCode.getMessage())
+                .build();
+
         return ResponseEntity.status(errorCode.getHttpStatus())
-                .body(Map.of("errorCode", errorCode.getCode(), "errorMessage", errorCode.getMessage()));
+                .body(errorResponse);
     }
 
 }
