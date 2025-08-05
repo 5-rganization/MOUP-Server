@@ -7,5 +7,7 @@ import java.util.Map;
 
 public interface AuthService {
     Login getProvider();
+    String getProviderId(Map<String, Object> userInfo);
+    String getUsername(Map<String, Object> userInfo);
     Map<String, Object> verifyIdToken(String idToken) throws GeneralSecurityException, IOException;
 }

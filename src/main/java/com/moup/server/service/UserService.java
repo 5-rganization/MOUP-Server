@@ -15,9 +15,9 @@ import org.springframework.stereotype.Service;
 public class UserService {
     private final UserRepository userRepository;
 
-    public void createUser(RegisterRequest registerRequest) {
+    public void createUser(User user) {
         try {
-            userRepository.createUser(registerRequest);
+            userRepository.createUser(user);
         } catch (DuplicateKeyException e) {
             throw new DuplicateUserException();
         }
