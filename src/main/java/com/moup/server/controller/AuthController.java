@@ -2,7 +2,9 @@ package com.moup.server.controller;
 
 import com.moup.server.common.Login;
 import com.moup.server.common.Role;
+import com.moup.server.model.dto.ErrorResponse;
 import com.moup.server.model.dto.LoginRequest;
+import com.moup.server.model.dto.LoginResponse;
 import com.moup.server.model.dto.RegisterRequest;
 import com.moup.server.model.entity.User;
 import com.moup.server.service.AuthService;
@@ -19,6 +21,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import lombok.RequiredArgsConstructor;
+import org.checkerframework.checker.units.qual.C;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -48,9 +51,18 @@ public class AuthController {
     @PostMapping("/login")
     @Operation(summary = "로그인", description = "소셜 로그인 타입과 아이디를 입력 받아서 로그인")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "로그인 성공"),
-            @ApiResponse(responseCode = "404", description = "존재하지 않는 유저"),
-            @ApiResponse(responseCode = "500", description = "서버 오류"),
+            @ApiResponse(responseCode = "200", description = "로그인 성공", content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = LoginResponse.class)
+            )),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class)
+            )),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class)
+            )),
     })
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             description = "로그인을 위한 요청 데이터",
@@ -70,7 +82,7 @@ public class AuthController {
             AuthService service = authServiceFactory.getService(provider);
 
             Map<String, Object> userInfo = service.verifyIdToken(idToken);
-            providerId = service.getProviderId(userInfo);
+            providerId = userInfo.get("userId").toString();
 
         } catch (GeneralSecurityException | IOException e) {
             throw new RuntimeException(e);
@@ -85,9 +97,12 @@ public class AuthController {
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.AUTHORIZATION, "Bearer " + token);
 
+        LoginResponse loginResponse = LoginResponse.builder()
+                .userId(providerId).build();
+
         return ResponseEntity.ok()
                 .headers(headers)
-                .body(Map.of("userId", user.getId()));
+                .body(loginResponse);
     }
 
     @PostMapping("/register")
@@ -116,8 +131,8 @@ public class AuthController {
             AuthService service = authServiceFactory.getService(provider);
 
             Map<String, Object> userInfo = service.verifyIdToken(idToken);
-            providerId = service.getProviderId(userInfo);
-            username = service.getUsername(userInfo);
+            providerId = userInfo.get("userId").toString();
+            username = userInfo.get("name").toString();
 
         } catch (GeneralSecurityException | IOException e) {
             throw new RuntimeException(e);
