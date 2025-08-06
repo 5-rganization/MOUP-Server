@@ -84,18 +84,14 @@ public class AppleAuthService implements AuthService {
 
         // 4. 클레임에서 사용자 정보 추출 및 Map에 담기
         String userId = claimsSet.getSubject();
-        String email = claimsSet.getStringClaim("email");
-        Boolean emailVerified = claimsSet.getBooleanClaim("email_verified");
+        String name = claimsSet.getStringClaim("name");
 
         Map<String, Object> userInfo = new HashMap<>();
         if (userId != null) {
             userInfo.put("userId", userId);
         }
-        if (email != null) {
-            userInfo.put("email", email);
-        }
-        if (emailVerified != null) {
-            userInfo.put("emailVerified", emailVerified ? "true" : "false");
+        if (name != null) {
+            userInfo.put("name", name);
         }
 
         return userInfo;
