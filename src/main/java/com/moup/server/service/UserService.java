@@ -1,43 +1,109 @@
 package com.moup.server.service;
 
+import com.moup.server.common.File;
 import com.moup.server.common.Login;
-import com.moup.server.exception.DuplicateUserException;
+import com.moup.server.exception.UserAlreadyExistsException;
+import com.moup.server.exception.AlreadyDeletedException;
 import com.moup.server.exception.UserNotFoundException;
-import com.moup.server.model.dto.RegisterRequest;
+import com.moup.server.model.dto.UserDeleteResponse;
+import com.moup.server.model.dto.UserProfileImageResponse;
+import com.moup.server.model.dto.UserRestoreResponse;
 import com.moup.server.model.entity.User;
 import com.moup.server.repository.UserRepository;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
+    private final FileService fileService;
+    private final S3Service s3Service;
     private final UserRepository userRepository;
 
     public void createUser(User user) {
         try {
             userRepository.createUser(user);
         } catch (DuplicateKeyException e) {
-            throw new DuplicateUserException();
+            throw new UserAlreadyExistsException();
         }
     }
 
     public User findByProviderAndId(Login provider, String providerId) {
-        return userRepository.findByProviderAndId(provider, providerId)
-                .orElseThrow(UserNotFoundException::new);
+        User user = userRepository.findByProviderAndId(provider, providerId).orElseThrow(UserNotFoundException::new);
+
+        if (user.getIsDeleted()) {
+            throw new AlreadyDeletedException();
+        }
+
+        return user;
     }
 
-    public User findByUserId(Long userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(UserNotFoundException::new);
+    public User findUserById(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+
+        if (user.getIsDeleted()) {
+            throw new AlreadyDeletedException();
+        }
+
+        return user;
     }
 
-    public void updateProfileImg(Long userId, String profileImg) {
-        userRepository.updateProfileImg(userId, profileImg);
+    public UserProfileImageResponse updateProfileImage(Long userId, MultipartFile profileImage) {
+        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+
+        // 이미지 타입인지 파일 검증
+        fileService.verifyFileExtension(profileImage, File.IMAGE);
+
+        // 기존 이미지가 있다면 해당 파일 삭제
+        if (user.getProfileImg() != null && s3Service.doesFileExist(user.getProfileImg())) {
+            s3Service.deleteFile(user.getProfileImg());
+        }
+
+        // 새 이미지 업로드하기
+        String imageUrl = "";
+        try {
+            imageUrl = s3Service.saveFile(profileImage);
+            userRepository.updateProfileImg(userId, imageUrl);
+        } catch (Exception e) {
+            // 500 에러 던지기
+            throw new RuntimeException(e);  // TODO: 커스텀 에러로 던지기
+        }
+
+        return UserProfileImageResponse.builder().imageUrl(imageUrl).build();
     }
 
-    public void deleteSoftUserByUserId(Long userId) {
+    public UserDeleteResponse deleteSoftUserByUserId(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+
+        if (user.getIsDeleted()) {
+            throw new AlreadyDeletedException();
+        }
+
         userRepository.deleteSoftUserById(userId);
+
+        return UserDeleteResponse.builder()
+                .userId(user.getProviderId())
+                .deletedAt(String.valueOf(LocalDateTime.now())) // 현재 시간을 직접 사용
+                .isDeleted(true)
+                .build();
+    }
+
+    public UserRestoreResponse restoreUserByUserId(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+
+        if (!user.getIsDeleted()) {
+            throw new UserAlreadyExistsException();
+        }
+
+        userRepository.undeleteUserById(userId);
+
+        return UserRestoreResponse.builder()
+                .userId(user.getProviderId())
+                .deletedAt(null)
+                .isDeleted(false)
+                .build();
     }
 }

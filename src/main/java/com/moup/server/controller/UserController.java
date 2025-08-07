@@ -3,7 +3,8 @@ package com.moup.server.controller;
 import com.moup.server.exception.ErrorCode;
 import com.moup.server.model.dto.ErrorResponse;
 import com.moup.server.model.dto.UserProfileResponse;
-import com.moup.server.model.dto.UserSoftDeleteResponse;
+import com.moup.server.model.dto.UserDeleteResponse;
+import com.moup.server.model.dto.UserRestoreResponse;
 import com.moup.server.model.entity.User;
 import com.moup.server.service.IdentityService;
 import com.moup.server.service.UserService;
@@ -19,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * @author neoskyclad
- * 
+ * <p>
  * 유저 정보 관리를 위한 Controller
  */
 @Tag(name = "User-Controller", description = "유저 정보 관리 API 엔드포인트")
@@ -38,19 +39,15 @@ public class UserController {
             @ApiResponse(responseCode = "401", description = "인증 실패 - 토큰 없음 또는 유효하지 않음"),
             @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "409", description = "이미 삭제 처리된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
-    })
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))})
     public ResponseEntity<?> getUserProfile() {
         Long userId = identityService.getCurrentUserId();
-        User user = userService.findByUserId(userId);
 
-        UserProfileResponse userProfileResponse = UserProfileResponse.builder()
-                .username(user.getUsername())
-                .nickname(user.getNickname())
-                .profileImg(user.getProfileImg())
-                .role(user.getRole())
-                .createdAt(user.getCreatedAt())
-                .build();
+        User user = userService.findUserById(userId);
+
+        UserProfileResponse userProfileResponse = UserProfileResponse.builder().username(user.getUsername())
+                .nickname(user.getNickname()).profileImg(user.getProfileImg()).role(user.getRole())
+                .createdAt(user.getCreatedAt()).build();
 
         return ResponseEntity.ok().body(userProfileResponse);
     }
@@ -58,34 +55,32 @@ public class UserController {
     @DeleteMapping()
     @Operation(summary = "유저 삭제", description = "현재 로그인된 유저의 계정을 삭제 (3일의 유예 기간 존재)")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "유저 삭제 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserSoftDeleteResponse.class))),
+            @ApiResponse(responseCode = "200", description = "유저 삭제 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserDeleteResponse.class))),
             @ApiResponse(responseCode = "401", description = "인증 실패 - 토큰 없음 또는 유효하지 않음"),
             @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
-    })
+            @ApiResponse(responseCode = "409", description = "이미 삭제된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))})
     public ResponseEntity<?> deleteUser() {
         Long userId = identityService.getCurrentUserId();
-        User user = userService.findByUserId(userId);
-        
-        if (user.getIsDeleted()) {
-            ErrorCode errorCode = ErrorCode.USER_ALREADY_DELETED;
-            ErrorResponse errorResponse = ErrorResponse.builder()
-                    .errorCode(errorCode.getCode())
-                    .errorMessage(errorCode.getMessage())
-                    .build();
 
-            return ResponseEntity.status(errorCode.getHttpStatus())
-                    .body(errorResponse);
-        }
-        
-        userService.deleteSoftUserByUserId(userId);
+        UserDeleteResponse userDeleteResponse = userService.deleteSoftUserByUserId(userId);
 
-        UserSoftDeleteResponse userSoftDeleteResponse = UserSoftDeleteResponse.builder()
-                .userId(user.getProviderId())
-                .deletedAt(user.getDeletedAt())
-                .isDeleted(user.getIsDeleted())
-                .build();
+        return ResponseEntity.ok().body(userDeleteResponse);
+    }
 
-        return ResponseEntity.ok().body(userSoftDeleteResponse);
+    @PutMapping("/restore")
+    @Operation(summary = "삭제 철회", description = "삭제 처리된 유저의 삭제 철회")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "삭제 철회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserRestoreResponse.class))),
+            @ApiResponse(responseCode = "401", description = "인증 실패 - 토큰 없음 또는 유효하지 않음"),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "이미 복원된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    public ResponseEntity<?> restoreUser() {
+        Long userId = identityService.getCurrentUserId();
+
+        UserRestoreResponse userRestoreResponse = userService.restoreUserByUserId(userId);
+
+        return ResponseEntity.ok().body(userRestoreResponse);
     }
 }
