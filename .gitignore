@@ -36,3 +36,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Custom ###
+src/main/**/config/TokenGeneratorConfig.java

@@ -1,11 +1,10 @@
 package com.moup.server.repository;
 
 import com.moup.server.common.Login;
-import com.moup.server.model.dto.RegisterRequest;
 import com.moup.server.model.entity.User;
+import java.time.LocalDateTime;
 import org.apache.ibatis.annotations.*;
 
-import javax.swing.text.html.Option;
 import java.util.Optional;
 
 @Mapper
@@ -26,6 +25,12 @@ public interface UserRepository {
     @Update("UPDATE users SET profile_img = #{profileImg} WHERE id = #{id}")
     void updateProfileImg(Long id, String profileImg);
 
-    @Delete("UPDATE users SET deleted_at = CURRENT_TIMESTAMP(), is_deleted = 1 WHERE id = #{id}")
-    void deleteSoftUserById(Long id);
+    @Update("UPDATE users SET deleted_at = CURRENT_TIMESTAMP(), is_deleted = 1 WHERE id = #{id}")
+    void softDeleteUserById(Long id);
+
+    @Update("UPDATE users SET deleted_at = null, is_deleted = 0 WHERE id = #{id}")
+    void undeleteUserById(Long id);
+
+    @Delete("DELETE FROM users WHERE is_deleted = 1 AND deleted_at < #{threeDaysAgo}")
+    void hardDeleteUsersOlderThan(LocalDateTime threeDaysAgo);
 }
