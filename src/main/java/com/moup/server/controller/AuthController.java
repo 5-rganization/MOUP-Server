@@ -96,7 +96,7 @@ public class AuthController {
         Login provider = registerRequest.getProvider();
         String idToken = registerRequest.getIdToken();
         String providerId = "";
-        String username = "";
+        String username = "moup";
 
         try {
             // Factory에서 주입 받아서 공통 로직 수행 -> OCP 지키기

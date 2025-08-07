@@ -26,4 +26,6 @@ public class User {
     private Role role;
     private String profileImg;
     private String createdAt;
+    private String deletedAt;
+    private Boolean isDeleted;
 }
