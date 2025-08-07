@@ -52,7 +52,7 @@ public class UserService {
     }
 
     public UserProfileImageResponse updateProfileImage(Long userId, MultipartFile profileImage) {
-        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+        User user = findUserById(userId);
 
         // 이미지 타입인지 파일 검증
         fileService.verifyFileExtension(profileImage, File.IMAGE);
@@ -82,7 +82,7 @@ public class UserService {
             throw new AlreadyDeletedException();
         }
 
-        userRepository.deleteSoftUserById(userId);
+        userRepository.softDeleteUserById(userId);
 
         return UserDeleteResponse.builder()
                 .userId(user.getProviderId())

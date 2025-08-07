@@ -2,7 +2,7 @@ package com.moup.server.repository;
 
 import com.moup.server.common.Login;
 import com.moup.server.model.entity.User;
-import javax.swing.text.html.Option;
+import java.time.LocalDateTime;
 import org.apache.ibatis.annotations.*;
 
 import java.util.Optional;
@@ -26,8 +26,11 @@ public interface UserRepository {
     void updateProfileImg(Long id, String profileImg);
 
     @Update("UPDATE users SET deleted_at = CURRENT_TIMESTAMP(), is_deleted = 1 WHERE id = #{id}")
-    void deleteSoftUserById(Long id);
+    void softDeleteUserById(Long id);
 
     @Update("UPDATE users SET deleted_at = null, is_deleted = 0 WHERE id = #{id}")
     void undeleteUserById(Long id);
+
+    @Delete("DELETE FROM users WHERE is_deleted = 1 AND deleted_at < #{threeDaysAgo}")
+    void hardDeleteUsersOlderThan(LocalDateTime threeDaysAgo);
 }
