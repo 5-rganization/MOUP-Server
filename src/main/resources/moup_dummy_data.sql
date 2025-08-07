@@ -1,5 +1,5 @@
 INSERT INTO users (provider, provider_id, username, nickname, role) VALUES ('LOGIN_GOOGLE', 'google_user_1', 'moup_1', 'nickname',  'ROLE_WORKER');
-INSERT INTO users (provider, provider_id, username, nickname, role) VALUES ('LOGIN_GOOGLE', 'google_user_2', 'moup_2', 'nickname', 'ROLE_WORKER');
+INSERT INTO users (provider, provider_id, username, nickname, role, deleted_at, is_deleted) VALUES ('LOGIN_GOOGLE', 'google_user_2', 'moup_2', 'nickname', 'ROLE_WORKER', '2025-08-01 01:01:01', '1');
 INSERT INTO users (provider, provider_id, username, nickname, role) VALUES ('LOGIN_GOOGLE', 'google_user_3', 'moup_3', 'nickname', 'ROLE_WORKER');
 INSERT INTO users (provider, provider_id, username, nickname, role) VALUES ('LOGIN_GOOGLE', 'google_user_4', 'moup_4', 'nickname', 'ROLE_WORKER');
 INSERT INTO users (provider, provider_id, username, nickname, role) VALUES ('LOGIN_GOOGLE', '123456789012-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com', 'moup_5', 'nickname', 'ROLE_WORKER');
