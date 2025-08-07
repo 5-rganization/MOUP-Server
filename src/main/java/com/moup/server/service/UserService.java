@@ -36,4 +36,8 @@ public class UserService {
     public void updateProfileImg(Long userId, String profileImg) {
         userRepository.updateProfileImg(userId, profileImg);
     }
+
+    public void deleteSoftUserByUserId(Long userId) {
+        userRepository.deleteSoftUserById(userId);
+    }
 }
