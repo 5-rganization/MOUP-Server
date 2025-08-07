@@ -20,6 +20,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -66,7 +67,7 @@ public class AuthController {
             Map<String, Object> userInfo = service.verifyIdToken(idToken);
             providerId = userInfo.get("userId").toString();
 
-        } catch (GeneralSecurityException | IOException e) {
+        } catch (GeneralSecurityException | IOException | ParseException e) {
             throw new RuntimeException(e);
         }
 
@@ -95,7 +96,7 @@ public class AuthController {
         Login provider = registerRequest.getProvider();
         String idToken = registerRequest.getIdToken();
         String providerId = "";
-        String username = "";
+        String username = "moup";
 
         try {
             // Factory에서 주입 받아서 공통 로직 수행 -> OCP 지키기
@@ -105,7 +106,7 @@ public class AuthController {
             providerId = userInfo.get("userId").toString();
             username = userInfo.get("name").toString();
 
-        } catch (GeneralSecurityException | IOException e) {
+        } catch (GeneralSecurityException | IOException | ParseException e) {
             throw new RuntimeException(e);
         }
 
