@@ -1,6 +1,5 @@
 package com.moup.server.controller;
 
-import com.moup.server.exception.ErrorCode;
 import com.moup.server.model.dto.ErrorResponse;
 import com.moup.server.model.dto.UserProfileResponse;
 import com.moup.server.model.dto.UserDeleteResponse;

@@ -1,13 +1,8 @@
 package com.moup.server.controller;
 
-import com.moup.server.common.File;
 import com.moup.server.model.dto.ErrorResponse;
 import com.moup.server.model.dto.UserProfileImageResponse;
-import com.moup.server.model.dto.UserProfileResponse;
-import com.moup.server.model.entity.User;
-import com.moup.server.service.FileService;
 import com.moup.server.service.IdentityService;
-import com.moup.server.service.S3Service;
 import com.moup.server.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
