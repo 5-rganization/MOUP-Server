@@ -84,7 +84,7 @@ public class AppleAuthService implements AuthService {
 
         // 4. 클레임에서 사용자 정보 추출 및 Map에 담기
         String userId = claimsSet.getSubject();
-        String name = claimsSet.getStringClaim("name");     // TODO: 유저 네임 애플 서버로부터 가져올 것.
+        String name = claimsSet.getStringClaim("name");
 
         Map<String, Object> userInfo = new HashMap<>();
         if (userId != null) {

@@ -1,6 +1,6 @@
 package com.moup.server.exception;
 
-public class DuplicateUserException extends CustomException {
+public class UserAlreadyExistsException extends CustomException {
 
     @Override
     public ErrorCode getErrorCode() {

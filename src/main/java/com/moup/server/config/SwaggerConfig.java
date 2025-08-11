@@ -26,4 +26,10 @@ public class SwaggerConfig {
         String[] paths = {"/files/**"};
         return GroupedOpenApi.builder().group("파일 관련 API").pathsToMatch(paths).build();
     }
+
+    @Bean
+    GroupedOpenApi adminOpenApi() {
+        String[] paths = {"/admin/**"};
+        return GroupedOpenApi.builder().group("관리자 관련 API").pathsToMatch(paths).build();
+    }
 }

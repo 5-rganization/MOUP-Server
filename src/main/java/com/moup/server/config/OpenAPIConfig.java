@@ -13,10 +13,6 @@ import java.util.Collections;
 
 @Configuration
 public class OpenAPIConfig {
-
-    // TODO: 디벨롭 이후에 지우기
-    private static final String STATIC_TOKEN = "Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiI1Iiwicm9sZSI6IlJPTEVfV09SS0VSIiwidXNlcm5hbWUiOiJtb3VwXzEiLCJpYXQiOjE3NTQ1NjYwMTcsImV4cCI6MTc1NDU2NzIxN30.Xcspp3Bon3FbFdvihteL5OCMV4px-Lz2PPAimalaQggC1ojSRrULNkV_6TgK4yPT";
-
     @Bean
     public OpenAPI openAPI() {
         return new OpenAPI()
