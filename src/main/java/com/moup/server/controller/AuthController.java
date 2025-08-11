@@ -80,7 +80,7 @@ public class AuthController {
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.AUTHORIZATION, "Bearer " + token);
 
-        LoginResponse loginResponse = LoginResponse.builder().userId(providerId).build();
+        LoginResponse loginResponse = LoginResponse.builder().userId(providerId).role(user.getRole()).build();
 
         return ResponseEntity.ok().headers(headers).body(loginResponse);
     }
