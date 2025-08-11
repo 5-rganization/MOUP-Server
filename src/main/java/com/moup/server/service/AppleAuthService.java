@@ -1,7 +1,6 @@
 package com.moup.server.service;
 
 import com.moup.server.common.Login;
-import com.moup.server.exception.InvalidTokenException;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.source.JWKSource;
@@ -14,8 +13,10 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -32,9 +33,11 @@ public class AppleAuthService implements AuthService {
 
     private static final String APPLE_ISSUER_URL = "https://appleid.apple.com";
     private static final String APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys";
-    private final JWKSource<SecurityContext> jwkSet;
+
     @Value("${apple.client.id}")
     private String appleClientId;
+
+    private final JWKSource<SecurityContext> jwkSet;
 
     public AppleAuthService() throws MalformedURLException {
         this.jwkSet = JWKSourceBuilder.create(new URL(APPLE_JWKS_URL)).build();
@@ -46,7 +49,8 @@ public class AppleAuthService implements AuthService {
     }
 
     @Override
-    public Map<String, Object> verifyIdToken(String idTokenString) throws InvalidTokenException {
+    public Map<String, Object> verifyIdToken(String idTokenString)
+            throws GeneralSecurityException, ParseException {
         ConfigurableJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
 
         // 1. 서명 알고리즘 설정
@@ -74,21 +78,22 @@ public class AppleAuthService implements AuthService {
         try {
             // 3. 토큰 처리 및 검증 (서명, 클레임 검증 포함)
             claimsSet = jwtProcessor.process(idTokenString, null);
-
-            // 4. 클레임에서 사용자 정보 추출 및 Map에 담기
-            String userId = claimsSet.getSubject();
-            String name = claimsSet.getStringClaim("name");
-
-            Map<String, Object> userInfo = new HashMap<>();
-            if (userId != null) {
-                userInfo.put("userId", userId);
-            }
-            if (name != null) {
-                userInfo.put("name", name);
-            }
-            return userInfo;
         } catch (BadJOSEException | ParseException | JOSEException e) {
-            throw new InvalidTokenException();
+            throw new GeneralSecurityException("Invalid Apple ID token: " + e.getMessage(), e);
         }
+
+        // 4. 클레임에서 사용자 정보 추출 및 Map에 담기
+        String userId = claimsSet.getSubject();
+        String name = claimsSet.getStringClaim("name");
+
+        Map<String, Object> userInfo = new HashMap<>();
+        if (userId != null) {
+            userInfo.put("userId", userId);
+        }
+        if (name != null) {
+            userInfo.put("name", name);
+        }
+
+        return userInfo;
     }
 }
