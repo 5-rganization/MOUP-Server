@@ -1,6 +1,7 @@
 package com.moup.server.service;
 
 import com.moup.server.common.Login;
+import com.moup.server.exception.InvalidTokenException;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.source.JWKSource;
@@ -49,8 +50,7 @@ public class AppleAuthService implements AuthService {
     }
 
     @Override
-    public Map<String, Object> verifyIdToken(String idTokenString)
-            throws GeneralSecurityException, ParseException {
+    public Map<String, Object> verifyIdToken(String idTokenString) throws InvalidTokenException {
         ConfigurableJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
 
         // 1. 서명 알고리즘 설정
@@ -78,22 +78,21 @@ public class AppleAuthService implements AuthService {
         try {
             // 3. 토큰 처리 및 검증 (서명, 클레임 검증 포함)
             claimsSet = jwtProcessor.process(idTokenString, null);
+
+            // 4. 클레임에서 사용자 정보 추출 및 Map에 담기
+            String userId = claimsSet.getSubject();
+            String name = claimsSet.getStringClaim("name");
+
+            Map<String, Object> userInfo = new HashMap<>();
+            if (userId != null) {
+                userInfo.put("userId", userId);
+            }
+            if (name != null) {
+                userInfo.put("name", name);
+            }
+            return userInfo;
         } catch (BadJOSEException | ParseException | JOSEException e) {
-            throw new GeneralSecurityException("Invalid Apple ID token: " + e.getMessage(), e);
+            throw new InvalidTokenException();
         }
-
-        // 4. 클레임에서 사용자 정보 추출 및 Map에 담기
-        String userId = claimsSet.getSubject();
-        String name = claimsSet.getStringClaim("name");
-
-        Map<String, Object> userInfo = new HashMap<>();
-        if (userId != null) {
-            userInfo.put("userId", userId);
-        }
-        if (name != null) {
-            userInfo.put("name", name);
-        }
-
-        return userInfo;
     }
 }

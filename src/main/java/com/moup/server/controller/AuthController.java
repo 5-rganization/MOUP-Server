@@ -49,10 +49,11 @@ public class AuthController {
     private final JwtUtil jwtUtil;
 
     @PostMapping("/login")
-    @Operation(summary = "로그인", description = "소셜 로그인 타입과 아이디를 입력 받아서 로그인")
+    @Operation(summary = "로그인", description = "소셜 로그인 타입과 토큰을 입력 받아서 로그인")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "로그인 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginResponse.class))),
             @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "삭제 처리된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "로그인을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginRequest.class)))
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
@@ -60,16 +61,11 @@ public class AuthController {
         String idToken = loginRequest.getIdToken();
         String providerId = "";
 
-        try {
-            // Factory에서 주입 받아서 공통 로직 수행 -> OCP 지키기
-            AuthService service = authServiceFactory.getService(provider);
+        // Factory에서 주입 받아서 공통 로직 수행 -> OCP 지키기
+        AuthService service = authServiceFactory.getService(provider);
 
-            Map<String, Object> userInfo = service.verifyIdToken(idToken);
-            providerId = userInfo.get("userId").toString();
-
-        } catch (GeneralSecurityException | IOException | ParseException e) {
-            throw new RuntimeException(e);
-        }
+        Map<String, Object> userInfo = service.verifyIdToken(idToken);
+        providerId = userInfo.get("userId").toString();
 
         // 토큰 파싱 후 사용자 확인
         User user = userService.findByProviderAndId(provider, providerId);
@@ -98,21 +94,16 @@ public class AuthController {
         String providerId = "";
         String username = "moup";
 
-        try {
-            // Factory에서 주입 받아서 공통 로직 수행 -> OCP 지키기
-            AuthService service = authServiceFactory.getService(provider);
+        // Factory에서 주입 받아서 공통 로직 수행 -> OCP 지키기
+        AuthService service = authServiceFactory.getService(provider);
 
-            Map<String, Object> userInfo = service.verifyIdToken(idToken);
-            providerId = userInfo.get("userId").toString();
+        Map<String, Object> userInfo = service.verifyIdToken(idToken);
+        providerId = userInfo.get("userId").toString();
 
-            if (userInfo.containsKey("name")) {
-                username = userInfo.get("name").toString();
-            } else if (registerRequest.getUsername() != null) {
-                username = registerRequest.getUsername();
-            }
-
-        } catch (GeneralSecurityException | IOException | ParseException e) {
-            throw new RuntimeException(e);
+        if (userInfo.containsKey("name")) {
+            username = userInfo.get("name").toString();
+        } else if (registerRequest.getUsername() != null) {
+            username = registerRequest.getUsername();
         }
 
         User user = User.builder().provider(provider).providerId(providerId).username(username)
