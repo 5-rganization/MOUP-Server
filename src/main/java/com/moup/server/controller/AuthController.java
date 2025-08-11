@@ -58,19 +58,19 @@ public class AuthController {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "로그인을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginRequest.class)))
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
         Login provider = loginRequest.getProvider();
-        String idToken = loginRequest.getIdToken();
-        String providerId = "";
+        String authCode = loginRequest.getAuthCode();
 
         // Factory에서 주입 받아서 공통 로직 수행 -> OCP 지키기
         AuthService service = authServiceFactory.getService(provider);
 
-        Map<String, Object> userInfo = service.verifyIdToken(idToken);
-        providerId = userInfo.get("userId").toString();
+        // 1. Auth Code로 유저 정보 교환
+        Map<String, Object> userInfo = service.exchangeAuthCode(authCode);
+        String providerId = service.getProviderId(userInfo);
 
-        // 토큰 파싱 후 사용자 확인
-        User user = userService.findByProviderAndId(provider, providerId);
+        // 2. 유저 정보로 DB에서 가입 여부 확인
+        User user = userService.findByProviderAndId(provider, providerId);  // 없을 시 404 반환 후 GlobalExceptionHandler가 처리
 
-        // Access Token 반환
+        // 3. 서비스 자체 Access Token 반환
         String token = jwtUtil.createToken(user);
 
         HttpHeaders headers = new HttpHeaders();
@@ -90,27 +90,24 @@ public class AuthController {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "회원가입을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RegisterRequest.class)))
     public ResponseEntity<?> createUser(@RequestBody RegisterRequest registerRequest) {
         Login provider = registerRequest.getProvider();
-        String idToken = registerRequest.getIdToken();
-        String providerId = "";
-        String username = "moup";
+        String authCode = registerRequest.getAuthCode();
 
         // Factory에서 주입 받아서 공통 로직 수행 -> OCP 지키기
         AuthService service = authServiceFactory.getService(provider);
 
-        Map<String, Object> userInfo = service.verifyIdToken(idToken);
-        providerId = userInfo.get("userId").toString();
+        // 1. Auth Code로 유저 정보 교환
+        Map<String, Object> userInfo = service.exchangeAuthCode(authCode);
+        String providerId = service.getProviderId(userInfo);
 
-        if (userInfo.containsKey("name")) {
-            username = userInfo.get("name").toString();
-        } else if (registerRequest.getUsername() != null) {
-            username = registerRequest.getUsername();
-        }
+        // 2. DB 저장을 위한 User 엔티티 생성
+        String username = service.getUsername(userInfo);
 
         User user = User.builder().provider(provider).providerId(providerId).username(username)
                 .nickname(registerRequest.getNickname()).role(Role.valueOf(registerRequest.getRole())).build();
 
         userService.createUser(user);
 
+        // // 3. 서비스 자체 Access Token 반환
         String token = jwtUtil.createToken(user);
 
         HttpHeaders headers = new HttpHeaders();
