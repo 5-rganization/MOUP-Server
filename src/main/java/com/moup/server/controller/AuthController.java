@@ -104,7 +104,12 @@ public class AuthController {
 
             Map<String, Object> userInfo = service.verifyIdToken(idToken);
             providerId = userInfo.get("userId").toString();
-            username = userInfo.get("name").toString();
+
+            if (userInfo.containsKey("name")) {
+                username = userInfo.get("name").toString();
+            } else if (registerRequest.getUsername() != null) {
+                username = registerRequest.getUsername();
+            }
 
         } catch (GeneralSecurityException | IOException | ParseException e) {
             throw new RuntimeException(e);
