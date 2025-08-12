@@ -50,49 +50,64 @@ public class AppleAuthService implements AuthService {
     }
 
     @Override
-    public Map<String, Object> verifyIdToken(String idTokenString) throws InvalidTokenException {
-        ConfigurableJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
-
-        // 1. 서명 알고리즘 설정
-        JWSKeySelector<SecurityContext> keySelector = new JWSVerificationKeySelector<>(JWSAlgorithm.RS256, jwkSet);
-        jwtProcessor.setJWSKeySelector(keySelector);
-
-        // 2. JWT 클레임 검증기(Verifier) 설정
-        JWTClaimsSet exactMatchClaims = new JWTClaimsSet.Builder()
-                .issuer(APPLE_ISSUER_URL)
-                .build();
-        Set<String> requiredClaims = new HashSet<>();
-        requiredClaims.add("exp");  // 만료 시간
-        requiredClaims.add("iat");  // 발급 시간
-
-        jwtProcessor.setJWTClaimsSetVerifier(
-                new DefaultJWTClaimsVerifier<>(
-                        new HashSet<>(Collections.singletonList(appleClientId)),
-                        exactMatchClaims,
-                        requiredClaims,
-                        null
-                )
-        );
-
-        JWTClaimsSet claimsSet;
-        try {
-            // 3. 토큰 처리 및 검증 (서명, 클레임 검증 포함)
-            claimsSet = jwtProcessor.process(idTokenString, null);
-
-            // 4. 클레임에서 사용자 정보 추출 및 Map에 담기
-            String userId = claimsSet.getSubject();
-            String name = claimsSet.getStringClaim("name");
-
-            Map<String, Object> userInfo = new HashMap<>();
-            if (userId != null) {
-                userInfo.put("userId", userId);
-            }
-            if (name != null) {
-                userInfo.put("name", name);
-            }
-            return userInfo;
-        } catch (BadJOSEException | ParseException | JOSEException e) {
-            throw new InvalidTokenException();
-        }
+    public Map<String, Object> exchangeAuthCode(String authCode) throws InvalidTokenException {
+        return Map.of();
     }
+
+    @Override
+    public String getProviderId(Map<String, Object> userInfo) {
+        return "";
+    }
+
+    @Override
+    public String getUsername(Map<String, Object> userInfo) {
+        return "";
+    }
+
+//    @Override
+//    public Map<String, Object> verifyIdToken(String idTokenString) throws InvalidTokenException {
+//        ConfigurableJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
+//
+//        // 1. 서명 알고리즘 설정
+//        JWSKeySelector<SecurityContext> keySelector = new JWSVerificationKeySelector<>(JWSAlgorithm.RS256, jwkSet);
+//        jwtProcessor.setJWSKeySelector(keySelector);
+//
+//        // 2. JWT 클레임 검증기(Verifier) 설정
+//        JWTClaimsSet exactMatchClaims = new JWTClaimsSet.Builder()
+//                .issuer(APPLE_ISSUER_URL)
+//                .build();
+//        Set<String> requiredClaims = new HashSet<>();
+//        requiredClaims.add("exp");  // 만료 시간
+//        requiredClaims.add("iat");  // 발급 시간
+//
+//        jwtProcessor.setJWTClaimsSetVerifier(
+//                new DefaultJWTClaimsVerifier<>(
+//                        new HashSet<>(Collections.singletonList(appleClientId)),
+//                        exactMatchClaims,
+//                        requiredClaims,
+//                        null
+//                )
+//        );
+//
+//        JWTClaimsSet claimsSet;
+//        try {
+//            // 3. 토큰 처리 및 검증 (서명, 클레임 검증 포함)
+//            claimsSet = jwtProcessor.process(idTokenString, null);
+//
+//            // 4. 클레임에서 사용자 정보 추출 및 Map에 담기
+//            String userId = claimsSet.getSubject();
+//            String name = claimsSet.getStringClaim("name");
+//
+//            Map<String, Object> userInfo = new HashMap<>();
+//            if (userId != null) {
+//                userInfo.put("userId", userId);
+//            }
+//            if (name != null) {
+//                userInfo.put("name", name);
+//            }
+//            return userInfo;
+//        } catch (BadJOSEException | ParseException | JOSEException e) {
+//            throw new InvalidTokenException();
+//        }
+//    }
 }

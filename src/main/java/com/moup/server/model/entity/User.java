@@ -15,14 +15,10 @@ import lombok.ToString;
 @ToString
 public class User {
     private Long id;
-    @Enumerated(EnumType.STRING)
-    @Column(name = "provider")
     private Login provider;
     private String providerId;
     private String username;
     private String nickname;
-    @Enumerated(EnumType.STRING)
-    @Column(name = "role")
     private Role role;
     private String profileImg;
     private String createdAt;
