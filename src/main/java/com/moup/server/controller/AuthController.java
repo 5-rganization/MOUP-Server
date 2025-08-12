@@ -107,7 +107,7 @@ public class AuthController {
 
         userService.createUser(user);
 
-        // // 3. 서비스 자체 Access Token 반환
+        // 3. 서비스 자체 Access Token 반환
         String token = jwtUtil.createToken(user);
 
         HttpHeaders headers = new HttpHeaders();

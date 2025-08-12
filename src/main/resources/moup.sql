@@ -16,6 +16,25 @@ CREATE TABLE `users` (
     UNIQUE KEY `unique_provider` (`provider`, `provider_id`)
 );
 
+-- 토큰 DB --
+CREATE TABLE `social_tokens` (
+    `id` BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+    `user_id` BIGINT NOT NULL,
+    `provider` VARCHAR(20) NOT NULL,
+    `access_token` TEXT NULL,
+    `refresh_token` TEXT NULL,
+    `updated_at` TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES users(`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `user_tokens` (
+    `id` BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+    `user_id` BIGINT NOT NULL,
+    `refresh_token` TEXT NOT NULL,
+    `expiry_date` DATETIME NULL,
+    `created_at` DATETIME NOT NULL
+);
+
 -- 루틴 DB --
 CREATE TABLE `routines` (
 	`id` BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
@@ -53,14 +72,6 @@ CREATE TABLE `user_calendar_mappings` (
 );
 --
 
-CREATE TABLE `colors` (
-	`id` INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
-    `color_name` VARCHAR(10) NOT NULL,
-    `r` INT NOT NULL,
-    `g` INT NOT NULL,
-    `b` INT NOT NULL
-);
-
 -- 근무지 DB --
 CREATE TABLE `workplace_category` (
 	`id` INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
@@ -83,10 +94,9 @@ CREATE TABLE `workplaces` (
     `has_industrial_accident` TINYINT(1) NOT NULL,
     `has_income_tax` TINYINT(1) NOT NULL,
     `has_night_allowance` TINYINT(1) NOT NULL,
-    `label_color_id` INT DEFAULT 0 NOT NULL,
+    `label_color` VARCHAR(20) DEFAULT 'orange' NOT NULL,
     FOREIGN KEY(`owner_id`) REFERENCES users(`id`) ON DELETE SET NULL,
-    FOREIGN KEY(`category_id`) REFERENCES workplace_category(`id`) ON DELETE SET NULL,
-    FOREIGN KEY(`label_color_id`) REFERENCES colors(`id`) ON DELETE CASCADE
+    FOREIGN KEY(`category_id`) REFERENCES workplace_category(`id`) ON DELETE SET NULL
 );
 --
 
