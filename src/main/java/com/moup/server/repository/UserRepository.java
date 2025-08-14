@@ -2,16 +2,16 @@ package com.moup.server.repository;
 
 import com.moup.server.common.Login;
 import com.moup.server.model.entity.User;
-import java.time.LocalDateTime;
 import org.apache.ibatis.annotations.*;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Mapper
 public interface UserRepository {
 
     @Insert("INSERT INTO users (provider, provider_id, username, nickname, role) VALUES (#{provider}, #{providerId}, #{username}, #{nickname}, #{role})")
-    void createUser(User user);
+    void create(User user);
 
     @Select("SELECT * FROM users WHERE id = #{id}")
     Optional<User> findById(Long id);

@@ -20,7 +20,6 @@ CREATE TABLE `users` (
 CREATE TABLE `social_tokens` (
     `id` BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
     `user_id` BIGINT NOT NULL,
-    `provider` VARCHAR(20) NOT NULL,
     `access_token` TEXT NULL,
     `refresh_token` TEXT NULL,
     `updated_at` TIMESTAMP,
