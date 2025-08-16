@@ -31,7 +31,7 @@ CREATE TABLE `user_tokens` (
     `user_id` BIGINT NOT NULL,
     `refresh_token` TEXT NOT NULL,
     `expiry_date` DATETIME NULL,
-    `created_at` DATETIME NOT NULL
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP()
 );
 
 -- 루틴 DB --

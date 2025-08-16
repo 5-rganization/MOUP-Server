@@ -14,6 +14,7 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
+import jakarta.security.auth.message.AuthException;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -50,20 +51,22 @@ public class AppleAuthService implements AuthService {
     }
 
     @Override
-    public Map<String, Object> exchangeAuthCode(String authCode) throws InvalidTokenException {
+    public Map<String, Object> exchangeAuthCode(String authCode) throws AuthException {
+        // 1. 소셜 OAuth 서버로 토큰 교환 요청
+        
+        
         return Map.of();
     }
 
     @Override
     public String getProviderId(Map<String, Object> userInfo) {
-        return "";
+        return (String) userInfo.get("userId");
     }
 
     @Override
     public String getUsername(Map<String, Object> userInfo) {
-        return "";
+        return (String) userInfo.get("name");
     }
-
 //    @Override
 //    public Map<String, Object> verifyIdToken(String idTokenString) throws InvalidTokenException {
 //        ConfigurableJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
