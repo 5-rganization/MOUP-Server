@@ -2,17 +2,10 @@ package com.moup.server.controller;
 
 import com.moup.server.common.Login;
 import com.moup.server.common.Role;
-import com.moup.server.model.dto.ErrorResponse;
-import com.moup.server.model.dto.LoginRequest;
-import com.moup.server.model.dto.LoginResponse;
-import com.moup.server.model.dto.RegisterRequest;
-import com.moup.server.model.dto.RegisterResponse;
+import com.moup.server.exception.InvalidTokenException;
+import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.User;
-import com.moup.server.service.AuthService;
-import com.moup.server.service.AuthServiceFactory;
-import com.moup.server.service.SocialTokenService;
-import com.moup.server.service.UserService;
-import com.moup.server.service.UserTokenService;
+import com.moup.server.service.*;
 import com.moup.server.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -52,11 +45,7 @@ public class AuthController {
 
     @PostMapping("/login")
     @Operation(summary = "로그인", description = "소셜 로그인 타입과 토큰을 입력 받아서 로그인")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "로그인 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginResponse.class))),
-            @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "409", description = "삭제 처리된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "로그인 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginResponse.class))), @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))), @ApiResponse(responseCode = "409", description = "삭제 처리된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))), @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "로그인을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginRequest.class)))
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) throws AuthException {
         Login provider = loginRequest.getProvider();
@@ -74,30 +63,23 @@ public class AuthController {
 
         // 3. 토큰 관리
         // 3-1. 소셜 토큰 관리
-        String socialAccessToken = (String) userInfo.get("socialAccessToken");
         String socialRefreshToken = (String) userInfo.get("socialRefreshToken");
-        socialTokenService.saveOrUpdateToken(user.getId(), socialAccessToken, socialRefreshToken);
-        
+        if (!socialRefreshToken.isEmpty()) {
+            socialTokenService.saveOrUpdateToken(socialRefreshToken);
+        }
+
         // 3-2. 서비스 토큰 관리
         String accessToken = jwtUtil.createAccessToken(user);
         String refreshToken = jwtUtil.createRefreshToken(user);
-        userTokenService.saveOrUpdateToken(user.getId(), refreshToken, jwtUtil.getRefreshTokenExpiration());
+        userTokenService.saveOrUpdateToken(refreshToken, jwtUtil.getRefreshTokenExpiration());
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken);
-
-        LoginResponse loginResponse = LoginResponse.builder().userId(providerId).role(user.getRole()).build();
-
-        // TODO: 로그인, 회원가입 둘다 액세스랑 리프레시 두 개 반환하기
-        return ResponseEntity.ok().headers(headers).body(loginResponse);
+        LoginResponse loginResponse = LoginResponse.builder().userId(user.getId()).role(user.getRole()).accessToken(accessToken).refreshToken(refreshToken).build();
+        return ResponseEntity.ok().body(loginResponse);
     }
 
     @PostMapping("/register")
     @Operation(summary = "회원가입", description = "소셜 로그인 정보, 닉네임, 역할을 받아서 회원가입")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "회원가입 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RegisterResponse.class))),
-            @ApiResponse(responseCode = "409", description = "중복된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "회원가입 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RegisterResponse.class))), @ApiResponse(responseCode = "409", description = "중복된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))), @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "회원가입을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RegisterRequest.class)))
     public ResponseEntity<?> createUser(@RequestBody RegisterRequest registerRequest) throws AuthException {
         Login provider = registerRequest.getProvider();
@@ -113,27 +95,47 @@ public class AuthController {
         // 2. DB 저장을 위한 User 엔티티 생성
         String username = service.getUsername(userInfo);
 
-        User user = User.builder().provider(provider).providerId(providerId).username(username)
-                .nickname(registerRequest.getNickname()).role(Role.valueOf(registerRequest.getRole())).build();
+        User user = User.builder().provider(provider).providerId(providerId).username(username).nickname(registerRequest.getNickname()).role(Role.valueOf(registerRequest.getRole())).build();
 
         userService.createUser(user);
 
         // 3. 토큰 관리
         // 3-1. 소셜 토큰 관리
-        String socialAccessToken = (String) userInfo.get("socialAccessToken");
         String socialRefreshToken = (String) userInfo.get("socialRefreshToken");
-        socialTokenService.saveOrUpdateToken(user.getId(), socialAccessToken, socialRefreshToken);
+        if (!socialRefreshToken.isEmpty()) {
+            socialTokenService.saveOrUpdateToken(socialRefreshToken);
+        }
 
         // 3-2. 우리 서비스 토큰 관리
         String accessToken = jwtUtil.createAccessToken(user);
         String refreshToken = jwtUtil.createRefreshToken(user);
-        userTokenService.saveOrUpdateToken(user.getId(), refreshToken, jwtUtil.getRefreshTokenExpiration());
+        userTokenService.saveOrUpdateToken(refreshToken, jwtUtil.getRefreshTokenExpiration());
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken);
+        RegisterResponse registerResponse = RegisterResponse.builder().userId(providerId).role(user.getRole()).accessToken(accessToken).refreshToken(refreshToken).build();
+        return ResponseEntity.ok().body(registerResponse);
+    }
 
-        RegisterResponse registerResponse = RegisterResponse.builder().userId(providerId).role(user.getRole()).build();
+    @PostMapping("/token/refresh")
+    @Operation(summary = "액세스 토큰 재발급", description = "리프레시 토큰으로 액세스 토큰 재발급")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "재발급 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RefreshTokenResponse.class))), @ApiResponse(responseCode = "400", description = "유효하지 않은 토큰", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))), @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))), @ApiResponse(responseCode = "409", description = "삭제 처리된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))), @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "액세스 토큰 재발급을 위한 요청 DTO", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RefreshTokenRequest.class)))
+    public ResponseEntity<?> refreshToken(@RequestBody RefreshTokenRequest refreshTokenRequest) {
+        String refreshToken = refreshTokenRequest.getRefreshToken();
 
-        return ResponseEntity.ok().headers(headers).body(registerResponse);
+        if (!userTokenService.isValidRefreshToken(refreshToken)) {
+            throw new InvalidTokenException();
+        }
+
+        // 액세스 토큰 반환
+        Long userId = jwtUtil.getUserId(refreshToken);
+
+        User user = userService.findUserById(userId);
+        String accessToken = jwtUtil.createAccessToken(user);
+        String newRefreshToken = jwtUtil.createRefreshToken(user);
+        userTokenService.saveOrUpdateToken(newRefreshToken, jwtUtil.getRefreshTokenExpiration());
+
+        RefreshTokenResponse refreshTokenResponse = RefreshTokenResponse.builder().accessToken(accessToken).refreshToken(newRefreshToken).build();
+
+        return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "no-store").header(HttpHeaders.PRAGMA, "no-cache").body(refreshTokenResponse);
     }
 }

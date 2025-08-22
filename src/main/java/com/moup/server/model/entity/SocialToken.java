@@ -5,13 +5,14 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 @Builder
 public class SocialToken {
     private Long id;
     private Long userId;
-    private String accessToken;
     private String refreshToken;
-    private String updatedAt;
+    private LocalDateTime updatedAt;
 }

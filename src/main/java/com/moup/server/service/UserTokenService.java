@@ -4,19 +4,26 @@ import com.moup.server.model.entity.UserToken;
 import com.moup.server.repository.UserTokenRepository;
 import java.time.LocalDateTime;
 import java.util.Optional;
+
+import com.moup.server.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class UserTokenService {
 
+    private final JwtUtil  jwtUtil;
     private final UserTokenRepository userTokenRepository;
 
-    public void saveOrUpdateToken(Long userId, String refreshToken, Long refreshTokenExpiration) {
+    @Transactional
+    public void saveOrUpdateToken(String refreshToken, Long refreshTokenExpiration) {
+        Long userId = jwtUtil.getUserId(refreshToken);
         // 유저 ID로 토큰이 존재하는지 확인
         Optional<UserToken> existingToken = userTokenRepository.findByUserId(userId);
-        LocalDateTime expiryDate = LocalDateTime.now().plusSeconds(refreshTokenExpiration);
+        LocalDateTime expiryDate = LocalDateTime.now().plusSeconds(refreshTokenExpiration / 1000);  // TODO: 밀리초 잘 반환되는지 확인 + DB TIMESTAMP 호환 여부
+        System.out.println(expiryDate);
         
         // 만약 기존에 토큰이 있으면, 갱신하기
         if (existingToken.isPresent()) {
@@ -28,18 +35,20 @@ public class UserTokenService {
             UserToken newToken = UserToken.builder()
                     .userId(userId)
                     .refreshToken(refreshToken)
-                    .expiryDate(String.valueOf(expiryDate))
+                    .expiryDate(expiryDate)
                     .build();
             userTokenRepository.save(newToken);
         }
     }
 
-    public boolean isValidRefreshToken(Long userId, String refreshToken) {
+    public boolean isValidRefreshToken(String refreshToken) {
+        Long userId = jwtUtil.getUserId(refreshToken);
+
         Optional<UserToken> existingToken = userTokenRepository.findByUserId(userId);
 
         if (existingToken.isPresent()) {
             UserToken userToken = existingToken.get();
-            LocalDateTime expiryDate = LocalDateTime.parse(userToken.getExpiryDate());
+            LocalDateTime expiryDate = userToken.getExpiryDate();
 
             boolean isMatch = userToken.getRefreshToken().equals(refreshToken);
             boolean isExpired = expiryDate.isBefore(LocalDateTime.now());

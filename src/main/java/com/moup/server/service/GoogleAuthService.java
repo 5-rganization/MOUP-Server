@@ -19,6 +19,7 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +38,7 @@ public class GoogleAuthService implements AuthService {
     }
 
     @Override
+    @Transactional
     public Map<String, Object> exchangeAuthCode(String authCode) throws AuthException {
         try {
             // 1. 소셜 OAuth 서버로 토큰 교환 요청
