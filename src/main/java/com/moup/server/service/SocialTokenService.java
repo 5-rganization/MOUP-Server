@@ -17,9 +17,7 @@ public class SocialTokenService {
     private final SocialTokenRepository socialTokenRepository;
 
     @Transactional
-    public void saveOrUpdateToken(String refreshToken) {
-        Long userId = jwtUtil.getUserId(refreshToken);
-
+    public void saveOrUpdateToken(Long userId, String refreshToken) {
         // 유저 ID로 토큰이 존재하는지 확인
         Optional<SocialToken> existingToken = socialTokenRepository.findByUserId(userId);
 
