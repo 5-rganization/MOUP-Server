@@ -101,6 +101,7 @@ public class AuthController {
 
         User user = User.builder().provider(provider).providerId(providerId).username(username).nickname(registerRequest.getNickname()).role(Role.valueOf(registerRequest.getRole())).build();
 
+        // TODO: Transactional로 토큰까지 감싸기
         userService.createUser(user);
 
         // 3. 토큰 관리

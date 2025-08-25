@@ -16,6 +16,6 @@ public interface SocialTokenRepository {
     @Update("UPDATE social_tokens SET refresh_token = #{refreshToken}, updated_at = CURRENT_TIMESTAMP() WHERE id = #{id}")
     void updateById(Long id, String refreshToken);
 
-    @Insert("INSERT INTO social_tokens (user_id, access_token, refresh_token) VALUES (#{userId}, #{accessToken}, #{refreshToken})")
+    @Insert("INSERT INTO social_tokens (user_id, refresh_token) VALUES (#{userId}, #{refreshToken})")
     void save(SocialToken socialToken);
 }
