@@ -103,21 +103,23 @@ public class AuthController {
 
         // TODO: Transactional로 토큰까지 감싸기
         userService.createUser(user);
+        // TODO: 중복 호출 없애기
+        User createdUser = userService.findByProviderAndId(provider, providerId);
 
         // 3. 토큰 관리
         // 3-1. 소셜 토큰 관리
         String socialRefreshToken = (String) userInfo.get("socialRefreshToken");
         if (!socialRefreshToken.isEmpty()) {
             // Apple 로그인의 경우 Revoke를 위한 Social Refresh Token 저장
-            socialTokenService.saveOrUpdateToken(user.getId(), socialRefreshToken);
+            socialTokenService.saveOrUpdateToken(createdUser.getId(), socialRefreshToken);
         }
 
         // 3-2. 우리 서비스 토큰 관리
-        String accessToken = jwtUtil.createAccessToken(user);
-        String refreshToken = jwtUtil.createRefreshToken(user);
+        String accessToken = jwtUtil.createAccessToken(createdUser);
+        String refreshToken = jwtUtil.createRefreshToken(createdUser);
         userTokenService.saveOrUpdateToken(refreshToken, jwtUtil.getRefreshTokenExpiration());
 
-        RegisterResponse registerResponse = RegisterResponse.builder().userId(providerId).role(user.getRole()).accessToken(accessToken).refreshToken(refreshToken).build();
+        RegisterResponse registerResponse = RegisterResponse.builder().userId(providerId).role(createdUser.getRole()).accessToken(accessToken).refreshToken(refreshToken).build();
         return ResponseEntity.ok().body(registerResponse);
     }
 
