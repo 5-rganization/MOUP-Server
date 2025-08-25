@@ -65,7 +65,7 @@ public class AuthController {
         // 3-1. 소셜 토큰 관리
         String socialRefreshToken = (String) userInfo.get("socialRefreshToken");
         if (!socialRefreshToken.isEmpty()) {
-            socialTokenService.saveOrUpdateToken(socialRefreshToken);
+            socialTokenService.saveOrUpdateToken(user.getId(), socialRefreshToken);
         }
 
         // 3-2. 서비스 토큰 관리
@@ -108,7 +108,7 @@ public class AuthController {
         String socialRefreshToken = (String) userInfo.get("socialRefreshToken");
         if (!socialRefreshToken.isEmpty()) {
             // Apple 로그인의 경우 Revoke를 위한 Social Refresh Token 저장
-            socialTokenService.saveOrUpdateToken(socialRefreshToken);
+            socialTokenService.saveOrUpdateToken(user.getId(), socialRefreshToken);
         }
 
         // 3-2. 우리 서비스 토큰 관리
