@@ -39,7 +39,7 @@ import org.springframework.stereotype.Service;
 public class AppleAuthService implements AuthService {
 
     private static final String APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys";
-    private static final String APPLE_TOKEN_URL = "https://appleid.apple.com/auth/authorize";
+    private static final String APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token";
     private static final String APPLE_REVOKE_URL = "https://appleid.apple.com/auth/revoke";
 
     @Value("${apple.client.id}")
@@ -54,9 +54,10 @@ public class AppleAuthService implements AuthService {
     public AppleAuthService(@Value("${apple.team.id}") String appleTeamId,
                             @Value("${apple.key.id}") String appleKeyId,
                             @Value("${apple.private.key}") String applePrivateKey,
+                            @Value("${apple.client.id}") String appleClientId,
                             SocialTokenRepository socialTokenRepository) throws MalformedURLException {
         // @Value로 주입받는 값들을 사용해 필드 초기화
-        this.appleJwtUtil = new AppleJwtUtil(appleTeamId, appleKeyId, applePrivateKey);
+        this.appleJwtUtil = new AppleJwtUtil(appleTeamId, appleKeyId, applePrivateKey, appleClientId);
         // jwkSet 초기화
         this.jwkSet = JWKSourceBuilder.create(new URL(APPLE_JWKS_URL)).build();
         // Repository 주입

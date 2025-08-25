@@ -24,23 +24,22 @@ public class AppleJwtUtil {
     private final String appleTeamId;
     private final String appleKeyId;
     private final PrivateKey privateKey;
+    private final String appleClientId;
 
-    @Value("${apple.client.id}")
-    private String appleClientId;
-
-    public AppleJwtUtil(@Value("${apple.team.id}") String appleTeamId, @Value("${apple.key.id}") String appleKeyId, @Value("${apple.private.key}") String applePrivateKey) {
+    public AppleJwtUtil(@Value("${apple.team.id}") String appleTeamId, @Value("${apple.key.id}") String appleKeyId,
+                        @Value("${apple.private.key}") String applePrivateKey,
+                        @Value("${apple.client.id}") String appleClientId) {
         this.appleTeamId = appleTeamId;
         this.appleKeyId = appleKeyId;
         this.privateKey = loadPrivateKey(applePrivateKey);
+        this.appleClientId = appleClientId;
     }
 
     private PrivateKey loadPrivateKey(String privateKeyContent) {
         try {
             // PKCS8 PEM 형식의 개인키를 파싱합니다.
-            String pem = privateKeyContent
-                    .replace("-----BEGIN PRIVATE KEY-----", "")
-                    .replace("-----END PRIVATE KEY-----", "")
-                    .replaceAll("\\s", "");
+            String pem = privateKeyContent.replace("-----BEGIN PRIVATE KEY-----", "")
+                    .replace("-----END PRIVATE KEY-----", "").replaceAll("\\s", "");
             byte[] keyBytes = Base64.getDecoder().decode(pem);
             PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
 
@@ -60,8 +59,7 @@ public class AppleJwtUtil {
 
         return Jwts.builder()
                 // 헤더(Header)
-                .setHeaderParam("kid", appleKeyId)
-                .setHeaderParam("alg", JWT_ALGORITHM)
+                .setHeaderParam("kid", appleKeyId).setHeaderParam("alg", JWT_ALGORITHM)
                 // 페이로드(Payload)
                 .claim("iss", appleTeamId)                 // Issuer: 팀 ID
                 .claim("iat", issuedAt.getTime() / 1000)   // Issued At: 발급 시간 (Unix 타임)
