@@ -39,7 +39,7 @@ import org.springframework.stereotype.Service;
 public class AppleAuthService implements AuthService {
 
     private static final String APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys";
-    private static final String APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token";
+    private static final String APPLE_TOKEN_URL = "https://appleid.apple.com/auth/authorize";
     private static final String APPLE_REVOKE_URL = "https://appleid.apple.com/auth/revoke";
 
     @Value("${apple.client.id}")
