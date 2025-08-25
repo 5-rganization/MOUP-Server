@@ -10,6 +10,7 @@ import com.moup.server.model.dto.UserProfileImageResponse;
 import com.moup.server.model.dto.UserRestoreResponse;
 import com.moup.server.model.entity.User;
 import com.moup.server.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.apache.tomcat.util.http.fileupload.FileUploadException;
 import org.springframework.dao.DuplicateKeyException;
@@ -27,7 +28,9 @@ public class UserService {
     private final S3Service s3Service;
     private final UserRepository userRepository;
 
+    @Transactional
     public void createUser(User user) {
+        // TODO: 토큰 로직까지 넣기
         try {
             userRepository.create(user);
         } catch (DuplicateKeyException e) {

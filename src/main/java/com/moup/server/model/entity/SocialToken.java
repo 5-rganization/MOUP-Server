@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 public class SocialToken {
     private Long id;
     private Long userId;
+    // TODO: Provider 넣을지? Apple만 필요하기 때문에
     private String refreshToken;
     private LocalDateTime updatedAt;
 }
