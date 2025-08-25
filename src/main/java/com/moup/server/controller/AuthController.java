@@ -94,6 +94,10 @@ public class AuthController {
 
         // 2. DB 저장을 위한 User 엔티티 생성
         String username = service.getUsername(userInfo);
+        if (username == null) {
+            // Apple 로그인의 경우 클라이언트를 통해 유저 이름 수신
+            username = registerRequest.getUsername();
+        }
 
         User user = User.builder().provider(provider).providerId(providerId).username(username).nickname(registerRequest.getNickname()).role(Role.valueOf(registerRequest.getRole())).build();
 
@@ -103,6 +107,7 @@ public class AuthController {
         // 3-1. 소셜 토큰 관리
         String socialRefreshToken = (String) userInfo.get("socialRefreshToken");
         if (!socialRefreshToken.isEmpty()) {
+            // Apple 로그인의 경우 Revoke를 위한 Social Refresh Token 저장
             socialTokenService.saveOrUpdateToken(socialRefreshToken);
         }
 
