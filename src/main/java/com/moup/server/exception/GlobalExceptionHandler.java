@@ -24,17 +24,22 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<?> handleException(RuntimeException e) {
         logger.error("Unhandled runtime exception", e);
-        return response(ErrorCode.INTERNAL_SERVER_ERROR);
+        return e.getMessage().isEmpty() ? response(ErrorCode.INTERNAL_SERVER_ERROR)
+                : response(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
 
     ResponseEntity<?> response(ErrorCode errorCode) {
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .errorCode(errorCode.getCode())
-                .errorMessage(errorCode.getMessage())
+        ErrorResponse errorResponse = ErrorResponse.builder().errorCode(errorCode.getCode())
+                .errorMessage(errorCode.getMessage()).build();
+
+        return ResponseEntity.status(errorCode.getHttpStatus()).body(errorResponse);
+    }
+
+    ResponseEntity<?> response(ErrorCode errorCode, String errorMessage) {
+        ErrorResponse errorResponse = ErrorResponse.builder().errorCode(errorCode.getCode()).errorMessage(errorMessage)
                 .build();
 
-        return ResponseEntity.status(errorCode.getHttpStatus())
-                .body(errorResponse);
+        return ResponseEntity.status(errorCode.getHttpStatus()).body(errorResponse);
     }
 
 }

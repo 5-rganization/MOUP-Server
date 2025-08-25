@@ -5,24 +5,19 @@ import com.moup.server.common.Role;
 import jakarta.persistence.Column;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+import lombok.*;
 
 @Getter
 @Builder
 @ToString
+@NoArgsConstructor
+@AllArgsConstructor
 public class User {
     private Long id;
-    @Enumerated(EnumType.STRING)
-    @Column(name = "provider")
     private Login provider;
     private String providerId;
     private String username;
     private String nickname;
-    @Enumerated(EnumType.STRING)
-    @Column(name = "role")
     private Role role;
     private String profileImg;
     private String createdAt;

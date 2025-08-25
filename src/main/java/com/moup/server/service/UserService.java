@@ -2,19 +2,23 @@ package com.moup.server.service;
 
 import com.moup.server.common.File;
 import com.moup.server.common.Login;
-import com.moup.server.exception.UserAlreadyExistsException;
 import com.moup.server.exception.AlreadyDeletedException;
+import com.moup.server.exception.UserAlreadyExistsException;
 import com.moup.server.exception.UserNotFoundException;
 import com.moup.server.model.dto.UserDeleteResponse;
 import com.moup.server.model.dto.UserProfileImageResponse;
 import com.moup.server.model.dto.UserRestoreResponse;
 import com.moup.server.model.entity.User;
 import com.moup.server.repository.UserRepository;
-import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
+import org.apache.tomcat.util.http.fileupload.FileUploadException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -25,7 +29,7 @@ public class UserService {
 
     public void createUser(User user) {
         try {
-            userRepository.createUser(user);
+            userRepository.create(user);
         } catch (DuplicateKeyException e) {
             throw new UserAlreadyExistsException();
         }
@@ -51,7 +55,7 @@ public class UserService {
         return user;
     }
 
-    public UserProfileImageResponse updateProfileImage(Long userId, MultipartFile profileImage) {
+    public UserProfileImageResponse updateProfileImage(Long userId, MultipartFile profileImage) throws FileUploadException {
         User user = findUserById(userId);
 
         // 이미지 타입인지 파일 검증
@@ -63,16 +67,14 @@ public class UserService {
         }
 
         // 새 이미지 업로드하기
-        String imageUrl = "";
         try {
-            imageUrl = s3Service.saveFile(profileImage);
+            String imageUrl = s3Service.saveFile(profileImage);
             userRepository.updateProfileImg(userId, imageUrl);
-        } catch (Exception e) {
-            // 500 에러 던지기
-            throw new RuntimeException(e);  // TODO: 커스텀 에러로 던지기
-        }
 
-        return UserProfileImageResponse.builder().imageUrl(imageUrl).build();
+            return UserProfileImageResponse.builder().imageUrl(imageUrl).build();
+        } catch (IOException | NoSuchAlgorithmException e) {
+            throw new FileUploadException("파일명 해싱 실패");
+        }
     }
 
     public UserDeleteResponse deleteSoftUserByUserId(Long userId) {
@@ -84,11 +86,8 @@ public class UserService {
 
         userRepository.softDeleteUserById(userId);
 
-        return UserDeleteResponse.builder()
-                .userId(user.getProviderId())
-                .deletedAt(String.valueOf(LocalDateTime.now())) // 현재 시간을 직접 사용
-                .isDeleted(true)
-                .build();
+        return UserDeleteResponse.builder().userId(user.getProviderId()).deletedAt(String.valueOf(LocalDateTime.now())) // 현재 시간을 직접 사용
+                .isDeleted(true).build();
     }
 
     public UserRestoreResponse restoreUserByUserId(Long userId) {
@@ -100,10 +99,6 @@ public class UserService {
 
         userRepository.undeleteUserById(userId);
 
-        return UserRestoreResponse.builder()
-                .userId(user.getProviderId())
-                .deletedAt(null)
-                .isDeleted(false)
-                .build();
+        return UserRestoreResponse.builder().userId(user.getProviderId()).deletedAt(null).isDeleted(false).build();
     }
 }

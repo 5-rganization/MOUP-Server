@@ -17,6 +17,6 @@ import lombok.Setter;
 public class LoginRequest {
     @Schema(description = "소셜 로그인 타입", example = "LOGIN_GOOGLE", requiredMode = Schema.RequiredMode.REQUIRED)
     private Login provider;
-    @Schema(description = "소셜 로그인 토큰", example = "{HEADER_HASH}.{PAYLOAD_HASH}.{SIGNATURE_HASH}", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String idToken;
+    @Schema(description = "소셜 인가 코드", example = "4/0Ad-Q...very-long-string-of-code...", requiredMode = Schema.RequiredMode.REQUIRED)
+    private String authCode;
 }

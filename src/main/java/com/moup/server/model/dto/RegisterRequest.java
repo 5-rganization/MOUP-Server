@@ -15,9 +15,9 @@ import lombok.Setter;
 public class RegisterRequest {
     @Schema(description = "소셜 로그인 타입", example = "LOGIN_GOOGLE", requiredMode = Schema.RequiredMode.REQUIRED)
     private Login provider;
-    @Schema(description = "소셜 로그인 토큰", example = "{HEADER_HASH}.{PAYLOAD_HASH}.{SIGNATURE_HASH}", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String idToken;
-    @Schema(description = "유저 이름 (옵션 - Apple 로그인처럼 idToken에서 이름을 못 가져오는 경우에 해당)", example = "(null)", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @Schema(description = "소셜 인가 코드", example = "4/0Ad-Q...very-long-string-of-code...", requiredMode = Schema.RequiredMode.REQUIRED)
+    private String authCode;
+    @Schema(description = "유저 이름(Apple 한정)", example = "김모업")
     private String username;
     @Schema(description = "닉네임", example = "moup1234")
     private String nickname;

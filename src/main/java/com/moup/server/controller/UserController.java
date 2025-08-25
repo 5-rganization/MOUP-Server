@@ -82,4 +82,9 @@ public class UserController {
 
         return ResponseEntity.ok().body(userRestoreResponse);
     }
+
+    // TODO: 누락된 유저 이름에 한하여 이름 재설정 로직 추가
+//    public ResponseEntity<?> setUsername() {
+//
+//    }
 }
