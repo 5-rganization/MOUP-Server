@@ -5,6 +5,7 @@ import com.moup.server.model.entity.User;
 import org.apache.ibatis.annotations.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Mapper
@@ -31,6 +32,9 @@ public interface UserRepository {
     @Update("UPDATE users SET deleted_at = null, is_deleted = 0 WHERE id = #{id}")
     void undeleteUserById(Long id);
 
-    @Delete("DELETE FROM users WHERE is_deleted = 1 AND deleted_at < #{threeDaysAgo}")
-    void hardDeleteUsersOlderThan(LocalDateTime threeDaysAgo);
+    @Delete("DELETE FROM users WHERE id = #{id}")
+    void hardDeleteUserById(Long id);
+
+    @Select("SELECT * FROM users WHERE is_deleted = 1 AND deleted_at < #{threeDaysAgo}")
+    List<User> findAllHardDeleteUsers(LocalDateTime threeDaysAgo);
 }

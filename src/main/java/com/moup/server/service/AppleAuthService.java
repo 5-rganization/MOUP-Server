@@ -2,7 +2,8 @@ package com.moup.server.service;
 
 import com.google.gson.Gson;
 import com.moup.server.common.Login;
-import com.moup.server.exception.InvalidTokenException;
+import com.moup.server.model.entity.SocialToken;
+import com.moup.server.repository.SocialTokenRepository;
 import com.moup.server.util.AppleJwtUtil;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
@@ -28,39 +29,38 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import lombok.RequiredArgsConstructor;
+import java.util.*;
+
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
 public class AppleAuthService implements AuthService {
 
     private static final String APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys";
     private static final String APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token";
+    private static final String APPLE_REVOKE_URL = "https://appleid.apple.com/auth/revoke";
 
     @Value("${apple.client.id}")
     private String appleClientId;
-    @Value("${apple.team.id}")
-    private String appleTeamId;
-    @Value("${apple.key.id}")
-    private String appleKeyId;
-    @Value("${apple.private.key}")
-    private String applePrivateKey;
     @Value("${apple.redirect.uri}")
     private String appleRedirectUri;
 
     private final JWKSource<SecurityContext> jwkSet;
     private final AppleJwtUtil appleJwtUtil;
+    private final SocialTokenRepository socialTokenRepository;
 
-    public AppleAuthService() throws MalformedURLException {
-        this.jwkSet = JWKSourceBuilder.create(new URL(APPLE_JWKS_URL)).build();
+    public AppleAuthService(@Value("${apple.team.id}") String appleTeamId,
+                            @Value("${apple.key.id}") String appleKeyId,
+                            @Value("${apple.private.key}") String applePrivateKey,
+                            SocialTokenRepository socialTokenRepository) throws MalformedURLException {
+        // @Value로 주입받는 값들을 사용해 필드 초기화
         this.appleJwtUtil = new AppleJwtUtil(appleTeamId, appleKeyId, applePrivateKey);
+        // jwkSet 초기화
+        this.jwkSet = JWKSourceBuilder.create(new URL(APPLE_JWKS_URL)).build();
+        // Repository 주입
+        this.socialTokenRepository = socialTokenRepository;
     }
 
     @Override
@@ -163,5 +163,57 @@ public class AppleAuthService implements AuthService {
     @Override
     public String getUsername(Map<String, Object> userInfo) {
         return null;
+    }
+
+    @Async
+    public void revokeToken(Long userId) throws AuthException {
+        // 1. DB에서 해당 유저의 refreshToken 조회
+        Optional<SocialToken> socialTokenOptional = socialTokenRepository.findByUserId(userId);
+
+        if (socialTokenOptional.isPresent()) {
+            SocialToken socialToken = socialTokenOptional.get();
+            String refreshToken = socialToken.getRefreshToken();
+
+            // 2. JWT 형식의 Client Secret 동적 생성
+            String clientSecret = appleJwtUtil.createClientSecret();
+
+            try {
+                // 3. Apple Revoke API 호출을 위한 HTTP 연결 설정
+                URL url = new URL(APPLE_REVOKE_URL);
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("POST");
+                connection.setDoOutput(true);
+                connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+
+                // 4. 요청 본문(form-data) 구성
+                String postData = String.format("client_id=%s&client_secret=%s&token=%s&token_type_hint=%s",
+                        appleClientId, clientSecret, refreshToken, "refresh_token");
+
+                // 5. 요청 전송
+                try (OutputStream os = connection.getOutputStream()) {
+                    byte[] input = postData.getBytes(StandardCharsets.UTF_8);
+                    os.write(input, 0, input.length);
+                }
+
+                // 6. 응답 코드 확인
+                int responseCode = connection.getResponseCode();
+                if (responseCode != HttpURLConnection.HTTP_OK) {
+                    // 200 OK가 아니면 실패로 간주하고 에러 메시지 반환
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(connection.getErrorStream()))) {
+                        String line;
+                        StringBuilder response = new StringBuilder();
+                        while ((line = br.readLine()) != null) {
+                            response.append(line);
+                        }
+                        throw new AuthException("Apple Revoke API 호출 실패: " + response);
+                    }
+                }
+                // 200 OK 응답을 받으면 성공으로 간주, 별도의 응답 본문은 없음
+                // DB에서 해당 토큰 정보 삭제 로직은 AdminService에서 처리
+
+            } catch (IOException e) {
+                throw new AuthException("Apple Revoke API 호출 중 네트워크 오류 발생.", e);
+            }
+        }
     }
 }
