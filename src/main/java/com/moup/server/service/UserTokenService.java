@@ -20,9 +20,10 @@ public class UserTokenService {
     @Transactional
     public void saveOrUpdateToken(String refreshToken, Long refreshTokenExpiration) {
         Long userId = jwtUtil.getUserId(refreshToken);
+
         // 유저 ID로 토큰이 존재하는지 확인
         Optional<UserToken> existingToken = userTokenRepository.findByUserId(userId);
-        LocalDateTime expiryDate = LocalDateTime.now().plusSeconds(refreshTokenExpiration / 1000);  // TODO: 밀리초 잘 반환되는지 확인 + DB TIMESTAMP 호환 여부
+        LocalDateTime expiryDate = LocalDateTime.now().plusSeconds(refreshTokenExpiration / 1000);
         System.out.println(expiryDate);
         
         // 만약 기존에 토큰이 있으면, 갱신하기

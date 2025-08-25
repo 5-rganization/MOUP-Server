@@ -119,7 +119,7 @@ public class AuthController {
         String refreshToken = jwtUtil.createRefreshToken(createdUser);
         userTokenService.saveOrUpdateToken(refreshToken, jwtUtil.getRefreshTokenExpiration());
 
-        RegisterResponse registerResponse = RegisterResponse.builder().userId(providerId).role(createdUser.getRole()).accessToken(accessToken).refreshToken(refreshToken).build();
+        RegisterResponse registerResponse = RegisterResponse.builder().userId(createdUser.getId()).role(createdUser.getRole()).accessToken(accessToken).refreshToken(refreshToken).build();
         return ResponseEntity.ok().body(registerResponse);
     }
 

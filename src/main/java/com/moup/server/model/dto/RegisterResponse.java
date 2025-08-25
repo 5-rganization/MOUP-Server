@@ -9,8 +9,8 @@ import lombok.Getter;
 @Builder
 @Schema(description = "회원가입 응답 DTO")
 public class RegisterResponse {
-    @Schema(description = "서비스 유저 ID", example = "112233445566778899000")
-    private String userId;
+    @Schema(description = "유저 ID", example = "1")
+    private Long userId;
     @Schema(description = "유저 역할", example = "ROLE_WORKER")
     private Role role;
     @Schema(description = "액세스 토큰")
