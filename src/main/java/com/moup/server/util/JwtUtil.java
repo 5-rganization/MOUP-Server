@@ -49,6 +49,19 @@ public class JwtUtil {
                 .compact();
     }
 
+    public String createTestToken(User user) {
+        long oneYearInMilliseconds = 1000L * 60 * 60 * 24 * 365; // 1년 (밀리초)
+
+        return Jwts.builder()
+                .subject(String.valueOf(user.getId()))
+                .claim("role", user.getRole().name())
+                .claim("username", user.getUsername())
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + oneYearInMilliseconds))
+                .signWith(key)
+                .compact();
+    }
+
     public Long getUserId(String token) {
         return Long.parseLong(Jwts.parser()
                 .verifyWith((SecretKey) key)
