@@ -61,7 +61,8 @@ jobs:
           # 스크립트 실행 권한 부여
           chmod +x "$DELETE_SCRIPT"
           
-          # 기존 crontab 설정 가져오기 (파일이 없으면 새로 생성)
-          (crontab -l 2>/dev/null; echo "0 0 * * * /bin/bash $DELETE_SCRIPT >> /home/${{ secrets.RPI_USER }}/MOUP-Server/hard_delete.log 2>&1") | crontab -
+          # 기존 crontab에서 동일한 스케줄 삭제 후, 새로운 스케줄 등록
+          (crontab -l 2>/dev/null | grep -v "delete_old_users.sh"; echo "0 0 * * * /bin/bash $DELETE_SCRIPT >> /home/${{ secrets.RPI_USER }}/MOUP-Server/delete_old_users.log 2>&1") | crontab -
+          
           echo "Crontab 설정 완료: 매일 0시 0분에 사용자 영구 삭제 스크립트 실행"
         EOF
