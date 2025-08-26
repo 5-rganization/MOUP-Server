@@ -25,7 +25,7 @@ public class AdminController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "403", description = "권한 없음")
     })
-    @PreAuthorize("hasRole('ADMIN')") // 관리자 권한 필요
+    @PreAuthorize("hasRole('ROLE_ADMIN')") // 관리자 권한 필요
     public ResponseEntity<Void> hardDeleteOldUsers() {
         adminService.hardDeleteOldUsers();
         return ResponseEntity.ok().build();

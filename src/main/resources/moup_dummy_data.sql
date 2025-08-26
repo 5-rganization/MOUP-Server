@@ -1,9 +1,10 @@
 INSERT INTO users (provider, provider_id, username, nickname, role) VALUES ('LOGIN_GOOGLE', 'google_user_1', 'moup_1', 'nickname',  'ROLE_WORKER');
-INSERT INTO users (provider, provider_id, username, nickname, role, deleted_at, is_deleted) VALUES ('LOGIN_GOOGLE', 'google_user_2', 'moup_2', 'nickname', 'ROLE_WORKER', '2025-08-01 01:01:01', '1');
+INSERT INTO users (provider, provider_id, username, nickname, role, deleted_at, is_deleted) VALUES ('LOGIN_APPLE', 'google_user_2', 'moup_2', 'nickname', 'ROLE_WORKER', '2025-08-01 01:01:01', '1');
 INSERT INTO users (provider, provider_id, username, nickname, role) VALUES ('LOGIN_GOOGLE', 'google_user_3', 'moup_3', 'nickname', 'ROLE_WORKER');
 INSERT INTO users (provider, provider_id, username, nickname, role) VALUES ('LOGIN_GOOGLE', 'google_user_4', 'moup_4', 'nickname', 'ROLE_WORKER');
 INSERT INTO users (provider, provider_id, username, nickname, role) VALUES ('LOGIN_GOOGLE', '123456789012-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com', 'moup_5', 'nickname', 'ROLE_WORKER');
 INSERT INTO users (provider, provider_id, username, nickname, role) VALUES ('LOGIN_GOOGLE', 'moup-admin', 'moup_admin', 'moup-admin', 'ROLE_ADMIN');
+INSERT INTO users (provider, provider_id, username, nickname, role, deleted_at, is_deleted) VALUES ('LOGIN_APPLE', 'apple_user_1', 'moup_5', 'nickname', 'ROLE_WORKER', '2025-08-25 01:01:01', '1');
 INSERT INTO routines (user_id, routine_name, alarm_time) VALUES (1, 'Routine_1', '16:15:00');
 INSERT INTO routines (user_id, routine_name, alarm_time) VALUES (2, 'Routine_2', '15:00:00');
 INSERT INTO routines (user_id, routine_name, alarm_time) VALUES (3, 'Routine_3', '15:30:00');

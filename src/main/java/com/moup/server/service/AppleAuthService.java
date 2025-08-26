@@ -31,6 +31,7 @@ import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.*;
 
+import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -215,6 +216,8 @@ public class AppleAuthService implements AuthService {
             } catch (IOException e) {
                 throw new AuthException("Apple Revoke API 호출 중 네트워크 오류 발생.", e);
             }
+        } else {
+            throw new AuthException("Apple Revoke API 호출 실패: 소셜 리프레시 토큰 없음");
         }
     }
 }
