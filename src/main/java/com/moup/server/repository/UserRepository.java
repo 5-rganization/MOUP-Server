@@ -1,6 +1,7 @@
 package com.moup.server.repository;
 
 import com.moup.server.common.Login;
+import com.moup.server.model.dto.UserCreateRequest;
 import com.moup.server.model.entity.User;
 import org.apache.ibatis.annotations.*;
 
@@ -11,8 +12,15 @@ import java.util.Optional;
 @Mapper
 public interface UserRepository {
 
+    /**
+     * 사용자를 생성하고, 생성된 user_id를 반환.
+     *
+     * @param user
+     * @return user_id
+     */
     @Insert("INSERT INTO users (provider, provider_id, username, nickname, role) VALUES (#{provider}, #{providerId}, #{username}, #{nickname}, #{role})")
-    void create(User user);
+    @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
+    Long create(UserCreateRequest userCreateRequest);
 
     @Select("SELECT * FROM users WHERE id = #{id}")
     Optional<User> findById(Long id);

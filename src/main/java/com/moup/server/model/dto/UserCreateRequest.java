@@ -1,0 +1,17 @@
+package com.moup.server.model.dto;
+
+import com.moup.server.common.Login;
+import com.moup.server.common.Role;
+import lombok.Builder;
+import lombok.Getter;
+
+@Getter
+@Builder
+public class UserCreateRequest {
+    private Login provider;
+    private String providerId;
+    private  String username;
+    private  String nickname;
+    private Role role;
+    private String socialRefreshToken;
+}

@@ -7,6 +7,7 @@ import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.User;
 import com.moup.server.service.*;
 import com.moup.server.util.JwtUtil;
+import com.moup.server.util.NameVerifyUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.naming.InvalidNameException;
 import java.util.Map;
 
 /**
@@ -42,6 +44,7 @@ public class AuthController {
     private final SocialTokenService socialTokenService;
     private final UserTokenService userTokenService;
     private final JwtUtil jwtUtil;
+    private final NameVerifyUtil nameVerifyUtil;
 
     @PostMapping("/login")
     @Operation(summary = "로그인", description = "소셜 로그인 타입과 토큰을 입력 받아서 로그인")
@@ -68,9 +71,11 @@ public class AuthController {
             socialTokenService.saveOrUpdateToken(user.getId(), socialRefreshToken);
         }
 
+        TokenCreateRequest tokenCreateRequest = TokenCreateRequest.builder().userId(user.getId()).role(user.getRole()).username(user.getUsername()).build();
+
         // 3-2. 서비스 토큰 관리
-        String accessToken = jwtUtil.createAccessToken(user);
-        String refreshToken = jwtUtil.createRefreshToken(user);
+        String accessToken = jwtUtil.createAccessToken(tokenCreateRequest);
+        String refreshToken = jwtUtil.createRefreshToken(tokenCreateRequest);
         userTokenService.saveOrUpdateToken(refreshToken, jwtUtil.getRefreshTokenExpiration());
 
         LoginResponse loginResponse = LoginResponse.builder().userId(user.getId()).role(user.getRole()).accessToken(accessToken).refreshToken(refreshToken).build();
@@ -79,9 +84,11 @@ public class AuthController {
 
     @PostMapping("/register")
     @Operation(summary = "회원가입", description = "소셜 로그인 정보, 닉네임, 역할을 받아서 회원가입")
-    @ApiResponses({@ApiResponse(responseCode = "200", description = "회원가입 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RegisterResponse.class))), @ApiResponse(responseCode = "409", description = "중복된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))), @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "회원가입 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RegisterResponse.class))),
+            @ApiResponse(responseCode = "400", description = "잘못된 유저 이름", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "중복된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))), @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "회원가입을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RegisterRequest.class)))
-    public ResponseEntity<?> createUser(@RequestBody RegisterRequest registerRequest) throws AuthException {
+    public ResponseEntity<?> createUser(@RequestBody RegisterRequest registerRequest) throws AuthException, InvalidNameException {
         Login provider = registerRequest.getProvider();
         String authCode = registerRequest.getAuthCode();
 
@@ -91,35 +98,24 @@ public class AuthController {
         // 1. Auth Code로 유저 정보 교환
         Map<String, Object> userInfo = service.exchangeAuthCode(authCode);
         String providerId = service.getProviderId(userInfo);
+        String socialRefreshToken = (String) userInfo.get("socialRefreshToken");
 
         // 2. DB 저장을 위한 User 엔티티 생성
         String username = service.getUsername(userInfo);
         if (username == null) {
             // Apple 로그인의 경우 클라이언트를 통해 유저 이름 수신
-            username = registerRequest.getUsername();
+            if (nameVerifyUtil.verifyName(registerRequest.getUsername())) {
+                username = registerRequest.getUsername();
+            } else {
+                throw new InvalidNameException("잘못된 사용자 이름입니다.");
+            }
         }
 
-        User user = User.builder().provider(provider).providerId(providerId).username(username).nickname(registerRequest.getNickname()).role(Role.valueOf(registerRequest.getRole())).build();
+        // 3. DB에 유저 생성 및 토큰 관리
+        UserCreateRequest userCreateRequest = UserCreateRequest.builder().provider(provider).providerId(providerId).username(username).nickname(registerRequest.getNickname()).role(Role.valueOf(registerRequest.getRole())).socialRefreshToken(socialRefreshToken).build();
 
-        // TODO: Transactional로 토큰까지 감싸기
-        userService.createUser(user);
-        // TODO: 중복 호출 없애기
-        User createdUser = userService.findByProviderAndId(provider, providerId);
+        RegisterResponse registerResponse = userService.createUser(userCreateRequest);
 
-        // 3. 토큰 관리
-        // 3-1. 소셜 토큰 관리
-        String socialRefreshToken = (String) userInfo.get("socialRefreshToken");
-        if (!socialRefreshToken.isEmpty()) {
-            // Apple 로그인의 경우 Revoke를 위한 Social Refresh Token 저장
-            socialTokenService.saveOrUpdateToken(createdUser.getId(), socialRefreshToken);
-        }
-
-        // 3-2. 우리 서비스 토큰 관리
-        String accessToken = jwtUtil.createAccessToken(createdUser);
-        String refreshToken = jwtUtil.createRefreshToken(createdUser);
-        userTokenService.saveOrUpdateToken(refreshToken, jwtUtil.getRefreshTokenExpiration());
-
-        RegisterResponse registerResponse = RegisterResponse.builder().userId(createdUser.getId()).role(createdUser.getRole()).accessToken(accessToken).refreshToken(refreshToken).build();
         return ResponseEntity.ok().body(registerResponse);
     }
 
@@ -128,6 +124,7 @@ public class AuthController {
     @ApiResponses({@ApiResponse(responseCode = "200", description = "재발급 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RefreshTokenResponse.class))), @ApiResponse(responseCode = "400", description = "유효하지 않은 토큰", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))), @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))), @ApiResponse(responseCode = "409", description = "삭제 처리된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))), @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "액세스 토큰 재발급을 위한 요청 DTO", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RefreshTokenRequest.class)))
     public ResponseEntity<?> refreshToken(@RequestBody RefreshTokenRequest refreshTokenRequest) {
+        // TODO: Bearer에서 떼오기
         String refreshToken = refreshTokenRequest.getRefreshToken();
 
         if (!userTokenService.isValidRefreshToken(refreshToken)) {
@@ -136,10 +133,12 @@ public class AuthController {
 
         // 액세스 토큰 반환
         Long userId = jwtUtil.getUserId(refreshToken);
-
         User user = userService.findUserById(userId);
-        String accessToken = jwtUtil.createAccessToken(user);
-        String newRefreshToken = jwtUtil.createRefreshToken(user);
+
+        TokenCreateRequest tokenCreateRequest = TokenCreateRequest.builder().userId(user.getId()).role(user.getRole()).username(user.getUsername()).build();
+
+        String accessToken = jwtUtil.createAccessToken(tokenCreateRequest);
+        String newRefreshToken = jwtUtil.createRefreshToken(tokenCreateRequest);
         userTokenService.saveOrUpdateToken(newRefreshToken, jwtUtil.getRefreshTokenExpiration());
 
         RefreshTokenResponse refreshTokenResponse = RefreshTokenResponse.builder().accessToken(accessToken).refreshToken(newRefreshToken).build();

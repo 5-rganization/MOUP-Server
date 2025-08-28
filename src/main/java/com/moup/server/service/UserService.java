@@ -5,11 +5,10 @@ import com.moup.server.common.Login;
 import com.moup.server.exception.AlreadyDeletedException;
 import com.moup.server.exception.UserAlreadyExistsException;
 import com.moup.server.exception.UserNotFoundException;
-import com.moup.server.model.dto.UserDeleteResponse;
-import com.moup.server.model.dto.UserProfileImageResponse;
-import com.moup.server.model.dto.UserRestoreResponse;
+import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.User;
 import com.moup.server.repository.UserRepository;
+import com.moup.server.util.JwtUtil;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.apache.tomcat.util.http.fileupload.FileUploadException;
@@ -27,12 +26,31 @@ public class UserService {
     private final FileService fileService;
     private final S3Service s3Service;
     private final UserRepository userRepository;
+    private final SocialTokenService socialTokenService;
+    private final UserTokenService userTokenService;
+    private final JwtUtil jwtUtil;
 
     @Transactional
-    public void createUser(User user) {
-        // TODO: 토큰 로직까지 넣기
+    public RegisterResponse createUser(UserCreateRequest userCreateRequest) {
         try {
-            userRepository.create(user);
+            Long userId = userRepository.create(userCreateRequest);
+
+            // 1. 토큰 관리
+            // 1-1. 소셜 토큰 관리
+            String socialRefreshToken = userCreateRequest.getSocialRefreshToken();
+            if (!socialRefreshToken.isEmpty()) {
+                // Apple 로그인의 경우 Revoke를 위한 Social Refresh Token 저장
+                socialTokenService.saveOrUpdateToken(userId, socialRefreshToken);
+            }
+
+            TokenCreateRequest tokenCreateRequest = TokenCreateRequest.builder().userId(userId).role(userCreateRequest.getRole()).username(userCreateRequest.getUsername()).build();
+
+            // 1-2. 우리 서비스 토큰 관리
+            String accessToken = jwtUtil.createAccessToken(tokenCreateRequest);
+            String refreshToken = jwtUtil.createRefreshToken(tokenCreateRequest);
+            userTokenService.saveOrUpdateToken(refreshToken, jwtUtil.getRefreshTokenExpiration());
+
+            return RegisterResponse.builder().accessToken(accessToken).refreshToken(refreshToken).build();
         } catch (DuplicateKeyException e) {
             throw new UserAlreadyExistsException();
         }
