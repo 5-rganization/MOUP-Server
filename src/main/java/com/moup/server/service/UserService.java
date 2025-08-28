@@ -92,7 +92,7 @@ public class UserService {
             String imageUrl = s3Service.saveFile(profileImage);
             userRepository.updateProfileImg(userId, imageUrl);
 
-            return UserProfileImageResponse.builder().imageUrl(imageUrl).build();
+            return UserProfileImageResponse.builder().userId(userId).imageUrl(imageUrl).build();
         } catch (IOException | NoSuchAlgorithmException e) {
             throw new FileUploadException("파일명 해싱 실패");
         }
@@ -107,7 +107,7 @@ public class UserService {
 
         userRepository.softDeleteUserById(userId);
 
-        return UserDeleteResponse.builder().userId(user.getProviderId()).deletedAt(String.valueOf(LocalDateTime.now())) // 현재 시간을 직접 사용
+        return UserDeleteResponse.builder().userId(user.getId()).deletedAt(String.valueOf(LocalDateTime.now())) // 현재 시간을 직접 사용
                 .isDeleted(true).build();
     }
 
@@ -120,6 +120,18 @@ public class UserService {
 
         userRepository.undeleteUserById(userId);
 
-        return UserRestoreResponse.builder().userId(user.getProviderId()).deletedAt(null).isDeleted(false).build();
+        return UserRestoreResponse.builder().userId(user.getId()).deletedAt(null).isDeleted(false).build();
+    }
+
+    public UserUpdateNicknameResponse updateNicknameByUserId(Long userId, String nickname) {
+        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+
+        if (!user.getIsDeleted()) {
+            throw new UserAlreadyExistsException();
+        }
+
+        userRepository.updateNicknameById(userId, nickname);
+
+        return UserUpdateNicknameResponse.builder().build();
     }
 }

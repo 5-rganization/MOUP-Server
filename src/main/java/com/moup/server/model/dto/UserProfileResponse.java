@@ -9,6 +9,8 @@ import lombok.Getter;
 @Builder
 @Schema(description = "유저 프로필 응답 DTO")
 public class UserProfileResponse {
+    @Schema(description = "유저 ID", example = "1")
+    private Long userId;
     @Schema(description = "유저 이름", example = "김모업")
     private String username;
     @Schema(description = "유저 닉네임", example = "moup1234")

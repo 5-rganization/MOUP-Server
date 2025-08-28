@@ -1,9 +1,6 @@
 package com.moup.server.controller;
 
-import com.moup.server.model.dto.ErrorResponse;
-import com.moup.server.model.dto.UserProfileResponse;
-import com.moup.server.model.dto.UserDeleteResponse;
-import com.moup.server.model.dto.UserRestoreResponse;
+import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.User;
 import com.moup.server.service.IdentityService;
 import com.moup.server.service.UserService;
@@ -44,11 +41,28 @@ public class UserController {
 
         User user = userService.findUserById(userId);
 
-        UserProfileResponse userProfileResponse = UserProfileResponse.builder().username(user.getUsername())
+        UserProfileResponse userProfileResponse = UserProfileResponse.builder().userId(userId).username(user.getUsername())
                 .nickname(user.getNickname()).profileImg(user.getProfileImg()).role(user.getRole())
                 .createdAt(user.getCreatedAt()).build();
 
         return ResponseEntity.ok().body(userProfileResponse);
+    }
+
+    @PutMapping("/nickname")
+    @Operation(summary = "닉네임 변경", description = "유저의 닉네임 변경")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "변경 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserUpdateNicknameResponse.class))),
+            @ApiResponse(responseCode = "400", description = "잘못된 닉네임", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "인증 실패 - 토큰 없음 또는 유효하지 않음"),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "이미 복원된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    public ResponseEntity<?> updateNickname(@RequestBody UserUpdateNicknameRequest userUpdateNicknameRequest) {
+        Long userId = identityService.getCurrentUserId();
+
+        UserUpdateNicknameResponse userUpdateNicknameResponse = userService.updateNicknameByUserId(userId, userUpdateNicknameRequest.getNickname());
+
+        return ResponseEntity.ok().body(userUpdateNicknameResponse);
     }
 
     @DeleteMapping()
@@ -82,9 +96,4 @@ public class UserController {
 
         return ResponseEntity.ok().body(userRestoreResponse);
     }
-
-    // TODO: 누락된 유저 이름에 한하여 이름 재설정 로직 추가
-//    public ResponseEntity<?> setUsername() {
-//
-//    }
 }
