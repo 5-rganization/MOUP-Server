@@ -1,5 +1,6 @@
 package com.moup.server.util;
 
+import com.moup.server.model.dto.TokenCreateRequest;
 import com.moup.server.model.entity.User;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -29,33 +30,33 @@ public class JwtUtil {
         this.key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String createAccessToken(User user) {
+    public String createAccessToken(TokenCreateRequest tokenCreateRequest) {
         return Jwts.builder()
-                .subject(String.valueOf(user.getId()))
-                .claim("role", user.getRole().name())
-                .claim("username", user.getUsername())
+                .subject(String.valueOf(tokenCreateRequest.getUserId()))
+                .claim("role", tokenCreateRequest.getRole().name())
+                .claim("username", tokenCreateRequest.getUsername())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
                 .signWith(key)
                 .compact();
     }
 
-    public String createRefreshToken(User user) {
+    public String createRefreshToken(TokenCreateRequest tokenCreateRequest) {
         return Jwts.builder()
-                .subject(String.valueOf(user.getId()))
+                .subject(String.valueOf(tokenCreateRequest.getUserId()))
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + refreshTokenExpiration))
                 .signWith(key)
                 .compact();
     }
 
-    public String createTestToken(User user) {
+    public String createTestToken(TokenCreateRequest tokenCreateRequest) {
         long oneYearInMilliseconds = 1000L * 60 * 60 * 24 * 365; // 1년 (밀리초)
 
         return Jwts.builder()
-                .subject(String.valueOf(user.getId()))
-                .claim("role", user.getRole().name())
-                .claim("username", user.getUsername())
+                .subject(String.valueOf(tokenCreateRequest.getUserId()))
+                .claim("role", tokenCreateRequest.getRole().name())
+                .claim("username", tokenCreateRequest.getUsername())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + oneYearInMilliseconds))
                 .signWith(key)
