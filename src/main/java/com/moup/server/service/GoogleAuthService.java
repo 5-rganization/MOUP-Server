@@ -16,6 +16,7 @@ import java.security.GeneralSecurityException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.StringTokenizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -27,8 +28,6 @@ public class GoogleAuthService implements AuthService {
 
     @Value("${google.client.id}")
     private String googleClientId;
-    @Value("${google.client.secret}")
-    private String googleClientSecret;
     @Value("${google.redirect.uri}")
     private String googleRedirectUri;
 
@@ -39,11 +38,24 @@ public class GoogleAuthService implements AuthService {
 
     @Override
     @Transactional
-    public Map<String, Object> exchangeAuthCode(String authCode) throws AuthException {
+    public Map<String, Object> exchangeAuthCode(String codeVerifierWithAuthCode) throws AuthException {
         try {
-            // 1. 소셜 OAuth 서버로 토큰 교환 요청
-            GoogleTokenResponse tokenResponse = new GoogleAuthorizationCodeTokenRequest(new NetHttpTransport(),
-                    new GsonFactory(), googleClientId, googleClientSecret, authCode, googleRedirectUri).execute();
+            // TODO: 단일 책임을 위해 DTO 수정하는 방안으로 고치기 -> 공통 로직 그냥 깨기?
+            // 공백을 기준으로 codeVerifier, authCode 분리
+            StringTokenizer st = new StringTokenizer(codeVerifierWithAuthCode, " ");
+            String codeVerifier = st.nextToken();
+            String authCode = st.nextToken();
+
+            // 1. 소셜 OAuth 서버로 토큰 교환 요청 (code_verifier 추가)
+            GoogleTokenResponse tokenResponse = new GoogleAuthorizationCodeTokenRequest(
+                    new NetHttpTransport(),
+                    new GsonFactory(),
+                    googleClientId,
+                    "",
+                    authCode,
+                    googleRedirectUri
+            ).set("code_verifier", codeVerifier) // ✅ PKCE를 위한 code_verifier 설정
+                    .execute();
 
             // 2. ID 토큰 검증
             GoogleIdTokenVerifier idTokenVerifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(),

@@ -19,4 +19,6 @@ public class LoginRequest {
     private Login provider;
     @Schema(description = "소셜 인가 코드", example = "4/0Ad-Q...very-long-string-of-code...", requiredMode = Schema.RequiredMode.REQUIRED)
     private String authCode;
+//    @Schema(description = "코드 검증(구글 한정)")
+//    private String codeVerifier;
 }
