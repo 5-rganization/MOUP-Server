@@ -35,10 +35,9 @@ public interface SalaryRepository {
     Optional<Salary> findByWorkerId(Long workerId);
 
     /**
-     * 근무자 ID에 해당하는 급여 정보를 업데이트하는 메서드.
+     * 급여 엔티티의 ID(근무자 ID)에 해당하는 급여 정보를 업데이트하는 메서드.
      *
-     * @param workerId 업데이트할 급여의 근무자 ID
-     * @param salary   업데이트할 급여 엔티티
+     * @param salary 업데이트할 급여 엔티티
      */
     @Update("""
             UPDATE salaries SET salary_type = #{salaryType}, salary_calculation = #{salaryCalculation}, 
@@ -46,9 +45,9 @@ public interface SalaryRepository {
                                   has_national_pension = #{hasNationalPension}, has_health_insurance = #{hasHealthInsurance},
                                   has_employment_insurance = #{hasEmploymentInsurance}, has_industrial_accident = #{hasIndustrialAccident}, 
                                   has_income_tax = #{hasIncomeTax}, has_night_allowance = #{hasNightAllowance}
-            WHERE id = #{workerId}
+            WHERE id = #{id}
             """)
-    void updateByWorkerId(Long workerId, Salary salary);
+    void update(Salary salary);
 
     /**
      * 근무자 ID에 해당하는 급여를 삭제하는 메서드.
