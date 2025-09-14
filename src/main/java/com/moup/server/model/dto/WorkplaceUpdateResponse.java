@@ -8,6 +8,6 @@ import lombok.Getter;
 @Builder
 @Schema(description = "근무지 수정 응답 DTO")
 public class WorkplaceUpdateResponse {
-    @Schema(description = "근무지 ID", example = "1")
+    @Schema(description = "수정된 근무지 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long workplaceId;
 }
