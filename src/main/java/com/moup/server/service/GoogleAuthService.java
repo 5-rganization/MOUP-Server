@@ -28,6 +28,8 @@ public class GoogleAuthService implements AuthService {
 
     @Value("${google.client.id}")
     private String googleClientId;
+    @Value("${google.client.secret}")
+    private String googleClientSecret;
     @Value("${google.redirect.uri}")
     private String googleRedirectUri;
 
@@ -45,9 +47,9 @@ public class GoogleAuthService implements AuthService {
                     new NetHttpTransport(),
                     new GsonFactory(),
                     googleClientId,
-                    "",
+                    googleClientSecret,
                     authCode,
-                    googleRedirectUri
+                ""
             ).execute();
 
             // 2. ID 토큰 검증
