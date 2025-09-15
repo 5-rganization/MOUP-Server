@@ -1,19 +1,16 @@
 package com.moup.server.model.dto;
 
+import com.moup.server.model.entity.Salary;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
 @Getter
 @Builder
-@Schema(description = "근무지 수정 요청 DTO")
-public class WorkplaceUpdateRequest {
-    @Schema(description = "근무지 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
-    private Long workplaceId;
-    @Schema(description = "근무지 이름", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String workplaceName;
-    @Schema(description = "근무지 카테고리 이름", example = "2", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String categoryName;
+@Schema(description = "알바생 급여 생성 요청 DTO")
+public class WorkerSalaryCreateRequest {
+    @Schema(description = "근무자 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Long workerId;
     @Schema(description = "급여 유형", example = "매월: SALARY_MONTHLY, 매주: SALARY_WEEKLY, 매일: SALARY_DAILY", requiredMode = Schema.RequiredMode.REQUIRED)
     private String salaryType;
     @Schema(description = "급여 계산", example = "시급: SALARY_CALCULATION_HOURLY, 고정: SALARY_CALCULATION_FIXED", requiredMode = Schema.RequiredMode.REQUIRED)
@@ -38,12 +35,22 @@ public class WorkplaceUpdateRequest {
     private boolean hasIncomeTax;
     @Schema(description = "야간수당 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
     private boolean hasNightAllowance;
-    @Schema(description = "라벨 색상 ID", example = "3", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String labelColor;
-    @Schema(description = "주소", example = "경기 화성시 동탄중심상가1길 8 1층", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    private String address;
-    @Schema(description = "위도", example = "37.2000891334382", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    private Double latitude;
-    @Schema(description = "경도", example = "127.072006099274", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    private Double longitude;
+
+    public Salary toEntity() {
+        return Salary.builder()
+                .id(workerId)
+                .salaryType(salaryType)
+                .salaryCalculation(salaryCalculation)
+                .hourlyRate(hourlyRate)
+                .fixedRate(fixedRate)
+                .salaryDate(salaryDate)
+                .salaryDay(salaryDay)
+                .hasNationalPension(hasNationalPension)
+                .hasHealthInsurance(hasHealthInsurance)
+                .hasEmploymentInsurance(hasEmploymentInsurance)
+                .hasIndustrialAccident(hasIndustrialAccident)
+                .hasIncomeTax(hasIncomeTax)
+                .hasNightAllowance(hasNightAllowance)
+                .build();
+    }
 }
