@@ -12,7 +12,7 @@ public interface WorkplaceRepository {
      * 근무지를 생성하고, 생성된 근무지의 ID를 반환하는 메서드.
      *
      * @param workplace 생성할 근무지 엔티티
-     * @return 생성된 근무지의 ID
+     * @return 생성된 행의 수
      */
     @Insert("""
             INSERT INTO workplaces (owner_id, workplace_name, category_name, label_color, is_shared, address, latitude, longitude) 
@@ -38,7 +38,7 @@ public interface WorkplaceRepository {
      * @param workplaceName 조회할 근무지 이름
      * @return 조회된 Workplace 객체, 없으면 Optional.empty
      */
-    @Select("SELECT * FROM workplaces WHERE id = #{id} AND workplace_name = #{workplaceName}")
+    @Select("SELECT * FROM workplaces WHERE owner_id = #{ownerId} AND workplace_name = #{workplaceName}")
     Optional<Workplace> findByOwnerIdAndWorkplaceName(Long ownerId, String workplaceName);
 
     /**
@@ -49,7 +49,7 @@ public interface WorkplaceRepository {
     @Update("""
             UPDATE workplaces
             SET workplace_name = #{workplaceName}, category_name = #{categoryName}, label_color = #{labelColor}, is_shared = #{isShared}, address = #{address}, latitude = #{latitude}, longitude = #{longitude}
-            WHERE id = #{id}
+            WHERE id = #{id} AND owner_id = #{ownerId}
             """)
     void update(Workplace workplace);
 
@@ -57,7 +57,8 @@ public interface WorkplaceRepository {
      * ID에 해당하는 근무지를 삭제하는 메서드.
      *
      * @param id 삭제할 근무지의 ID
+     * @param ownerId 삭제할 근무지의 등록자 ID
      */
-    @Delete("DELETE FROM workplaces WHERE id = #{id}")
-    void deleteById(Long id);
+    @Delete("DELETE FROM workplaces WHERE id = #{id} AND owner_id = #{ownerId}")
+    void deleteByWorkplaceIdAndOwnerId(Long id, Long ownerId);
 }
