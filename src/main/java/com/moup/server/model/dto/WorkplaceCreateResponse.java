@@ -10,4 +10,6 @@ import lombok.Getter;
 public class WorkplaceCreateResponse {
     @Schema(description = "생성된 근무지 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long workplaceId;
+    @Schema(description = "근무지에 생성된 근무자 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Long workerId;
 }

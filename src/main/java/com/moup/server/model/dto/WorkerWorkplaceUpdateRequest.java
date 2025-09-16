@@ -9,7 +9,7 @@ import lombok.Getter;
 @Getter
 @Builder
 @Schema(description = "알바생 근무지 업데이트 요청 DTO")
-public class WorkerWorkplaceUpdateRequest {
+public class WorkerWorkplaceUpdateRequest implements WorkplaceUpdateRequest {
     @Schema(description = "근무지 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long workplaceId;
     @Schema(description = "근무지 이름", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.REQUIRED)

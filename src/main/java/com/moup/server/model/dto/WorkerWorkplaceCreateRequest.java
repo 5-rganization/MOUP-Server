@@ -9,7 +9,7 @@ import lombok.Getter;
 @Getter
 @Builder
 @Schema(description = "알바생 근무지 생성 요청 DTO")
-public class WorkerWorkplaceCreateRequest {
+public class WorkerWorkplaceCreateRequest implements WorkplaceCreateRequest {
     @Schema(description = "근무지 이름", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.REQUIRED)
     private String workplaceName;
     @Schema(description = "근무지 카테고리 이름", example = "2", requiredMode = Schema.RequiredMode.REQUIRED)

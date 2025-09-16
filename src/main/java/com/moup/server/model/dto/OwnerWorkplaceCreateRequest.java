@@ -8,7 +8,7 @@ import lombok.Getter;
 @Getter
 @Builder
 @Schema(description = "사장님 근무지 생성 요청 DTO")
-public class OwnerWorkplaceCreateRequest {
+public class OwnerWorkplaceCreateRequest implements WorkplaceCreateRequest {
     @Schema(description = "근무지 이름", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.REQUIRED)
     private String workplaceName;
     @Schema(description = "근무지 카테고리 이름", example = "2", requiredMode = Schema.RequiredMode.REQUIRED)
@@ -22,7 +22,7 @@ public class OwnerWorkplaceCreateRequest {
     @Schema(description = "경도", example = "127.072006099274", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Double longitude;
 
-    public Workplace toEntity(Long ownerId) {
+    public Workplace toWorkplaceEntity(Long ownerId) {
         return Workplace.builder()
                 .id(null)
                 .ownerId(ownerId)
