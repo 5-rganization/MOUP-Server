@@ -14,6 +14,11 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+/**
+ * @author SNMac
+ * <p>
+ * 근무지 중심의 연관 테이블 CRUD를 위한 Service
+ */
 @Service
 @RequiredArgsConstructor
 public class WorkplaceService {
