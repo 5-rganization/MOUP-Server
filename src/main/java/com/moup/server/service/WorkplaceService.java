@@ -2,6 +2,7 @@ package com.moup.server.service;
 
 import com.moup.server.exception.SalaryNotFoundException;
 import com.moup.server.exception.WorkerNotFoundException;
+import com.moup.server.exception.WorkplaceAlreadyExistsException;
 import com.moup.server.exception.WorkplaceNotFoundException;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.Salary;
@@ -29,6 +30,11 @@ public class WorkplaceService {
     @Transactional
     protected Worker createWorkplace(Long userId, WorkplaceCreateRequest workplaceCreateRequest) {
         Workplace workplace = workplaceCreateRequest.toWorkplaceEntity(userId);
+
+        if (workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, workplace.getWorkplaceName())) {
+            throw new WorkplaceAlreadyExistsException();
+        }
+
         workplaceRepository.create(workplace);
         Workplace createdWorkplace = workplaceRepository.findByOwnerIdAndWorkplaceName(userId, workplaceCreateRequest.getWorkplaceName()).orElseThrow(WorkplaceNotFoundException::new);
 
