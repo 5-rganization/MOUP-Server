@@ -32,7 +32,7 @@ public interface WorkplaceRepository {
     boolean existsByOwnerIdAndWorkplaceName(Long ownerId, String workplaceName);
 
     /**
-     * 근무지 ID를 통해 해당 근무지를 찾고, 그 근무지의 객체를 반환하는 메서드
+     * 근무지의 등록자 ID와 근무지 이름를 통해 해당 근무지를 찾고, 그 근무지의 객체를 반환하는 메서드
      *
      * @param ownerId 조회할 근무지의 등록자 ID
      * @param workplaceName 조회할 근무지 이름
@@ -40,6 +40,15 @@ public interface WorkplaceRepository {
      */
     @Select("SELECT * FROM workplaces WHERE owner_id = #{ownerId} AND workplace_name = #{workplaceName}")
     Optional<Workplace> findByOwnerIdAndWorkplaceName(Long ownerId, String workplaceName);
+
+    /**
+     * 근무지 ID를 통해 해당 근무지를 찾고, 그 근무지의 객체를 반환하는 메서드
+     *
+     * @param id 조회할 근무지의 등록자 ID
+     * @return 조회된 Workplace 객체, 없으면 Optional.empty
+     */
+    @Select("SELECT * FROM workplaces WHERE id = #{id}")
+    Optional<Workplace> findById(Long id);
 
     /**
      * 엔티티의 ID에 해당하는 근무지를 업데이트하는 메서드.

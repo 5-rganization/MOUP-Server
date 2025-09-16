@@ -15,11 +15,8 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-/**
- * @author SNMac
- * <p>
- * 근무지 중심의 연관 테이블 CRUD를 위한 Service
- */
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class WorkplaceService {
@@ -59,13 +56,28 @@ public class WorkplaceService {
         return WorkplaceCreateResponse.builder().workplaceId(createdWorker.getWorkplaceId()).workerId(createdWorker.getId()).build();
     }
 
-    public WorkplaceDuplicateCheckResponse checkDuplicateWorkplace(Long userId, WorkplaceDuplicateCheckRequest workplaceDuplicateCheckRequest) {
-        boolean isDuplicated = workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, workplaceDuplicateCheckRequest.getWorkplaceName());
+    public WorkplaceDuplicateCheckResponse checkDuplicateWorkplace(Long userId, String workplaceName) {
+        boolean isDuplicated = workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, workplaceName);
         return WorkplaceDuplicateCheckResponse.builder().isDuplicated(isDuplicated).build();
     }
 
     public Workplace findByUserIdAndWorkplaceName(Long userId, String workplaceName) {
         return workplaceRepository.findByOwnerIdAndWorkplaceName(userId, workplaceName).orElseThrow(WorkplaceNotFoundException::new);
+    }
+
+    public List<WorkplaceSummaryResponse> summarizeAllWorkplaceByUserId(Long userId) {
+        List<Worker> userAllWorkers = workerRepository.findAllByUserId(userId);
+
+        if (userAllWorkers.isEmpty()) {
+            throw new WorkerNotFoundException();
+        }
+
+        List<WorkplaceSummaryResponse> workplaceSummaryResponses = List.of();
+        for (Worker worker : userAllWorkers) {
+            Workplace workplace = workplaceRepository.findById(worker.getWorkplaceId()).orElseThrow(WorkplaceNotFoundException::new);
+            workplaceSummaryResponses.add(WorkplaceSummaryResponse.builder().workplaceId(workplace.getId()).workplaceName(workplace.getWorkplaceName()).isShared(workplace.isShared()).build());
+        }
+        return workplaceSummaryResponses;
     }
 
     @Transactional
@@ -98,8 +110,7 @@ public class WorkplaceService {
         return OwnerWorkplaceUpdateResponse.builder().workplaceId(updatedWorkplace.getId()).build();
     }
 
-    public WorkplaceDeleteResponse deleteWorkplace(Long userId, WorkplaceDeleteRequest workplaceDeleteRequest) {
-        Long workplaceId = workplaceDeleteRequest.getWorkplaceId();
+    public WorkplaceDeleteResponse deleteWorkplace(Long userId, Long workplaceId) {
         workplaceRepository.deleteByWorkplaceIdAndOwnerId(workplaceId, userId);
 
         return WorkplaceDeleteResponse.builder().workplaceId(workplaceId).build();
