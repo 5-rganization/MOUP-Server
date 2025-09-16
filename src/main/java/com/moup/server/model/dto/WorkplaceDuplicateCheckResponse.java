@@ -6,7 +6,7 @@ import lombok.Getter;
 
 @Getter
 @Builder
-@Schema(description = "근무지 중복 확인 응답 DTO")
+@Schema(description = "근무지(매장) 중복 확인 응답 DTO")
 public class WorkplaceDuplicateCheckResponse {
     @Schema(description = "중복 확인 결과", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
     private boolean isDuplicated;

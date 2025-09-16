@@ -6,8 +6,8 @@ import lombok.Getter;
 
 @Getter
 @Builder
-@Schema(description = "사장님 근무지 업데이트 응답 DTO")
+@Schema(description = "사장님 매장 업데이트 응답 DTO")
 public class OwnerWorkplaceUpdateResponse {
-    @Schema(description = "업데이트된 근무지 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "업데이트된 매장 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long workplaceId;
 }

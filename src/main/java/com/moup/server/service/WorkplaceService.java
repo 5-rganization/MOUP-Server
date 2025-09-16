@@ -30,7 +30,6 @@ public class WorkplaceService {
     @Transactional
     protected Worker createWorkplace(Long userId, WorkplaceCreateRequest workplaceCreateRequest) {
         Workplace workplace = workplaceCreateRequest.toWorkplaceEntity(userId);
-
         if (workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, workplace.getWorkplaceName())) {
             throw new WorkplaceAlreadyExistsException();
         }
@@ -72,6 +71,10 @@ public class WorkplaceService {
     @Transactional
     protected Workplace updateWorkplace(Long userId, WorkplaceUpdateRequest workplaceUpdateRequest) {
         Workplace workplace = workplaceUpdateRequest.toWorkplaceEntity(userId);
+        if (workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, workplace.getWorkplaceName())) {
+            throw new WorkplaceAlreadyExistsException();
+        }
+
         workplaceRepository.update(workplace);
 
         return workplaceRepository.findByOwnerIdAndWorkplaceName(userId, workplace.getWorkplaceName()).orElseThrow(WorkplaceNotFoundException::new);

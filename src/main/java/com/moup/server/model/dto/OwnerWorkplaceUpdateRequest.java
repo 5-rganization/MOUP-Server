@@ -7,13 +7,13 @@ import lombok.Getter;
 
 @Getter
 @Builder
-@Schema(description = "사장님 근무지 업데이트 요청 DTO")
+@Schema(description = "사장님 매장 업데이트 요청 DTO")
 public class OwnerWorkplaceUpdateRequest implements WorkplaceUpdateRequest {
-    @Schema(description = "근무지 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "매장 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long workplaceId;
-    @Schema(description = "근무지 이름", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "매장 이름", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.REQUIRED)
     private String workplaceName;
-    @Schema(description = "근무지 카테고리 이름", example = "2", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "매장 카테고리 이름", example = "2", requiredMode = Schema.RequiredMode.REQUIRED)
     private String categoryName;
     @Schema(description = "라벨 색상 ID", example = "3", requiredMode = Schema.RequiredMode.REQUIRED)
     private String labelColor;
