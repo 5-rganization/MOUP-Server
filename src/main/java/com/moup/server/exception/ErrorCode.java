@@ -17,6 +17,7 @@ public enum ErrorCode {
     WORKPLACE_ALREADY_EXISTS(HttpStatus.CONFLICT, "WORKPLACE_409", "이미 등록된 근무지입니다."),
     WORKER_NOT_FOUND(HttpStatus.NOT_FOUND, "WORKER_404", "해당 근무자는 존재하지 않습니다."),
     WORKER_ALREADY_EXISTS(HttpStatus.CONFLICT, "WORKER_409", "이미 등록된 근무자입니다."),
+    SALARY_NOT_FOUND(HttpStatus.NOT_FOUND, "SALARY_404", "해당 급여는 존재하지 않습니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_500", "서버에 오류가 발생했습니다."),
     ALREADY_DELETED(HttpStatus.CONFLICT, "DELETE_409", "삭제 처리 중입니다.");
 
