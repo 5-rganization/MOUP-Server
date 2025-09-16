@@ -7,7 +7,7 @@ public interface WorkplaceCreateRequest {
     String getCategoryName();
     String getLabelColor();
     String getAddress();
-    String getLatitude();
-    String getLongitude();
+    Double getLatitude();
+    Double getLongitude();
     Workplace toWorkplaceEntity(Long ownerId);
 }

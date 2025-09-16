@@ -40,7 +40,7 @@ public class WorkerWorkplaceUpdateRequest implements WorkplaceUpdateRequest {
     private boolean hasIncomeTax;
     @Schema(description = "야간수당 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
     private boolean hasNightAllowance;
-    @Schema(description = "라벨 색상 ID", example = "3", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "라벨 색상", example = "red", requiredMode = Schema.RequiredMode.REQUIRED)
     private String labelColor;
     @Schema(description = "주소", example = "경기 화성시 동탄중심상가1길 8 1층", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String address;
