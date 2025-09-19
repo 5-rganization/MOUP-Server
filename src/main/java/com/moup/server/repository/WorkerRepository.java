@@ -46,7 +46,7 @@ public interface WorkerRepository {
      * @param labelColor 업데이트할 라벨 색상
      */
     @Update("UPDATE workers SET label_color = #{labelColor} WHERE id = #{id} AND user_id = #{userId} AND workplace_id = #{workplaceId}")
-    void updateLabelColorByIdAndWorkplaceId(Long id, Long userId, Long workplaceId, String labelColor);
+    void updateLabelColor(Long id, Long userId, Long workplaceId, String labelColor);
 
     /**
      * ID에 해당하는 근무자의 초대 승인 여부를 업데이트하는 메서드.
@@ -57,7 +57,7 @@ public interface WorkerRepository {
      * @param isAccepted 업데이트할 초대 승인 여부
      */
     @Update("UPDATE workers SET is_accepted = #{isAccepted} WHERE id = #{id} AND user_id = #{userId} AND workplace_id = #{workplaceId}")
-    void updateIsAcceptedByIdAndWorkplaceId(Long id, Long userId, Long workplaceId, boolean isAccepted);
+    void updateIsAccepted(Long id, Long userId, Long workplaceId, boolean isAccepted);
 
     /**
      * 근무자 ID와 근무지 ID에 해당하는 근무자를 삭제하는 메서드.
@@ -67,5 +67,5 @@ public interface WorkerRepository {
      * @param workplaceId 삭제할 근무자의 근무지 ID
      */
     @Delete("DELETE FROM workers WHERE id = #{id} AND user_id = #{userId} AND workplace_id = #{workplaceId}")
-    void deleteByIdAndWorkplaceId(Long id, Long userId, Long workplaceId);
+    void delete(Long id, Long userId, Long workplaceId);
 }
