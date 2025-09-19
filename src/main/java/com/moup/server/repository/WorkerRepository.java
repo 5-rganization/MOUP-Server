@@ -15,7 +15,7 @@ public interface WorkerRepository {
      * @param worker 생성할 근무자 엔티티
      * @return 생성된 행의 수
      */
-    @Insert("INSERT INTO workers (user_id, workplace_id, label_color, is_accepted) VALUES (#{workplaceId}, #{labelColor}, #{isAccepted})")
+    @Insert("INSERT INTO workers (user_id, workplace_id, label_color, is_accepted) VALUES (#{userId}, #{workplaceId}, #{labelColor}, #{isAccepted})")
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
     Long create(Worker worker);
 
@@ -33,7 +33,7 @@ public interface WorkerRepository {
      * 유저 ID를 통해 해당 유저의 모든 근무자 객체를 리스트로 반환하는 메서드
      *
      * @param userId 조회할 유저 ID
-     * @return 조회된 Worker 객체 리스트, 없으면 Optional.empty
+     * @return 조회된 Worker 객체 리스트, 없으면 빈 배열
      */
     @Select("SELECT * FROM workers WHERE user_id = #{userId}")
     List<Worker> findAllByUserId(Long userId);
