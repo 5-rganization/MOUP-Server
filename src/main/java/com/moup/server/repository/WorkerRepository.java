@@ -12,7 +12,7 @@ public interface WorkerRepository {
     /**
      * 근무자를 생성하는 메서드.
      *
-     * @param worker 생성할 근무자 엔티티
+     * @param worker 생성할 Worker 객체
      * @return 생성된 행의 수
      */
     @Insert("INSERT INTO workers (user_id, workplace_id, label_color, is_accepted) VALUES (#{userId}, #{workplaceId}, #{labelColor}, #{isAccepted})")

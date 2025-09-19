@@ -10,7 +10,7 @@ public interface SalaryRepository {
     /**
      * 급여를 생성하는 메서드.
      *
-     * @param salary 생성할 급여 엔티티
+     * @param salary 생성할 Salary 객체
      * @return 생성된 행의 수
      */
     @Insert("""
@@ -38,7 +38,7 @@ public interface SalaryRepository {
     /**
      * 급여 엔티티의 ID(근무자 ID)에 해당하는 급여 정보를 업데이트하는 메서드.
      *
-     * @param salary 업데이트할 급여 엔티티
+     * @param salary 업데이트할 Salary 객체
      */
     @Update("""
             UPDATE salaries SET salary_type = #{salaryType}, salary_calculation = #{salaryCalculation}, 

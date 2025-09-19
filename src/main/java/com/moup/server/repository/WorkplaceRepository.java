@@ -11,7 +11,7 @@ public interface WorkplaceRepository {
     /**
      * 근무지를 생성하는 메서드.
      *
-     * @param workplace 생성할 근무지 엔티티
+     * @param workplace 생성할 근무지 Workplace 객체
      * @return 생성된 행의 수
      */
     @Insert("""
@@ -53,7 +53,7 @@ public interface WorkplaceRepository {
     /**
      * 근무지의 ID와 등록자 ID에 해당하는 근무지를 업데이트하는 메서드.
      *
-     * @param workplace 업데이트할 근무지 엔티티
+     * @param workplace 업데이트할 Workplace 객체
      */
     @Update("""
             UPDATE workplaces
