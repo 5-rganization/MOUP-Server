@@ -13,5 +13,5 @@ public class Routine {
     private Long id;
     private Long userId;
     private String routineName;
-    private LocalTime alarm_time;
+    private LocalTime alarmTime;
 }

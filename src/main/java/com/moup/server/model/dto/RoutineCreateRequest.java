@@ -1,9 +1,12 @@
 package com.moup.server.model.dto;
 
+import com.moup.server.model.entity.Routine;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Getter
@@ -16,4 +19,14 @@ public class RoutineCreateRequest {
     private String alarmTime;
     @Schema(description = "할 일 리스트", example = "\"내용\": \"바닥 청소\", \"정렬 순서\": 0, \"체크 여부\": false", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<RoutineTaskCreateRequest> routineTaskCreateRequestList;
+
+    public Routine toEntity(Long userId) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+        return Routine.builder()
+                .id(null)
+                .userId(userId)
+                .routineName(routineName)
+                .alarmTime(LocalTime.parse(alarmTime, formatter))
+                .build();
+    }
 }
