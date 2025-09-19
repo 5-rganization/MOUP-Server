@@ -1,0 +1,57 @@
+package com.moup.server.repository;
+
+import com.moup.server.model.entity.Routine;
+import org.apache.ibatis.annotations.*;
+
+import java.util.List;
+import java.util.Optional;
+
+@Mapper
+public interface RoutineRepository {
+
+    /**
+     * 루틴을 생성하는 메서드.
+     *
+     * @param routine 생성할 루틴 엔티티
+     * @return 생성된 행의 수
+     */
+    @Insert("INSERT INTO routines (id, user_id, routine_name, alarm_time) VALUES (#{id}, #{userId}, #{routineName}, #{alarmTime})")
+    @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
+    Long create(Routine routine);
+
+    /**
+     * 루틴의 ID와 유저 ID를 통해 해당 루틴을 찾고, 그 루틴 객체를 반환하는 메서드
+     *
+     * @param id 조회할 루틴의 ID
+     * @param userId 조회할 루틴의 유저 ID
+     * @return 조회된 Routine 객체, 없으면 Optional.empty
+     */
+    @Select("SELECT * FROM routines WHERE id = #{id} AND user_id = #{userId}")
+    Optional<Routine> findByIdAndUserId(Long id, Long userId);
+
+    /**
+     * 유저 ID를 통해 해당 유저의 모든 루틴 객체를 리스트로 반환하는 메서드
+     *
+     * @param userId 조회할 루틴의 유저 ID
+     * @return 조회된 Routine 객체 리스트, 없으면 빈 배열
+     */
+    @Select("SELECT * FROM routines WHERE user_id = #{userId}")
+    List<Routine> findAllByUserId(Long userId);
+
+    /**
+     * 루틴의 ID와 유저 ID에 해당하는 루틴을 업데이트하는 메서드.
+     *
+     * @param routine 업데이트할 루틴 엔티티
+     */
+    @Update("UPDATE routines SET routine_name = #{routineName}, alarm_time = #{alarmTime} WHERE id = #{id} AND user_id = #{userId}")
+    void updateRoutine(Routine routine);
+
+    /**
+     * 루틴의 ID와 유저 ID에 해당하는 루틴을 삭제하는 메서드.
+     *
+     * @param id 삭제할 루틴의 ID
+     * @param userId 삭제할 루틴의 유저 ID
+     */
+    @Delete("DELETE FROM routines WHERE id = #{id} AND user_id = #{userId}")
+    void deleteRoutine(Long id, Long userId);
+}
