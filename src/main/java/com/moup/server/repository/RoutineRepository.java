@@ -15,7 +15,7 @@ public interface RoutineRepository {
      * @param routine 생성할 루틴 엔티티
      * @return 생성된 행의 수
      */
-    @Insert("INSERT INTO routines (id, user_id, routine_name, alarm_time) VALUES (#{id}, #{userId}, #{routineName}, #{alarmTime})")
+    @Insert("INSERT INTO routines (user_id, routine_name, alarm_time) VALUES (#{userId}, #{routineName}, #{alarmTime})")
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
     Long create(Routine routine);
 
