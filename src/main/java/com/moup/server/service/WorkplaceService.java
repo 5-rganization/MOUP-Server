@@ -15,6 +15,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -72,7 +73,7 @@ public class WorkplaceService {
             throw new WorkerNotFoundException();
         }
 
-        List<WorkplaceSummaryResponse> workplaceSummaryResponses = List.of();
+        List<WorkplaceSummaryResponse> workplaceSummaryResponses = new ArrayList<>();
         for (Worker worker : userAllWorkers) {
             Workplace workplace = workplaceRepository.findById(worker.getWorkplaceId()).orElseThrow(WorkplaceNotFoundException::new);
             workplaceSummaryResponses.add(WorkplaceSummaryResponse.builder().workplaceId(workplace.getId()).workplaceName(workplace.getWorkplaceName()).isShared(workplace.isShared()).build());

@@ -9,7 +9,7 @@ import java.util.Optional;
 public interface WorkplaceRepository {
 
     /**
-     * 근무지를 생성하고, 생성된 근무지의 ID를 반환하는 메서드.
+     * 근무지를 생성하는 메서드.
      *
      * @param workplace 생성할 근무지 엔티티
      * @return 생성된 행의 수

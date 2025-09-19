@@ -10,10 +10,10 @@ import java.util.Optional;
 public interface WorkerRepository {
 
     /**
-     * 근무자를 생성하고, 생성된 근무자의 ID를 반환하는 메서드.
+     * 근무자를 생성하는 메서드.
      *
      * @param worker 생성할 근무자 엔티티
-     * @return 생성된 근무자의 ID
+     * @return 생성된 행의 수
      */
     @Insert("INSERT INTO workers (user_id, workplace_id, label_color, is_accepted) VALUES (#{workplaceId}, #{labelColor}, #{isAccepted})")
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")

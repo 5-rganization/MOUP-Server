@@ -8,7 +8,7 @@ import java.util.Optional;
 @Mapper
 public interface SalaryRepository {
     /**
-     * 급여를 생성하고, 생성된 급여의 근무자 ID를 반환하는 메서드.
+     * 급여를 생성하는 메서드.
      *
      * @param salary 생성할 급여 엔티티
      * @return 생성된 행의 수
