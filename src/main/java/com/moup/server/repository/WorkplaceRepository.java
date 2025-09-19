@@ -51,7 +51,7 @@ public interface WorkplaceRepository {
     Optional<Workplace> findById(Long id);
 
     /**
-     * 엔티티의 ID에 해당하는 근무지를 업데이트하는 메서드.
+     * 근무지의 ID와 등록자 ID에 해당하는 근무지를 업데이트하는 메서드.
      *
      * @param workplace 업데이트할 근무지 엔티티
      */
