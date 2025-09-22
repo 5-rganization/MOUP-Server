@@ -77,7 +77,6 @@ CREATE TABLE `workplaces`
     `owner_id`       BIGINT                       NULL,
     `workplace_name` VARCHAR(100)                 NOT NULL,
     `category_name`  VARCHAR(50)                  NOT NULL,
-    `label_color`    VARCHAR(20) DEFAULT 'orange' NOT NULL,
     `is_shared`      TINYINT(1)  DEFAULT 0        NOT NULL,
     `address`        VARCHAR(100)                 NULL,
     `latitude`       DECIMAL                      NULL,
@@ -90,6 +89,8 @@ CREATE TABLE `workers`
     `id`           BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
     `user_id`      BIGINT                NOT NULL,
     `workplace_id` BIGINT                NOT NULL,
+    `worker_based_label_color`    VARCHAR(20) DEFAULT 'primary' NOT NULL,
+    `owner_based_label_color`    VARCHAR(20) DEFAULT 'primary' NOT NULL,
     FOREIGN KEY (`user_id`) REFERENCES users (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`workplace_id`) REFERENCES workplaces (`id`) ON DELETE CASCADE
 );
