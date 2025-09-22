@@ -85,26 +85,6 @@ CREATE TABLE `workplaces`
     FOREIGN KEY (`owner_id`) REFERENCES users (`id`) ON DELETE SET NULL
 );
 
-CREATE TABLE `salaries`
-(
-    `id`                       BIGINT AUTO_INCREMENT PRIMARY KEY,
-    `worker_id`                BIGINT                                                         NOT NULL,
-    `salary_type`              ENUM ('SALARY_MONTHLY', 'SALARY_WEEKLY', 'SALARY_DAILY')       NOT NULL,
-    `salary_calculation`       ENUM ('SALARY_CALCULATION_HOURLY', 'SALARY_CALCULATION_FIXED') NOT NULL,
-    `hourly_rate`              INT                                                            NULL,
-    `fixed_rate`               INT                                                            NULL,
-    `salary_date`              INT CHECK (salary_date >= 1 AND salary_date <= 31)             NULL,
-    `salary_day`               ENUM ('MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN')         NULL,
-    `has_national_pension`     TINYINT(1)                                                     NOT NULL,
-    `has_health_insurance`     TINYINT(1)                                                     NOT NULL,
-    `has_employment_insurance` TINYINT(1)                                                     NOT NULL,
-    `has_industrial_accident`  TINYINT(1)                                                     NOT NULL,
-    `has_income_tax`           TINYINT(1)                                                     NOT NULL,
-    `has_night_allowance`      TINYINT(1)                                                     NOT NULL,
-    FOREIGN KEY (`worker_id`) REFERENCES workers (`id`) ON DELETE CASCADE
-);
---
-
 CREATE TABLE `workers`
 (
     `id`           BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
@@ -132,3 +112,23 @@ CREATE TABLE `works`
     FOREIGN KEY (`worker_id`) REFERENCES workers (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`routine_id`) REFERENCES routines (`id`) ON DELETE CASCADE
 );
+
+CREATE TABLE `salaries`
+(
+    `id`                       BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `worker_id`                BIGINT                                                         NOT NULL,
+    `salary_type`              ENUM ('SALARY_MONTHLY', 'SALARY_WEEKLY', 'SALARY_DAILY')       NOT NULL,
+    `salary_calculation`       ENUM ('SALARY_CALCULATION_HOURLY', 'SALARY_CALCULATION_FIXED') NOT NULL,
+    `hourly_rate`              INT                                                            NULL,
+    `fixed_rate`               INT                                                            NULL,
+    `salary_date`              INT CHECK (salary_date >= 1 AND salary_date <= 31)             NULL,
+    `salary_day`               ENUM ('MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN')         NULL,
+    `has_national_pension`     TINYINT(1)                                                     NOT NULL,
+    `has_health_insurance`     TINYINT(1)                                                     NOT NULL,
+    `has_employment_insurance` TINYINT(1)                                                     NOT NULL,
+    `has_industrial_accident`  TINYINT(1)                                                     NOT NULL,
+    `has_income_tax`           TINYINT(1)                                                     NOT NULL,
+    `has_night_allowance`      TINYINT(1)                                                     NOT NULL,
+    FOREIGN KEY (`worker_id`) REFERENCES workers (`id`) ON DELETE CASCADE
+);
+--
