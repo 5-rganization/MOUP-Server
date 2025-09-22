@@ -14,24 +14,28 @@ import org.springframework.context.annotation.Configuration;
 @Slf4j
 @Configuration
 public class TokenGeneratorConfig {
-    private final JwtUtil jwtUtil;
 
-    // 생성자 주입
-    public TokenGeneratorConfig(JwtUtil jwtUtil) {
-        this.jwtUtil = jwtUtil;
-    }
+  private final JwtUtil jwtUtil;
 
-    @Bean
-    public CommandLineRunner generateStaticToken() {
-        return args -> {
-            // 테스트용 가상의 TokenCreate 객체 생성
-          TokenCreateRequest testToken = TokenCreateRequest.builder().build();
+  // 생성자 주입
+  public TokenGeneratorConfig(JwtUtil jwtUtil) {
+    this.jwtUtil = jwtUtil;
+  }
 
-            // createToken 메서드를 사용하여 토큰 생성
-            String staticToken = jwtUtil.createTestToken(testToken);
+  @Bean
+  public CommandLineRunner generateStaticToken() {
+    return args -> {
+      // 테스트용 가상의 TokenCreate 객체 생성
+      TokenCreateRequest testToken = TokenCreateRequest.builder()
+          .role(Role.ROLE_OWNER)
+          .userId(1L)
+          .username("김사장").build();
 
-            // 토큰을 콘솔에 출력
-            log.info("📢📢📢📢📢 Swagger Static Token Generated: {}", "Bearer " + staticToken);
-        };
-    }
+      // createToken 메서드를 사용하여 토큰 생성
+      String staticToken = jwtUtil.createTestToken(testToken);
+
+      // 토큰을 콘솔에 출력
+      log.info("📢📢📢📢📢 Swagger Static Token Generated: {}", "Bearer " + staticToken);
+    };
+  }
 }
