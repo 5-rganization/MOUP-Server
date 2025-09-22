@@ -1,9 +1,10 @@
 package com.moup.server.controller;
 
-import com.moup.server.model.dto.ErrorResponse;
-import com.moup.server.model.dto.RegisterRequest;
-import com.moup.server.model.dto.RegisterResponse;
-import com.moup.server.model.entity.Workplace;
+import com.moup.server.model.dto.*;
+import com.moup.server.model.entity.User;
+import com.moup.server.service.IdentityService;
+import com.moup.server.service.UserService;
+import com.moup.server.service.WorkplaceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -13,28 +14,124 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * @author neoskyclad
  * <p>
  * 근무지 정보 관리를 위한 Controller
  */
-@Tag(name = "Workplace-Controller", description = "근무지 정보 관리 API 엔드포인트")
+@Tag(name = "Workplace-Controller", description = "근무지(매장) 정보 관리 API 엔드포인트")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/workplace")
 public class WorkplaceController {
-//    @PostMapping()
-//    @Operation(summary = "근무지 생성", description = "현재 로그인된 유저가 근무지 정보를 입력 하여 생성")
-//    @ApiResponses({
-//            @ApiResponse(responseCode = "200", description = "근무지 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ))),
-//            @ApiResponse(responseCode = "409", description = "중복된 근무지", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-//            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-//    @RequestBody(description = "근무지 생성을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = )))
-//    public ResponseEntity<?> createWorkplace(@RequestBody Workplace workplace) {
-//
-//    }
+
+    private final UserService userService;
+    private final IdentityService identityService;
+    private final WorkplaceService workplaceService;
+
+    @PostMapping("/worker")
+    @Operation(summary = "알바생 근무지 생성", description = "알바생이 근무지 및 급여 정보를 입력 하여 생성")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "근무지 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceCreateResponse.class))),
+            @ApiResponse(responseCode = "409", description = "중복된 근무지", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    @RequestBody(description = "근무지 생성을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkerWorkplaceCreateRequest.class)))
+    public ResponseEntity<?> createWorkerWorkplace(@RequestBody WorkerWorkplaceCreateRequest workerWorkplaceCreateRequest) {
+        Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
+
+        WorkplaceCreateResponse workplaceCreateResponse = workplaceService.createWorkerWorkplace(user.getId(), workerWorkplaceCreateRequest);
+        return ResponseEntity.ok().body(workplaceCreateResponse);
+    }
+
+    @GetMapping("/duplicate-check")
+    @Operation(summary = "근무지(매장) 이름 중복 여부 조회", description = "유저가 이미 동일한 이름을 가진 근무지(매장)를 갖고있는지 여부를 조회")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "근무지(매장) 이름 중복 여부 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceDuplicateCheckResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    public ResponseEntity<?> checkDuplicateWorkplace(@RequestParam String workplaceName) {
+        Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
+
+        WorkplaceDuplicateCheckResponse workplaceDuplicateCheckResponse = workplaceService.checkDuplicateWorkplace(user.getId(), workplaceName);
+        return ResponseEntity.ok().body(workplaceDuplicateCheckResponse);
+    }
+
+    @GetMapping("/summary")
+    @Operation(summary = "모든 근무지(매장) 요약 조회", description = "현재 로그인된 사용자의 모든 근무지(매장) 조회 및 요약")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "모든 근무지(매장) 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceSummaryListResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    public ResponseEntity<?> summarizeAllWorkplace() {
+        Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
+
+        List<WorkplaceSummaryResponse> summaryResponseList = workplaceService.summarizeAllWorkplaceByUserId(user.getId());
+
+        WorkplaceSummaryListResponse workplaceSummaryListResponse = WorkplaceSummaryListResponse.builder().workplaceSummaryResponseList(summaryResponseList).build();
+        return ResponseEntity.ok().body(workplaceSummaryListResponse);
+    }
+
+    @PutMapping("/worker")
+    @Operation(summary = "알바생 근무지 업데이트", description = "알바생이 근무지 및 급여 정보를 입력 하여 업데이트")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "근무지 업데이트 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkerWorkplaceUpdateResponse.class))),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 근무지", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    @RequestBody(description = "근무지 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkerWorkplaceUpdateRequest.class)))
+    public ResponseEntity<?> updateWorkerWorkplace(@RequestBody WorkerWorkplaceUpdateRequest workerWorkplaceUpdateRequest) {
+        Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
+
+        WorkerWorkplaceUpdateResponse workerWorkplaceUpdateResponse = workplaceService.updateWorkerWorkplace(user.getId(), workerWorkplaceUpdateRequest);
+        return ResponseEntity.ok().body(workerWorkplaceUpdateResponse);
+    }
+
+    @PostMapping("/owner")
+    @Operation(summary = "사장님 매장 생성", description = "사장님이 매장 정보를 입력 하여 생성")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "매장 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceCreateResponse.class))),
+            @ApiResponse(responseCode = "409", description = "중복된 매장", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    @RequestBody(description = "매장 생성을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = OwnerWorkplaceCreateRequest.class)))
+    public ResponseEntity<?> createOwnerWorkplace(@RequestBody OwnerWorkplaceCreateRequest ownerWorkplaceCreateRequest) {
+        Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
+
+        WorkplaceCreateResponse workplaceCreateResponse = workplaceService.createOwnerWorkplace(user.getId(), ownerWorkplaceCreateRequest);
+        return ResponseEntity.ok().body(workplaceCreateResponse);
+    }
+
+    @PutMapping("/owner")
+    @Operation(summary = "사장님 매장 업데이트", description = "사장님이 매장 정보를 입력 하여 업데이트")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "매장 업데이트 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = OwnerWorkplaceUpdateResponse.class))),
+            @ApiResponse(responseCode = "409", description = "중복된 매장", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    @RequestBody(description = "매장 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = OwnerWorkplaceUpdateRequest.class)))
+    public ResponseEntity<?> updateOwnerWorkplace(@RequestBody OwnerWorkplaceUpdateRequest ownerWorkplaceUpdateRequest) {
+        Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
+
+        OwnerWorkplaceUpdateResponse ownerWorkplaceUpdateResponse = workplaceService.updateOwnerWorkplace(user.getId(), ownerWorkplaceUpdateRequest);
+        return ResponseEntity.ok().body(ownerWorkplaceUpdateResponse);
+    }
+
+    @DeleteMapping()
+    @Operation(summary = "근무지(매장) 삭제", description = "삭제할 근무지(매장) ID를 전달받아 삭제")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "근무지 삭제 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceDeleteResponse.class))),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 근무지(매장)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    public ResponseEntity<?> deleteWorkplace(@RequestParam Long workplaceId) {
+        Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
+
+        WorkplaceDeleteResponse workplaceDeleteResponse = workplaceService.deleteWorkplace(user.getId(), workplaceId);
+        return ResponseEntity.ok().body(workplaceDeleteResponse);
+    }
 }
