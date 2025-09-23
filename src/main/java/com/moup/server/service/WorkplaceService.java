@@ -94,11 +94,13 @@ public class WorkplaceService {
 
     @Transactional
     protected Workplace updateWorkplace(Long userId, WorkplaceUpdateRequest workplaceUpdateRequest) {
-        Workplace workplace = workplaceUpdateRequest.toWorkplaceEntity(userId);
-        if (workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, workplace.getWorkplaceName())) { throw new WorkplaceAlreadyExistsException(); }
-        workplaceRepository.update(workplace);
+        Workplace newWorkplace = workplaceUpdateRequest.toWorkplaceEntity(userId);
+        Workplace oldWorkplace = workplaceRepository.findById(newWorkplace.getId()).orElseThrow(WorkplaceNotFoundException::new);
+        if (!newWorkplace.getWorkplaceName().equals(oldWorkplace.getWorkplaceName())
+                && workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, newWorkplace.getWorkplaceName())) { throw new WorkplaceAlreadyExistsException(); }
+        workplaceRepository.update(newWorkplace);
 
-        return workplaceRepository.findByOwnerIdAndWorkplaceName(userId, workplace.getWorkplaceName()).orElseThrow(WorkplaceNotFoundException::new);
+        return workplaceRepository.findByOwnerIdAndWorkplaceName(userId, newWorkplace.getWorkplaceName()).orElseThrow(WorkplaceNotFoundException::new);
     }
 
     @Transactional

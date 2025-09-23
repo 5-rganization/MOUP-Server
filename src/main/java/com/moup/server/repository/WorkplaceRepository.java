@@ -44,7 +44,7 @@ public interface WorkplaceRepository {
     /**
      * 근무지 ID를 통해 해당 근무지를 찾고, 그 근무지의 객체를 반환하는 메서드
      *
-     * @param id 조회할 근무지의 등록자 ID
+     * @param id 조회할 근무지의 ID
      * @return 조회된 Workplace 객체, 없으면 Optional.empty
      */
     @Select("SELECT * FROM workplaces WHERE id = #{id}")
