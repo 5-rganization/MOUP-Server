@@ -8,7 +8,6 @@ import com.moup.server.service.WorkplaceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -39,7 +38,7 @@ public class WorkplaceController {
             @ApiResponse(responseCode = "200", description = "근무지 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceCreateResponse.class))),
             @ApiResponse(responseCode = "409", description = "중복된 근무지", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    @RequestBody(description = "근무지 생성을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkerWorkplaceCreateRequest.class)))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "근무지 생성을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkerWorkplaceCreateRequest.class)))
     public ResponseEntity<?> createWorkerWorkplace(@RequestBody WorkerWorkplaceCreateRequest workerWorkplaceCreateRequest) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
@@ -59,7 +58,9 @@ public class WorkplaceController {
 
         List<WorkplaceSummaryResponse> summaryResponseList = workplaceService.summarizeAllWorkplaceByUserId(user.getId());
 
-        WorkplaceSummaryListResponse workplaceSummaryListResponse = WorkplaceSummaryListResponse.builder().workplaceSummaryResponseList(summaryResponseList).build();
+        WorkplaceSummaryListResponse workplaceSummaryListResponse = WorkplaceSummaryListResponse.builder()
+                .workplaceSummaryResponseList(summaryResponseList)
+                .build();
         return ResponseEntity.ok().body(workplaceSummaryListResponse);
     }
 
@@ -68,8 +69,9 @@ public class WorkplaceController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "근무지 업데이트 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkerWorkplaceUpdateResponse.class))),
             @ApiResponse(responseCode = "404", description = "존재하지 않는 근무지", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "중복된 근무지", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    @RequestBody(description = "근무지 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkerWorkplaceUpdateRequest.class)))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "근무지 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkerWorkplaceUpdateRequest.class)))
     public ResponseEntity<?> updateWorkerWorkplace(@RequestBody WorkerWorkplaceUpdateRequest workerWorkplaceUpdateRequest) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
@@ -84,7 +86,7 @@ public class WorkplaceController {
             @ApiResponse(responseCode = "200", description = "매장 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceCreateResponse.class))),
             @ApiResponse(responseCode = "409", description = "중복된 매장", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    @RequestBody(description = "매장 생성을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = OwnerWorkplaceCreateRequest.class)))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "매장 생성을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = OwnerWorkplaceCreateRequest.class)))
     public ResponseEntity<?> createOwnerWorkplace(@RequestBody OwnerWorkplaceCreateRequest ownerWorkplaceCreateRequest) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
@@ -99,7 +101,7 @@ public class WorkplaceController {
             @ApiResponse(responseCode = "200", description = "매장 업데이트 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = OwnerWorkplaceUpdateResponse.class))),
             @ApiResponse(responseCode = "409", description = "중복된 매장", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    @RequestBody(description = "매장 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = OwnerWorkplaceUpdateRequest.class)))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "매장 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = OwnerWorkplaceUpdateRequest.class)))
     public ResponseEntity<?> updateOwnerWorkplace(@RequestBody OwnerWorkplaceUpdateRequest ownerWorkplaceUpdateRequest) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
