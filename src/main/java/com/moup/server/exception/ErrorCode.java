@@ -1,6 +1,5 @@
 package com.moup.server.exception;
 
-import com.amazonaws.services.cloudformation.model.AlreadyExistsException;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
@@ -15,9 +14,10 @@ public enum ErrorCode {
     USER_ALREADY_EXISTS(HttpStatus.CONFLICT, "USER_409", "이미 등록된 유저입니다."),
     WORKPLACE_NOT_FOUND(HttpStatus.NOT_FOUND, "WORKPLACE_404", "해당 근무지(매장)는 존재하지 않습니다."),
     WORKPLACE_ALREADY_EXISTS(HttpStatus.CONFLICT, "WORKPLACE_409", "이미 등록된 근무지(매장)입니다."),
-    WORKER_NOT_FOUND(HttpStatus.NOT_FOUND, "WORKER_404", "해당 근무자는 존재하지 않습니다."),
+    WORKER_WORKPLACE_NOT_FOUND(HttpStatus.NOT_FOUND, "WORKER_404", "요청한 근무지에 해당하는 근무자가 존재하지 않습니다."),
+    WORKER_USER_NOT_FOUND(HttpStatus.NOT_FOUND, "WORKER_404", "사용자에 해당하는 근무지가 존재하지 않습니다."),
     WORKER_ALREADY_EXISTS(HttpStatus.CONFLICT, "WORKER_409", "이미 등록된 근무자입니다."),
-    SALARY_NOT_FOUND(HttpStatus.NOT_FOUND, "SALARY_404", "해당 급여는 존재하지 않습니다."),
+    SALARY_WORKER_NOT_FOUND(HttpStatus.NOT_FOUND, "SALARY_404", "근무자에 해당하는 급여가 존재하지 않습니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_500", "서버에 오류가 발생했습니다."),
     ALREADY_DELETED(HttpStatus.CONFLICT, "DELETE_409", "삭제 처리 중입니다.");
 

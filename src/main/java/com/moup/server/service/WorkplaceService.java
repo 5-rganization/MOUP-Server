@@ -1,7 +1,8 @@
 package com.moup.server.service;
 
-import com.moup.server.exception.SalaryNotFoundException;
-import com.moup.server.exception.WorkerNotFoundException;
+import com.moup.server.exception.SalaryWorkerNotFoundException;
+import com.moup.server.exception.WorkerUserNotFoundException;
+import com.moup.server.exception.WorkerWorkplaceNotFoundException;
 import com.moup.server.exception.WorkplaceAlreadyExistsException;
 import com.moup.server.exception.WorkplaceNotFoundException;
 import com.moup.server.model.dto.*;
@@ -37,7 +38,7 @@ public class WorkplaceService {
 
         Worker worker = Worker.builder().userId(userId).workplaceId(createdWorkplace.getId()).labelColor(createdWorkplace.getLabelColor()).isAccepted(true).build();
         workerRepository.create(worker);
-        return workerRepository.findByUserIdAndWorkplaceId(userId, worker.getWorkplaceId()).orElseThrow(WorkerNotFoundException::new);
+        return workerRepository.findByUserIdAndWorkplaceId(userId, worker.getWorkplaceId()).orElseThrow(WorkerWorkplaceNotFoundException::new);
     }
 
     @Transactional
@@ -57,11 +58,6 @@ public class WorkplaceService {
         return WorkplaceCreateResponse.builder().workplaceId(createdWorker.getWorkplaceId()).workerId(createdWorker.getId()).build();
     }
 
-    public WorkplaceDuplicateCheckResponse checkDuplicateWorkplace(Long userId, String workplaceName) {
-        boolean isDuplicated = workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, workplaceName);
-        return WorkplaceDuplicateCheckResponse.builder().isDuplicated(isDuplicated).build();
-    }
-
     public Workplace findByUserIdAndWorkplaceName(Long userId, String workplaceName) {
         return workplaceRepository.findByOwnerIdAndWorkplaceName(userId, workplaceName).orElseThrow(WorkplaceNotFoundException::new);
     }
@@ -70,7 +66,7 @@ public class WorkplaceService {
         List<Worker> userAllWorkers = workerRepository.findAllByUserId(userId);
 
         if (userAllWorkers.isEmpty()) {
-            throw new WorkerNotFoundException();
+            throw new WorkerUserNotFoundException();
         }
 
         List<WorkplaceSummaryResponse> workplaceSummaryResponses = new ArrayList<>();
@@ -99,7 +95,7 @@ public class WorkplaceService {
 
         Salary salary = workerWorkplaceUpdateRequest.toSalaryEntity(updatedWorkplace.getId());
         salaryRepository.update(salary);
-        Salary updatedSalary = salaryRepository.findByWorkerId(salary.getId()).orElseThrow(SalaryNotFoundException::new);
+        Salary updatedSalary = salaryRepository.findByWorkerId(salary.getId()).orElseThrow(SalaryWorkerNotFoundException::new);
 
         return WorkerWorkplaceUpdateResponse.builder().workplaceId(updatedWorkplace.getId()).workerId(updatedSalary.getId()).build();
     }

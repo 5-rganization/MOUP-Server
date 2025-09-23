@@ -48,19 +48,6 @@ public class WorkplaceController {
         return ResponseEntity.ok().body(workplaceCreateResponse);
     }
 
-    @GetMapping("/duplicate-check")
-    @Operation(summary = "근무지(매장) 이름 중복 여부 조회", description = "유저가 이미 동일한 이름을 가진 근무지(매장)를 갖고있는지 여부를 조회")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "근무지(매장) 이름 중복 여부 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceDuplicateCheckResponse.class))),
-            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    public ResponseEntity<?> checkDuplicateWorkplace(@RequestParam String workplaceName) {
-        Long userId = identityService.getCurrentUserId();
-        User user = userService.findUserById(userId);
-
-        WorkplaceDuplicateCheckResponse workplaceDuplicateCheckResponse = workplaceService.checkDuplicateWorkplace(user.getId(), workplaceName);
-        return ResponseEntity.ok().body(workplaceDuplicateCheckResponse);
-    }
-
     @GetMapping("/summary")
     @Operation(summary = "모든 근무지(매장) 요약 조회", description = "현재 로그인된 사용자의 모든 근무지(매장) 조회 및 요약")
     @ApiResponses({
