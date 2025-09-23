@@ -61,14 +61,14 @@ VALUES (1, 'GS25 역삼점', '편의점', 1, '서울 강남구 역삼동 123-45'
        (1, '개인 스터디 카페', '카페', 0, '서울 관악구 신림동 111-22', 37.4844, 126.9294);
 
 -- workers 테이블 더미 데이터 (3명의 직원을 근무지에 배정)
-INSERT INTO `workers` (`user_id`, `workplace_id`, `worker_based_label_color`, `owner_based_label_color`)
-VALUES (3, 1, 'red', 'red'), -- 최알바 -> GS25 역삼점
-       (4, 3, 'green', 'green'), -- 이알바 -> 홍콩반점 홍대입구역점
-       (5, 2, 'blue', 'blue'), -- 강알바 -> 메가커피 선릉점
-       (3, 2, 'purple', 'purple'), -- 최알바 -> 메가커피 선릉점 (한명이 여러곳에서 근무)
-       (4, 4, 'orange', 'orange'), -- 이알바 -> 올리브영 신촌점
-       (1, 1, 'primary', 'primary'), -- 사장님도 근무자로 등록 가능
-       (2, 3, 'primary', 'primary'); -- 사장님도 근무자로 등록 가능
+INSERT INTO `workers` (`user_id`, `workplace_id`, `worker_based_label_color`, `owner_based_label_color`, `is_accepted`)
+VALUES (3, 1, 'red', 'red', 1), -- 최알바 -> GS25 역삼점
+       (4, 3, 'green', 'green', 1), -- 이알바 -> 홍콩반점 홍대입구역점
+       (5, 2, 'blue', 'blue', 1), -- 강알바 -> 메가커피 선릉점
+       (3, 2, 'purple', 'purple', 1), -- 최알바 -> 메가커피 선릉점 (한명이 여러곳에서 근무)
+       (4, 4, 'orange', 'orange', 1), -- 이알바 -> 올리브영 신촌점
+       (1, 1, 'primary', 'primary', 1), -- 사장님도 근무자로 등록 가능
+       (2, 3, 'primary', 'primary', 1); -- 사장님도 근무자로 등록 가능
 
 
 -- salaries 테이블 더미 데이터
