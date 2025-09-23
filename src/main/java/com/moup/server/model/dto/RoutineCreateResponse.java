@@ -12,6 +12,6 @@ import java.util.List;
 public class RoutineCreateResponse {
     @Schema(description = "생성된 루틴 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long routineId;
-    @Schema(description = "생성된 할 일 ID 리스트", example = "[0, 1 ,2]", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "생성된 할 일 ID 리스트 (없으면 빈 배열)", example = "[0, 1 ,2]", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<Long> taskIdList;
 }
