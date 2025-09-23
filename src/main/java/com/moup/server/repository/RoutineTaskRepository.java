@@ -1,22 +1,40 @@
 package com.moup.server.repository;
 
 import com.moup.server.model.entity.RoutineTask;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Select;
-import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @Mapper
 public interface RoutineTaskRepository {
 
     /**
-     * 여러 개의 할 일을 한 번에 생성하는 메서드. (Batch Insert)
+     * 할 일을 생성하는 메서드
      *
-     * @param routineTaskList 생성할 RoutineTask 객체 리스트
+     * @param routineTask 생성할 RoutineTask 객체
      * @return 생성된 행의 수
      */
-    Long createAll(List<RoutineTask> routineTaskList);
+    @Insert("INSERT INTO routine_tasks (routine_id, content, order_index, is_checked) VALUES (#{routineId}, #{content}, #{orderIndex}, #{isChecked})")
+    @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
+    Long create(RoutineTask routineTask);
+
+    /**
+     * 여러 개의 할 일을 한 번에 생성하는 메서드 (배치 INSERT)
+     *
+     * @param tasks 생성할 RoutineTask 객체 리스트
+     */
+    void createTasks(List<RoutineTask> tasks);
+
+    /**
+     * 할 일 ID와 루틴 ID를 통해 해당 할 일의 객체를 반환하는 메서드
+     *
+     * @param id 조회할 할 일의 ID
+     * @param routineId 조회할 할 일의 루틴 ID
+     * @return 조회된 RoutineTask 객체, 없으면 Optional.empty
+     */
+    @Select("SELECT * FROM routine_tasks WHERE id = #{id} AND routine_id = #{routineId}")
+    Optional<RoutineTask> findByIdAndRoutineId(Long id, Long routineId);
 
     /**
      * 루틴 ID를 통해 해당 루틴의 모든 할 일 객체를 리스트로 반환하는 메서드
@@ -28,17 +46,34 @@ public interface RoutineTaskRepository {
     List<RoutineTask> findAllByRoutineId(Long routineId);
 
     /**
-     * 여러 개의 할 일을 한 번에 업데이트하는 메서드. (Batch Update)
+     * 할 일의 ID와 루틴 ID에 해당하는 할 일을 업데이트하는 메서드
      *
-     * @param routineTaskList 업데이트할 RoutineTask 객체 리스트
+     * @param routineTask 업데이트할 RoutineTask 객체
      */
-    void updateTasks(List<RoutineTask> routineTaskList);
+    @Update("UPDATE routine_tasks SET content = #{content}, order_index = #{orderIndex}, is_checked = #{isChecked} WHERE id = #{id} AND routine_id = #{routineId}")
+    void update(RoutineTask routineTask);
 
     /**
-     * 여러 개의 할 일을 한 번에 삭제하는 메서드. (Batch Delete)
+     * 여러 개의 할 일을 한 번에 업데이트하는 메서드 (배치 UPDATE)
      *
-     * @param routineId 삭제할 할 일의 루틴 ID
-     * @param idList 삭제할 할 일 ID 리스트
+     * @param tasks 업데이트할 RoutineTask 객체 리스트
      */
-    void deleteTasks(@Param("routineId") Long routineId, @Param("idList") List<Long> idList);
+    void updateTasks(List<RoutineTask> tasks);
+
+    /**
+     * 할 일의 ID와 루틴 ID에 해당하는 할 일을 삭제하는 메서드
+     *
+     * @param id 삭제할 할 일 ID
+     * @param routineId 삭제할 할 일의 루틴 ID
+     */
+    @Delete("DELETE FROM routine_tasks WHERE id = #{id} AND routine_id = #{routineId}")
+    void delete(Long id, Long routineId);
+
+    /**
+     * 루틴 ID에 속한 여러 개의 할 일을 ID를 통해 한 번에 삭제하는 메서드 (배치 DELETE)
+     *
+     * @param idList 삭제할 할 일 ID 리스트
+     * @param routineId 할 일이 속한 루틴의 ID
+     */
+    void deleteTasks(@Param("idList") List<Long> idList, @Param("routineId") Long routineId);
 }

@@ -20,6 +20,26 @@ public interface RoutineRepository {
     Long create(Routine routine);
 
     /**
+     * 루틴의 사용자 ID와 루틴 이름를 통해 해당 루틴이 존재하는지 여부를 반환하는 메서드
+     *
+     * @param userId 조회할 루틴의 사용자 ID
+     * @param routineName 조회할 루틴 이름
+     * @return 존재하면 true, 그렇지 않으면 false
+     */
+    @Select("SELECT EXISTS(SELECT 1 FROM routines WHERE user_id = #{userId} AND routine_name = #{routineName})")
+    boolean existsByUserIdAndRoutineName(Long userId, String routineName);
+
+    /**
+     * 루틴의 사용자 ID와 루틴 이름를 통해 해당 루틴을 찾고, 그 루틴 객체를 반환하는 메서드
+     *
+     * @param userId 조회할 루틴의 사용자 ID
+     * @param routineName 조회할 루틴 이름
+     * @return 조회된 Routine 객체, 없으면 Optional.empty
+     */
+    @Select("SELECT * FROM routines WHERE user_id = #{userId} AND routine_name = #{routineName}")
+    Optional<Routine> findByUserIdAndRoutineName(Long userId, String routineName);
+
+    /**
      * 루틴의 ID와 유저 ID를 통해 해당 루틴을 찾고, 그 루틴 객체를 반환하는 메서드
      *
      * @param id 조회할 루틴의 ID
@@ -44,7 +64,7 @@ public interface RoutineRepository {
      * @param routine 업데이트할 루틴 엔티티
      */
     @Update("UPDATE routines SET routine_name = #{routineName}, alarm_time = #{alarmTime} WHERE id = #{id} AND user_id = #{userId}")
-    void updateRoutine(Routine routine);
+    void update(Routine routine);
 
     /**
      * 루틴의 ID와 유저 ID에 해당하는 루틴을 삭제하는 메서드.
@@ -53,5 +73,5 @@ public interface RoutineRepository {
      * @param userId 삭제할 루틴의 유저 ID
      */
     @Delete("DELETE FROM routines WHERE id = #{id} AND user_id = #{userId}")
-    void deleteRoutine(Long id, Long userId);
+    void delete(Long id, Long userId);
 }
