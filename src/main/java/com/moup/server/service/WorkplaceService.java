@@ -12,7 +12,7 @@ import com.moup.server.model.entity.Worker;
 import com.moup.server.repository.SalaryRepository;
 import com.moup.server.repository.WorkerRepository;
 import com.moup.server.repository.WorkplaceRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -58,10 +58,12 @@ public class WorkplaceService {
         return WorkplaceCreateResponse.builder().workplaceId(createdWorker.getWorkplaceId()).workerId(createdWorker.getId()).build();
     }
 
+    @Transactional(readOnly = true)
     public Workplace findByUserIdAndWorkplaceName(Long userId, String workplaceName) {
         return workplaceRepository.findByOwnerIdAndWorkplaceName(userId, workplaceName).orElseThrow(WorkplaceNotFoundException::new);
     }
 
+    @Transactional(readOnly = true)
     public List<WorkplaceSummaryResponse> summarizeAllWorkplaceByUserId(Long userId) {
         List<Worker> userAllWorkers = workerRepository.findAllByUserId(userId);
 
@@ -107,6 +109,7 @@ public class WorkplaceService {
         return OwnerWorkplaceUpdateResponse.builder().workplaceId(updatedWorkplace.getId()).build();
     }
 
+    @Transactional
     public WorkplaceDeleteResponse deleteWorkplace(Long userId, Long workplaceId) {
         workplaceRepository.deleteByWorkplaceIdAndOwnerId(workplaceId, userId);
 
