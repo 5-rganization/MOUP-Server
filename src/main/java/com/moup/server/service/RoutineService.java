@@ -29,7 +29,7 @@ public class RoutineService {
         Routine routine = routineCreateRequest.toEntity(userId);
         if (routineRepository.existsByUserIdAndRoutineName(userId, routine.getRoutineName())) { throw new RoutineAlreadyExistsException(); }
         routineRepository.create(routine);
-
+        // TODO: 자동 생성된 ID가 불러와지는지 확인 필요 (불러와지면 코드 최적화 수행)
         Routine createdRoutine = routineRepository.findByUserIdAndRoutineName(userId, routine.getRoutineName()).orElseThrow(RoutineNotFoundException::new);
         List<RoutineTaskCreateRequest> routineTaskCreateRequestList = routineCreateRequest.getRoutineTaskCreateRequestList();
         List<RoutineTask> tasksToCreate = routineTaskCreateRequestList.stream().map(request -> request.toEntity(createdRoutine.getId())).toList();
@@ -40,7 +40,7 @@ public class RoutineService {
         return RoutineCreateResponse.builder()
                 .routineId(createdRoutine.getId())
                 .taskIdList(createdRoutineTask.stream().map(RoutineTask::getId).toList())
-.build();
+                .build();
     }
 
     @Transactional(readOnly = true)
@@ -100,7 +100,6 @@ public class RoutineService {
             Long taskId = requestDto.getTaskId();
             if (taskId == null) {
                 // CREATE
-                // 자동 생성된 ID가 불러와지는지 확인 필요
                 tasksToCreate.add(requestDto.toEntity());
             } else {
                 if (existingTaskMap.containsKey(taskId)) {
