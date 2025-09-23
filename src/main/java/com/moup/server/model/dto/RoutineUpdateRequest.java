@@ -15,6 +15,8 @@ import java.util.List;
 @Builder
 @Schema(description = "루틴 업데이트 요청 DTO")
 public class RoutineUpdateRequest {
+    static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+
     @Schema(description = "루틴 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long routineId;
     @Schema(description = "루틴 이름", example = "오픈", requiredMode = Schema.RequiredMode.REQUIRED)
@@ -25,16 +27,24 @@ public class RoutineUpdateRequest {
     private List<RoutineTaskUpdateRequest> routineTaskUpdateRequestList;
 
     public Routine toEntity(Long userId) {
-        try {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+        if (alarmTime == null || alarmTime.isBlank()) {
             return Routine.builder()
                     .id(routineId)
                     .userId(userId)
                     .routineName(routineName)
-                    .alarmTime(LocalTime.parse(alarmTime, formatter))
+                    .alarmTime(null)
                     .build();
-        } catch (DateTimeParseException e) {
-            throw new InvalidDateTimeFormatException();
+        } else {
+            try {
+                return Routine.builder()
+                        .id(routineId)
+                        .userId(userId)
+                        .routineName(routineName)
+                        .alarmTime(LocalTime.parse(alarmTime, formatter))
+                        .build();
+            } catch (DateTimeParseException e) {
+                throw new InvalidDateTimeFormatException();
+            }
         }
     }
 }
