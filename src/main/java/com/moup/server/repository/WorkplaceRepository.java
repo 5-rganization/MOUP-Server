@@ -15,8 +15,8 @@ public interface WorkplaceRepository {
      * @return 생성된 행의 수
      */
     @Insert("""
-            INSERT INTO workplaces (owner_id, workplace_name, category_name, label_color, is_shared, address, latitude, longitude) 
-            VALUES (#{ownerId}, #{workplaceName}, #{categoryName}, #{labelColor}, #{isShared}, #{address}, #{latitude}, #{longitude})
+            INSERT INTO workplaces (owner_id, workplace_name, category_name, is_shared, address, latitude, longitude)
+            VALUES (#{ownerId}, #{workplaceName}, #{categoryName}, #{isShared}, #{address}, #{latitude}, #{longitude})
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
     Long create(Workplace workplace);
@@ -57,7 +57,7 @@ public interface WorkplaceRepository {
      */
     @Update("""
             UPDATE workplaces
-            SET workplace_name = #{workplaceName}, category_name = #{categoryName}, label_color = #{labelColor}, is_shared = #{isShared}, address = #{address}, latitude = #{latitude}, longitude = #{longitude}
+            SET workplace_name = #{workplaceName}, category_name = #{categoryName}, is_shared = #{isShared}, address = #{address}, latitude = #{latitude}, longitude = #{longitude}
             WHERE id = #{id} AND owner_id = #{ownerId}
             """)
     void update(Workplace workplace);

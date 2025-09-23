@@ -15,7 +15,7 @@ public interface WorkerRepository {
      * @param worker 생성할 Worker 객체
      * @return 생성된 행의 수
      */
-    @Insert("INSERT INTO workers (user_id, workplace_id, label_color, is_accepted) VALUES (#{userId}, #{workplaceId}, #{labelColor}, #{isAccepted})")
+    @Insert("INSERT INTO workers (user_id, workplace_id, worker_based_label_color, owner_based_label_color, is_accepted) VALUES (#{userId}, #{workplaceId}, #{workerBasedLabelColor}, #{ownerBasedLabelColor}, #{isAccepted})")
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
     Long create(Worker worker);
 
@@ -39,14 +39,24 @@ public interface WorkerRepository {
     List<Worker> findAllByUserId(Long userId);
 
     /**
-     * ID에 해당하는 근무자의 라벨 색상을 업데이트하는 메서드.
+     * ID에 해당하는 근무자의 근무자 기준 라벨 색상을 업데이트하는 메서드.
      *
      * @param id 업데이트할 근무자의 ID
      * @param workplaceId 업데이트할 근무자의 근무지 ID
-     * @param labelColor 업데이트할 라벨 색상
+     * @param workerBasedLabelColor 업데이트할 라벨 색상
      */
-    @Update("UPDATE workers SET label_color = #{labelColor} WHERE id = #{id} AND user_id = #{userId} AND workplace_id = #{workplaceId}")
-    void updateLabelColor(Long id, Long userId, Long workplaceId, String labelColor);
+    @Update("UPDATE workers SET worker_based_label_color = #{workerBasedLabelColor} WHERE id = #{id} AND user_id = #{userId} AND workplace_id = #{workplaceId}")
+    void updateWorkerBasedLabelColor(Long id, Long userId, Long workplaceId, String workerBasedLabelColor);
+
+    /**
+     * ID에 해당하는 근무자의 사장님 기준 라벨 색상을 업데이트하는 메서드.
+     *
+     * @param id 업데이트할 근무자의 ID
+     * @param workplaceId 업데이트할 근무자의 근무지 ID
+     * @param ownerBasedLabelColor 업데이트할 라벨 색상
+     */
+    @Update("UPDATE workers SET owner_based_label_color = #{ownerBasedLabelColor} WHERE id = #{id} AND user_id = #{userId} AND workplace_id = #{workplaceId}")
+    void updateOwnerBasedLabelColor(Long id, Long userId, Long workplaceId, String ownerBasedLabelColor);
 
     /**
      * ID에 해당하는 근무자의 초대 승인 여부를 업데이트하는 메서드.

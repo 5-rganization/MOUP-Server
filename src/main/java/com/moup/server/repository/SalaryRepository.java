@@ -15,15 +15,16 @@ public interface SalaryRepository {
      */
     @Insert("""
             INSERT INTO salaries (
-                                    id, salary_type, salary_calculation, hourly_rate, fixed_rate, salary_date, salary_day,
+                                    worker_id, salary_type, salary_calculation, hourly_rate, fixed_rate, salary_date, salary_day,
                                     has_national_pension, has_health_insurance, has_employment_insurance, has_industrial_accident,
                                     has_income_tax, has_night_allowance
                                     ) 
             VALUES (
-                    #{id}, #{salaryType}, #{salaryCalculation}, #{hourlyRate}, #{fixedRate}, #{salaryDate}, #{salaryDay},
+                    #{workerId}, #{salaryType}, #{salaryCalculation}, #{hourlyRate}, #{fixedRate}, #{salaryDate}, #{salaryDay},
                     #{hasNationalPension}, #{hasHealthInsurance}, #{hasEmploymentInsurance}, #{hasIndustrialAccident}, #{hasIncomeTax}, #{hasNightAllowance}
                     )
             """)
+    @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
     Long create(Salary salary);
 
     /**
@@ -32,8 +33,8 @@ public interface SalaryRepository {
      * @param workerId 조회할 급여의 근무자 ID
      * @return 조회된 Salary 객체, 없으면 Optional.empty
      */
-    @Select("SELECT * FROM salaries WHERE id = #{workerId}")
-    Optional<Salary> findByWorkerId(Long workerId);
+    @Select("SELECT * FROM salaries WHERE id = #{id} AND worker_id = #{workerId}")
+    Optional<Salary> findByIdAndWorkerId(Long id, Long workerId);
 
     /**
      * 급여 엔티티의 ID(근무자 ID)에 해당하는 급여 정보를 업데이트하는 메서드.
@@ -46,7 +47,7 @@ public interface SalaryRepository {
                                   has_national_pension = #{hasNationalPension}, has_health_insurance = #{hasHealthInsurance},
                                   has_employment_insurance = #{hasEmploymentInsurance}, has_industrial_accident = #{hasIndustrialAccident}, 
                                   has_income_tax = #{hasIncomeTax}, has_night_allowance = #{hasNightAllowance}
-            WHERE id = #{id}
+            WHERE id = #{id} AND worker_id = #{workerId}
             """)
     void update(Salary salary);
 
@@ -55,6 +56,6 @@ public interface SalaryRepository {
      *
      * @param workerId 삭제할 급여의 근무자 ID
      */
-    @Delete("DELETE FROM salaries WHERE id = #{workerId}")
-    void deleteByWorkerId(Long workerId);
+    @Delete("DELETE FROM salaries WHERE id = #{id} AND worker_id = #{workerId}")
+    void deleteByWorkerId(Long id, Long workerId);
 }

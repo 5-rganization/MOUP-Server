@@ -5,7 +5,8 @@ import com.moup.server.model.entity.Workplace;
 public interface WorkplaceCreateRequest {
     String getWorkplaceName();
     String getCategoryName();
-    String getLabelColor();
+    String getWorkerBasedLabelColor();
+    String getOwnerBasedLabelColor();
     String getAddress();
     Double getLatitude();
     Double getLongitude();

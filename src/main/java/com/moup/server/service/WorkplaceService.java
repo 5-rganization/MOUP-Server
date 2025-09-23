@@ -29,14 +29,20 @@ public class WorkplaceService {
     @Transactional
     protected Worker createWorkplace(Long userId, WorkplaceCreateRequest workplaceCreateRequest) {
         Workplace workplace = workplaceCreateRequest.toWorkplaceEntity(userId);
-        if (workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, workplace.getWorkplaceName())) {
-            throw new WorkplaceAlreadyExistsException();
-        }
-
+        if (workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, workplace.getWorkplaceName())) { throw new WorkplaceAlreadyExistsException(); }
         workplaceRepository.create(workplace);
         Workplace createdWorkplace = workplaceRepository.findByOwnerIdAndWorkplaceName(userId, workplaceCreateRequest.getWorkplaceName()).orElseThrow(WorkplaceNotFoundException::new);
 
-        Worker worker = Worker.builder().userId(userId).workplaceId(createdWorkplace.getId()).labelColor(createdWorkplace.getLabelColor()).isAccepted(true).build();
+        String workerBasedLabelColor = workplaceCreateRequest.getWorkerBasedLabelColor();
+        String ownerBasedLabelColor = workplaceCreateRequest.getOwnerBasedLabelColor();
+
+        Worker worker = Worker.builder()
+                .userId(userId)
+                .workplaceId(createdWorkplace.getId())
+                .workerBasedLabelColor(workerBasedLabelColor == null ? "primary" : workerBasedLabelColor)
+                .ownerBasedLabelColor(ownerBasedLabelColor == null ? "primary" : ownerBasedLabelColor)
+                .isAccepted(true)
+                .build();
         workerRepository.create(worker);
         return workerRepository.findByUserIdAndWorkplaceId(userId, worker.getWorkplaceId()).orElseThrow(WorkerWorkplaceNotFoundException::new);
     }
@@ -48,14 +54,20 @@ public class WorkplaceService {
         Salary salary = workerWorkplaceCreateRequest.toSalaryEntity(createdWorker.getId());
         salaryRepository.create(salary);
 
-        return WorkplaceCreateResponse.builder().workplaceId(createdWorker.getWorkplaceId()).workerId(createdWorker.getId()).build();
+        return WorkplaceCreateResponse.builder()
+                .workplaceId(createdWorker.getWorkplaceId())
+                .workerId(createdWorker.getId())
+                .build();
     }
 
     @Transactional
     public WorkplaceCreateResponse createOwnerWorkplace(Long userId, OwnerWorkplaceCreateRequest ownerWorkplaceCreateRequest) {
         Worker createdWorker = createWorkplace(userId, ownerWorkplaceCreateRequest);
 
-        return WorkplaceCreateResponse.builder().workplaceId(createdWorker.getWorkplaceId()).workerId(createdWorker.getId()).build();
+        return WorkplaceCreateResponse.builder()
+                .workplaceId(createdWorker.getWorkplaceId())
+                .workerId(createdWorker.getId())
+                .build();
     }
 
     @Transactional(readOnly = true)
@@ -67,14 +79,15 @@ public class WorkplaceService {
     public List<WorkplaceSummaryResponse> summarizeAllWorkplaceByUserId(Long userId) {
         List<Worker> userAllWorkers = workerRepository.findAllByUserId(userId);
 
-        if (userAllWorkers.isEmpty()) {
-            throw new WorkerUserNotFoundException();
-        }
-
         List<WorkplaceSummaryResponse> workplaceSummaryResponses = new ArrayList<>();
         for (Worker worker : userAllWorkers) {
             Workplace workplace = workplaceRepository.findById(worker.getWorkplaceId()).orElseThrow(WorkplaceNotFoundException::new);
-            workplaceSummaryResponses.add(WorkplaceSummaryResponse.builder().workplaceId(workplace.getId()).workplaceName(workplace.getWorkplaceName()).isShared(workplace.isShared()).build());
+            workplaceSummaryResponses.add(WorkplaceSummaryResponse.builder()
+                    .workplaceId(workplace.getId())
+                    .workplaceName(workplace.getWorkplaceName())
+                    .isShared(workplace.isShared())
+                    .workerId(worker.getId())
+                    .build());
         }
         return workplaceSummaryResponses;
     }
@@ -82,10 +95,7 @@ public class WorkplaceService {
     @Transactional
     protected Workplace updateWorkplace(Long userId, WorkplaceUpdateRequest workplaceUpdateRequest) {
         Workplace workplace = workplaceUpdateRequest.toWorkplaceEntity(userId);
-        if (workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, workplace.getWorkplaceName())) {
-            throw new WorkplaceAlreadyExistsException();
-        }
-
+        if (workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, workplace.getWorkplaceName())) { throw new WorkplaceAlreadyExistsException(); }
         workplaceRepository.update(workplace);
 
         return workplaceRepository.findByOwnerIdAndWorkplaceName(userId, workplace.getWorkplaceName()).orElseThrow(WorkplaceNotFoundException::new);
@@ -95,24 +105,30 @@ public class WorkplaceService {
     public WorkerWorkplaceUpdateResponse updateWorkerWorkplace(Long userId, WorkerWorkplaceUpdateRequest workerWorkplaceUpdateRequest) {
         Workplace updatedWorkplace = updateWorkplace(userId, workerWorkplaceUpdateRequest);
 
-        Salary salary = workerWorkplaceUpdateRequest.toSalaryEntity(updatedWorkplace.getId());
+        Salary salary = workerWorkplaceUpdateRequest.toSalaryEntity();
         salaryRepository.update(salary);
-        Salary updatedSalary = salaryRepository.findByWorkerId(salary.getId()).orElseThrow(SalaryWorkerNotFoundException::new);
+        Salary updatedSalary = salaryRepository.findByIdAndWorkerId(salary.getId(), salary.getWorkerId()).orElseThrow(SalaryWorkerNotFoundException::new);
 
-        return WorkerWorkplaceUpdateResponse.builder().workplaceId(updatedWorkplace.getId()).workerId(updatedSalary.getId()).build();
+        return WorkerWorkplaceUpdateResponse.builder()
+                .workplaceId(updatedWorkplace.getId())
+                .workerId(updatedSalary.getId()).build();
     }
 
     @Transactional
     public OwnerWorkplaceUpdateResponse updateOwnerWorkplace(Long userId, OwnerWorkplaceUpdateRequest ownerWorkplaceUpdateRequest) {
         Workplace updatedWorkplace = updateWorkplace(userId, ownerWorkplaceUpdateRequest);
 
-        return OwnerWorkplaceUpdateResponse.builder().workplaceId(updatedWorkplace.getId()).build();
+        return OwnerWorkplaceUpdateResponse.builder()
+                .workplaceId(updatedWorkplace.getId())
+                .build();
     }
 
     @Transactional
     public WorkplaceDeleteResponse deleteWorkplace(Long userId, Long workplaceId) {
         workplaceRepository.deleteByWorkplaceIdAndOwnerId(workplaceId, userId);
 
-        return WorkplaceDeleteResponse.builder().workplaceId(workplaceId).build();
+        return WorkplaceDeleteResponse.builder()
+                .workplaceId(workplaceId)
+                .build();
     }
 }

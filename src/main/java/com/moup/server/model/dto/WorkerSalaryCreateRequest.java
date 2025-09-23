@@ -11,9 +11,9 @@ import lombok.Getter;
 public class WorkerSalaryCreateRequest {
     @Schema(description = "근무자 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long workerId;
-    @Schema(description = "급여 유형", example = "매월: SALARY_MONTHLY, 매주: SALARY_WEEKLY, 매일: SALARY_DAILY", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "급여 유형 (매월: SALARY_MONTHLY, 매주: SALARY_WEEKLY, 매일: SALARY_DAILY)", example = "SALARY_MONTHLY", requiredMode = Schema.RequiredMode.REQUIRED)
     private String salaryType;
-    @Schema(description = "급여 계산", example = "시급: SALARY_CALCULATION_HOURLY, 고정: SALARY_CALCULATION_FIXED", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "급여 계산 (시급: SALARY_CALCULATION_HOURLY, 고정: SALARY_CALCULATION_FIXED)", example = "SALARY_CALCULATION_HOURLY", requiredMode = Schema.RequiredMode.REQUIRED)
     private String salaryCalculation;
     @Schema(description = "시급", example = "10030", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Integer hourlyRate;
@@ -21,7 +21,7 @@ public class WorkerSalaryCreateRequest {
     private Integer fixedRate;
     @Schema(description = "급여일", example = "15", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Integer salaryDate;
-    @Schema(description = "급여 요일", example = "월: MON, 화: TUE, 수: WED, 목: THU, 금: FRI, 토: SAT, 일: SUN", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @Schema(description = "급여 요일 (월: MON, 화: TUE, 수: WED, 목: THU, 금: FRI, 토: SAT, 일: SUN)", example = "MON", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String salaryDay;
     @Schema(description = "국민연금 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
     private boolean hasNationalPension;
@@ -38,7 +38,8 @@ public class WorkerSalaryCreateRequest {
 
     public Salary toEntity() {
         return Salary.builder()
-                .id(workerId)
+                .id(null)
+                .workerId(workerId)
                 .salaryType(salaryType)
                 .salaryCalculation(salaryCalculation)
                 .hourlyRate(hourlyRate)
