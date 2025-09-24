@@ -36,7 +36,18 @@ public class RoutineService {
     }
 
     @Transactional(readOnly = true)
-    public RoutineSummaryListResponse summarizeAllRoutine(Long userId) {
+    public RoutineSummaryResponse getSummarizedRoutine(Long routineId, Long userId) {
+        Routine routine = routineRepository.findByIdAndUserId(routineId, userId).orElseThrow(RoutineNotFoundException::new);
+
+        return RoutineSummaryResponse.builder()
+                .routineId(routine.getId())
+                .routineName(routine.getRoutineName())
+                .alarmTime(routine.getAlarmTime() != null ? routine.getAlarmTime().toString() : null)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public RoutineSummaryListResponse getAllSummarizedRoutine(Long userId) {
         List<Routine> routineList = routineRepository.findAllByUserId(userId);
         List<RoutineSummaryResponse> routineSummaryResponseList = routineList.stream().map(
                 routine -> RoutineSummaryResponse.builder()

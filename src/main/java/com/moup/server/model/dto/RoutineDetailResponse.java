@@ -14,7 +14,7 @@ public class RoutineDetailResponse {
     private Long routineId;
     @Schema(description = "루틴 이름", example = "오픈 루틴", requiredMode = Schema.RequiredMode.REQUIRED)
     private String routineName;
-    @Schema(description = "알람 시간", example = "08:00", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @Schema(description = "알람 시간 (HH:mm)", example = "08:00", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String alarmTime;
     @Schema(description = "할 일 리스트 (없으면 빈 배열)",
             example = """
