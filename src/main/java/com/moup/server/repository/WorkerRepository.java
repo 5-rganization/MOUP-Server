@@ -20,19 +20,19 @@ public interface WorkerRepository {
     Long create(Worker worker);
 
     /**
-     * 근무자 ID와 유저 ID를 통해 해당 유저의 근무자 객체를 반환하는 메서드
+     * 근무자 ID와 사용자 ID를 통해 해당 사용자의 근무자 객체를 반환하는 메서드
      *
      * @param id 조회할 근무자 ID
-     * @param userId 조회할 유저 ID
+     * @param userId 조회할 사용자 ID
      * @return 조회된 Worker 객체, 없으면 Optional.empty
      */
     @Select("SELECT * FROM workers WHERE id = #{id} AND user_id = #{userId}")
     Optional<Worker> findByIdAndUserId(Long id, Long userId);
 
     /**
-     * 근무지 ID와 유저 ID를 통해 해당 근무지 유저의 근무자 객체를 반환하는 메서드
+     * 근무지 ID와 사용자 ID를 통해 해당 근무지 사용자의 근무자 객체를 반환하는 메서드
      *
-     * @param userId 조회할 유저 ID
+     * @param userId 조회할 사용자 ID
      * @param workplaceId 조회할 근무지 ID
      * @return 조회된 Worker 객체, 없으면 Optional.empty
      */
@@ -40,16 +40,16 @@ public interface WorkerRepository {
     Optional<Worker> findByUserIdAndWorkplaceId(Long userId, Long workplaceId);
 
     /**
-     * 유저 ID를 통해 해당 유저의 모든 근무자 객체를 리스트로 반환하는 메서드
+     * 사용자 ID를 통해 해당 사용자의 모든 근무자 객체를 리스트로 반환하는 메서드
      *
-     * @param userId 조회할 유저 ID
+     * @param userId 조회할 사용자 ID
      * @return 조회된 Worker 객체 리스트, 없으면 빈 배열
      */
     @Select("SELECT * FROM workers WHERE user_id = #{userId}")
     List<Worker> findAllByUserId(Long userId);
 
     /**
-     * 근무자 ID, 유저 ID, 근무지 ID에 해당하는 근무자의 근무자 기준 라벨 색상을 업데이트하는 메서드.
+     * 근무자 ID, 사용자 ID, 근무지 ID에 해당하는 근무자의 근무자 기준 라벨 색상을 업데이트하는 메서드.
      *
      * @param id 업데이트할 근무자의 ID
      * @param workplaceId 업데이트할 근무자의 근무지 ID
@@ -69,10 +69,10 @@ public interface WorkerRepository {
     void updateOwnerBasedLabelColor(Long id, Long userId, Long workplaceId, String ownerBasedLabelColor);
 
     /**
-     * 근무자 ID, 유저 ID, 근무지 ID에 해당하는 근무자의 초대 승인 여부를 업데이트하는 메서드.
+     * 근무자 ID, 사용자 ID, 근무지 ID에 해당하는 근무자의 초대 승인 여부를 업데이트하는 메서드.
      *
      * @param id 업데이트할 근무자의 ID
-     * @param userId 업데이트할 근무자의 유저 ID
+     * @param userId 업데이트할 근무자의 사용자 ID
      * @param workplaceId 업데이트할 근무자의 근무지 ID
      * @param isAccepted 업데이트할 초대 승인 여부
      */
@@ -80,10 +80,10 @@ public interface WorkerRepository {
     void updateIsAccepted(Long id, Long userId, Long workplaceId, Boolean isAccepted);
 
     /**
-     * 근무자 ID, 유저 ID, 근무지 ID에 해당하는 근무자를 삭제하는 메서드.
+     * 근무자 ID, 사용자 ID, 근무지 ID에 해당하는 근무자를 삭제하는 메서드.
      *
      * @param id 삭제할 근무자의 ID
-     * @param userId 삭제할 근무자의 유저 ID
+     * @param userId 삭제할 근무자의 사용자 ID
      * @param workplaceId 삭제할 근무자의 근무지 ID
      */
     @Delete("DELETE FROM workers WHERE id = #{id} AND user_id = #{userId} AND workplace_id = #{workplaceId}")
