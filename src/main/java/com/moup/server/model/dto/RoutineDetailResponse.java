@@ -32,5 +32,5 @@ public class RoutineDetailResponse {
             ]
             """,
             requiredMode = Schema.RequiredMode.REQUIRED)
-    private List<RoutineTaskDetailResponse> routineTaskDetailResponseList;
+    private List<RoutineTaskDetailResponse> routineTaskList;
 }

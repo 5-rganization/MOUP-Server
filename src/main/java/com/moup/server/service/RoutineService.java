@@ -1,7 +1,6 @@
 package com.moup.server.service;
 
 import com.moup.server.exception.RoutineNotFoundException;
-import com.moup.server.exception.RoutineTaskNotFoundException;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.Routine;
 import com.moup.server.model.entity.RoutineTask;
@@ -11,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -28,7 +26,7 @@ public class RoutineService {
         Routine routineToCreate = routineCreateRequest.toEntity(userId);
         routineRepository.create(routineToCreate);
 
-        List<RoutineTaskCreateRequest> routineTaskCreateRequestList = routineCreateRequest.getRoutineTaskCreateRequestList();
+        List<RoutineTaskCreateRequest> routineTaskCreateRequestList = routineCreateRequest.getRoutineTaskList();
         List<RoutineTask> tasksToCreate = routineTaskCreateRequestList.stream().map(request -> request.toEntity(routineToCreate.getId())).toList();
         routineTaskRepository.createTasks(tasksToCreate);
 
@@ -49,7 +47,7 @@ public class RoutineService {
         ).toList();
 
         return RoutineSummaryListResponse.builder()
-                .routineSummaryResponseList(routineSummaryResponseList)
+                .routineSummaryList(routineSummaryResponseList)
                 .build();
     }
 
@@ -71,7 +69,7 @@ public class RoutineService {
                 .routineId(routine.getId())
                 .routineName(routine.getRoutineName())
                 .alarmTime(routine.getAlarmTime().toString())
-                .routineTaskDetailResponseList(routineTaskDetailResponseList)
+                .routineTaskList(routineTaskDetailResponseList)
                 .build();
     }
 
@@ -85,36 +83,38 @@ public class RoutineService {
         }
 
         List<RoutineTask> existingTaskList = routineTaskRepository.findAllByRoutineId(newRoutine.getId());
-        List<RoutineTaskUpdateRequest> requestDtoList = routineUpdateRequest.getRoutineTaskUpdateRequestList();
+        List<RoutineTaskUpdateRequest> requestDtoList = routineUpdateRequest.getRoutineTaskList();
+        boolean isStructureChanged = false;
+        if (existingTaskList.size() != requestDtoList.size()) {
+            isStructureChanged = true;
+        } else {
+            Map<Long, RoutineTask> existingTaskMap = existingTaskList.stream()
+                    .collect(Collectors.toMap(RoutineTask::getId, Function.identity()));
 
-        Map<Long, RoutineTask> existingTaskMap = existingTaskList.stream()
-                .collect(Collectors.toMap(RoutineTask::getId, Function.identity()));
-
-        List<RoutineTask> tasksToCreate = new ArrayList<>();
-        List<RoutineTask> tasksToUpdate = new ArrayList<>();
-
-        for (RoutineTaskUpdateRequest requestDto : requestDtoList) {
-            Long taskId = requestDto.getTaskId();
-            if (taskId == null) {
-                // CREATE
-                tasksToCreate.add(requestDto.toEntity());
-            } else {
-                if (existingTaskMap.containsKey(taskId)) {
-                    // UPDATE
-                    tasksToUpdate.add(requestDto.toEntity());
-                    existingTaskMap.remove(taskId);
-                } else {
-                    throw new RoutineTaskNotFoundException();
+            for (RoutineTaskUpdateRequest dto : requestDtoList) {
+                if (dto.getTaskId() == null
+                        || !existingTaskMap.containsKey(dto.getTaskId())
+                        || !existingTaskMap.get(dto.getTaskId()).getOrderIndex().equals(dto.getOrderIndex())) {
+                    isStructureChanged = true;
+                    break;
                 }
             }
         }
-        // DELETE
-        List<Long> idsToDelete = new ArrayList<>(existingTaskMap.keySet());
 
-        // DB 작업 수행
-        if (!tasksToCreate.isEmpty()) { routineTaskRepository.createTasks(tasksToCreate); }
-        if (!tasksToUpdate.isEmpty()) { routineTaskRepository.updateTasks(tasksToUpdate); }
-        if (!idsToDelete.isEmpty()) { routineTaskRepository.deleteTasks(idsToDelete, newRoutine.getId()); }
+        if (isStructureChanged) {
+            routineTaskRepository.deleteAllByRoutineId(newRoutine.getId());
+            if (!requestDtoList.isEmpty()) {
+                List<RoutineTask> tasksToCreate = requestDtoList.stream()
+                        .map(RoutineTaskUpdateRequest::toEntity)
+                        .toList();
+                routineTaskRepository.createTasks(tasksToCreate);
+            }
+        } else {
+            List<RoutineTask> tasksToUpdate = requestDtoList.stream()
+                    .map(RoutineTaskUpdateRequest::toEntity)
+                    .toList();
+            routineTaskRepository.updateTasks(tasksToUpdate);
+        }
     }
 
     @Transactional

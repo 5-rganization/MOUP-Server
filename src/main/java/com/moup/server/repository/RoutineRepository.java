@@ -30,26 +30,6 @@ public interface RoutineRepository {
     boolean existByIdAndUserId(Long id, Long userId);
 
     /**
-     * 루틴의 사용자 ID와 루틴 이름를 통해 해당 루틴이 존재하는지 여부를 반환하는 메서드
-     *
-     * @param userId 조회할 루틴의 사용자 ID
-     * @param routineName 조회할 루틴 이름
-     * @return 존재하면 true, 그렇지 않으면 false
-     */
-    @Select("SELECT EXISTS(SELECT 1 FROM routines WHERE user_id = #{userId} AND routine_name = #{routineName})")
-    boolean existByUserIdAndRoutineName(Long userId, String routineName);
-
-    /**
-     * 루틴의 사용자 ID와 루틴 이름를 통해 해당 루틴을 찾고, 그 루틴 객체를 반환하는 메서드
-     *
-     * @param userId 조회할 루틴의 사용자 ID
-     * @param routineName 조회할 루틴 이름
-     * @return 조회된 Routine 객체, 없으면 Optional.empty
-     */
-    @Select("SELECT * FROM routines WHERE user_id = #{userId} AND routine_name = #{routineName}")
-    Optional<Routine> findByUserIdAndRoutineName(Long userId, String routineName);
-
-    /**
      * 루틴의 ID와 사용자 ID를 통해 해당 루틴을 찾고, 그 루틴 객체를 반환하는 메서드
      *
      * @param id 조회할 루틴의 ID
@@ -65,7 +45,7 @@ public interface RoutineRepository {
      * @param userId 조회할 루틴의 사용자 ID
      * @return 조회된 Routine 객체 리스트, 없으면 빈 배열
      */
-    @Select("SELECT * FROM routines WHERE user_id = #{userId}")
+    @Select("SELECT * FROM routines WHERE user_id = #{userId} ORDER BY alarm_time IS NULL DESC, alarm_time ASC")
     List<Routine> findAllByUserId(Long userId);
 
     /**
