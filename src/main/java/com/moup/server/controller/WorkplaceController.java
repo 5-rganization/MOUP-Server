@@ -29,7 +29,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @RequestMapping("/workplaces")
 public class WorkplaceController {
-
     private final UserService userService;
     private final IdentityService identityService;
     private final WorkplaceService workplaceService;
@@ -77,6 +76,8 @@ public class WorkplaceController {
             @ApiResponse(responseCode = "204", description = "근무지 업데이트 성공"),
             @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "존재하지 않는 근무지", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청한 근무지에 해당하는 근무자가 존재하지 않음", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "근무자에 해당하는 급여가 존재하지 않음", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "409", description = "중복된 근무지", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "근무지 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkerWorkplaceUpdateRequest.class)))
@@ -117,6 +118,8 @@ public class WorkplaceController {
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "매장 업데이트 성공"),
             @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 매장", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청한 매장에 해당하는 근무자가 존재하지 않음", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "409", description = "중복된 매장", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "매장 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = OwnerWorkplaceUpdateRequest.class)))
@@ -132,13 +135,13 @@ public class WorkplaceController {
         }
     }
 
-    @DeleteMapping()
+    @DeleteMapping("/{workplaceId}")
     @Operation(summary = "근무지(매장) 삭제", description = "삭제할 근무지(매장) ID를 전달받아 삭제")
     @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "근무지 삭제 성공"),
+            @ApiResponse(responseCode = "204", description = "근무지(매장) 삭제 성공"),
             @ApiResponse(responseCode = "404", description = "존재하지 않는 근무지(매장)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    public ResponseEntity<?> deleteWorkplace(@RequestParam Long workplaceId) {
+    public ResponseEntity<?> deleteWorkplace(@PathVariable Long workplaceId) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 

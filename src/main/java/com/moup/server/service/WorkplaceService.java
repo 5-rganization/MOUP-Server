@@ -43,7 +43,7 @@ public class WorkplaceService {
                 .build();
         workerRepository.create(worker);
 
-        return workerRepository.findByUserIdAndWorkplaceId(userId, worker.getWorkplaceId()).orElseThrow(WorkerWorkplaceNotFoundException::new);
+        return workerRepository.findByIdAndUserId(worker.getId(), userId).orElseThrow(WorkerWorkplaceNotFoundException::new);
     }
 
     @Transactional
@@ -112,6 +112,7 @@ public class WorkplaceService {
     @Transactional
     public void updateOwnerWorkplace(Long userId, OwnerWorkplaceUpdateRequest ownerWorkplaceUpdateRequest) {
         updateWorkplace(userId, ownerWorkplaceUpdateRequest);
+
         Long workerId = workerRepository.findByUserIdAndWorkplaceId(userId, ownerWorkplaceUpdateRequest.getWorkplaceId()).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
         workerRepository.updateOwnerBasedLabelColor(workerId, userId, ownerWorkplaceUpdateRequest.getWorkplaceId(), ownerWorkplaceUpdateRequest.getOwnerBasedLabelColor());
     }

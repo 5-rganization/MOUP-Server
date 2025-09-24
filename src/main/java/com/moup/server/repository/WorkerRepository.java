@@ -20,6 +20,16 @@ public interface WorkerRepository {
     Long create(Worker worker);
 
     /**
+     * 근무자 ID와 유저 ID를 통해 해당 유저의 근무자 객체를 반환하는 메서드
+     *
+     * @param id 조회할 근무자 ID
+     * @param userId 조회할 유저 ID
+     * @return 조회된 Worker 객체, 없으면 Optional.empty
+     */
+    @Select("SELECT * FROM workers WHERE id = #{id} AND user_id = #{userId}")
+    Optional<Worker> findByIdAndUserId(Long id, Long userId);
+
+    /**
      * 근무지 ID와 유저 ID를 통해 해당 근무지 유저의 근무자 객체를 반환하는 메서드
      *
      * @param userId 조회할 유저 ID
