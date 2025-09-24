@@ -37,7 +37,7 @@ public class RoutineCreateRequest {
             ]
             """,
             requiredMode = Schema.RequiredMode.REQUIRED)
-    private List<RoutineTaskCreateRequest> routineTaskCreateRequestList;
+    private List<RoutineTaskCreateRequest> routineTaskList;
 
     public Routine toEntity(Long userId) {
         if (alarmTime == null || alarmTime.isBlank()) {

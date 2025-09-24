@@ -31,13 +31,4 @@
             (#{task.id}, #{task.routineId})
         </foreach>
     </update>
-
-    <delete id="deleteTasks">
-        DELETE FROM routine_tasks
-        WHERE routine_id = #{routineId}
-          AND id IN
-        <foreach collection="idList" item="id" open="(" separator="," close=")">
-            #{id}
-        </foreach>
-    </delete>
 </mapper>
