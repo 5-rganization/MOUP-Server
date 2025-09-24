@@ -52,23 +52,6 @@ public class WorkplaceController {
         }
     }
 
-    @GetMapping("/summary")
-    @Operation(summary = "모든 근무지(매장) 요약 조회", description = "현재 로그인된 사용자의 모든 근무지(매장) 조회 및 요약")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "모든 근무지(매장) 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceSummaryListResponse.class))),
-            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    public ResponseEntity<?> summarizeAllWorkplace() {
-        Long userId = identityService.getCurrentUserId();
-        User user = userService.findUserById(userId);
-
-        List<WorkplaceSummaryResponse> summaryResponseList = workplaceService.summarizeAllWorkplace(user.getId());
-
-        WorkplaceSummaryListResponse workplaceSummaryListResponse = WorkplaceSummaryListResponse.builder()
-                .workplaceSummaryResponseList(summaryResponseList)
-                .build();
-        return ResponseEntity.ok().body(workplaceSummaryListResponse);
-    }
-
     @PatchMapping("/worker")
     @Operation(summary = "알바생 근무지 업데이트", description = "알바생이 근무지 및 급여 정보를 입력 하여 업데이트")
     @ApiResponses({
@@ -129,6 +112,23 @@ public class WorkplaceController {
         } else {
             throw new InvalidRoleAccessException();
         }
+    }
+
+    @GetMapping("/summary")
+    @Operation(summary = "모든 근무지(매장) 요약 조회", description = "현재 로그인된 사용자의 모든 근무지(매장) 조회 및 요약")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "모든 근무지(매장) 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceSummaryListResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    public ResponseEntity<?> summarizeAllWorkplace() {
+        Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
+
+        List<WorkplaceSummaryResponse> summaryResponseList = workplaceService.summarizeAllWorkplace(user.getId());
+
+        WorkplaceSummaryListResponse workplaceSummaryListResponse = WorkplaceSummaryListResponse.builder()
+                .workplaceSummaryResponseList(summaryResponseList)
+                .build();
+        return ResponseEntity.ok().body(workplaceSummaryListResponse);
     }
 
     @DeleteMapping("/{workplaceId}")
