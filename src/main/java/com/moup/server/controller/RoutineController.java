@@ -46,10 +46,24 @@ public class RoutineController {
         return ResponseEntity.ok().body(routineSummaryListResponse);
     }
 
+    @GetMapping("/{routineId}")
+    @Operation(summary = "루틴 상세 조회", description = "조회할 루틴 ID를 경로로 전달받아 조회")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "루틴 상세 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineDetailResponse.class))),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 루틴", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    public ResponseEntity<?> getRoutineDetail(@PathVariable Long routineId) {
+        Long userId = identityService.getCurrentUserId();
+
+        RoutineDetailResponse routineDetailResponse = routineService.getRoutineDetail(userId, routineId);
+        return ResponseEntity.ok().body(routineDetailResponse);
+    }
+
     @PatchMapping()
     @Operation(summary = "루틴 업데이트", description = "사용자가 루틴 정보를 입력하여 업데이트")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "루틴 업데이트 성공", content = @Content(mediaType = "application/json")),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 루틴", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "루틴 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineUpdateRequest.class)))
     public ResponseEntity<?> updateRoutine(@RequestBody RoutineUpdateRequest routineUpdateRequest) {
@@ -63,6 +77,7 @@ public class RoutineController {
     @Operation(summary = "루틴 삭제", description = "삭제할 루틴 ID를 경로로 전달받아 삭제")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "루틴 삭제 성공", content = @Content(mediaType = "application/json")),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 루틴", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     public ResponseEntity<?> deleteRoutine(@PathVariable Long routineId) {
         Long userId = identityService.getCurrentUserId();

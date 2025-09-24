@@ -54,7 +54,7 @@ public class RoutineService {
     }
 
     @Transactional(readOnly = true)
-    public RoutineDetailResponse findRoutineDetail(Long userId, Long routineId) {
+    public RoutineDetailResponse getRoutineDetail(Long userId, Long routineId) {
         Routine routine = routineRepository.findByIdAndUserId(routineId, userId).orElseThrow(RoutineNotFoundException::new);
         List<RoutineTask> routineTaskList = routineTaskRepository.findAllByRoutineId(routineId);
         List<RoutineTaskDetailResponse> routineTaskDetailResponseList = routineTaskList.stream().map(
@@ -112,15 +112,9 @@ public class RoutineService {
         List<Long> idsToDelete = new ArrayList<>(existingTaskMap.keySet());
 
         // DB 작업 수행
-        if (!tasksToCreate.isEmpty()) {
-            routineTaskRepository.createTasks(tasksToCreate);
-        }
-        if (!tasksToUpdate.isEmpty()) {
-            routineTaskRepository.updateTasks(tasksToUpdate);
-        }
-        if (!idsToDelete.isEmpty()) {
-            routineTaskRepository.deleteTasks(idsToDelete, newRoutine.getId());
-        }
+        if (!tasksToCreate.isEmpty()) { routineTaskRepository.createTasks(tasksToCreate); }
+        if (!tasksToUpdate.isEmpty()) { routineTaskRepository.updateTasks(tasksToUpdate); }
+        if (!idsToDelete.isEmpty()) { routineTaskRepository.deleteTasks(idsToDelete, newRoutine.getId()); }
     }
 
     @Transactional
