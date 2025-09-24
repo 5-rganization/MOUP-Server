@@ -1,5 +1,7 @@
 package com.moup.server.controller;
 
+import com.moup.server.common.Role;
+import com.moup.server.exception.InvalidRoleAccessException;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.User;
 import com.moup.server.service.IdentityService;
@@ -25,7 +27,7 @@ import java.util.List;
 @Tag(name = "Workplace-Controller", description = "근무지(매장) 정보 관리 API 엔드포인트")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/workplace")
+@RequestMapping("/workplaces")
 public class WorkplaceController {
 
     private final UserService userService;
@@ -36,6 +38,7 @@ public class WorkplaceController {
     @Operation(summary = "알바생 근무지 생성", description = "알바생이 근무지 및 급여 정보를 입력 하여 생성")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "근무지 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceCreateResponse.class))),
+            @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "409", description = "중복된 근무지", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "근무지 생성을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkerWorkplaceCreateRequest.class)))
@@ -43,8 +46,12 @@ public class WorkplaceController {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
-        WorkplaceCreateResponse workplaceCreateResponse = workplaceService.createWorkerWorkplace(user.getId(), workerWorkplaceCreateRequest);
-        return ResponseEntity.ok().body(workplaceCreateResponse);
+        if (user.getRole() == Role.ROLE_WORKER || user.getRole() == Role.ROLE_ADMIN) {
+            WorkplaceCreateResponse workplaceCreateResponse = workplaceService.createWorkerWorkplace(user.getId(), workerWorkplaceCreateRequest);
+            return ResponseEntity.ok().body(workplaceCreateResponse);
+        } else {
+            throw new InvalidRoleAccessException();
+        }
     }
 
     @GetMapping("/summary")
@@ -64,10 +71,11 @@ public class WorkplaceController {
         return ResponseEntity.ok().body(workplaceSummaryListResponse);
     }
 
-    @PutMapping("/worker")
+    @PatchMapping("/worker")
     @Operation(summary = "알바생 근무지 업데이트", description = "알바생이 근무지 및 급여 정보를 입력 하여 업데이트")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "근무지 업데이트 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkerWorkplaceUpdateResponse.class))),
+            @ApiResponse(responseCode = "204", description = "근무지 업데이트 성공"),
+            @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "존재하지 않는 근무지", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "409", description = "중복된 근무지", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
@@ -76,14 +84,19 @@ public class WorkplaceController {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
-        WorkerWorkplaceUpdateResponse workerWorkplaceUpdateResponse = workplaceService.updateWorkerWorkplace(user.getId(), workerWorkplaceUpdateRequest);
-        return ResponseEntity.ok().body(workerWorkplaceUpdateResponse);
+        if (user.getRole() == Role.ROLE_WORKER || user.getRole() == Role.ROLE_ADMIN) {
+            workplaceService.updateWorkerWorkplace(user.getId(), workerWorkplaceUpdateRequest);
+            return ResponseEntity.noContent().build();
+        } else {
+            throw new InvalidRoleAccessException();
+        }
     }
 
     @PostMapping("/owner")
     @Operation(summary = "사장님 매장 생성", description = "사장님이 매장 정보를 입력 하여 생성")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "매장 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceCreateResponse.class))),
+            @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "409", description = "중복된 매장", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "매장 생성을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = OwnerWorkplaceCreateRequest.class)))
@@ -91,14 +104,19 @@ public class WorkplaceController {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
-        WorkplaceCreateResponse workplaceCreateResponse = workplaceService.createOwnerWorkplace(user.getId(), ownerWorkplaceCreateRequest);
-        return ResponseEntity.ok().body(workplaceCreateResponse);
+        if (user.getRole() == Role.ROLE_OWNER || user.getRole() == Role.ROLE_ADMIN) {
+            WorkplaceCreateResponse workplaceCreateResponse = workplaceService.createOwnerWorkplace(user.getId(), ownerWorkplaceCreateRequest);
+            return ResponseEntity.ok().body(workplaceCreateResponse);
+        } else {
+            throw new InvalidRoleAccessException();
+        }
     }
 
-    @PutMapping("/owner")
+    @PatchMapping("/owner")
     @Operation(summary = "사장님 매장 업데이트", description = "사장님이 매장 정보를 입력 하여 업데이트")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "매장 업데이트 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = OwnerWorkplaceUpdateResponse.class))),
+            @ApiResponse(responseCode = "204", description = "매장 업데이트 성공"),
+            @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "409", description = "중복된 매장", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "매장 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = OwnerWorkplaceUpdateRequest.class)))
@@ -106,21 +124,25 @@ public class WorkplaceController {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
-        OwnerWorkplaceUpdateResponse ownerWorkplaceUpdateResponse = workplaceService.updateOwnerWorkplace(user.getId(), ownerWorkplaceUpdateRequest);
-        return ResponseEntity.ok().body(ownerWorkplaceUpdateResponse);
+        if (user.getRole() == Role.ROLE_OWNER || user.getRole() == Role.ROLE_ADMIN) {
+            workplaceService.updateOwnerWorkplace(user.getId(), ownerWorkplaceUpdateRequest);
+            return ResponseEntity.noContent().build();
+        } else {
+            throw new InvalidRoleAccessException();
+        }
     }
 
     @DeleteMapping()
     @Operation(summary = "근무지(매장) 삭제", description = "삭제할 근무지(매장) ID를 전달받아 삭제")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "근무지 삭제 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceDeleteResponse.class))),
+            @ApiResponse(responseCode = "204", description = "근무지 삭제 성공"),
             @ApiResponse(responseCode = "404", description = "존재하지 않는 근무지(매장)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     public ResponseEntity<?> deleteWorkplace(@RequestParam Long workplaceId) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
-        WorkplaceDeleteResponse workplaceDeleteResponse = workplaceService.deleteWorkplace(user.getId(), workplaceId);
-        return ResponseEntity.ok().body(workplaceDeleteResponse);
+        workplaceService.deleteWorkplace(user.getId(), workplaceId);
+        return ResponseEntity.noContent().build();
     }
 }

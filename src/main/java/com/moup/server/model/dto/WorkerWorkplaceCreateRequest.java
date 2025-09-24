@@ -3,17 +3,23 @@ package com.moup.server.model.dto;
 import com.moup.server.model.entity.Salary;
 import com.moup.server.model.entity.Workplace;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Getter
-@Builder
+@SuperBuilder
+@NoArgsConstructor
 @Schema(description = "알바생 근무지 생성 요청 DTO")
-public class WorkerWorkplaceCreateRequest implements WorkplaceCreateRequest {
+public class WorkerWorkplaceCreateRequest extends WorkplaceCreateRequest {
+    @Override
     @Schema(description = "근무지 이름", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String workplaceName;
+    public String getWorkplaceName() { return super.getWorkplaceName(); }
+
+    @Override
     @Schema(description = "근무지 카테고리 이름", example = "편의점", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String categoryName;
+    public String getCategoryName() { return super.getCategoryName(); }
+
     @Schema(description = "급여 유형 (매월: SALARY_MONTHLY, 매주: SALARY_WEEKLY, 매일: SALARY_DAILY)", example = "SALARY_MONTHLY", requiredMode = Schema.RequiredMode.REQUIRED)
     private String salaryType;
     @Schema(description = "급여 계산 (시급: SALARY_CALCULATION_HOURLY, 고정: SALARY_CALCULATION_FIXED)", example = "SALARY_CALCULATION_HOURLY", requiredMode = Schema.RequiredMode.REQUIRED)
@@ -38,27 +44,25 @@ public class WorkerWorkplaceCreateRequest implements WorkplaceCreateRequest {
     private boolean hasIncomeTax;
     @Schema(description = "야간수당 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
     private boolean hasNightAllowance;
+
+    @Override
     @Schema(description = "라벨 색상 (근무자 기준)", example = "red", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String workerBasedLabelColor;
+    public String getWorkerBasedLabelColor() { return super.getWorkerBasedLabelColor(); }
+
+    @Override
     @Schema(description = "라벨 색상 (사장님 기준)", example = "red", requiredMode = Schema.RequiredMode.NOT_REQUIRED, hidden = true)
-    private String ownerBasedLabelColor;
-    @Schema(description = "주소", example = "경기 화성시 동탄중심상가1길 8 1층", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    private String address;
-    @Schema(description = "위도", example = "37.2000891334382", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    private Double latitude;
-    @Schema(description = "경도", example = "127.072006099274", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    private Double longitude;
+    public String getOwnerBasedLabelColor() { return super.getOwnerBasedLabelColor(); }
 
     public Workplace toWorkplaceEntity(Long ownerId) {
         return Workplace.builder()
                 .id(null)
                 .ownerId(ownerId)
-                .workplaceName(workplaceName)
-                .categoryName(categoryName)
+                .workplaceName(getWorkplaceName())
+                .categoryName(getCategoryName())
                 .isShared(false)
-                .address(address)
-                .latitude(latitude)
-                .longitude(longitude)
+                .address(getAddress())
+                .latitude(getLatitude())
+                .longitude(getLongitude())
                 .build();
     }
 

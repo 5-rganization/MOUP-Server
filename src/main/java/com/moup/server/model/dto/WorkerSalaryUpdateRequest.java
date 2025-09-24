@@ -10,7 +10,7 @@ import lombok.Getter;
 @Schema(description = "알바생 급여 업데이트 요청 DTO")
 public class WorkerSalaryUpdateRequest {
     @Schema(description = "급여 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
-    private Long id;
+    private Long salaryId;
     @Schema(description = "근무자 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long workerId;
     @Schema(description = "급여 유형 (매월: SALARY_MONTHLY, 매주: SALARY_WEEKLY, 매일: SALARY_DAILY)", example = "SALARY_MONTHLY", requiredMode = Schema.RequiredMode.REQUIRED)
@@ -40,7 +40,7 @@ public class WorkerSalaryUpdateRequest {
 
     public Salary toEntity() {
         return Salary.builder()
-                .id(id)
+                .id(salaryId)
                 .workerId(workerId)
                 .salaryType(salaryType)
                 .salaryCalculation(salaryCalculation)

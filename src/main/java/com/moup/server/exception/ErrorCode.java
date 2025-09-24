@@ -10,6 +10,7 @@ public enum ErrorCode {
     INVALID_FILE_EXTENSION(HttpStatus.BAD_REQUEST, "FILE_400", "잘못된 파일 형식입니다."),
     INVALID_TOKEN(HttpStatus.BAD_REQUEST, "AUTH_400", "유효하지 않은 토큰입니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH_401", "인증되지 않은 사용자입니다."),
+    INVALID_ROLE_ACCESS(HttpStatus.BAD_REQUEST, "ROLE_403", "역할에 맞지 않는 접근입니다."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_404", "해당 유저는 존재하지 않습니다."),
     USER_ALREADY_EXISTS(HttpStatus.CONFLICT, "USER_409", "이미 등록된 유저입니다."),
     WORKPLACE_NOT_FOUND(HttpStatus.NOT_FOUND, "WORKPLACE_404", "해당 근무지(매장)는 존재하지 않습니다."),

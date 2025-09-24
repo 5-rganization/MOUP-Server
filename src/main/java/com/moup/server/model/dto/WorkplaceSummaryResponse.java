@@ -14,6 +14,4 @@ public class WorkplaceSummaryResponse {
     private String workplaceName;
     @Schema(description = "공유 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean isShared;
-    @Schema(description = "근무자 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
-    private Long workerId;
 }

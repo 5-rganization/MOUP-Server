@@ -16,8 +16,6 @@ public class WorkerWorkplaceUpdateRequest implements WorkplaceUpdateRequest {
     private String workplaceName;
     @Schema(description = "근무지 카테고리 이름", example = "편의점", requiredMode = Schema.RequiredMode.REQUIRED)
     private String categoryName;
-    @Schema(description = "급여 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
-    private Long salaryId;
     @Schema(description = "급여 유형 (매월: SALARY_MONTHLY, 매주: SALARY_WEEKLY, 매일: SALARY_DAILY)", example = "SALARY_MONTHLY", requiredMode = Schema.RequiredMode.REQUIRED)
     private String salaryType;
     @Schema(description = "급여 계산 (시급: SALARY_CALCULATION_HOURLY, 고정: SALARY_CALCULATION_FIXED)", example = "SALARY_CALCULATION_HOURLY", requiredMode = Schema.RequiredMode.REQUIRED)
@@ -42,8 +40,6 @@ public class WorkerWorkplaceUpdateRequest implements WorkplaceUpdateRequest {
     private boolean hasIncomeTax;
     @Schema(description = "야간수당 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
     private boolean hasNightAllowance;
-    @Schema(description = "근무자 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
-    private Long workerId;
     @Schema(description = "라벨 색상 (근무자 기준)", example = "red", requiredMode = Schema.RequiredMode.REQUIRED)
     private String workerBasedLabelColor;
     @Schema(description = "라벨 색상 (사장님 기준)", example = "red", requiredMode = Schema.RequiredMode.NOT_REQUIRED, hidden = true)
@@ -68,7 +64,7 @@ public class WorkerWorkplaceUpdateRequest implements WorkplaceUpdateRequest {
                 .build();
     }
 
-    public Salary toSalaryEntity() {
+    public Salary toSalaryEntity(Long salaryId, Long workerId) {
         return Salary.builder()
                 .id(salaryId)
                 .workerId(workerId)
