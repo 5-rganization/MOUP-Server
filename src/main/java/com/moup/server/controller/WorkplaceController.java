@@ -132,7 +132,7 @@ public class WorkplaceController {
     }
 
     @DeleteMapping("/{workplaceId}")
-    @Operation(summary = "근무지(매장) 삭제", description = "삭제할 근무지(매장) ID를 전달받아 삭제")
+    @Operation(summary = "근무지(매장) 삭제", description = "삭제할 근무지(매장) ID를 경로로 전달받아 삭제")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "근무지(매장) 삭제 성공"),
             @ApiResponse(responseCode = "404", description = "존재하지 않는 근무지(매장)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
