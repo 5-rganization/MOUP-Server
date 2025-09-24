@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -60,16 +61,15 @@ public class WorkplaceService {
     public List<WorkplaceSummaryResponse> summarizeAllWorkplace(Long userId) {
         List<Worker> userAllWorkers = workerRepository.findAllByUserId(userId);
 
-        List<WorkplaceSummaryResponse> workplaceSummaryResponses = new ArrayList<>();
-        for (Worker worker : userAllWorkers) {
-            Workplace workplace = workplaceRepository.findById(worker.getWorkplaceId()).orElseThrow(WorkplaceNotFoundException::new);
-            workplaceSummaryResponses.add(WorkplaceSummaryResponse.builder()
-                    .workplaceId(workplace.getId())
-                    .workplaceName(workplace.getWorkplaceName())
-                    .isShared(workplace.isShared())
-                    .build());
-        }
-        return workplaceSummaryResponses;
+        return userAllWorkers.stream()
+                .map(worker -> workplaceRepository.findById(worker.getWorkplaceId()).orElseThrow(WorkplaceNotFoundException::new))
+                .map(workplace -> WorkplaceSummaryResponse.builder()
+                        .workplaceId(workplace.getId())
+                        .workplaceName(workplace.getWorkplaceName())
+                        .isShared(workplace.isShared())
+                        .build())
+                .sorted(Comparator.comparing(WorkplaceSummaryResponse::getWorkplaceName))
+                .toList();
     }
 
     @Transactional

@@ -126,7 +126,7 @@ public class WorkplaceController {
         List<WorkplaceSummaryResponse> summaryResponseList = workplaceService.summarizeAllWorkplace(user.getId());
 
         WorkplaceSummaryListResponse workplaceSummaryListResponse = WorkplaceSummaryListResponse.builder()
-                .workplaceSummaryResponseList(summaryResponseList)
+                .workplaceSummaryList(summaryResponseList)
                 .build();
         return ResponseEntity.ok().body(workplaceSummaryListResponse);
     }

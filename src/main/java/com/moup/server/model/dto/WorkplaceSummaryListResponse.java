@@ -21,5 +21,5 @@ public class WorkplaceSummaryListResponse {
             ]
             """,
             requiredMode = Schema.RequiredMode.REQUIRED)
-    private List<WorkplaceSummaryResponse> workplaceSummaryResponseList;
+    private List<WorkplaceSummaryResponse> workplaceSummaryList;
 }
