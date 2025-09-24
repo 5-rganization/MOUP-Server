@@ -23,7 +23,22 @@ public class RoutineUpdateRequest {
     private String routineName;
     @Schema(description = "알림 시간 (HH:mm)", example = "08:00", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String alarmTime;
-    @Schema(description = "할 일 리스트 (할 일 ID가 없는 경우 생성, 있는 경우 업데이트, 배열에 존재하지 않는 할 일은 삭제)", example = "[ {\"할 일 ID\": 1, \"루틴 ID\": 1, \"내용\": \"바닥 청소\", \"정렬 순서\": 0, \"체크 여부\": false} ]", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "할 일 리스트 (할 일 ID가 없는 경우 생성, 있는 경우 업데이트, 배열에 존재하지 않는 할 일은 삭제)",
+            example = """
+            [
+                {
+                    "content": "바닥 청소",
+                    "orderIndex": 0,
+                    "isChecked": true
+                },
+                {
+                    "content": "전자레인지 청소",
+                    "orderIndex": 1,
+                    "isChecked": false
+                }
+            ]
+            """,
+            requiredMode = Schema.RequiredMode.REQUIRED)
     private List<RoutineTaskUpdateRequest> routineTaskUpdateRequestList;
 
     public Routine toEntity(Long userId) {

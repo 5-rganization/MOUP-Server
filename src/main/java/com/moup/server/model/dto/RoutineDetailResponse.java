@@ -16,6 +16,21 @@ public class RoutineDetailResponse {
     private String routineName;
     @Schema(description = "알람 시간", example = "08:00", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String alarmTime;
-    @Schema(description = "할 일 리스트 (없으면 빈 배열)", example = "[ {\"할 일 ID\": 1, \"루틴 ID\": 1, \"내용\": \"바닥 청소\", \"정렬 순서\": 0, \"체크 여부\": false} ]", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "할 일 리스트 (없으면 빈 배열)",
+            example = """
+            [
+                {
+                    "content": "바닥 청소",
+                    "orderIndex": 0,
+                    "isChecked": true
+                },
+                {
+                    "content": "전자레인지 청소",
+                    "orderIndex": 1,
+                    "isChecked": false
+                }
+            ]
+            """,
+            requiredMode = Schema.RequiredMode.REQUIRED)
     private List<RoutineTaskDetailResponse> routineTaskDetailResponseList;
 }
