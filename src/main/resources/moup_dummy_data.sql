@@ -25,33 +25,6 @@ VALUES (1, 'jwt_refresh_token_example_user1', DATE_ADD(NOW(), INTERVAL 14 DAY)),
        (4, 'jwt_refresh_token_example_user4', DATE_ADD(NOW(), INTERVAL 14 DAY)),
        (5, 'jwt_refresh_token_example_user5', DATE_ADD(NOW(), INTERVAL 14 DAY));
 
--- routines 테이블 더미 데이터
-INSERT INTO `routines` (`user_id`, `routine_name`, `alarm_time`)
-VALUES (3, '오전 오픈 준비', '08:30:00'),
-       (3, '오후 마감 정리', '22:00:00'),
-       (4, '주말 오픈 루틴', '10:00:00'),
-       (1, '매니저 확인 사항', '09:00:00'),
-       (5, '청결 관리 루틴', '15:00:00');
-
--- routine_tasks 테이블 더미 데이터
-INSERT INTO `routine_tasks` (`routine_id`, `user_id`, `content`, `order_index`)
-VALUES (1, 3, '포스기 켜고 시재 확인', 1),
-       (1, 3, '매장 조명 켜기', 2),
-       (1, 3, '원두 재고 확인', 3),
-       (2, 3, '쓰레기통 비우기', 1),
-       (2, 3, '커피 머신 세척', 2),
-       (3, 4, '유통기한 확인 및 폐기 등록', 1),
-       (4, 1, 'CCTV 확인', 1),
-       (5, 5, '화장실 청소 상태 점검', 1);
-
--- alarms 테이블 더미 데이터
-INSERT INTO `alarms` (`sender_id`, `receiver_id`, `title`, `content`, `sent_at`, `alarm_type`)
-VALUES (1, 3, '근무 시간 변경 요청', '내일 1시간 일찍 출근 가능할까요?', NOW(), 'ALARM_NOTIFICATION'),
-       (2, 4, '급여 지급 완료', '9월 급여가 지급되었습니다. 확인해주세요.', NOW(), 'ALARM_NOTIFICATION'),
-       (3, 1, '업무 관련 문의', '신제품 재고가 부족합니다.', NOW(), 'ALARM_NOTIFICATION'),
-       (4, 2, '대타 근무 가능 문의', '다음 주 화요일 대타 가능하신 분 찾습니다.', NOW(), 'ALARM_NOTIFICATION'),
-       (1, 5, '공지사항', '이번 주말 워크샵 관련 공지입니다.', NOW(), 'ALARM_NOTIFICATION');
-
 -- workplaces 테이블 더미 데이터
 INSERT INTO `workplaces` (`owner_id`, `workplace_name`, `category_name`, `is_shared`, `address`, `latitude`, `longitude`)
 VALUES (1, 'GS25 역삼점', '편의점', 1, '서울 강남구 역삼동 123-45', 37.5009, 127.0374),
@@ -70,6 +43,32 @@ VALUES (3, 1, 'red', 'red', 1), -- 최알바 -> GS25 역삼점
        (1, 1, 'primary', 'primary', 1), -- 사장님도 근무자로 등록 가능
        (2, 3, 'primary', 'primary', 1); -- 사장님도 근무자로 등록 가능
 
+-- routines 테이블 더미 데이터
+INSERT INTO `routines` (`user_id`, `routine_name`, `alarm_time`)
+VALUES (3, '오전 오픈 준비', '08:30'),
+       (3, '오후 마감 정리', '22:00'),
+       (4, '주말 오픈 루틴', '10:00'),
+       (1, '매니저 확인 사항', '09:00'),
+       (5, '청결 관리 루틴', '15:00');
+
+-- routine_tasks 테이블 더미 데이터
+INSERT INTO `routine_tasks` (`routine_id`, `content`, `order_index`, `is_checked`)
+VALUES (1, '포스기 켜고 시재 확인', 1, 0),
+       (1, '매장 조명 켜기', 2, 0),
+       (1, '원두 재고 확인', 3, 0),
+       (2, '쓰레기통 비우기', 1, 0),
+       (2, '커피 머신 세척', 2, 1),
+       (3, '유통기한 확인 및 폐기 등록', 1, 0),
+       (4, 'CCTV 확인', 1, 1),
+       (5, '화장실 청소 상태 점검', 1, 0);
+
+-- alarms 테이블 더미 데이터
+INSERT INTO `alarms` (`sender_id`, `receiver_id`, `title`, `content`, `sent_at`, `alarm_type`)
+VALUES (1, 3, '근무 시간 변경 요청', '내일 1시간 일찍 출근 가능할까요?', NOW(), 'ALARM_NOTIFICATION'),
+       (2, 4, '급여 지급 완료', '9월 급여가 지급되었습니다. 확인해주세요.', NOW(), 'ALARM_NOTIFICATION'),
+       (3, 1, '업무 관련 문의', '신제품 재고가 부족합니다.', NOW(), 'ALARM_NOTIFICATION'),
+       (4, 2, '대타 근무 가능 문의', '다음 주 화요일 대타 가능하신 분 찾습니다.', NOW(), 'ALARM_NOTIFICATION'),
+       (1, 5, '공지사항', '이번 주말 워크샵 관련 공지입니다.', NOW(), 'ALARM_NOTIFICATION');
 
 -- salaries 테이블 더미 데이터
 -- 주의: worker_id는 위 workers 테이블에 삽입된 후 생성된 ID를 참조해야 합니다. (자동 증가 값이 1, 2, 3, 4, 5, 6, 7 이라고 가정)
@@ -86,8 +85,10 @@ VALUES (1, 'SALARY_MONTHLY', 'SALARY_CALCULATION_HOURLY', 10000, NULL, 10, NULL,
 -- 주의: worker_id와 routine_id는 위 테이블들에서 생성된 ID를 참조해야 합니다.
 INSERT INTO `works` (`worker_id`, `routine_id`, `work_date`, `start_time`, `actual_start_time`, `end_time`,
                      `actual_end_time`, `rest_time`, `memo`, `daily_income`, `is_repeated`, `repeat_enddate`)
-VALUES (1, 1, '2025-09-15', '09:00:00', '08:58:00', '18:00:00', '18:03:00', '01:00:00', '월요일 오픈 근무', 80000, 0, NULL),
-       (2, NULL, '2025-09-16', '14:00:00', '14:05:00', '22:00:00', '22:10:00', '01:00:00', '재고 정리', 77000, 0, NULL),
-       (3, NULL, '2025-09-17', '10:00:00', '10:00:00', '19:00:00', '19:00:00', '01:00:00', NULL, 100000, 0, NULL),
-       (4, 1, '2025-09-18', '18:00:00', '17:55:00', '23:00:00', '23:00:00', '00:30:00', '마감 근무', 45000, 0, NULL),
-       (5, NULL, '2025-09-19', '09:00:00', '09:02:00', '15:00:00', '15:00:00', '00:30:00', '오전 파트타임', 54230, 0, NULL);
+VALUES (1, 1, '2025-09-15', '09:00', '08:58', '18:00', '18:03', '01:00', '월요일 오픈 근무', 80000, 0, NULL),
+       (2, NULL, '2025-09-16', '14:00', '14:05', '22:00', '22:10', '01:00', '재고 정리', 77000, 0, NULL),
+       (3, NULL, '2025-09-17', '10:00', '10:00', '19:00', '19:00', '01:00', NULL, 100000, 0, NULL),
+       (4, 1, '2025-09-18', '18:00', '17:55', '23:00', '23:00', '00:30', '마감 근무', 45000, 0, NULL),
+       (5, NULL, '2025-09-19', '09:00', '09:02', '15:00', '15:00', '00:30', '오전 파트타임', 54230, 0, NULL),
+       (1, NULL, '2025-09-22', '09:00', '09:00', '18:00', '18:00', '01:00', '반복 근무 테스트', 80000, 1, '2025-10-22'),
+       (2, NULL, '2025-09-23', '14:00', '14:00', '22:00', '22:00', '01:00', NULL, 77000, 1, '2025-11-23');

@@ -50,11 +50,10 @@ CREATE TABLE `routine_tasks`
 (
     `id`          BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
     `routine_id`  BIGINT                NOT NULL,
-    `user_id`     BIGINT                NOT NULL,
     `content`     VARCHAR(100)          NOT NULL,
     `order_index` INT                   NOT NULL,
+    `is_checked`  TINYINT(1)            NULL,
     FOREIGN KEY (`routine_id`) REFERENCES routines (`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`user_id`) REFERENCES users (`id`) ON DELETE CASCADE,
     UNIQUE KEY `unique_routine_order` (`routine_id`, `order_index`)
 );
 
