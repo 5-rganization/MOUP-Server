@@ -1,6 +1,5 @@
 package com.moup.server.service;
 
-import com.moup.server.exception.RoutineAlreadyExistsException;
 import com.moup.server.exception.RoutineNotFoundException;
 import com.moup.server.exception.RoutineTaskNotFoundException;
 import com.moup.server.model.dto.*;
@@ -26,20 +25,15 @@ public class RoutineService {
 
     @Transactional
     public RoutineCreateResponse createRoutine(Long userId, RoutineCreateRequest routineCreateRequest) {
-        Routine routine = routineCreateRequest.toEntity(userId);
-        if (routineRepository.existsByUserIdAndRoutineName(userId, routine.getRoutineName())) { throw new RoutineAlreadyExistsException(); }
-        routineRepository.create(routine);
-        // TODO: 자동 생성된 ID가 불러와지는지 확인 필요 (불러와지면 코드 최적화 수행)
-        Routine createdRoutine = routineRepository.findByUserIdAndRoutineName(userId, routine.getRoutineName()).orElseThrow(RoutineNotFoundException::new);
-        List<RoutineTaskCreateRequest> routineTaskCreateRequestList = routineCreateRequest.getRoutineTaskCreateRequestList();
-        List<RoutineTask> tasksToCreate = routineTaskCreateRequestList.stream().map(request -> request.toEntity(createdRoutine.getId())).toList();
+        Routine routineToCreate = routineCreateRequest.toEntity(userId);
+        routineRepository.create(routineToCreate);
 
+        List<RoutineTaskCreateRequest> routineTaskCreateRequestList = routineCreateRequest.getRoutineTaskCreateRequestList();
+        List<RoutineTask> tasksToCreate = routineTaskCreateRequestList.stream().map(request -> request.toEntity(routineToCreate.getId())).toList();
         routineTaskRepository.createTasks(tasksToCreate);
 
-        List<RoutineTask> createdRoutineTask = routineTaskRepository.findAllByRoutineId(createdRoutine.getId());
         return RoutineCreateResponse.builder()
-                .routineId(createdRoutine.getId())
-                .taskIdList(createdRoutineTask.stream().map(RoutineTask::getId).toList())
+                .routineId(routineToCreate.getId())
                 .build();
     }
 
@@ -82,12 +76,15 @@ public class RoutineService {
     }
 
     @Transactional
-    public RoutineUpdateResponse updateRoutine(Long userId, RoutineUpdateRequest routineUpdateRequest) {
-        Routine routine = routineUpdateRequest.toEntity(userId);
-        if (routineRepository.existsByUserIdAndRoutineName(userId, routine.getRoutineName())) { throw new RoutineAlreadyExistsException(); }
-        routineRepository.update(routine);
+    public void updateRoutine(Long userId, RoutineUpdateRequest routineUpdateRequest) {
+        Routine newRoutine = routineUpdateRequest.toEntity(userId);
+        if (routineRepository.existsByIdAndUserId(newRoutine.getId(), userId)) {
+            routineRepository.update(newRoutine);
+        } else {
+            throw new RoutineNotFoundException();
+        }
 
-        List<RoutineTask> existingTaskList = routineTaskRepository.findAllByRoutineId(routine.getId());
+        List<RoutineTask> existingTaskList = routineTaskRepository.findAllByRoutineId(newRoutine.getId());
         List<RoutineTaskUpdateRequest> requestDtoList = routineUpdateRequest.getRoutineTaskUpdateRequestList();
 
         Map<Long, RoutineTask> existingTaskMap = existingTaskList.stream()
@@ -114,6 +111,7 @@ public class RoutineService {
         // DELETE
         List<Long> idsToDelete = new ArrayList<>(existingTaskMap.keySet());
 
+        // DB 작업 수행
         if (!tasksToCreate.isEmpty()) {
             routineTaskRepository.createTasks(tasksToCreate);
         }
@@ -121,23 +119,16 @@ public class RoutineService {
             routineTaskRepository.updateTasks(tasksToUpdate);
         }
         if (!idsToDelete.isEmpty()) {
-            routineTaskRepository.deleteTasks(idsToDelete, routine.getId());
+            routineTaskRepository.deleteTasks(idsToDelete, newRoutine.getId());
         }
-
-        return RoutineUpdateResponse.builder()
-                .routineId(routine.getId())
-                .updatedTaskIdList(tasksToUpdate.stream().map(RoutineTask::getId).toList())
-                .createdTaskIdList(tasksToCreate.stream().map(RoutineTask::getId).toList())
-                .deletedTaskIdList(idsToDelete)
-                .build();
     }
 
     @Transactional
-    public RoutineDeleteResponse deleteRoutine(Long userId, Long routineId) {
-        routineRepository.delete(routineId, userId);
-
-        return RoutineDeleteResponse.builder()
-                .routineId(routineId)
-                .build();
+    public void deleteRoutine(Long userId, Long routineId) {
+        if (routineRepository.existsByIdAndUserId(routineId, userId)) {
+            routineRepository.deleteByIdAndUserId(routineId, userId);
+        } else {
+            throw new RoutineNotFoundException();
+        }
     }
 }
