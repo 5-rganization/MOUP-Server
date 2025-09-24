@@ -17,5 +17,5 @@ public class RoutineTaskDetailResponse {
     @Schema(description = "정렬 순서", example = "0", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer orderIndex;
     @Schema(description = "체크 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
-    private boolean isChecked;
+    private Boolean isChecked;
 }
