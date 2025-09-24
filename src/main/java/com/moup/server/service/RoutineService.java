@@ -63,7 +63,7 @@ public class RoutineService {
                         .routineId(task.getRoutineId())
                         .content(task.getContent())
                         .orderIndex(task.getOrderIndex())
-                        .isChecked(task.isChecked())
+                        .isChecked(task.getIsChecked())
                         .build()
         ).toList();
 
@@ -78,7 +78,7 @@ public class RoutineService {
     @Transactional
     public void updateRoutine(Long userId, RoutineUpdateRequest routineUpdateRequest) {
         Routine newRoutine = routineUpdateRequest.toEntity(userId);
-        if (routineRepository.existsByIdAndUserId(newRoutine.getId(), userId)) {
+        if (routineRepository.existByIdAndUserId(newRoutine.getId(), userId)) {
             routineRepository.update(newRoutine);
         } else {
             throw new RoutineNotFoundException();
@@ -125,7 +125,7 @@ public class RoutineService {
 
     @Transactional
     public void deleteRoutine(Long userId, Long routineId) {
-        if (routineRepository.existsByIdAndUserId(routineId, userId)) {
+        if (routineRepository.existByIdAndUserId(routineId, userId)) {
             routineRepository.deleteByIdAndUserId(routineId, userId);
         } else {
             throw new RoutineNotFoundException();
