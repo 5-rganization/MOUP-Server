@@ -4,10 +4,12 @@ import com.moup.server.model.entity.Salary;
 import com.moup.server.model.entity.Workplace;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 @Getter
 @SuperBuilder
+@NoArgsConstructor
 @Schema(description = "알바생 근무지 업데이트 요청 DTO")
 public class WorkerWorkplaceUpdateRequest extends WorkplaceUpdateRequest {
     @Override
@@ -61,7 +63,6 @@ public class WorkerWorkplaceUpdateRequest extends WorkplaceUpdateRequest {
                 .ownerId(ownerId)
                 .workplaceName(getWorkplaceName())
                 .categoryName(getCategoryName())
-                .isShared(false)
                 .address(getAddress())
                 .latitude(getLatitude())
                 .longitude(getLongitude())

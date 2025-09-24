@@ -3,10 +3,12 @@ package com.moup.server.model.dto;
 import com.moup.server.model.entity.Workplace;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 @Getter
 @SuperBuilder
+@NoArgsConstructor
 @Schema(description = "사장님 매장 업데이트 요청 DTO")
 public class OwnerWorkplaceUpdateRequest extends WorkplaceUpdateRequest {
     @Override
@@ -35,7 +37,6 @@ public class OwnerWorkplaceUpdateRequest extends WorkplaceUpdateRequest {
                 .ownerId(ownerId)
                 .workplaceName(getWorkplaceName())
                 .categoryName(getCategoryName())
-                .isShared(true)
                 .address(getAddress())
                 .latitude(getLatitude())
                 .longitude(getLongitude())

@@ -8,7 +8,7 @@ import java.util.Optional;
 @Mapper
 public interface SalaryRepository {
     /**
-     * 급여를 생성하는 메서드.
+     * 급여를 생성하는 메서드
      *
      * @param salary 생성할 Salary 객체
      * @return 생성된 행의 수
@@ -28,8 +28,9 @@ public interface SalaryRepository {
     Long create(Salary salary);
 
     /**
-     * 근무자 ID를 통해 해당 근무자의 급여를 찾고, 그 급여의 객체를 반환하는 메서드
+     * 급여 ID와 근무자 ID를 통해 해당 근무자의 급여를 찾고, 그 급여의 객체를 반환하는 메서드
      *
+     * @param id 조회할 급여의 ID
      * @param workerId 조회할 급여의 근무자 ID
      * @return 조회된 Salary 객체, 없으면 Optional.empty
      */
@@ -37,7 +38,7 @@ public interface SalaryRepository {
     Optional<Salary> findByIdAndWorkerId(Long id, Long workerId);
 
     /**
-     * 급여 엔티티의 ID(근무자 ID)에 해당하는 급여 정보를 업데이트하는 메서드.
+     * 급여 ID와 근무자 ID에 해당하는 급여 정보를 업데이트하는 메서드.
      *
      * @param salary 업데이트할 Salary 객체
      */
@@ -52,10 +53,11 @@ public interface SalaryRepository {
     void update(Salary salary);
 
     /**
-     * 근무자 ID에 해당하는 급여를 삭제하는 메서드.
+     * 급여 ID와 근무자 ID에 해당하는 급여를 삭제하는 메서드.
      *
+     * @param id 삭제할 급여의 ID
      * @param workerId 삭제할 급여의 근무자 ID
      */
     @Delete("DELETE FROM salaries WHERE id = #{id} AND worker_id = #{workerId}")
-    void deleteByWorkerId(Long id, Long workerId);
+    void deleteByIdAndWorkerId(Long id, Long workerId);
 }

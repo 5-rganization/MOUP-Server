@@ -1,5 +1,6 @@
 package com.moup.server.model.dto;
 
+import com.moup.server.model.entity.Worker;
 import com.moup.server.model.entity.Workplace;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
@@ -21,5 +22,15 @@ public abstract class WorkplaceCreateRequest {
     private Double latitude;
     @Schema(description = "경도", example = "127.072006099274", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Double longitude;
-    public abstract Workplace toWorkplaceEntity(Long ownerId);
+    public abstract Workplace toWorkplaceEntity(Long userId);
+    public Worker toWorkerEntity(Long userId, Long workplaceId) {
+        return Worker.builder()
+                .id(null)
+                .userId(userId)
+                .workplaceId(workplaceId)
+                .workerBasedLabelColor(getWorkerBasedLabelColor() == null ? "primary" : getWorkerBasedLabelColor())
+                .ownerBasedLabelColor(getOwnerBasedLabelColor() == null ? "primary" : getOwnerBasedLabelColor())
+                .isAccepted(true)
+                .build();
+    }
 }

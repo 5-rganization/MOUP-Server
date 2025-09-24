@@ -2,7 +2,6 @@ package com.moup.server.service;
 
 import com.moup.server.exception.SalaryWorkerNotFoundException;
 import com.moup.server.exception.WorkerWorkplaceNotFoundException;
-import com.moup.server.exception.WorkplaceAlreadyExistsException;
 import com.moup.server.exception.WorkplaceNotFoundException;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.Salary;
@@ -27,23 +26,13 @@ public class WorkplaceService {
 
     @Transactional
     protected Worker createWorkplaceAndWorker(Long userId, WorkplaceCreateRequest workplaceCreateRequest) {
-        Workplace workplace = workplaceCreateRequest.toWorkplaceEntity(userId);
-        if (workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, workplace.getWorkplaceName())) { throw new WorkplaceAlreadyExistsException(); }
-        workplaceRepository.create(workplace);
+        Workplace workplaceToCreate = workplaceCreateRequest.toWorkplaceEntity(userId);
+        workplaceRepository.create(workplaceToCreate);
 
-        String workerBasedLabelColor = workplaceCreateRequest.getWorkerBasedLabelColor();
-        String ownerBasedLabelColor = workplaceCreateRequest.getOwnerBasedLabelColor();
+        Worker workerToCreate = workplaceCreateRequest.toWorkerEntity(userId, workplaceToCreate.getId());
+        workerRepository.create(workerToCreate);
 
-        Worker worker = Worker.builder()
-                .userId(userId)
-                .workplaceId(workplace.getId())
-                .workerBasedLabelColor(workerBasedLabelColor == null ? "primary" : workerBasedLabelColor)
-                .ownerBasedLabelColor(ownerBasedLabelColor == null ? "primary" : ownerBasedLabelColor)
-                .isAccepted(true)
-                .build();
-        workerRepository.create(worker);
-
-        return workerRepository.findByIdAndUserId(worker.getId(), userId).orElseThrow(WorkerWorkplaceNotFoundException::new);
+        return workerToCreate;
     }
 
     @Transactional
@@ -68,12 +57,7 @@ public class WorkplaceService {
     }
 
     @Transactional(readOnly = true)
-    public Workplace findByUserIdAndWorkplaceName(Long userId, String workplaceName) {
-        return workplaceRepository.findByOwnerIdAndWorkplaceName(userId, workplaceName).orElseThrow(WorkplaceNotFoundException::new);
-    }
-
-    @Transactional(readOnly = true)
-    public List<WorkplaceSummaryResponse> summarizeAllWorkplaceByUserId(Long userId) {
+    public List<WorkplaceSummaryResponse> summarizeAllWorkplace(Long userId) {
         List<Worker> userAllWorkers = workerRepository.findAllByUserId(userId);
 
         List<WorkplaceSummaryResponse> workplaceSummaryResponses = new ArrayList<>();
@@ -91,10 +75,11 @@ public class WorkplaceService {
     @Transactional
     protected void updateWorkplace(Long userId, WorkplaceUpdateRequest workplaceUpdateRequest) {
         Workplace newWorkplace = workplaceUpdateRequest.toWorkplaceEntity(userId);
-        Workplace oldWorkplace = workplaceRepository.findById(newWorkplace.getId()).orElseThrow(WorkplaceNotFoundException::new);
-        if (!newWorkplace.getWorkplaceName().equals(oldWorkplace.getWorkplaceName())
-                && workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, newWorkplace.getWorkplaceName())) { throw new WorkplaceAlreadyExistsException(); }
-        workplaceRepository.update(newWorkplace);
+        if (workplaceRepository.existById(newWorkplace.getId())) {
+            workplaceRepository.update(newWorkplace);
+        } else {
+            throw new WorkplaceNotFoundException();
+        }
     }
 
     @Transactional
@@ -119,8 +104,8 @@ public class WorkplaceService {
 
     @Transactional
     public void deleteWorkplace(Long userId, Long workplaceId) {
-        if (workplaceRepository.existsByIdAndOwnerId(workplaceId, userId)) {
-            workplaceRepository.deleteByWorkplaceIdAndOwnerId(workplaceId, userId);
+        if (workplaceRepository.existById(workplaceId)) {
+            workplaceRepository.deleteByIdAndOwnerId(workplaceId, userId);
         } else {
             throw new WorkplaceNotFoundException();
         }

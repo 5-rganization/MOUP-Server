@@ -27,10 +27,10 @@ public class OwnerWorkplaceCreateRequest extends WorkplaceCreateRequest {
     @Schema(description = "라벨 색상 (사장님 기준)", example = "red", requiredMode = Schema.RequiredMode.REQUIRED)
     public String getOwnerBasedLabelColor() { return super.getOwnerBasedLabelColor(); }
 
-    public Workplace toWorkplaceEntity(Long ownerId) {
+    public Workplace toWorkplaceEntity(Long userId) {
         return Workplace.builder()
                 .id(null)
-                .ownerId(ownerId)
+                .ownerId(userId)
                 .workplaceName(getWorkplaceName())
                 .categoryName(getCategoryName())
                 .isShared(true)

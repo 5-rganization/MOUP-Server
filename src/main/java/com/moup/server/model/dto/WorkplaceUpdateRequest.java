@@ -1,5 +1,6 @@
 package com.moup.server.model.dto;
 
+import com.moup.server.model.entity.Worker;
 import com.moup.server.model.entity.Workplace;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;

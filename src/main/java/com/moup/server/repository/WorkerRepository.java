@@ -49,7 +49,7 @@ public interface WorkerRepository {
     List<Worker> findAllByUserId(Long userId);
 
     /**
-     * ID에 해당하는 근무자의 근무자 기준 라벨 색상을 업데이트하는 메서드.
+     * 근무자 ID, 유저 ID, 근무지 ID에 해당하는 근무자의 근무자 기준 라벨 색상을 업데이트하는 메서드.
      *
      * @param id 업데이트할 근무자의 ID
      * @param workplaceId 업데이트할 근무자의 근무지 ID
@@ -69,7 +69,7 @@ public interface WorkerRepository {
     void updateOwnerBasedLabelColor(Long id, Long userId, Long workplaceId, String ownerBasedLabelColor);
 
     /**
-     * ID에 해당하는 근무자의 초대 승인 여부를 업데이트하는 메서드.
+     * 근무자 ID, 유저 ID, 근무지 ID에 해당하는 근무자의 초대 승인 여부를 업데이트하는 메서드.
      *
      * @param id 업데이트할 근무자의 ID
      * @param userId 업데이트할 근무자의 유저 ID
@@ -80,7 +80,7 @@ public interface WorkerRepository {
     void updateIsAccepted(Long id, Long userId, Long workplaceId, boolean isAccepted);
 
     /**
-     * 근무자 ID와 근무지 ID에 해당하는 근무자를 삭제하는 메서드.
+     * 근무자 ID, 유저 ID, 근무지 ID에 해당하는 근무자를 삭제하는 메서드.
      *
      * @param id 삭제할 근무자의 ID
      * @param userId 삭제할 근무자의 유저 ID
