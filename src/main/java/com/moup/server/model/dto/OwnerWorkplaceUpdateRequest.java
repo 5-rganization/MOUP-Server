@@ -2,11 +2,11 @@ package com.moup.server.model.dto;
 
 import com.moup.server.model.entity.Workplace;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Builder;
 import lombok.Getter;
+import lombok.experimental.SuperBuilder;
 
 @Getter
-@Builder
+@SuperBuilder
 @Schema(description = "사장님 매장 업데이트 요청 DTO")
 public class OwnerWorkplaceUpdateRequest extends WorkplaceUpdateRequest {
     @Override
