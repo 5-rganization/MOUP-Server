@@ -26,17 +26,17 @@ public class WorkerSalaryUpdateRequest {
     @Schema(description = "급여 요일 (월: MON, 화: TUE, 수: WED, 목: THU, 금: FRI, 토: SAT, 일: SUN)", example = "MON", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String salaryDay;
     @Schema(description = "국민연금 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
-    private boolean hasNationalPension;
+    private Boolean hasNationalPension;
     @Schema(description = "건강보험 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
-    private boolean hasHealthInsurance;
+    private Boolean hasHealthInsurance;
     @Schema(description = "고용보험 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
-    private boolean hasEmploymentInsurance;
+    private Boolean hasEmploymentInsurance;
     @Schema(description = "산재보험 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
-    private boolean hasIndustrialAccident;
+    private Boolean hasIndustrialAccident;
     @Schema(description = "소득세 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
-    private boolean hasIncomeTax;
+    private Boolean hasIncomeTax;
     @Schema(description = "야간수당 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
-    private boolean hasNightAllowance;
+    private Boolean hasNightAllowance;
 
     public Salary toEntity() {
         return Salary.builder()
