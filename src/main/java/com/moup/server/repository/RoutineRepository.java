@@ -27,7 +27,7 @@ public interface RoutineRepository {
      * @return 존재하면 true, 그렇지 않으면 false
      */
     @Select("SELECT EXISTS(SELECT 1 FROM routines WHERE id = #{id} AND user_id = #{userId})")
-    boolean existsByIdAndUserId(Long id, Long userId);
+    boolean existByIdAndUserId(Long id, Long userId);
 
     /**
      * 루틴의 유저 ID와 루틴 이름를 통해 해당 루틴이 존재하는지 여부를 반환하는 메서드
@@ -37,7 +37,7 @@ public interface RoutineRepository {
      * @return 존재하면 true, 그렇지 않으면 false
      */
     @Select("SELECT EXISTS(SELECT 1 FROM routines WHERE user_id = #{userId} AND routine_name = #{routineName})")
-    boolean existsByUserIdAndRoutineName(Long userId, String routineName);
+    boolean existByUserIdAndRoutineName(Long userId, String routineName);
 
     /**
      * 루틴의 유저 ID와 루틴 이름를 통해 해당 루틴을 찾고, 그 루틴 객체를 반환하는 메서드
