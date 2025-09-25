@@ -36,7 +36,7 @@ public class RoutineService {
     }
 
     @Transactional(readOnly = true)
-    public RoutineSummaryResponse getSummarizedRoutine(Long routineId, Long userId) {
+    public RoutineSummaryResponse getSummarizedRoutine(Long userId, Long routineId) {
         Routine routine = routineRepository.findByIdAndUserId(routineId, userId).orElseThrow(RoutineNotFoundException::new);
 
         return RoutineSummaryResponse.builder()
