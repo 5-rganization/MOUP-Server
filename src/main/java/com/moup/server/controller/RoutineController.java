@@ -2,8 +2,10 @@ package com.moup.server.controller;
 
 import com.moup.server.exception.InvalidParameterException;
 import com.moup.server.model.dto.*;
+import com.moup.server.model.entity.User;
 import com.moup.server.service.IdentityService;
 import com.moup.server.service.RoutineService;
+import com.moup.server.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RequestMapping("/routines")
 public class RoutineController {
+    private final UserService userService;
     private final IdentityService identityService;
     private final RoutineService routineService;
 
@@ -33,8 +36,9 @@ public class RoutineController {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "루틴 생성을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineCreateRequest.class)))
     public ResponseEntity<?> createRoutine(@RequestBody RoutineCreateRequest routineCreateRequest) {
         Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
 
-        RoutineCreateResponse routineCreateResponse = routineService.createRoutine(userId, routineCreateRequest);
+        RoutineCreateResponse routineCreateResponse = routineService.createRoutine(user.getId(), routineCreateRequest);
         return ResponseEntity.ok().body(routineCreateResponse);
     }
 
@@ -45,8 +49,9 @@ public class RoutineController {
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     public ResponseEntity<?> summarizeAllRoutine() {
         Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
 
-        RoutineSummaryListResponse routineSummaryListResponse = routineService.getAllSummarizedRoutine(userId);
+        RoutineSummaryListResponse routineSummaryListResponse = routineService.getAllSummarizedRoutine(user.getId());
         return ResponseEntity.ok().body(routineSummaryListResponse);
     }
 
@@ -95,12 +100,13 @@ public class RoutineController {
             @RequestParam(name = "view", required = false) String view
     ) {
         Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
 
         if (view == null) {
-            RoutineDetailResponse routineDetailResponse = routineService.getRoutineDetail(userId, routineId);
+            RoutineDetailResponse routineDetailResponse = routineService.getRoutineDetail(user.getId(), routineId);
             return ResponseEntity.ok().body(routineDetailResponse);
         } else if ("summary".equals(view)) {
-            RoutineSummaryResponse routineSummaryResponse = routineService.getSummarizedRoutine(routineId, userId);
+            RoutineSummaryResponse routineSummaryResponse = routineService.getSummarizedRoutine(user.getId(), routineId);
             return ResponseEntity.ok().body(routineSummaryResponse);
         } else {
             throw new InvalidParameterException();
@@ -116,8 +122,9 @@ public class RoutineController {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "루틴 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineUpdateRequest.class)))
     public ResponseEntity<?> updateRoutine(@RequestBody RoutineUpdateRequest routineUpdateRequest) {
         Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
 
-        routineService.updateRoutine(userId, routineUpdateRequest);
+        routineService.updateRoutine(user.getId(), routineUpdateRequest);
         return ResponseEntity.noContent().build();
     }
 
@@ -129,8 +136,9 @@ public class RoutineController {
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     public ResponseEntity<?> deleteRoutine(@PathVariable Long routineId) {
         Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
 
-        routineService.deleteRoutine(userId, routineId);
+        routineService.deleteRoutine(user.getId(), routineId);
         return ResponseEntity.noContent().build();
     }
 }
