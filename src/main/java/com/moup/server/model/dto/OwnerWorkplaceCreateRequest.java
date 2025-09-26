@@ -1,37 +1,42 @@
 package com.moup.server.model.dto;
 
+import com.moup.server.model.entity.Worker;
 import com.moup.server.model.entity.Workplace;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Builder;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Getter
-@Builder
+@SuperBuilder
+@NoArgsConstructor
 @Schema(description = "사장님 매장 생성 요청 DTO")
-public class OwnerWorkplaceCreateRequest implements WorkplaceCreateRequest {
-    @Schema(description = "매장 이름", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String workplaceName;
-    @Schema(description = "매장 카테고리", example = "2", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String categoryName;
-    @Schema(description = "라벨 색상", example = "red", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String labelColor;
-    @Schema(description = "주소", example = "경기 화성시 동탄중심상가1길 8 1층", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    private String address;
-    @Schema(description = "위도", example = "37.2000891334382", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    private Double latitude;
-    @Schema(description = "경도", example = "127.072006099274", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    private Double longitude;
+public class OwnerWorkplaceCreateRequest extends BaseWorkplaceCreateRequest {
+    @NotBlank(message = "빈 값 혹은 공백 문자는 받을 수 없습니다.")
+    @Schema(description = "라벨 색상 (사장님 기준)", example = "blue", requiredMode = Schema.RequiredMode.REQUIRED)
+    private String ownerBasedLabelColor;
 
-    public Workplace toWorkplaceEntity(Long ownerId) {
+    public Workplace toWorkplaceEntity(Long userId) {
         return Workplace.builder()
                 .id(null)
-                .ownerId(ownerId)
-                .workplaceName(workplaceName)
-                .categoryName(categoryName)
-                .labelColor(labelColor)
-                .address(address)
-                .latitude(latitude)
-                .longitude(longitude)
+                .ownerId(userId)
+                .workplaceName(getWorkplaceName())
+                .categoryName(getCategoryName())
+                .isShared(true)
+                .address(getAddress())
+                .latitude(getLatitude())
+                .longitude(getLongitude())
+                .build();
+    }
+
+    public Worker toWorkerEntity(Long userId, Long workplaceId) {
+        return Worker.builder()
+                .id(null)
+                .userId(userId)
+                .workplaceId(workplaceId)
+                .ownerBasedLabelColor(ownerBasedLabelColor)
+                .isAccepted(true)
                 .build();
     }
 }

@@ -11,6 +11,7 @@ public class Worker {
     private Long id;
     private Long userId;
     private Long workplaceId;
-    private String labelColor;
-    private boolean isAccepted;
+    private String workerBasedLabelColor;
+    private String ownerBasedLabelColor;
+    private Boolean isAccepted;
 }

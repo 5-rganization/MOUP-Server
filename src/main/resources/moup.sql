@@ -89,8 +89,9 @@ CREATE TABLE `workers`
     `id`           BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
     `user_id`      BIGINT                NOT NULL,
     `workplace_id` BIGINT                NOT NULL,
-    `worker_based_label_color`    VARCHAR(20) DEFAULT 'primary' NOT NULL,
-    `owner_based_label_color`    VARCHAR(20) DEFAULT 'primary' NOT NULL,
+    `worker_based_label_color`    VARCHAR(20) NULL,
+    `owner_based_label_color`    VARCHAR(20) NULL,
+    `is_accepted`  TINYINT(1)            NULL,
     FOREIGN KEY (`user_id`) REFERENCES users (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`workplace_id`) REFERENCES workplaces (`id`) ON DELETE CASCADE
 );

@@ -2,6 +2,7 @@ package com.moup.server.model.dto;
 
 import com.moup.server.model.entity.Salary;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.*;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -9,36 +10,50 @@ import lombok.Getter;
 @Builder
 @Schema(description = "알바생 급여 생성 요청 DTO")
 public class WorkerSalaryCreateRequest {
+    @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "근무자 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long workerId;
-    @Schema(description = "급여 유형", example = "매월: SALARY_MONTHLY, 매주: SALARY_WEEKLY, 매일: SALARY_DAILY", requiredMode = Schema.RequiredMode.REQUIRED)
+    @NotBlank(message = "빈 값 혹은 공백 문자는 받을 수 없습니다.")
+    @Schema(description = "급여 유형 (매월: SALARY_MONTHLY, 매주: SALARY_WEEKLY, 매일: SALARY_DAILY)", example = "SALARY_MONTHLY", requiredMode = Schema.RequiredMode.REQUIRED)
     private String salaryType;
-    @Schema(description = "급여 계산", example = "시급: SALARY_CALCULATION_HOURLY, 고정: SALARY_CALCULATION_FIXED", requiredMode = Schema.RequiredMode.REQUIRED)
+    @NotBlank(message = "빈 값 혹은 공백 문자는 받을 수 없습니다.")
+    @Schema(description = "급여 계산 (시급: SALARY_CALCULATION_HOURLY, 고정: SALARY_CALCULATION_FIXED)", example = "SALARY_CALCULATION_HOURLY", requiredMode = Schema.RequiredMode.REQUIRED)
     private String salaryCalculation;
+    @Positive
     @Schema(description = "시급", example = "10030", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Integer hourlyRate;
+    @Positive
     @Schema(description = "고정급", example = "2156880", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Integer fixedRate;
+    @Min(value = 1, message = "최소 범위 미만입니다.")
+    @Max(value = 31, message = "최대 범위 초과입니다.")
     @Schema(description = "급여일", example = "15", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Integer salaryDate;
-    @Schema(description = "급여 요일", example = "월: MON, 화: TUE, 수: WED, 목: THU, 금: FRI, 토: SAT, 일: SUN", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @Schema(description = "급여 요일 (월: MON, 화: TUE, 수: WED, 목: THU, 금: FRI, 토: SAT, 일: SUN)", example = "MON", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String salaryDay;
+    @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "국민연금 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
-    private boolean hasNationalPension;
+    private Boolean hasNationalPension;
+    @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "건강보험 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
-    private boolean hasHealthInsurance;
+    private Boolean hasHealthInsurance;
+    @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "고용보험 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
-    private boolean hasEmploymentInsurance;
+    private Boolean hasEmploymentInsurance;
+    @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "산재보험 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
-    private boolean hasIndustrialAccident;
+    private Boolean hasIndustrialAccident;
+    @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "소득세 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
-    private boolean hasIncomeTax;
+    private Boolean hasIncomeTax;
+    @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "야간수당 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
-    private boolean hasNightAllowance;
+    private Boolean hasNightAllowance;
 
     public Salary toEntity() {
         return Salary.builder()
-                .id(workerId)
+                .id(null)
+                .workerId(workerId)
                 .salaryType(salaryType)
                 .salaryCalculation(salaryCalculation)
                 .hourlyRate(hourlyRate)

@@ -13,5 +13,5 @@ public class WorkplaceSummaryResponse {
     @Schema(description = "근무지(매장) 이름", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.REQUIRED)
     private String workplaceName;
     @Schema(description = "공유 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
-    private boolean isShared;
+    private Boolean isShared;
 }
