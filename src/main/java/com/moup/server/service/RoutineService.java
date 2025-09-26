@@ -28,7 +28,7 @@ public class RoutineService {
 
         List<RoutineTaskCreateRequest> routineTaskCreateRequestList = routineCreateRequest.getRoutineTaskList();
         List<RoutineTask> tasksToCreate = routineTaskCreateRequestList.stream().map(request -> request.toEntity(routineToCreate.getId())).toList();
-        routineTaskRepository.createTasks(tasksToCreate);
+        if (!tasksToCreate.isEmpty()) { routineTaskRepository.createTasks(tasksToCreate); }
 
         return RoutineCreateResponse.builder()
                 .routineId(routineToCreate.getId())
