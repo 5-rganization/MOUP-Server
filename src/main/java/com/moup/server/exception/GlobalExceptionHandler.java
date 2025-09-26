@@ -25,7 +25,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleValidationExceptions(MethodArgumentNotValidException e) {
         String errorMessage = e.getBindingResult().getAllErrors().get(0).getDefaultMessage();
-        return response(ErrorCode.INVALID_FORMAT, errorMessage);
+        return response(ErrorCode.INVALID_FIELD_FORMAT, errorMessage);
     }
 
     @ExceptionHandler(RuntimeException.class)
