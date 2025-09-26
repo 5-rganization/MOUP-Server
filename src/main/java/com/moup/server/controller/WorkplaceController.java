@@ -157,11 +157,11 @@ public class WorkplaceController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "모든 근무지(매장) 조회 및 요약 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceSummaryListResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    public ResponseEntity<?> summarizeAllWorkplace() {
+    public ResponseEntity<?> getAllSummarizedWorkplace() {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
-        List<WorkplaceSummaryResponse> summaryResponseList = workplaceService.summarizeAllWorkplace(user.getId());
+        List<WorkplaceSummaryResponse> summaryResponseList = workplaceService.getAllSummarizedWorkplace(user.getId());
 
         WorkplaceSummaryListResponse workplaceSummaryListResponse = WorkplaceSummaryListResponse.builder()
                 .workplaceSummaryList(summaryResponseList)

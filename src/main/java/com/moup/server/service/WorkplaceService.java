@@ -60,7 +60,7 @@ public class WorkplaceService {
     }
 
     @Transactional(readOnly = true)
-    public List<WorkplaceSummaryResponse> summarizeAllWorkplace(Long userId) {
+    public List<WorkplaceSummaryResponse> getAllSummarizedWorkplace(Long userId) {
         List<Worker> userAllWorkers = workerRepository.findAllByUserId(userId);
 
         return userAllWorkers.stream()
