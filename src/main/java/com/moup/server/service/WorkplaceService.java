@@ -1,10 +1,13 @@
 package com.moup.server.service;
 
+import com.moup.server.common.Role;
+import com.moup.server.exception.InvalidRoleAccessException;
 import com.moup.server.exception.SalaryWorkerNotFoundException;
 import com.moup.server.exception.WorkerWorkplaceNotFoundException;
 import com.moup.server.exception.WorkplaceNotFoundException;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.Salary;
+import com.moup.server.model.entity.User;
 import com.moup.server.model.entity.Workplace;
 import com.moup.server.model.entity.Worker;
 import com.moup.server.repository.SalaryRepository;
@@ -14,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -26,35 +28,35 @@ public class WorkplaceService {
     private final SalaryRepository salaryRepository;
 
     @Transactional
-    protected Worker createWorkplaceAndWorker(Long userId, WorkplaceCreateRequest workplaceCreateRequest) {
-        Workplace workplaceToCreate = workplaceCreateRequest.toWorkplaceEntity(userId);
+    protected Worker createWorkplaceAndWorker(Long userId, BaseWorkplaceCreateRequest request) {
+        Workplace workplaceToCreate = request.toWorkplaceEntity(userId);
         workplaceRepository.create(workplaceToCreate);
 
-        Worker workerToCreate = workplaceCreateRequest.toWorkerEntity(userId, workplaceToCreate.getId());
+        Worker workerToCreate = request.toWorkerEntity(userId, workplaceToCreate.getId());
         workerRepository.create(workerToCreate);
 
         return workerToCreate;
     }
 
     @Transactional
-    public WorkplaceCreateResponse createWorkerWorkplace(Long userId, WorkerWorkplaceCreateRequest workerWorkplaceCreateRequest) {
-        Worker createdWorker = createWorkplaceAndWorker(userId, workerWorkplaceCreateRequest);
+    public WorkplaceCreateResponse createWorkplace(User user, BaseWorkplaceCreateRequest request) {
+        if (user.getRole() == Role.ROLE_OWNER && request instanceof OwnerWorkplaceCreateRequest ownerWorkplaceCreateRequest) {
+            Worker createdWorker = createWorkplaceAndWorker(user.getId(), ownerWorkplaceCreateRequest);
+            return WorkplaceCreateResponse.builder()
+                    .workplaceId(createdWorker.getWorkplaceId())
+                    .build();
+        } else if (user.getRole() == Role.ROLE_WORKER && request instanceof WorkerWorkplaceCreateRequest workerWorkplaceCreateRequest) {
+            Worker createdWorker = createWorkplaceAndWorker(user.getId(), workerWorkplaceCreateRequest);
 
-        Salary salaryToCreate = workerWorkplaceCreateRequest.toSalaryEntity(createdWorker.getId());
-        salaryRepository.create(salaryToCreate);
+            Salary salaryToCreate = workerWorkplaceCreateRequest.toSalaryEntity(createdWorker.getId());
+            salaryRepository.create(salaryToCreate);
 
-        return WorkplaceCreateResponse.builder()
-                .workplaceId(createdWorker.getWorkplaceId())
-                .build();
-    }
-
-    @Transactional
-    public WorkplaceCreateResponse createOwnerWorkplace(Long userId, OwnerWorkplaceCreateRequest ownerWorkplaceCreateRequest) {
-        Worker createdWorker = createWorkplaceAndWorker(userId, ownerWorkplaceCreateRequest);
-
-        return WorkplaceCreateResponse.builder()
-                .workplaceId(createdWorker.getWorkplaceId())
-                .build();
+            return WorkplaceCreateResponse.builder()
+                    .workplaceId(createdWorker.getWorkplaceId())
+                    .build();
+        } else {
+            throw new InvalidRoleAccessException();
+        }
     }
 
     @Transactional(readOnly = true)
@@ -73,33 +75,27 @@ public class WorkplaceService {
     }
 
     @Transactional
-    protected void updateWorkplace(Long userId, WorkplaceUpdateRequest workplaceUpdateRequest) {
-        Workplace newWorkplace = workplaceUpdateRequest.toWorkplaceEntity(userId);
+    public void updateWorkplace(User user, Long workplaceId, BaseWorkplaceUpdateRequest request) {
+        Workplace newWorkplace = request.toWorkplaceEntity(workplaceId, user.getId());
         if (workplaceRepository.existById(newWorkplace.getId())) {
             workplaceRepository.update(newWorkplace);
         } else {
             throw new WorkplaceNotFoundException();
         }
-    }
 
-    @Transactional
-    public void updateWorkerWorkplace(Long userId, WorkerWorkplaceUpdateRequest workerWorkplaceUpdateRequest) {
-        updateWorkplace(userId, workerWorkplaceUpdateRequest);
+        Long workerId = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
 
-        Long workerId = workerRepository.findByUserIdAndWorkplaceId(userId, workerWorkplaceUpdateRequest.getWorkplaceId()).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
-        workerRepository.updateWorkerBasedLabelColor(workerId, userId, workerWorkplaceUpdateRequest.getWorkplaceId(), workerWorkplaceUpdateRequest.getWorkerBasedLabelColor());
+        if (user.getRole() == Role.ROLE_OWNER && request instanceof OwnerWorkplaceUpdateRequest ownerRequest) {
+            workerRepository.updateOwnerBasedLabelColor(workerId, user.getId(), workplaceId, ownerRequest.getOwnerBasedLabelColor());
+        } else if (user.getRole() == Role.ROLE_WORKER && request instanceof WorkerWorkplaceUpdateRequest workerRequest) {
+            workerRepository.updateWorkerBasedLabelColor(workerId, user.getId(), workplaceId, workerRequest.getWorkerBasedLabelColor());
 
-        Long salaryId = salaryRepository.findByIdAndWorkerId(userId, workerId).orElseThrow(SalaryWorkerNotFoundException::new).getId();
-        Salary newSalary = workerWorkplaceUpdateRequest.toSalaryEntity(salaryId, workerId);
-        salaryRepository.update(newSalary);
-    }
-
-    @Transactional
-    public void updateOwnerWorkplace(Long userId, OwnerWorkplaceUpdateRequest ownerWorkplaceUpdateRequest) {
-        updateWorkplace(userId, ownerWorkplaceUpdateRequest);
-
-        Long workerId = workerRepository.findByUserIdAndWorkplaceId(userId, ownerWorkplaceUpdateRequest.getWorkplaceId()).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
-        workerRepository.updateOwnerBasedLabelColor(workerId, userId, ownerWorkplaceUpdateRequest.getWorkplaceId(), ownerWorkplaceUpdateRequest.getOwnerBasedLabelColor());
+            Long salaryId = salaryRepository.findByIdAndWorkerId(user.getId(), workerId).orElseThrow(SalaryWorkerNotFoundException::new).getId();
+            Salary newSalary = workerRequest.toSalaryEntity(salaryId, workerId);
+            salaryRepository.update(newSalary);
+        } else {
+            throw new InvalidRoleAccessException();
+        }
     }
 
     @Transactional

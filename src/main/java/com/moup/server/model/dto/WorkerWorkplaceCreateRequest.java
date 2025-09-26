@@ -1,6 +1,7 @@
 package com.moup.server.model.dto;
 
 import com.moup.server.model.entity.Salary;
+import com.moup.server.model.entity.Worker;
 import com.moup.server.model.entity.Workplace;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
@@ -11,15 +12,9 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @NoArgsConstructor
 @Schema(description = "알바생 근무지 생성 요청 DTO")
-public class WorkerWorkplaceCreateRequest extends WorkplaceCreateRequest {
-    @Override
-    @Schema(description = "근무지 이름", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.REQUIRED)
-    public String getWorkplaceName() { return super.getWorkplaceName(); }
-
-    @Override
-    @Schema(description = "근무지 카테고리 이름", example = "편의점", requiredMode = Schema.RequiredMode.REQUIRED)
-    public String getCategoryName() { return super.getCategoryName(); }
-
+public class WorkerWorkplaceCreateRequest extends BaseWorkplaceCreateRequest {
+    @Schema(description = "라벨 색상 (알바생 기준)", example = "red", requiredMode = Schema.RequiredMode.REQUIRED)
+    private String workerBasedLabelColor;
     @Schema(description = "급여 유형 (매월: SALARY_MONTHLY, 매주: SALARY_WEEKLY, 매일: SALARY_DAILY)", example = "SALARY_MONTHLY", requiredMode = Schema.RequiredMode.REQUIRED)
     private String salaryType;
     @Schema(description = "급여 계산 (시급: SALARY_CALCULATION_HOURLY, 고정: SALARY_CALCULATION_FIXED)", example = "SALARY_CALCULATION_HOURLY", requiredMode = Schema.RequiredMode.REQUIRED)
@@ -45,14 +40,6 @@ public class WorkerWorkplaceCreateRequest extends WorkplaceCreateRequest {
     @Schema(description = "야간수당 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean hasNightAllowance;
 
-    @Override
-    @Schema(description = "라벨 색상 (근무자 기준)", example = "red", requiredMode = Schema.RequiredMode.REQUIRED)
-    public String getWorkerBasedLabelColor() { return super.getWorkerBasedLabelColor(); }
-
-    @Override
-    @Schema(description = "라벨 색상 (사장님 기준)", example = "red", requiredMode = Schema.RequiredMode.NOT_REQUIRED, hidden = true)
-    public String getOwnerBasedLabelColor() { return super.getOwnerBasedLabelColor(); }
-
     public Workplace toWorkplaceEntity(Long userId) {
         return Workplace.builder()
                 .id(null)
@@ -63,6 +50,16 @@ public class WorkerWorkplaceCreateRequest extends WorkplaceCreateRequest {
                 .address(getAddress())
                 .latitude(getLatitude())
                 .longitude(getLongitude())
+                .build();
+    }
+
+    public Worker toWorkerEntity(Long userId, Long workplaceId) {
+        return Worker.builder()
+                .id(null)
+                .userId(userId)
+                .workplaceId(workplaceId)
+                .workerBasedLabelColor(workerBasedLabelColor)
+                .isAccepted(true)
                 .build();
     }
 

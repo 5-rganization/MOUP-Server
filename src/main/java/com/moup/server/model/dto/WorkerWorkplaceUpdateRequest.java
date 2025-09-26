@@ -11,18 +11,9 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @NoArgsConstructor
 @Schema(description = "알바생 근무지 업데이트 요청 DTO")
-public class WorkerWorkplaceUpdateRequest extends WorkplaceUpdateRequest {
-    @Override
-    @Schema(description = "근무지 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
-    public Long getWorkplaceId() { return super.getWorkplaceId(); }
-
-    @Override
-    @Schema(description = "근무지 이름", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.REQUIRED)
-    public String getWorkplaceName() { return super.getWorkplaceName(); }
-
-    @Override
-    @Schema(description = "근무지 카테고리 이름", example = "편의점", requiredMode = Schema.RequiredMode.REQUIRED)
-    public String getCategoryName() { return super.getCategoryName(); }
+public class WorkerWorkplaceUpdateRequest extends BaseWorkplaceUpdateRequest {
+    @Schema(description = "라벨 색상 (알바생 기준)", example = "red", requiredMode = Schema.RequiredMode.REQUIRED)
+    private String workerBasedLabelColor;
 
     @Schema(description = "급여 유형 (매월: SALARY_MONTHLY, 매주: SALARY_WEEKLY, 매일: SALARY_DAILY)", example = "SALARY_MONTHLY", requiredMode = Schema.RequiredMode.REQUIRED)
     private String salaryType;
@@ -49,17 +40,9 @@ public class WorkerWorkplaceUpdateRequest extends WorkplaceUpdateRequest {
     @Schema(description = "야간수당 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean hasNightAllowance;
 
-    @Override
-    @Schema(description = "라벨 색상 (근무자 기준)", example = "red", requiredMode = Schema.RequiredMode.REQUIRED)
-    public String getWorkerBasedLabelColor() { return super.getWorkerBasedLabelColor(); }
-
-    @Override
-    @Schema(description = "라벨 색상 (사장님 기준)", example = "red", requiredMode = Schema.RequiredMode.NOT_REQUIRED, hidden = true)
-    public String getOwnerBasedLabelColor() { return super.getOwnerBasedLabelColor(); }
-
-    public Workplace toWorkplaceEntity(Long ownerId) {
+    public Workplace toWorkplaceEntity(Long workplaceId, Long ownerId) {
         return Workplace.builder()
-                .id(getWorkplaceId())
+                .id(workplaceId)
                 .ownerId(ownerId)
                 .workplaceName(getWorkplaceName())
                 .categoryName(getCategoryName())

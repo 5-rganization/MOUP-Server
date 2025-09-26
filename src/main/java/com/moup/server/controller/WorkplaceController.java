@@ -1,14 +1,15 @@
 package com.moup.server.controller;
 
-import com.moup.server.common.Role;
-import com.moup.server.exception.InvalidRoleAccessException;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.User;
 import com.moup.server.service.IdentityService;
 import com.moup.server.service.UserService;
 import com.moup.server.service.WorkplaceService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -33,85 +34,121 @@ public class WorkplaceController {
     private final IdentityService identityService;
     private final WorkplaceService workplaceService;
 
-    @PostMapping("/worker")
-    @Operation(summary = "알바생 근무지 생성", description = "알바생이 근무지 및 급여 정보를 입력 하여 생성")
+    @PostMapping
+    @Operation(summary = "근무지/매장 생성", description = "사용자 역할에 따라 근무지/매장을 생성")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "근무지 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceCreateResponse.class))),
+            @ApiResponse(responseCode = "200", description = "근무지/매장 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceCreateResponse.class))),
             @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "근무지 생성을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkerWorkplaceCreateRequest.class)))
-    public ResponseEntity<?> createWorkerWorkplace(@RequestBody WorkerWorkplaceCreateRequest workerWorkplaceCreateRequest) {
+    public ResponseEntity<?> createWorkplace(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "근무지/매장 생성 요청 DTO",
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(oneOf = {WorkerWorkplaceCreateRequest.class, OwnerWorkplaceCreateRequest.class}),
+                                examples = {
+                                        @ExampleObject(name = "알바생 근무지 생성", summary = "알바생 근무지 생성 요청 DTO",
+                                                value = """
+                                                        {
+                                                            "workplaceName": "세븐일레븐 동탄중심상가점",
+                                                            "categoryName": "편의점",
+                                                            "address": "경기 화성시 동탄중심상가1길 8 1층",
+                                                            "latitude": 37.200089,
+                                                            "longitude": 127.072006,
+                                                            "workerBasedLabelColor": "red",
+                                                            "salaryType": "SALARY_MONTHLY",
+                                                            "salaryCalculation": "SALARY_CALCULATION_HOURLY",
+                                                            "hourlyRate": 10030,
+                                                            "salaryDate": 15,
+                                                            "hasNationalPension": true,
+                                                            "hasHealthInsurance": true,
+                                                            "hasEmploymentInsurance": true,
+                                                            "hasIndustrialAccident": true,
+                                                            "hasIncomeTax": false,
+                                                            "hasNightAllowance": false
+                                                        }
+                                                        """),
+                                        @ExampleObject(name = "사장님 매장 생성", summary = "사장님 매장 생성 요청 DTO",
+                                                value = """
+                                                        {
+                                                            "workplaceName": "세븐일레븐 동탄중심상가점",
+                                                            "categoryName": "편의점",
+                                                            "address": "경기 화성시 동탄중심상가1길 8 1층",
+                                                            "latitude": 37.200089,
+                                                            "longitude": 127.072006,
+                                                            "ownerBasedLabelColor": "blue"
+                                                        }
+                                                        """)
+                                }
+                                )) @RequestBody BaseWorkplaceCreateRequest workplaceCreateRequest
+    ) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
-        if (user.getRole() == Role.ROLE_WORKER || user.getRole() == Role.ROLE_ADMIN) {
-            WorkplaceCreateResponse workplaceCreateResponse = workplaceService.createWorkerWorkplace(user.getId(), workerWorkplaceCreateRequest);
-            return ResponseEntity.ok().body(workplaceCreateResponse);
-        } else {
-            throw new InvalidRoleAccessException();
-        }
+        WorkplaceCreateResponse workplaceCreateResponse = workplaceService.createWorkplace(user, workplaceCreateRequest);
+        return ResponseEntity.ok().body(workplaceCreateResponse);
     }
 
-    @PatchMapping("/worker")
-    @Operation(summary = "알바생 근무지 업데이트", description = "알바생이 근무지 및 급여 정보를 입력 하여 업데이트")
+    @PatchMapping("/{workplaceId}")
+    @Operation(summary = "근무지/매장 업데이트", description = "사용자 역할에 따라 근무지/매장 정보를 업데이트")
     @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "근무지 업데이트 성공"),
+            @ApiResponse(responseCode = "204", description = "근무지/매장 업데이트 성공"),
             @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "존재하지 않는 근무지", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "요청한 근무지에 해당하는 근무자가 존재하지 않음", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "근무자에 해당하는 급여가 존재하지 않음", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 근무지/매장", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청한 근무지/매장에 해당하는 근무자가 존재하지 않음", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "근무지/매장에 해당하는 급여가 존재하지 않음", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "근무지 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkerWorkplaceUpdateRequest.class)))
-    public ResponseEntity<?> updateWorkerWorkplace(@RequestBody WorkerWorkplaceUpdateRequest workerWorkplaceUpdateRequest) {
+    public ResponseEntity<?> updateWorkplace(
+            @Parameter(name = "workplaceId", description = "업데이트할 근무지 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable Long workplaceId,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "근무지/매장 생성 요청 DTO",
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(oneOf = {WorkerWorkplaceUpdateRequest.class, OwnerWorkplaceUpdateRequest.class}),
+                            examples = {
+                                    @ExampleObject(name = "알바생 근무지 업데이트", summary = "알바생 근무지 업데이트 요청 DTO",
+                                            value = """
+                                                    {
+                                                        "workplaceName": "세븐일레븐 동탄중심상가점",
+                                                        "categoryName": "편의점",
+                                                        "address": "경기 화성시 동탄중심상가1길 8 1층",
+                                                        "latitude": 37.200089,
+                                                        "longitude": 127.072006,
+                                                        "workerBasedLabelColor": "red",
+                                                        "salaryType": "SALARY_MONTHLY",
+                                                        "salaryCalculation": "SALARY_CALCULATION_HOURLY",
+                                                        "hourlyRate": 10030,
+                                                        "salaryDate": 15,
+                                                        "hasNationalPension": true,
+                                                        "hasHealthInsurance": true,
+                                                        "hasEmploymentInsurance": true,
+                                                        "hasIndustrialAccident": true,
+                                                        "hasIncomeTax": false,
+                                                        "hasNightAllowance": false
+                                                    }
+                                                    """),
+                                    @ExampleObject(name = "사장님 매장 업데이트", summary = "사장님 매장 업데이트 요청 DTO",
+                                            value = """
+                                                    {
+                                                        "workplaceName": "세븐일레븐 동탄중심상가점",
+                                                        "categoryName": "편의점",
+                                                        "address": "경기 화성시 동탄중심상가1길 8 1층",
+                                                        "latitude": 37.200089,
+                                                        "longitude": 127.072006,
+                                                        "ownerBasedLabelColor": "blue"
+                                                    }
+                                                    """)
+                            }
+                            )) @RequestBody BaseWorkplaceUpdateRequest workplaceUpdateRequest
+    ) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
-        if (user.getRole() == Role.ROLE_WORKER || user.getRole() == Role.ROLE_ADMIN) {
-            workplaceService.updateWorkerWorkplace(user.getId(), workerWorkplaceUpdateRequest);
-            return ResponseEntity.noContent().build();
-        } else {
-            throw new InvalidRoleAccessException();
-        }
-    }
-
-    @PostMapping("/owner")
-    @Operation(summary = "사장님 매장 생성", description = "사장님이 매장 정보를 입력 하여 생성")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "매장 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceCreateResponse.class))),
-            @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "매장 생성을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = OwnerWorkplaceCreateRequest.class)))
-    public ResponseEntity<?> createOwnerWorkplace(@RequestBody OwnerWorkplaceCreateRequest ownerWorkplaceCreateRequest) {
-        Long userId = identityService.getCurrentUserId();
-        User user = userService.findUserById(userId);
-
-        if (user.getRole() == Role.ROLE_OWNER || user.getRole() == Role.ROLE_ADMIN) {
-            WorkplaceCreateResponse workplaceCreateResponse = workplaceService.createOwnerWorkplace(user.getId(), ownerWorkplaceCreateRequest);
-            return ResponseEntity.ok().body(workplaceCreateResponse);
-        } else {
-            throw new InvalidRoleAccessException();
-        }
-    }
-
-    @PatchMapping("/owner")
-    @Operation(summary = "사장님 매장 업데이트", description = "사장님이 매장 정보를 입력 하여 업데이트")
-    @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "매장 업데이트 성공"),
-            @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "존재하지 않는 매장", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "요청한 매장에 해당하는 근무자가 존재하지 않음", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "매장 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = OwnerWorkplaceUpdateRequest.class)))
-    public ResponseEntity<?> updateOwnerWorkplace(@RequestBody OwnerWorkplaceUpdateRequest ownerWorkplaceUpdateRequest) {
-        Long userId = identityService.getCurrentUserId();
-        User user = userService.findUserById(userId);
-
-        if (user.getRole() == Role.ROLE_OWNER || user.getRole() == Role.ROLE_ADMIN) {
-            workplaceService.updateOwnerWorkplace(user.getId(), ownerWorkplaceUpdateRequest);
-            return ResponseEntity.noContent().build();
-        } else {
-            throw new InvalidRoleAccessException();
-        }
+        workplaceService.updateWorkplace(user, workplaceId, workplaceUpdateRequest);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/summary")
@@ -137,7 +174,10 @@ public class WorkplaceController {
             @ApiResponse(responseCode = "204", description = "근무지(매장) 삭제 성공"),
             @ApiResponse(responseCode = "404", description = "존재하지 않는 근무지(매장)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    public ResponseEntity<?> deleteWorkplace(@PathVariable Long workplaceId) {
+    public ResponseEntity<?> deleteWorkplace(
+            @Parameter(name = "workplaceId", description = "삭제할 근무지 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable Long workplaceId
+    ) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 

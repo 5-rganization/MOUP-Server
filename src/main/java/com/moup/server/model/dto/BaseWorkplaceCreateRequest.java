@@ -1,5 +1,7 @@
 package com.moup.server.model.dto;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.moup.server.model.entity.Worker;
 import com.moup.server.model.entity.Workplace;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -7,30 +9,23 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-@Schema(description = "근무지(매장) 생성 요청의 공통 필드를 담는 추상 DTO")
+@JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)
+@JsonSubTypes({@JsonSubTypes.Type(WorkerWorkplaceCreateRequest.class), @JsonSubTypes.Type(OwnerWorkplaceCreateRequest.class)})
 @Getter
 @NoArgsConstructor
 @SuperBuilder
-public abstract class WorkplaceCreateRequest {
+public abstract class BaseWorkplaceCreateRequest {
+    @Schema(description = "근무지/매장 이름", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.REQUIRED)
     private String workplaceName;
+    @Schema(description = "근무지/매장 카테고리 이름", example = "편의점", requiredMode = Schema.RequiredMode.REQUIRED)
     private String categoryName;
-    private String workerBasedLabelColor;
-    private String ownerBasedLabelColor;
     @Schema(description = "주소", example = "경기 화성시 동탄중심상가1길 8 1층", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String address;
     @Schema(description = "위도", example = "37.2000891334382", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Double latitude;
     @Schema(description = "경도", example = "127.072006099274", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Double longitude;
+
     public abstract Workplace toWorkplaceEntity(Long userId);
-    public Worker toWorkerEntity(Long userId, Long workplaceId) {
-        return Worker.builder()
-                .id(null)
-                .userId(userId)
-                .workplaceId(workplaceId)
-                .workerBasedLabelColor(getWorkerBasedLabelColor() == null ? "primary" : getWorkerBasedLabelColor())
-                .ownerBasedLabelColor(getOwnerBasedLabelColor() == null ? "primary" : getOwnerBasedLabelColor())
-                .isAccepted(true)
-                .build();
-    }
+    public abstract Worker toWorkerEntity(Long userId, Long workplaceId);
 }

@@ -1,5 +1,6 @@
 package com.moup.server.model.dto;
 
+import com.moup.server.model.entity.Worker;
 import com.moup.server.model.entity.Workplace;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
@@ -10,22 +11,9 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @NoArgsConstructor
 @Schema(description = "사장님 매장 생성 요청 DTO")
-public class OwnerWorkplaceCreateRequest extends WorkplaceCreateRequest {
-    @Override
-    @Schema(description = "매장 이름", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.REQUIRED)
-    public String getWorkplaceName() { return super.getWorkplaceName(); }
-
-    @Override
-    @Schema(description = "매장 카테고리 이름", example = "편의점", requiredMode = Schema.RequiredMode.REQUIRED)
-    public String getCategoryName() { return super.getCategoryName(); }
-
-    @Override
-    @Schema(description = "라벨 색상 (근무자 기준)", example = "red", requiredMode = Schema.RequiredMode.NOT_REQUIRED, hidden = true)
-    public String getWorkerBasedLabelColor() { return super.getWorkerBasedLabelColor(); }
-
-    @Override
-    @Schema(description = "라벨 색상 (사장님 기준)", example = "red", requiredMode = Schema.RequiredMode.REQUIRED)
-    public String getOwnerBasedLabelColor() { return super.getOwnerBasedLabelColor(); }
+public class OwnerWorkplaceCreateRequest extends BaseWorkplaceCreateRequest {
+    @Schema(description = "라벨 색상 (사장님 기준)", example = "blue", requiredMode = Schema.RequiredMode.REQUIRED)
+    private String ownerBasedLabelColor;
 
     public Workplace toWorkplaceEntity(Long userId) {
         return Workplace.builder()
@@ -37,6 +25,16 @@ public class OwnerWorkplaceCreateRequest extends WorkplaceCreateRequest {
                 .address(getAddress())
                 .latitude(getLatitude())
                 .longitude(getLongitude())
+                .build();
+    }
+
+    public Worker toWorkerEntity(Long userId, Long workplaceId) {
+        return Worker.builder()
+                .id(null)
+                .userId(userId)
+                .workplaceId(workplaceId)
+                .ownerBasedLabelColor(ownerBasedLabelColor)
+                .isAccepted(true)
                 .build();
     }
 }
