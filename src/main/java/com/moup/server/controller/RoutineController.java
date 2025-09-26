@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -34,7 +35,7 @@ public class RoutineController {
             @ApiResponse(responseCode = "200", description = "루틴 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineCreateResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "루틴 생성을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineCreateRequest.class)))
-    public ResponseEntity<?> createRoutine(@RequestBody RoutineCreateRequest routineCreateRequest) {
+    public ResponseEntity<?> createRoutine(@RequestBody @Valid RoutineCreateRequest routineCreateRequest) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
@@ -66,7 +67,7 @@ public class RoutineController {
                                                     {
                                                         "routineId": 1,
                                                         "routineName": "오픈 루틴",
-                                                        "alarmTime": "08:00",
+                                                        "alarmTime": "14:30",
                                                         "routineTaskList": [
                                                             {
                                                                 "content": "바닥 청소",
@@ -86,7 +87,7 @@ public class RoutineController {
                                                     {
                                                         "routineId": 1,
                                                         "routineName": "오픈 루틴",
-                                                        "alarmTime": "08:00"
+                                                        "alarmTime": "14:30"
                                                     }
                                                     """)
                             })),
@@ -120,7 +121,7 @@ public class RoutineController {
             @ApiResponse(responseCode = "404", description = "존재하지 않는 루틴", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "루틴 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineUpdateRequest.class)))
-    public ResponseEntity<?> updateRoutine(@RequestBody RoutineUpdateRequest routineUpdateRequest) {
+    public ResponseEntity<?> updateRoutine(@RequestBody @Valid RoutineUpdateRequest routineUpdateRequest) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 

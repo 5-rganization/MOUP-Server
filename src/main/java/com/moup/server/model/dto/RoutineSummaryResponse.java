@@ -12,6 +12,6 @@ public class RoutineSummaryResponse {
     private Long routineId;
     @Schema(description = "루틴 이름", example = "오픈 루틴", requiredMode = Schema.RequiredMode.REQUIRED)
     private String routineName;
-    @Schema(description = "알람 시간", example = "08:00", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @Schema(description = "알람 시간", example = "14:30", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String alarmTime;
 }

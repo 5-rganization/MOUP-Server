@@ -2,6 +2,8 @@ package com.moup.server.model.dto;
 
 import com.moup.server.model.entity.RoutineTask;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -9,10 +11,13 @@ import lombok.Getter;
 @Builder
 @Schema(description = "할 일 생성 요청 DTO")
 public class RoutineTaskCreateRequest {
+    @NotBlank(message = "빈 값 혹은 공백 문자는 받을 수 없습니다.")
     @Schema(description = "내용", example = "바닥 청소", requiredMode = Schema.RequiredMode.REQUIRED)
     private String content;
+    @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "정렬 순서", example = "0", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer orderIndex;
+    @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "체크 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean isChecked;
 
