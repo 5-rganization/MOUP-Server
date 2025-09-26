@@ -85,8 +85,8 @@ public class RoutineService {
     }
 
     @Transactional
-    public void updateRoutine(Long userId, RoutineUpdateRequest routineUpdateRequest) {
-        Routine newRoutine = routineUpdateRequest.toEntity(userId);
+    public void updateRoutine(Long userId, Long routineId, RoutineUpdateRequest routineUpdateRequest) {
+        Routine newRoutine = routineUpdateRequest.toEntity(routineId, userId);
         if (routineRepository.existByIdAndUserId(newRoutine.getId(), userId)) {
             routineRepository.update(newRoutine);
         } else {
@@ -116,13 +116,13 @@ public class RoutineService {
             routineTaskRepository.deleteAllByRoutineId(newRoutine.getId());
             if (!requestDtoList.isEmpty()) {
                 List<RoutineTask> tasksToCreate = requestDtoList.stream()
-                        .map(RoutineTaskUpdateRequest::toEntity)
+                        .map(request -> request.toEntity(routineId))
                         .toList();
                 routineTaskRepository.createTasks(tasksToCreate);
             }
         } else {
             List<RoutineTask> tasksToUpdate = requestDtoList.stream()
-                    .map(RoutineTaskUpdateRequest::toEntity)
+                    .map(request -> request.toEntity(routineId))
                     .toList();
             routineTaskRepository.updateTasks(tasksToUpdate);
         }

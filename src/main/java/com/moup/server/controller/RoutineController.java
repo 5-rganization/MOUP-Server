@@ -114,18 +114,22 @@ public class RoutineController {
         }
     }
 
-    @PatchMapping
+    @PatchMapping("/{routineId}")
     @Operation(summary = "루틴 업데이트", description = "사용자가 루틴 정보를 입력하여 업데이트")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "루틴 업데이트 성공", content = @Content(mediaType = "application/json")),
             @ApiResponse(responseCode = "404", description = "존재하지 않는 루틴", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "루틴 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineUpdateRequest.class)))
-    public ResponseEntity<?> updateRoutine(@RequestBody @Valid RoutineUpdateRequest routineUpdateRequest) {
+    public ResponseEntity<?> updateRoutine(
+            @Parameter(name = "routineId", description = "업데이트할 루틴 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable Long routineId,
+            @RequestBody @Valid RoutineUpdateRequest routineUpdateRequest
+    ) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
-        routineService.updateRoutine(user.getId(), routineUpdateRequest);
+        routineService.updateRoutine(user.getId(), routineId, routineUpdateRequest);
         return ResponseEntity.noContent().build();
     }
 

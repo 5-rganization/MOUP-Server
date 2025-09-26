@@ -13,9 +13,6 @@ import lombok.Getter;
 public class RoutineTaskUpdateRequest {
     @Schema(description = "할 일 ID", example = "1", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Long taskId;
-    @NotNull(message = "필수 입력값입니다.")
-    @Schema(description = "루틴 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
-    private Long routineId;
     @NotBlank(message = "빈 값 혹은 공백 문자는 받을 수 없습니다.")
     @Schema(description = "내용", example = "바닥 청소", requiredMode = Schema.RequiredMode.REQUIRED)
     private String content;
@@ -26,7 +23,7 @@ public class RoutineTaskUpdateRequest {
     @Schema(description = "체크 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean isChecked;
 
-    public RoutineTask toEntity() {
+    public RoutineTask toEntity(Long routineId) {
         return RoutineTask.builder()
                 .id(taskId)
                 .routineId(routineId)
