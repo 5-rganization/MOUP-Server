@@ -21,9 +21,6 @@ import java.util.List;
 public class RoutineUpdateRequest {
     static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
 
-    @NotNull(message = "필수 입력값입니다.")
-    @Schema(description = "루틴 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
-    private Long routineId;
     @NotBlank(message = "빈 값 혹은 공백 문자는 받을 수 없습니다.")
     @Schema(description = "루틴 이름", example = "오픈", requiredMode = Schema.RequiredMode.REQUIRED)
     private String routineName;
@@ -37,14 +34,12 @@ public class RoutineUpdateRequest {
             [
                 {
                     "taskId": 1,
-                    "routineId": 1,
                     "content": "바닥 청소",
                     "orderIndex": 0,
                     "isChecked": true
                 },
                 {
                     "taskId": 2,
-                    "routineId": 1,
                     "content": "전자레인지 청소",
                     "orderIndex": 1,
                     "isChecked": false
@@ -54,7 +49,7 @@ public class RoutineUpdateRequest {
             requiredMode = Schema.RequiredMode.REQUIRED)
     private List<RoutineTaskUpdateRequest> routineTaskList;
 
-    public Routine toEntity(Long userId) {
+    public Routine toEntity(Long routineId, Long userId) {
         if (alarmTime == null || alarmTime.isBlank()) {
             return Routine.builder()
                     .id(routineId)
