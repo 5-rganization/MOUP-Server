@@ -17,7 +17,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -85,12 +84,12 @@ public class WorkplaceController {
                                                         }
                                                         """)
                                 }
-                                )) @RequestBody @Valid BaseWorkplaceCreateRequest workplaceCreateRequest
+                                )) @RequestBody @Valid BaseWorkplaceCreateRequest request
     ) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
-        WorkplaceCreateResponse response = workplaceService.createWorkplace(user, workplaceCreateRequest);
+        WorkplaceCreateResponse response = workplaceService.createWorkplace(user, request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(response.getWorkplaceId())
@@ -150,12 +149,12 @@ public class WorkplaceController {
                                                     }
                                                     """)
                             }
-                            )) @RequestBody @Valid BaseWorkplaceUpdateRequest workplaceUpdateRequest
+                            )) @RequestBody @Valid BaseWorkplaceUpdateRequest request
     ) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
-        workplaceService.updateWorkplace(user, workplaceId, workplaceUpdateRequest);
+        workplaceService.updateWorkplace(user, workplaceId, request);
         return ResponseEntity.noContent().build();
     }
 
@@ -170,10 +169,10 @@ public class WorkplaceController {
 
         List<WorkplaceSummaryResponse> summaryResponseList = workplaceService.getAllSummarizedWorkplace(user.getId());
 
-        WorkplaceSummaryListResponse workplaceSummaryListResponse = WorkplaceSummaryListResponse.builder()
+        WorkplaceSummaryListResponse response = WorkplaceSummaryListResponse.builder()
                 .workplaceSummaryList(summaryResponseList)
                 .build();
-        return ResponseEntity.ok().body(workplaceSummaryListResponse);
+        return ResponseEntity.ok().body(response);
     }
 
     @DeleteMapping("/{workplaceId}")

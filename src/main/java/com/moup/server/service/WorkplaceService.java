@@ -1,10 +1,7 @@
 package com.moup.server.service;
 
 import com.moup.server.common.Role;
-import com.moup.server.exception.InvalidRoleAccessException;
-import com.moup.server.exception.SalaryWorkerNotFoundException;
-import com.moup.server.exception.WorkerWorkplaceNotFoundException;
-import com.moup.server.exception.WorkplaceNotFoundException;
+import com.moup.server.exception.*;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.Salary;
 import com.moup.server.model.entity.User;
@@ -28,7 +25,9 @@ public class WorkplaceService {
     private final SalaryRepository salaryRepository;
 
     @Transactional
-    protected Worker createWorkplaceAndWorker(Long userId, BaseWorkplaceCreateRequest request) {
+    protected Worker createWorkplaceAndWorkerHelper(Long userId, BaseWorkplaceCreateRequest request) {
+        if (workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, request.getWorkplaceName())) { throw new WorkplaceNameAlreadyUsedException(); }
+
         Workplace workplaceToCreate = request.toWorkplaceEntity(userId);
         workplaceRepository.create(workplaceToCreate);
 
@@ -41,12 +40,12 @@ public class WorkplaceService {
     @Transactional
     public WorkplaceCreateResponse createWorkplace(User user, BaseWorkplaceCreateRequest request) {
         if (user.getRole() == Role.ROLE_OWNER && request instanceof OwnerWorkplaceCreateRequest ownerWorkplaceCreateRequest) {
-            Worker createdWorker = createWorkplaceAndWorker(user.getId(), ownerWorkplaceCreateRequest);
+            Worker createdWorker = createWorkplaceAndWorkerHelper(user.getId(), ownerWorkplaceCreateRequest);
             return WorkplaceCreateResponse.builder()
                     .workplaceId(createdWorker.getWorkplaceId())
                     .build();
         } else if (user.getRole() == Role.ROLE_WORKER && request instanceof WorkerWorkplaceCreateRequest workerWorkplaceCreateRequest) {
-            Worker createdWorker = createWorkplaceAndWorker(user.getId(), workerWorkplaceCreateRequest);
+            Worker createdWorker = createWorkplaceAndWorkerHelper(user.getId(), workerWorkplaceCreateRequest);
 
             Salary salaryToCreate = workerWorkplaceCreateRequest.toSalaryEntity(createdWorker.getId());
             salaryRepository.create(salaryToCreate);
@@ -75,19 +74,24 @@ public class WorkplaceService {
     }
 
     @Transactional
+    protected Long updateWorkplaceAndWorkerHelper(Long userId, Long workplaceId, BaseWorkplaceUpdateRequest request) {
+        Workplace oldWorkplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+        if (!oldWorkplace.getWorkplaceName().equals(request.getWorkplaceName())
+                && workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, request.getWorkplaceName())) { throw new WorkplaceNameAlreadyUsedException(); }
+
+        Workplace newWorkplace = request.toWorkplaceEntity(workplaceId, userId);
+        workplaceRepository.update(newWorkplace);
+
+        return workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
+    }
+
+    @Transactional
     public void updateWorkplace(User user, Long workplaceId, BaseWorkplaceUpdateRequest request) {
-        Workplace newWorkplace = request.toWorkplaceEntity(workplaceId, user.getId());
-        if (workplaceRepository.existsById(newWorkplace.getId())) {
-            workplaceRepository.update(newWorkplace);
-        } else {
-            throw new WorkplaceNotFoundException();
-        }
-
-        Long workerId = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
-
         if (user.getRole() == Role.ROLE_OWNER && request instanceof OwnerWorkplaceUpdateRequest ownerRequest) {
+            Long workerId = updateWorkplaceAndWorkerHelper(user.getId(), workplaceId, ownerRequest);
             workerRepository.updateOwnerBasedLabelColor(workerId, user.getId(), workplaceId, ownerRequest.getOwnerBasedLabelColor());
         } else if (user.getRole() == Role.ROLE_WORKER && request instanceof WorkerWorkplaceUpdateRequest workerRequest) {
+            Long workerId = updateWorkplaceAndWorkerHelper(user.getId(), workplaceId, workerRequest);
             workerRepository.updateWorkerBasedLabelColor(workerId, user.getId(), workplaceId, workerRequest.getWorkerBasedLabelColor());
 
             Long salaryId = salaryRepository.findByWorkerId(workerId).orElseThrow(SalaryWorkerNotFoundException::new).getId();

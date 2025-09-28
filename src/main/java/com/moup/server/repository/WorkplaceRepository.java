@@ -31,6 +31,16 @@ public interface WorkplaceRepository {
     boolean existsById(Long id);
 
     /**
+     * 등록자 ID, 근무지 이름을 통해 해당 근무지가 존재하는지(등록자가 이미 만들었는지) 여부를 반환하는 메서드
+     *
+     * @param ownerId 조회할 등록자 ID
+     * @param workplaceName 조회할 근무지 이름
+     * @return 존재하면 true, 그렇지 않으면 false
+     */
+    @Select("SELECT EXISTS(SELECT 1 FROM workplaces WHERE owner_id = #{ownerId} AND workplace_name = #{workplaceName})")
+    boolean existsByOwnerIdAndWorkplaceName(Long ownerId, String workplaceName);
+
+    /**
      * 근무지 ID를 통해 해당 근무지를 찾고, 그 근무지의 객체를 반환하는 메서드
      *
      * @param id 조회할 근무지의 ID
