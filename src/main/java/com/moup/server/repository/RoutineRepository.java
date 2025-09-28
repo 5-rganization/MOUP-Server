@@ -30,6 +30,16 @@ public interface RoutineRepository {
     boolean existByIdAndUserId(Long id, Long userId);
 
     /**
+     * 사용자 ID와 루틴 이름을 통해 해당 루틴이 존재하는지(사용자가 이미 만들었는지) 여부를 반환하는 메서드
+     *
+     * @param userId 조회할 루틴의 사용자 ID
+     * @param routineName 조회할 루틴의 이름
+     * @return 존재하면 true, 그렇지 않으면 false
+     */
+    @Select("SELECT EXISTS(SELECT 1 FROM routines WHERE user_id = #{userId} AND routine_name = #{routineName})")
+    boolean existByUserIdAndRoutineName(Long userId, String routineName);
+
+    /**
      * 루틴의 ID와 사용자 ID를 통해 해당 루틴을 찾고, 그 루틴 객체를 반환하는 메서드
      *
      * @param id 조회할 루틴의 ID

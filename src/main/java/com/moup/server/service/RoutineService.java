@@ -1,5 +1,6 @@
 package com.moup.server.service;
 
+import com.moup.server.exception.RoutineNameAlreadyUsedException;
 import com.moup.server.exception.RoutineNotFoundException;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.Routine;
@@ -22,12 +23,16 @@ public class RoutineService {
     private final RoutineTaskRepository routineTaskRepository;
 
     @Transactional
-    public RoutineCreateResponse createRoutine(Long userId, RoutineCreateRequest routineCreateRequest) {
-        Routine routineToCreate = routineCreateRequest.toEntity(userId);
+    public RoutineCreateResponse createRoutine(Long userId, RoutineCreateRequest request) {
+        if (routineRepository.existByUserIdAndRoutineName(userId, request.getRoutineName())) { throw new RoutineNameAlreadyUsedException(); }
+
+        Routine routineToCreate = request.toEntity(userId);
         routineRepository.create(routineToCreate);
 
-        List<RoutineTaskCreateRequest> routineTaskCreateRequestList = routineCreateRequest.getRoutineTaskList();
-        List<RoutineTask> tasksToCreate = routineTaskCreateRequestList.stream().map(request -> request.toEntity(routineToCreate.getId())).toList();
+        List<RoutineTaskCreateRequest> routineTaskCreateRequestList = request.getRoutineTaskList();
+        List<RoutineTask> tasksToCreate = routineTaskCreateRequestList.stream()
+                .map(taskCreateRequest -> taskCreateRequest.toEntity(routineToCreate.getId()))
+                .toList();
         if (!tasksToCreate.isEmpty()) { routineTaskRepository.createTasks(tasksToCreate); }
 
         return RoutineCreateResponse.builder()
@@ -49,13 +54,13 @@ public class RoutineService {
     @Transactional(readOnly = true)
     public RoutineSummaryListResponse getAllSummarizedRoutine(Long userId) {
         List<Routine> routineList = routineRepository.findAllByUserId(userId);
-        List<RoutineSummaryResponse> routineSummaryResponseList = routineList.stream().map(
-                routine -> RoutineSummaryResponse.builder()
+        List<RoutineSummaryResponse> routineSummaryResponseList = routineList.stream()
+                .map(routine -> RoutineSummaryResponse.builder()
                         .routineId(routine.getId())
                         .routineName(routine.getRoutineName())
                         .alarmTime(routine.getAlarmTime() != null ? routine.getAlarmTime().toString() : null)
-                        .build()
-        ).toList();
+                        .build())
+                .toList();
 
         return RoutineSummaryListResponse.builder()
                 .routineSummaryList(routineSummaryResponseList)
@@ -66,15 +71,15 @@ public class RoutineService {
     public RoutineDetailResponse getRoutineDetail(Long userId, Long routineId) {
         Routine routine = routineRepository.findByIdAndUserId(routineId, userId).orElseThrow(RoutineNotFoundException::new);
         List<RoutineTask> routineTaskList = routineTaskRepository.findAllByRoutineId(routineId);
-        List<RoutineTaskDetailResponse> routineTaskDetailResponseList = routineTaskList.stream().map(
-                task -> RoutineTaskDetailResponse.builder()
+        List<RoutineTaskDetailResponse> routineTaskDetailResponseList = routineTaskList.stream()
+                .map(task -> RoutineTaskDetailResponse.builder()
                         .taskId(task.getId())
                         .routineId(task.getRoutineId())
                         .content(task.getContent())
                         .orderIndex(task.getOrderIndex())
                         .isChecked(task.getIsChecked())
-                        .build()
-        ).toList();
+                        .build())
+                .toList();
 
         return RoutineDetailResponse.builder()
                 .routineId(routine.getId())
@@ -85,8 +90,12 @@ public class RoutineService {
     }
 
     @Transactional
-    public void updateRoutine(Long userId, Long routineId, RoutineUpdateRequest routineUpdateRequest) {
-        Routine newRoutine = routineUpdateRequest.toEntity(routineId, userId);
+    public void updateRoutine(Long userId, Long routineId, RoutineUpdateRequest request) {
+        Routine oldRoutine = routineRepository.findByIdAndUserId(routineId, userId).orElseThrow(RoutineNotFoundException::new);
+        if (!oldRoutine.getRoutineName().equals(request.getRoutineName())
+                && routineRepository.existByUserIdAndRoutineName(userId, request.getRoutineName())) { throw new RoutineNameAlreadyUsedException(); }
+
+        Routine newRoutine = request.toEntity(routineId, userId);
         if (routineRepository.existByIdAndUserId(newRoutine.getId(), userId)) {
             routineRepository.update(newRoutine);
         } else {
@@ -94,7 +103,7 @@ public class RoutineService {
         }
 
         List<RoutineTask> existingTaskList = routineTaskRepository.findAllByRoutineId(newRoutine.getId());
-        List<RoutineTaskUpdateRequest> requestDtoList = routineUpdateRequest.getRoutineTaskList();
+        List<RoutineTaskUpdateRequest> requestDtoList = request.getRoutineTaskList();
         boolean isStructureChanged = false;
         if (existingTaskList.size() != requestDtoList.size()) {
             isStructureChanged = true;
@@ -116,13 +125,13 @@ public class RoutineService {
             routineTaskRepository.deleteAllByRoutineId(newRoutine.getId());
             if (!requestDtoList.isEmpty()) {
                 List<RoutineTask> tasksToCreate = requestDtoList.stream()
-                        .map(request -> request.toEntity(routineId))
+                        .map(taskUpdateRequest -> taskUpdateRequest.toEntity(routineId))
                         .toList();
                 routineTaskRepository.createTasks(tasksToCreate);
             }
         } else {
             List<RoutineTask> tasksToUpdate = requestDtoList.stream()
-                    .map(request -> request.toEntity(routineId))
+                    .map(taskUpdateRequest -> taskUpdateRequest.toEntity(routineId))
                     .toList();
             routineTaskRepository.updateTasks(tasksToUpdate);
         }

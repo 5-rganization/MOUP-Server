@@ -19,6 +19,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import java.net.URI;
 
 @Tag(name = "Routine-Controller", description = "루틴 정보 관리 API 엔드포인트")
 @RestController
@@ -35,12 +38,16 @@ public class RoutineController {
             @ApiResponse(responseCode = "200", description = "루틴 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineCreateResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "루틴 생성을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineCreateRequest.class)))
-    public ResponseEntity<?> createRoutine(@RequestBody @Valid RoutineCreateRequest routineCreateRequest) {
+    public ResponseEntity<?> createRoutine(@RequestBody @Valid RoutineCreateRequest request) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
-        RoutineCreateResponse routineCreateResponse = routineService.createRoutine(user.getId(), routineCreateRequest);
-        return ResponseEntity.ok().body(routineCreateResponse);
+        RoutineCreateResponse response = routineService.createRoutine(user.getId(), request);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(response.getRoutineId())
+                .toUri();
+        return ResponseEntity.created(location).body(response);
     }
 
     @GetMapping
@@ -97,18 +104,18 @@ public class RoutineController {
     public ResponseEntity<?> getRoutineDetail(
             @Parameter(name = "routineId", description = "조회할 루틴 ID", example = "1", required = true, in = ParameterIn.PATH)
             @PathVariable Long routineId,
-            @Parameter(name = "view", description = "조회 방식 (기본값(null): 상세 정보, `summary`: 요약 정보)", in = ParameterIn.QUERY, schema = @Schema(allowableValues = {"summary"}))
+            @Parameter(name = "view", description = "조회 방식 (기본값: 상세 정보, `summary`: 요약 정보)", in = ParameterIn.QUERY, schema = @Schema(allowableValues = {"summary"}))
             @RequestParam(name = "view", required = false) String view
     ) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
         if (view == null) {
-            RoutineDetailResponse routineDetailResponse = routineService.getRoutineDetail(user.getId(), routineId);
-            return ResponseEntity.ok().body(routineDetailResponse);
+            RoutineDetailResponse response = routineService.getRoutineDetail(user.getId(), routineId);
+            return ResponseEntity.ok().body(response);
         } else if ("summary".equals(view)) {
-            RoutineSummaryResponse routineSummaryResponse = routineService.getSummarizedRoutine(user.getId(), routineId);
-            return ResponseEntity.ok().body(routineSummaryResponse);
+            RoutineSummaryResponse response = routineService.getSummarizedRoutine(user.getId(), routineId);
+            return ResponseEntity.ok().body(response);
         } else {
             throw new InvalidParameterException();
         }
@@ -124,12 +131,12 @@ public class RoutineController {
     public ResponseEntity<?> updateRoutine(
             @Parameter(name = "routineId", description = "업데이트할 루틴 ID", example = "1", required = true, in = ParameterIn.PATH)
             @PathVariable Long routineId,
-            @RequestBody @Valid RoutineUpdateRequest routineUpdateRequest
+            @RequestBody @Valid RoutineUpdateRequest request
     ) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
-        routineService.updateRoutine(user.getId(), routineId, routineUpdateRequest);
+        routineService.updateRoutine(user.getId(), routineId, request);
         return ResponseEntity.noContent().build();
     }
 
