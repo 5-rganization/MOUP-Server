@@ -24,8 +24,10 @@ public class WorkerWorkplaceCreateRequest extends BaseWorkplaceCreateRequest {
     @NotBlank(message = "빈 값 혹은 공백 문자는 받을 수 없습니다.")
     @Schema(description = "급여 계산 (시급: SALARY_CALCULATION_HOURLY, 고정: SALARY_CALCULATION_FIXED)", example = "SALARY_CALCULATION_HOURLY", requiredMode = Schema.RequiredMode.REQUIRED)
     private String salaryCalculation;
+    @Positive
     @Schema(description = "시급", example = "10030", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Integer hourlyRate;
+    @Positive
     @Schema(description = "고정급", example = "2156880", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Integer fixedRate;
     @Min(value = 1, message = "최소 범위 미만입니다.")

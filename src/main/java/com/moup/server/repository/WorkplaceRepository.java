@@ -28,7 +28,7 @@ public interface WorkplaceRepository {
      * @return 존재하면 true, 그렇지 않으면 false
      */
     @Select("SELECT EXISTS(SELECT 1 FROM workplaces WHERE id = #{id})")
-    boolean existById(Long id);
+    boolean existsById(Long id);
 
     /**
      * 근무지 ID를 통해 해당 근무지를 찾고, 그 근무지의 객체를 반환하는 메서드

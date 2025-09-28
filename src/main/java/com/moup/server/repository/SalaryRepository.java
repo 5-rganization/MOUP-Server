@@ -28,14 +28,13 @@ public interface SalaryRepository {
     Long create(Salary salary);
 
     /**
-     * 급여 ID와 근무자 ID를 통해 해당 근무자의 급여를 찾고, 그 급여의 객체를 반환하는 메서드
+     * 근무자 ID를 통해 해당 근무자의 급여를 찾고, 그 급여의 객체를 반환하는 메서드
      *
-     * @param id 조회할 급여의 ID
      * @param workerId 조회할 급여의 근무자 ID
      * @return 조회된 Salary 객체, 없으면 Optional.empty
      */
-    @Select("SELECT * FROM salaries WHERE id = #{id} AND worker_id = #{workerId}")
-    Optional<Salary> findByIdAndWorkerId(Long id, Long workerId);
+    @Select("SELECT * FROM salaries WHERE worker_id = #{workerId}")
+    Optional<Salary> findByWorkerId(Long workerId);
 
     /**
      * 급여 ID와 근무자 ID에 해당하는 급여 정보를 업데이트하는 메서드.

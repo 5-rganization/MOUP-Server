@@ -77,7 +77,7 @@ public class WorkplaceService {
     @Transactional
     public void updateWorkplace(User user, Long workplaceId, BaseWorkplaceUpdateRequest request) {
         Workplace newWorkplace = request.toWorkplaceEntity(workplaceId, user.getId());
-        if (workplaceRepository.existById(newWorkplace.getId())) {
+        if (workplaceRepository.existsById(newWorkplace.getId())) {
             workplaceRepository.update(newWorkplace);
         } else {
             throw new WorkplaceNotFoundException();
@@ -90,7 +90,7 @@ public class WorkplaceService {
         } else if (user.getRole() == Role.ROLE_WORKER && request instanceof WorkerWorkplaceUpdateRequest workerRequest) {
             workerRepository.updateWorkerBasedLabelColor(workerId, user.getId(), workplaceId, workerRequest.getWorkerBasedLabelColor());
 
-            Long salaryId = salaryRepository.findByIdAndWorkerId(user.getId(), workerId).orElseThrow(SalaryWorkerNotFoundException::new).getId();
+            Long salaryId = salaryRepository.findByWorkerId(workerId).orElseThrow(SalaryWorkerNotFoundException::new).getId();
             Salary newSalary = workerRequest.toSalaryEntity(salaryId, workerId);
             salaryRepository.update(newSalary);
         } else {
@@ -100,7 +100,7 @@ public class WorkplaceService {
 
     @Transactional
     public void deleteWorkplace(Long userId, Long workplaceId) {
-        if (workplaceRepository.existById(workplaceId)) {
+        if (workplaceRepository.existsById(workplaceId)) {
             workplaceRepository.deleteByIdAndOwnerId(workplaceId, userId);
         } else {
             throw new WorkplaceNotFoundException();

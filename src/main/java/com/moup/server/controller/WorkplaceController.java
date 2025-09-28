@@ -17,8 +17,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.net.URI;
 import java.util.List;
 
 /**
@@ -87,8 +90,12 @@ public class WorkplaceController {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
-        WorkplaceCreateResponse workplaceCreateResponse = workplaceService.createWorkplace(user, workplaceCreateRequest);
-        return ResponseEntity.ok().body(workplaceCreateResponse);
+        WorkplaceCreateResponse response = workplaceService.createWorkplace(user, workplaceCreateRequest);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(response.getWorkplaceId())
+                .toUri();
+        return ResponseEntity.created(location).body(response);
     }
 
     @PatchMapping("/{workplaceId}")
