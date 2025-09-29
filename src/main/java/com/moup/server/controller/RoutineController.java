@@ -35,7 +35,7 @@ public class RoutineController {
     @PostMapping
     @Operation(summary = "루틴 생성", description = "사용자가 루틴 정보를 입력하여 생성")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "루틴 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineCreateResponse.class))),
+            @ApiResponse(responseCode = "201", description = "루틴 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineCreateResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "루틴 생성을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineCreateRequest.class)))
     public ResponseEntity<?> createRoutine(@RequestBody @Valid RoutineCreateRequest request) {
