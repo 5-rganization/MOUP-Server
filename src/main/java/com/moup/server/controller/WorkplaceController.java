@@ -40,7 +40,7 @@ public class WorkplaceController {
     @PostMapping
     @Operation(summary = "근무지/매장 생성", description = "사용자 역할에 따라 근무지/매장을 생성")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "근무지/매장 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceCreateResponse.class))),
+            @ApiResponse(responseCode = "201", description = "근무지/매장 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceCreateResponse.class))),
             @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     public ResponseEntity<?> createWorkplace(
