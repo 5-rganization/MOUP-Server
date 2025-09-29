@@ -40,9 +40,8 @@ public class RoutineController {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "루틴 생성을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineCreateRequest.class)))
     public ResponseEntity<?> createRoutine(@RequestBody @Valid RoutineCreateRequest request) {
         Long userId = identityService.getCurrentUserId();
-        User user = userService.findUserById(userId);
 
-        RoutineCreateResponse response = routineService.createRoutine(user.getId(), request);
+        RoutineCreateResponse response = routineService.createRoutine(userId, request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(response.getRoutineId())
