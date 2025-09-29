@@ -7,16 +7,17 @@ import lombok.*;
 @ToString
 public class Salary {
     private Long id;
+    private Long workerId;
     private String salaryType;
     private String salaryCalculation;
     private Integer hourlyRate;
     private Integer fixedRate;
     private Integer salaryDate;
     private String salaryDay;
-    private boolean hasNationalPension;
-    private boolean hasHealthInsurance;
-    private boolean hasEmploymentInsurance;
-    private boolean hasIndustrialAccident;
-    private boolean hasIncomeTax;
-    private boolean hasNightAllowance;
+    private Boolean hasNationalPension;
+    private Boolean hasHealthInsurance;
+    private Boolean hasEmploymentInsurance;
+    private Boolean hasIndustrialAccident;
+    private Boolean hasIncomeTax;
+    private Boolean hasNightAllowance;
 }
