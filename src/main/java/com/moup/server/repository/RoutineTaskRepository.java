@@ -34,7 +34,7 @@ public interface RoutineTaskRepository {
      *
      * @param routineTask 업데이트할 RoutineTas 객체
      */
-    @Update("UPDATE routine_tasks SET content = #{routineName}, order_index = #{orderIndex}, is_checked = #{isChecked} WHERE id = #{id} AND routine_id = #{routineId}")
+    @Update("UPDATE routine_tasks SET content = #{content}, order_index = #{orderIndex}, is_checked = #{isChecked} WHERE id = #{id} AND routine_id = #{routineId}")
     void update(RoutineTask routineTask);
 
     /**
