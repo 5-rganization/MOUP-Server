@@ -20,6 +20,8 @@ public enum ErrorCode {
     WORKER_USER_NOT_FOUND(HttpStatus.NOT_FOUND, "WORKER_404", "사용자에 해당하는 근무지가 존재하지 않습니다."),
     WORKER_ALREADY_EXISTS(HttpStatus.CONFLICT, "WORKER_409", "이미 등록된 근무자입니다."),
     SALARY_WORKER_NOT_FOUND(HttpStatus.NOT_FOUND, "SALARY_404", "근무자에 해당하는 급여가 존재하지 않습니다."),
+    ROUTINE_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUTINE_404", "해당 루틴은 존재하지 않습니다."),
+    ROUTINE_NAME_ALREADY_USED(HttpStatus.CONFLICT, "ROUTINE_NAME_409", "사용자가 이미 등록한 루틴 이름입니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_500", "서버에 오류가 발생했습니다."),
     ALREADY_DELETED(HttpStatus.CONFLICT, "DELETE_409", "삭제 처리 중입니다.");
 
