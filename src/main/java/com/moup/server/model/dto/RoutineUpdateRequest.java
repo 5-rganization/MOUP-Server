@@ -1,6 +1,5 @@
 package com.moup.server.model.dto;
 
-import com.moup.server.exception.InvalidFieldFormatException;
 import com.moup.server.model.entity.Routine;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
@@ -12,7 +11,6 @@ import lombok.Getter;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.List;
 
 @Getter
@@ -58,16 +56,12 @@ public class RoutineUpdateRequest {
                     .alarmTime(null)
                     .build();
         } else {
-            try {
-                return Routine.builder()
-                        .id(routineId)
-                        .userId(userId)
-                        .routineName(routineName)
-                        .alarmTime(LocalTime.parse(alarmTime, formatter))
-                        .build();
-            } catch (DateTimeParseException e) {
-                throw new InvalidFieldFormatException();
-            }
+            return Routine.builder()
+                    .id(routineId)
+                    .userId(userId)
+                    .routineName(routineName)
+                    .alarmTime(LocalTime.parse(alarmTime, formatter))
+                    .build();
         }
     }
 }

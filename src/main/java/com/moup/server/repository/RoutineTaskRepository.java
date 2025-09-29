@@ -20,13 +20,6 @@ public interface RoutineTaskRepository {
     Long create(RoutineTask routineTask);
 
     /**
-     * 여러 개의 할 일을 한 번에 생성하는 메서드 (배치 INSERT)
-     *
-     * @param tasks 생성할 RoutineTask 객체 리스트
-     */
-    void createTasks(List<RoutineTask> tasks);
-
-    /**
      * 할 일 ID와 루틴 ID를 통해 해당 할 일의 객체를 반환하는 메서드
      *
      * @param id 조회할 할 일의 ID
@@ -39,9 +32,10 @@ public interface RoutineTaskRepository {
     /**
      * 여러 개의 할 일을 한 번에 업데이트하는 메서드 (배치 UPDATE)
      *
-     * @param tasks 업데이트할 RoutineTask 객체 리스트
+     * @param routineTask 업데이트할 RoutineTas 객체
      */
-    void updateTasks(List<RoutineTask> tasks);
+    @Update("UPDATE routine_tasks SET content = #{routineName}, order_index = #{orderIndex}, is_checked = #{isChecked} WHERE id = #{id} AND routine_id = #{routineId}")
+    void update(RoutineTask routineTask);
 
     /**
      * 루틴 ID를 통해 해당 루틴의 모든 할 일 객체를 리스트로 반환하는 메서드

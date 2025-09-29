@@ -1,8 +1,6 @@
 package com.moup.server.controller;
 
-import com.moup.server.exception.InvalidParameterException;
 import com.moup.server.model.dto.*;
-import com.moup.server.model.entity.User;
 import com.moup.server.service.IdentityService;
 import com.moup.server.service.RoutineService;
 import com.moup.server.service.UserService;
@@ -22,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.security.InvalidParameterException;
 
 @Tag(name = "Routine-Controller", description = "루틴 정보 관리 API 엔드포인트")
 @RestController
@@ -56,9 +55,8 @@ public class RoutineController {
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     public ResponseEntity<?> getAllSummarizedRoutine() {
         Long userId = identityService.getCurrentUserId();
-        User user = userService.findUserById(userId);
 
-        RoutineSummaryListResponse routineSummaryListResponse = routineService.getAllSummarizedRoutine(user.getId());
+        RoutineSummaryListResponse routineSummaryListResponse = routineService.getAllSummarizedRoutine(userId);
         return ResponseEntity.ok().body(routineSummaryListResponse);
     }
 
@@ -107,16 +105,15 @@ public class RoutineController {
             @RequestParam(name = "view", required = false) String view
     ) {
         Long userId = identityService.getCurrentUserId();
-        User user = userService.findUserById(userId);
 
         if (view == null) {
-            RoutineDetailResponse response = routineService.getRoutineDetail(user.getId(), routineId);
+            RoutineDetailResponse response = routineService.getRoutineDetail(userId, routineId);
             return ResponseEntity.ok().body(response);
         } else if ("summary".equals(view)) {
-            RoutineSummaryResponse response = routineService.getSummarizedRoutine(user.getId(), routineId);
+            RoutineSummaryResponse response = routineService.getSummarizedRoutine(userId, routineId);
             return ResponseEntity.ok().body(response);
         } else {
-            throw new InvalidParameterException();
+            throw new IllegalArgumentException();
         }
     }
 
@@ -133,9 +130,8 @@ public class RoutineController {
             @RequestBody @Valid RoutineUpdateRequest request
     ) {
         Long userId = identityService.getCurrentUserId();
-        User user = userService.findUserById(userId);
 
-        routineService.updateRoutine(user.getId(), routineId, request);
+        routineService.updateRoutine(userId, routineId, request);
         return ResponseEntity.noContent().build();
     }
 
@@ -147,9 +143,8 @@ public class RoutineController {
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     public ResponseEntity<?> deleteRoutine(@PathVariable Long routineId) {
         Long userId = identityService.getCurrentUserId();
-        User user = userService.findUserById(userId);
 
-        routineService.deleteRoutine(user.getId(), routineId);
+        routineService.deleteRoutine(userId, routineId);
         return ResponseEntity.noContent().build();
     }
 }

@@ -33,7 +33,8 @@ public class RoutineService {
         List<RoutineTask> tasksToCreate = routineTaskCreateRequestList.stream()
                 .map(taskCreateRequest -> taskCreateRequest.toEntity(routineToCreate.getId()))
                 .toList();
-        if (!tasksToCreate.isEmpty()) { routineTaskRepository.createTasks(tasksToCreate); }
+
+        for (RoutineTask task : tasksToCreate) { routineTaskRepository.create(task); }
 
         return RoutineCreateResponse.builder()
                 .routineId(routineToCreate.getId())
@@ -84,7 +85,7 @@ public class RoutineService {
         return RoutineDetailResponse.builder()
                 .routineId(routine.getId())
                 .routineName(routine.getRoutineName())
-                .alarmTime(routine.getAlarmTime().toString())
+                .alarmTime(routine.getAlarmTime() != null ? routine.getAlarmTime().toString() : null)
                 .routineTaskList(routineTaskDetailResponseList)
                 .build();
     }
@@ -96,11 +97,7 @@ public class RoutineService {
                 && routineRepository.existByUserIdAndRoutineName(userId, request.getRoutineName())) { throw new RoutineNameAlreadyUsedException(); }
 
         Routine newRoutine = request.toEntity(routineId, userId);
-        if (routineRepository.existByIdAndUserId(newRoutine.getId(), userId)) {
-            routineRepository.update(newRoutine);
-        } else {
-            throw new RoutineNotFoundException();
-        }
+        routineRepository.update(newRoutine);
 
         List<RoutineTask> existingTaskList = routineTaskRepository.findAllByRoutineId(newRoutine.getId());
         List<RoutineTaskUpdateRequest> requestDtoList = request.getRoutineTaskList();
@@ -127,13 +124,13 @@ public class RoutineService {
                 List<RoutineTask> tasksToCreate = requestDtoList.stream()
                         .map(taskUpdateRequest -> taskUpdateRequest.toEntity(routineId))
                         .toList();
-                routineTaskRepository.createTasks(tasksToCreate);
+                for (RoutineTask task : tasksToCreate) { routineTaskRepository.create(task); }
             }
         } else {
             List<RoutineTask> tasksToUpdate = requestDtoList.stream()
                     .map(taskUpdateRequest -> taskUpdateRequest.toEntity(routineId))
                     .toList();
-            routineTaskRepository.updateTasks(tasksToUpdate);
+            for (RoutineTask task : tasksToUpdate) { routineTaskRepository.update(task); }
         }
     }
 
