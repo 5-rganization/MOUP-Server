@@ -1,0 +1,76 @@
+package com.moup.server.service;
+
+import com.moup.server.repository.InviteCodeRepository;
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
+import org.apache.commons.text.RandomStringGenerator;
+import org.springframework.stereotype.Service;
+
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+public class InviteCodeService {
+    private final InviteCodeRepository inviteCodeRepository;
+    private RandomStringGenerator inviteCodeGenerator;
+
+    @PostConstruct
+    public void init() {
+        // 0, O, 1, I를 제외한 숫자와 대문자 알파벳 조합
+        String baseCharacters = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+        this.inviteCodeGenerator = new RandomStringGenerator.Builder()
+                .selectFrom(baseCharacters.toCharArray())
+                .get();
+    }
+
+    /**
+     * 근무지의 초대 코드를 생성하거나, 이미 존재하면 기존 코드를 반환하는 메서드
+     * @param workplaceId 초대 코드를 생성할 근무지 ID
+     * @return 6자리 초대 코드
+     */
+    public String generateInviteCode(Long workplaceId) {
+        // 1. 먼저 해당 근무지에 이미 유효한 초대 코드가 있는지 확인합니다.
+        Optional<String> existingCode = findInviteCodeByWorkplaceId(workplaceId);
+        if (existingCode.isPresent()) {
+            return existingCode.get(); // 이미 코드가 있다면, 새로 생성하지 않고 기존 코드를 반환합니다.
+        }
+
+        // 2. 기존 코드가 없다면, 새로운 코드 생성을 시도합니다.
+        int maxAttempts = 10;  // 중복되지 않는 코드를 찾기 위한 최대 시도 횟수
+        for (int i = 0; i < maxAttempts; i++) {
+            String inviteCode = inviteCodeGenerator.generate(6);
+
+            // 생성된 코드가 이미 사용 중인지 확인합니다.
+            if (!inviteCodeRepository.exists(inviteCode)) {
+                inviteCodeRepository.save(inviteCode, workplaceId);
+                return inviteCode;
+            }
+        }
+
+        // 최대 시도 횟수를 초과하면 예외를 발생시킵니다.
+        throw new RuntimeException("서버에 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+    }
+
+    /**
+     * 근무지 ID로 초대 코드를 찾는 메서드
+     * @param workplaceId 조회할 근무지 ID
+     * @return 초대 코드(문자열)를 포함한 Optional 객체
+     */
+    public Optional<String> findInviteCodeByWorkplaceId(Long workplaceId) {
+        return inviteCodeRepository.findInviteCodeByWorkplaceId(workplaceId);
+    }
+
+    /**
+     * 초대 코드로 근무지 ID를 찾는 메서드
+     * @param inviteCode 조회할 6자리 초대 코드
+     * @return 근무지 ID(Long)를 포함한 Optional 객체
+     */
+    public Optional<Long> findWorkplaceIdByInviteCode(String inviteCode) {
+        if (inviteCode == null || inviteCode.length() != 6) {
+            throw new IllegalArgumentException("초대 코드는 6자리여야 합니다.");
+        }
+
+        return inviteCodeRepository.findWorkplaceIdByInviteCode(inviteCode)
+                .map(Long::parseLong);  // Repository에서 받은 String을 Long으로 변환합니다.
+    }
+}
