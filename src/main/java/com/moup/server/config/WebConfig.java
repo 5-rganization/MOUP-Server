@@ -1,6 +1,6 @@
 package com.moup.server.config;
 
-import com.moup.server.converter.PostEnumConverter;
+import com.moup.server.converter.StringToViewTypeConverter;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.format.FormatterRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -9,6 +9,6 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addFormatters(FormatterRegistry registry) {
-        registry.addConverter(new PostEnumConverter());
+        registry.addConverter(new StringToViewTypeConverter());
     }
 }

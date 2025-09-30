@@ -106,10 +106,10 @@ public class RoutineController {
         if (view == ViewType.SUMMARY) {
             RoutineSummaryResponse response = routineService.getSummarizedRoutine(userId, routineId);
             return ResponseEntity.ok().body(response);
-        } else {
-            RoutineDetailResponse response = routineService.getRoutineDetail(userId, routineId);
-            return ResponseEntity.ok().body(response);
         }
+
+        RoutineDetailResponse response = routineService.getRoutineDetail(userId, routineId);
+        return ResponseEntity.ok().body(response);
     }
 
     @PatchMapping("/{routineId}")
