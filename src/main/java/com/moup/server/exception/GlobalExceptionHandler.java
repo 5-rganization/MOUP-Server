@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
  * @author neoskyclad 전역 예외 처리기
@@ -24,8 +25,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleValidationExceptions(MethodArgumentNotValidException e) {
+        logger.warn("Invalid field value provided");
         String errorMessage = e.getBindingResult().getAllErrors().get(0).getDefaultMessage();
         return response(ErrorCode.INVALID_FIELD_FORMAT, errorMessage);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<?> handleTypeMismatchException(MethodArgumentTypeMismatchException e) {
+        logger.warn("Invalid parameter type provided for '{}': value '{}'", e.getName(), e.getValue());
+        return response(ErrorCode.INVALID_PARAMETER);
     }
 
     @ExceptionHandler(RuntimeException.class)
