@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -31,7 +32,7 @@ public class UserService {
     private final JwtUtil jwtUtil;
 
     @Transactional
-    public RegisterResponse createUser(UserCreateRequest userCreateRequest) {
+    public LoginResponse createUser(UserCreateRequest userCreateRequest) {
         try {
             Long userId = userRepository.create(userCreateRequest);
 
@@ -50,20 +51,14 @@ public class UserService {
             String refreshToken = jwtUtil.createRefreshToken(tokenCreateRequest);
             userTokenService.saveOrUpdateToken(refreshToken, jwtUtil.getRefreshTokenExpiration());
 
-            return RegisterResponse.builder().accessToken(accessToken).refreshToken(refreshToken).build();
+            return LoginResponse.builder().accessToken(accessToken).refreshToken(refreshToken).build();
         } catch (DuplicateKeyException e) {
             throw new UserAlreadyExistsException();
         }
     }
 
-    public User findByProviderAndId(Login provider, String providerId) {
-        User user = userRepository.findByProviderAndId(provider, providerId).orElseThrow(UserNotFoundException::new);
-
-        if (user.getIsDeleted()) {
-            throw new AlreadyDeletedException();
-        }
-
-        return user;
+    public Optional<User> findByProviderAndId(Login provider, String providerId) {
+        return userRepository.findByProviderAndId(provider, providerId);
     }
 
     public User findUserById(Long userId) {
