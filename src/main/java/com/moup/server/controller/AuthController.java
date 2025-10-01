@@ -108,13 +108,13 @@ public class AuthController {
                     .role(Role.valueOf(loginRequest.getRole()))
                     .socialRefreshToken(socialRefreshToken)
                     .build();
-            RegisterResponse registerResponse = userService.createUser(userCreateRequest);
+            LoginResponse loginResponse = userService.createUser(userCreateRequest);
 
             URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
                     .path("/users/profiles")
                     .build()
                     .toUri();
-            return ResponseEntity.created(location).body(registerResponse);
+            return ResponseEntity.created(location).body(loginResponse);
         }
     }
 
