@@ -32,7 +32,7 @@ public class UserService {
     private final JwtUtil jwtUtil;
 
     @Transactional
-    public RegisterResponse createUser(UserCreateRequest userCreateRequest) {
+    public LoginResponse createUser(UserCreateRequest userCreateRequest) {
         try {
             Long userId = userRepository.create(userCreateRequest);
 
@@ -51,7 +51,7 @@ public class UserService {
             String refreshToken = jwtUtil.createRefreshToken(tokenCreateRequest);
             userTokenService.saveOrUpdateToken(refreshToken, jwtUtil.getRefreshTokenExpiration());
 
-            return RegisterResponse.builder().accessToken(accessToken).refreshToken(refreshToken).build();
+            return LoginResponse.builder().accessToken(accessToken).refreshToken(refreshToken).build();
         } catch (DuplicateKeyException e) {
             throw new UserAlreadyExistsException();
         }
