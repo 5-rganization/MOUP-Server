@@ -1,6 +1,7 @@
 package com.moup.server.repository;
 
 import com.moup.server.common.Login;
+import com.moup.server.common.Role;
 import com.moup.server.model.dto.UserCreateRequest;
 import com.moup.server.model.entity.User;
 import org.apache.ibatis.annotations.*;
@@ -18,9 +19,12 @@ public interface UserRepository {
      * @param user
      * @return user_id
      */
-    @Insert("INSERT INTO users (provider, provider_id, username, nickname, role) VALUES (#{provider}, #{providerId}, #{username}, #{nickname}, #{role})")
+    @Insert("INSERT INTO users (provider, provider_id, username) VALUES (#{provider}, #{providerId}, #{username})")
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
     Long create(UserCreateRequest userCreateRequest);
+
+    @Select("SELECT EXISTS(SELECT 1 FROM users WHERE id = #{id})")
+    boolean existById(Long id);
 
     @Select("SELECT * FROM users WHERE id = #{id}")
     Optional<User> findById(Long id);
@@ -45,6 +49,9 @@ public interface UserRepository {
 
     @Select("SELECT * FROM users WHERE is_deleted = 1 AND deleted_at < #{threeDaysAgo}")
     List<User> findAllHardDeleteUsers(LocalDateTime threeDaysAgo);
+
+    @Update("UPDATE users SET nickname = #{nickname} AND role = #{role} WHERE id = #{id}")
+    void updateById(Long id, String nickname, Role role);
 
     @Update("UPDATE users SET nickname = #{nickname} WHERE id = #{id}")
     void updateNicknameById(Long userId, String nickname);
