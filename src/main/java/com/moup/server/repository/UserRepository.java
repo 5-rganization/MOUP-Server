@@ -50,7 +50,7 @@ public interface UserRepository {
     @Select("SELECT * FROM users WHERE is_deleted = 1 AND deleted_at < #{threeDaysAgo}")
     List<User> findAllHardDeleteUsers(LocalDateTime threeDaysAgo);
 
-    @Update("UPDATE users SET nickname = #{nickname} AND role = #{role} WHERE id = #{id}")
+    @Update("UPDATE users SET nickname = #{nickname}, role = #{role} WHERE id = #{id}")
     void updateById(Long id, String nickname, Role role);
 
     @Update("UPDATE users SET nickname = #{nickname} WHERE id = #{id}")
