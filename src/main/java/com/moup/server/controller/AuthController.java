@@ -94,7 +94,7 @@ public class AuthController {
             if (user.getIsDeleted()) { throw new AlreadyDeletedException(); }
 
             // 3-a-2. 소셜 토큰 관리
-            if (!socialRefreshToken.isEmpty()) {
+            if (socialRefreshToken != null && !socialRefreshToken.isEmpty()) {
                 socialTokenService.saveOrUpdateToken(user.getId(), socialRefreshToken);
             }
             TokenCreateRequest tokenCreateRequest = TokenCreateRequest.builder().userId(user.getId()).role(user.getRole()).username(user.getUsername()).build();
