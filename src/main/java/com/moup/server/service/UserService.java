@@ -32,6 +32,13 @@ public class UserService {
     private final UserTokenService userTokenService;
     private final JwtUtil jwtUtil;
 
+    private static final Pattern CONSONANTS_ONLY_PATTERN = Pattern.compile("^[ㄱ-ㅎ]+$");
+    private static final Pattern VOWELS_ONLY_PATTERN = Pattern.compile("^[ㅏ-ㅣ]+$");
+    private static final Pattern INCOMPLETE_HANGUL_PATTERN = Pattern.compile("[ㄱ-ㅎㅏ-ㅣ]");
+    private static final Pattern HANGUL_PATTERN = Pattern.compile("[가-힣]");
+    private static final Pattern ALPHABET_PATTERN = Pattern.compile("[a-zA-Z]");
+    private static final Pattern SPECIAL_CHAR_PATTERN = Pattern.compile("[^가-힣a-zA-Z0-9]");
+
     @Transactional
     public LoginResponse startCreateUser(UserCreateRequest userCreateRequest) {
         try {
@@ -159,32 +166,32 @@ public class UserService {
             throw new IllegalArgumentException("한글, 영문 또는 숫자만 사용하여 8자 이하로 입력해주세요");
         }
 
-        // Swift의 trimmingCharacters는 isBlank()로 대체 가능 (공백+개행)
-        String trimmed = nickname.trim(); // 좌우 공백만 제거하여 길이 검사 등에 사용
+        String trimmed = nickname.trim();
 
         if (!nickname.equals(trimmed) || nickname.contains(" ")) {
             throw new IllegalArgumentException("닉네임 앞뒤 또는 중간에 공백을 사용할 수 없어요");
         }
 
-        if (trimmed.matches("^[ㄱ-ㅎ]+$")) {
+        // 👇 미리 컴파일된 패턴 사용
+        if (CONSONANTS_ONLY_PATTERN.matcher(trimmed).matches()) {
             throw new IllegalArgumentException("자음만 사용할 수 없어요");
         }
 
-        if (trimmed.matches("^[ㅏ-ㅣ]+$")) {
+        if (VOWELS_ONLY_PATTERN.matcher(trimmed).matches()) {
             throw new IllegalArgumentException("모음만 사용할 수 없어요");
         }
 
-        if (Pattern.compile("[ㄱ-ㅎㅏ-ㅣ]").matcher(trimmed).find()) {
+        if (INCOMPLETE_HANGUL_PATTERN.matcher(trimmed).find()) {
             throw new IllegalArgumentException("정확한 글자를 입력해주세요");
         }
 
-        boolean containsHangul = Pattern.compile("[가-힣]").matcher(trimmed).find();
-        boolean containsAlphabet = Pattern.compile("[a-zA-Z]").matcher(trimmed).find();
+        boolean containsHangul = HANGUL_PATTERN.matcher(trimmed).find();
+        boolean containsAlphabet = ALPHABET_PATTERN.matcher(trimmed).find();
         if (containsHangul && containsAlphabet) {
             throw new IllegalArgumentException("한글 또는 영문만 사용할 수 있어요");
         }
 
-        if (Pattern.compile("[^가-힣a-zA-Z0-9]").matcher(trimmed).find()) {
+        if (SPECIAL_CHAR_PATTERN.matcher(trimmed).find()) {
             throw new IllegalArgumentException("특수문자는 사용할 수 없어요");
         }
 
