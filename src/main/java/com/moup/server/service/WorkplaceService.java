@@ -105,10 +105,12 @@ public class WorkplaceService {
 
     @Transactional
     public void deleteWorkplace(Long userId, Long workplaceId) {
-        if (workplaceRepository.existsById(workplaceId)) {
+        Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+        if (workplace.getOwnerId().equals(userId)) {
             workplaceRepository.deleteByIdAndOwnerId(workplaceId, userId);
         } else {
-            throw new WorkplaceNotFoundException();
+            Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new);
+            workerRepository.delete(worker.getId(), userId, workplaceId);
         }
     }
 
