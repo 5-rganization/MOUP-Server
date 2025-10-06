@@ -27,7 +27,7 @@ public class RedisConfig {
         RedisStandaloneConfiguration redisStandaloneConfiguration = new RedisStandaloneConfiguration();
         redisStandaloneConfiguration.setHostName(host);
         redisStandaloneConfiguration.setPort(port);
-        redisStandaloneConfiguration.setPassword(password); // 패스워드 설정
+        redisStandaloneConfiguration.setPassword(password);  // 패스워드 설정
 
         return new LettuceConnectionFactory(redisStandaloneConfiguration);
     }
@@ -35,10 +35,9 @@ public class RedisConfig {
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
-
         template.setKeySerializer(new StringRedisSerializer());
         template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
-
+        template.setEnableTransactionSupport(true);
         template.setConnectionFactory(connectionFactory);
         return template;
     }
@@ -46,6 +45,7 @@ public class RedisConfig {
     @Bean
     StringRedisTemplate stringRedisTemplate(RedisConnectionFactory redisConnectionFactory) {
         StringRedisTemplate template = new StringRedisTemplate();
+        template.setEnableTransactionSupport(true);
         template.setConnectionFactory(redisConnectionFactory);
         return template;
     }
