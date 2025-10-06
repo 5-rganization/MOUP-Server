@@ -59,7 +59,7 @@ public class WorkplaceController {
                                                             "address": "경기 화성시 동탄중심상가1길 8 1층",
                                                             "latitude": 37.200089,
                                                             "longitude": 127.072006,
-                                                            "workerBasedLabelColor": "red",
+                                                            "workerBasedLabelColor": "RED",
                                                             "salaryType": "SALARY_MONTHLY",
                                                             "salaryCalculation": "SALARY_CALCULATION_HOURLY",
                                                             "hourlyRate": 10030,
@@ -80,7 +80,7 @@ public class WorkplaceController {
                                                             "address": "경기 화성시 동탄중심상가1길 8 1층",
                                                             "latitude": 37.200089,
                                                             "longitude": 127.072006,
-                                                            "ownerBasedLabelColor": "blue"
+                                                            "ownerBasedLabelColor": "BLUE"
                                                         }
                                                         """)
                                 }
@@ -124,7 +124,7 @@ public class WorkplaceController {
                                                         "address": "경기 화성시 동탄중심상가1길 8 1층",
                                                         "latitude": 37.200089,
                                                         "longitude": 127.072006,
-                                                        "workerBasedLabelColor": "red",
+                                                        "workerBasedLabelColor": "RED",
                                                         "salaryType": "SALARY_MONTHLY",
                                                         "salaryCalculation": "SALARY_CALCULATION_HOURLY",
                                                         "hourlyRate": 10030,
@@ -145,7 +145,7 @@ public class WorkplaceController {
                                                         "address": "경기 화성시 동탄중심상가1길 8 1층",
                                                         "latitude": 37.200089,
                                                         "longitude": 127.072006,
-                                                        "ownerBasedLabelColor": "blue"
+                                                        "ownerBasedLabelColor": "BLUE"
                                                     }
                                                     """)
                             }
