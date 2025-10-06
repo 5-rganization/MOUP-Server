@@ -146,6 +146,24 @@ public class WorkplaceService {
                 .build();
         workerRepository.create(worker);
 
+        WorkerSalaryCreateRequest salaryInfo = request.getSalaryInfo();
+        Salary salary = Salary.builder()
+                .workerId(worker.getId())
+                .salaryType(salaryInfo.getSalaryType())
+                .salaryCalculation(salaryInfo.getSalaryCalculation())
+                .hourlyRate(salaryInfo.getHourlyRate())
+                .fixedRate(salaryInfo.getFixedRate())
+                .salaryDate(salaryInfo.getSalaryDate())
+                .salaryDay(salaryInfo.getSalaryDay())
+                .hasNationalPension(salaryInfo.getHasNationalPension())
+                .hasHealthInsurance(salaryInfo.getHasHealthInsurance())
+                .hasEmploymentInsurance(salaryInfo.getHasEmploymentInsurance())
+                .hasIndustrialAccident(salaryInfo.getHasIndustrialAccident())
+                .hasIncomeTax(salaryInfo.getHasIncomeTax())
+                .hasNightAllowance(salaryInfo.getHasNightAllowance())
+                .build();
+        salaryRepository.create(salary);
+
         return WorkplaceJoinResponse.builder()
                 .workerId(worker.getId())
                 .build();
