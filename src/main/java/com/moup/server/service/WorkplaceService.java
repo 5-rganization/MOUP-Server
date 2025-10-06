@@ -23,6 +23,7 @@ public class WorkplaceService {
     private final WorkplaceRepository workplaceRepository;
     private final WorkerRepository workerRepository;
     private final SalaryRepository salaryRepository;
+    private final InviteCodeService inviteCodeService;
 
     @Transactional
     protected Worker createWorkplaceAndWorkerHelper(Long userId, BaseWorkplaceCreateRequest request) {
@@ -109,5 +110,44 @@ public class WorkplaceService {
         } else {
             throw new WorkplaceNotFoundException();
         }
+    }
+
+    @Transactional
+    public InviteCodeGenerateResponse generateInviteCode(Long userId, Long workplaceId, boolean forceGenerate) {
+        if (!workplaceRepository.existsById(workplaceId)) { throw new WorkplaceNotFoundException(); }
+        String inviteCode = inviteCodeService.generateInviteCode(workplaceId, forceGenerate);
+
+        return InviteCodeGenerateResponse.builder()
+                .inviteCode(inviteCode)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public InviteCodeInquiryResponse inquireInviteCode(String inviteCode) {
+        Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCode(inviteCode);
+        Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+
+        return InviteCodeInquiryResponse.builder()
+                .workplaceId(workplaceId)
+                .categoryName(workplace.getCategoryName())
+                .address(workplace.getAddress())
+                .latitude(workplace.getLatitude())
+                .longitude(workplace.getLongitude())
+                .build();
+    }
+
+    @Transactional
+    public WorkplaceJoinResponse joinWorkplace(Long userId, WorkplaceJoinRequest request) {
+        Worker worker = Worker.builder()
+                .userId(userId)
+                .workplaceId(request.getWorkplaceId())
+                .workerBasedLabelColor(request.getWorkerBasedLabelColor())
+                .isAccepted(false)
+                .build();
+        workerRepository.create(worker);
+
+        return WorkplaceJoinResponse.builder()
+                .workerId(worker.getId())
+                .build();
     }
 }

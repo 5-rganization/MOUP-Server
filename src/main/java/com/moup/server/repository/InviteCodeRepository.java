@@ -16,7 +16,7 @@ public class InviteCodeRepository {
     private final StringRedisTemplate stringRedisTemplate;
 
     /**
-     * 초대 코드와 근무지 ID를 10분간 Redis에 양방향으로 저장하는 메서드
+     * 초대 코드와 그에 해당하는 근무지 ID를 10분간 Redis에 양방향으로 저장하는 메서드
      * @param inviteCode 저장할 6자리 초대 코드
      * @param workplaceId 초대 코드에 해당하는 근무지 ID
      */
@@ -55,8 +55,20 @@ public class InviteCodeRepository {
      * @param inviteCode 조회할 6자리 초대 코드
      * @return 근무지 ID를 포함한 Optional 객체, 코드가 없으면 Optional.empty()
      */
-    public Optional<String> findWorkplaceIdByInviteCode(String inviteCode) {
+    public Optional<Long> findWorkplaceIdByInviteCode(String inviteCode) {
         String key = INVITE_CODE_KEY_PREFIX + inviteCode;
-        return Optional.ofNullable(stringRedisTemplate.opsForValue().get(key));
+        return Optional.ofNullable(stringRedisTemplate.opsForValue().get(key)).map(Long::parseLong);
+    }
+
+    /**
+     * 초대 코드와 그에 해당하는 근무지 ID를 삭제하는 메서드
+     * @param inviteCode 삭제할 6자리 초대 코드
+     * @param workplaceId 초대 코드에 해당하는 근무지 ID
+     */
+    public void delete(String inviteCode, Long workplaceId) {
+        String inviteCodeKey = INVITE_CODE_KEY_PREFIX + inviteCode;
+        String workplaceIdKey = WORKPLACE_ID_KEY_PREFIX + workplaceId;
+        stringRedisTemplate.delete(inviteCodeKey);
+        stringRedisTemplate.delete(workplaceIdKey);
     }
 }
