@@ -55,7 +55,7 @@ public class WorkplaceService {
                     .workplaceId(createdWorker.getWorkplaceId())
                     .build();
         } else {
-            throw new InvalidRoleAccessException();
+            throw new InvalidPermissionAccessException();
         }
     }
 
@@ -99,7 +99,7 @@ public class WorkplaceService {
             Salary newSalary = workerRequest.toSalaryEntity(salaryId, workerId);
             salaryRepository.update(newSalary);
         } else {
-            throw new InvalidRoleAccessException();
+            throw new InvalidPermissionAccessException();
         }
     }
 
@@ -117,7 +117,7 @@ public class WorkplaceService {
     @Transactional
     public InviteCodeGenerateResponse generateInviteCode(User user, Long workplaceId, InviteCodeGenerateRequest request) {
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
-        if (!workplace.getOwnerId().equals(user.getId()) || user.getRole() != Role.ROLE_OWNER) { throw new InvalidRoleAccessException(); }
+        if (!workplace.getOwnerId().equals(user.getId()) || user.getRole() != Role.ROLE_OWNER) { throw new InvalidPermissionAccessException(); }
 
         boolean returnAlreadyExists = !request.getForceGenerate() && inviteCodeService.existsByWorkplaceId(workplaceId);
         String inviteCode = inviteCodeService.generateInviteCode(workplaceId, request.getForceGenerate());
@@ -130,6 +130,8 @@ public class WorkplaceService {
 
     @Transactional(readOnly = true)
     public InviteCodeInquiryResponse inquireInviteCode(User user, String inviteCode) {
+        if (user.getRole() != Role.ROLE_WORKER) { throw new InvalidPermissionAccessException(); }
+
         Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCode(inviteCode);
         if (workerRepository.existsByUserIdAndWorkplaceId(user.getId(), workplaceId)) { throw new WorkerAlreadyExistsException(); }
 
@@ -146,7 +148,7 @@ public class WorkplaceService {
 
     @Transactional
     public WorkplaceJoinResponse joinWorkplace(User user, String inviteCode, WorkplaceJoinRequest request) {
-        if (user.getRole() != Role.ROLE_WORKER) { throw new InvalidRoleAccessException(); }
+        if (user.getRole() != Role.ROLE_WORKER) { throw new InvalidPermissionAccessException(); }
 
         Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCode(inviteCode);
         if (!workplaceRepository.existsById(workplaceId)) { throw new WorkplaceNotFoundException(); }

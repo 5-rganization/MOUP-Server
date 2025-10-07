@@ -26,7 +26,7 @@ public interface WorkerRepository {
      * @param workplaceId 조회할 근무지 ID
      * @return 존재하면 true, 그렇지 않으면 false
      */
-    @Select("SELECT EXISTS(SELECT 1 FROM workers WHERE user_id = #{userId} AND workplace_id #{workplaceId})")
+    @Select("SELECT EXISTS(SELECT 1 FROM workers WHERE user_id = #{userId} AND workplace_id = #{workplaceId})")
     boolean existsByUserIdAndWorkplaceId(Long userId, Long workplaceId);
 
     /**

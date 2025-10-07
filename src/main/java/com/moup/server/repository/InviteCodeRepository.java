@@ -31,7 +31,7 @@ public class InviteCodeRepository {
 
         stringRedisTemplate.execute(new SessionCallback<List<Object>>() {
             @Override
-            @SuppressWarnings({"unchecked"}) // 경고를 무시하기 위한 어노테이션
+            @SuppressWarnings({"unchecked"})  // 경고를 무시하기 위한 어노테이션
             public List<Object> execute(@NonNull RedisOperations operations) throws DataAccessException {
                 // 1. 트랜잭션 시작
                 operations.multi();
