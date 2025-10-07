@@ -1,9 +1,14 @@
 package com.moup.server.repository;
 
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.core.RedisOperations;
+import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -24,10 +29,23 @@ public class InviteCodeRepository {
         String inviteCodeKey = INVITE_CODE_KEY_PREFIX + inviteCode;
         String workplaceIdKey = WORKPLACE_ID_KEY_PREFIX + workplaceId;
 
-        // inviteCode -> workplaceId 저장
-        stringRedisTemplate.opsForValue().set(inviteCodeKey, workplaceId.toString(), 10, TimeUnit.MINUTES);
-        // workplaceId -> inviteCode 저장 (역방향 매핑)
-        stringRedisTemplate.opsForValue().set(workplaceIdKey, inviteCode, 10, TimeUnit.MINUTES);
+        stringRedisTemplate.execute(new SessionCallback<List<Object>>() {
+            @Override
+            @SuppressWarnings({"unchecked"}) // 경고를 무시하기 위한 어노테이션
+            public List<Object> execute(@NonNull RedisOperations operations) throws DataAccessException {
+                // 1. 트랜잭션 시작
+                operations.multi();
+
+                // 2. 명령어들을 큐에 쌓음
+                // inviteCode -> workplaceId 저장
+                operations.opsForValue().set(inviteCodeKey, workplaceId.toString(), 10, TimeUnit.MINUTES);
+                // workplaceId -> inviteCode 저장 (역방향 매핑)
+                operations.opsForValue().set(workplaceIdKey, inviteCode, 10, TimeUnit.MINUTES);
+
+                // 3. 모든 명령어를 원자적으로 실행
+                return operations.exec();
+            }
+        });
     }
 
     /**
@@ -37,7 +55,7 @@ public class InviteCodeRepository {
      */
     public boolean existsByInviteCode(String inviteCode) {
         String key = INVITE_CODE_KEY_PREFIX + inviteCode;
-        return stringRedisTemplate.hasKey(key);
+        return Boolean.TRUE.equals(stringRedisTemplate.hasKey(key));
     }
 
     /**
@@ -47,7 +65,7 @@ public class InviteCodeRepository {
      */
     public boolean existsByWorkplaceId(Long workplaceId) {
         String key = WORKPLACE_ID_KEY_PREFIX + workplaceId;
-        return stringRedisTemplate.hasKey(key);
+        return Boolean.TRUE.equals(stringRedisTemplate.hasKey(key));
     }
 
     /**
@@ -78,7 +96,6 @@ public class InviteCodeRepository {
     public void delete(String inviteCode, Long workplaceId) {
         String inviteCodeKey = INVITE_CODE_KEY_PREFIX + inviteCode;
         String workplaceIdKey = WORKPLACE_ID_KEY_PREFIX + workplaceId;
-        stringRedisTemplate.delete(inviteCodeKey);
-        stringRedisTemplate.delete(workplaceIdKey);
+        stringRedisTemplate.delete(List.of(inviteCodeKey, workplaceIdKey));
     }
 }

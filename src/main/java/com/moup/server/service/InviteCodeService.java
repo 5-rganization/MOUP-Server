@@ -30,7 +30,6 @@ public class InviteCodeService {
      * @param workplaceId 초대 코드를 생성할 근무지 ID
      * @return 6자리 초대 코드
      */
-    @Transactional
     public String generateInviteCode(Long workplaceId, boolean forceGenerate) {
         // 1. 먼저 해당 근무지에 이미 유효한 초대 코드가 있는지 확인합니다.
         Optional<String> existingInviteCode = inviteCodeRepository.findInviteCodeByWorkplaceId(workplaceId);
@@ -65,7 +64,6 @@ public class InviteCodeService {
      * @param workplaceId 조회할 근무지 ID
      * @return 초대 코드(문자열)를 포함한 Optional 객체
      */
-    @Transactional(readOnly = true)
     public boolean existsByWorkplaceId(Long workplaceId) {
         return inviteCodeRepository.existsByWorkplaceId(workplaceId);
     }
@@ -75,7 +73,6 @@ public class InviteCodeService {
      * @param inviteCode 조회할 6자리 초대 코드
      * @return 근무지 ID(Long)를 포함한 Optional 객체
      */
-    @Transactional(readOnly = true)
     public Long findWorkplaceIdByInviteCode(String inviteCode) {
         if (inviteCode == null || inviteCode.length() != 6) {
             throw new IllegalArgumentException("초대 코드는 6자리여야 합니다.");
