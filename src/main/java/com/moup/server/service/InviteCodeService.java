@@ -50,7 +50,7 @@ public class InviteCodeService {
             String inviteCode = inviteCodeGenerator.generate(6);
 
             // 생성된 코드가 이미 사용 중인지 확인합니다.
-            if (!inviteCodeRepository.exists(inviteCode)) {
+            if (!inviteCodeRepository.existsByInviteCode(inviteCode)) {
                 inviteCodeRepository.save(inviteCode, workplaceId);
                 return inviteCode;
             }
@@ -58,6 +58,16 @@ public class InviteCodeService {
 
         // 최대 시도 횟수를 초과하면 예외를 발생시킵니다.
         throw new RuntimeException("서버에 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+    }
+
+    /**
+     * 근무지 ID로 초대 코드를 찾는 메서드
+     * @param workplaceId 조회할 근무지 ID
+     * @return 초대 코드(문자열)를 포함한 Optional 객체
+     */
+    @Transactional(readOnly = true)
+    public boolean existsByWorkplaceId(Long workplaceId) {
+        return inviteCodeRepository.existsByWorkplaceId(workplaceId);
     }
 
     /**

@@ -35,8 +35,18 @@ public class InviteCodeRepository {
      * @param inviteCode 확인할 6자리 초대 코드
      * @return 존재하면 true, 그렇지 않으면 false
      */
-    public boolean exists(String inviteCode) {
+    public boolean existsByInviteCode(String inviteCode) {
         String key = INVITE_CODE_KEY_PREFIX + inviteCode;
+        return stringRedisTemplate.hasKey(key);
+    }
+
+    /**
+     * 해당 근무지 ID가 Redis에 존재하는지 확인하는 메서드
+     * @param workplaceId 확인할 근무지 ID
+     * @return 존재하면 true, 그렇지 않으면 false
+     */
+    public boolean existsByWorkplaceId(Long workplaceId) {
+        String key = WORKPLACE_ID_KEY_PREFIX + workplaceId;
         return stringRedisTemplate.hasKey(key);
     }
 

@@ -10,4 +10,6 @@ import lombok.Getter;
 public class InviteCodeGenerateResponse {
     @Schema(description = "생성된 초대 코드", example = "MUP234", requiredMode = Schema.RequiredMode.REQUIRED)
     private String inviteCode;
+    @Schema(description = "기존 초대 코드 반환 여부", example = "false", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    private Boolean returnAlreadyExists;
 }

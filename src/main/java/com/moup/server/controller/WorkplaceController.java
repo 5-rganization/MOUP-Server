@@ -42,6 +42,7 @@ public class WorkplaceController {
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "근무지/매장 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceCreateResponse.class))),
             @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "사용자가 이미 등록한 근무지 이름", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     public ResponseEntity<?> createWorkplace(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -105,6 +106,7 @@ public class WorkplaceController {
             @ApiResponse(responseCode = "404", description = "존재하지 않는 근무지/매장", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "요청한 근무지/매장에 해당하는 근무자가 존재하지 않음", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "근무지/매장에 해당하는 급여가 존재하지 않음", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "사용자가 이미 등록한 근무지 이름", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     public ResponseEntity<?> updateWorkplace(
             @Parameter(name = "workplaceId", description = "업데이트할 근무지 ID", example = "1", required = true, in = ParameterIn.PATH)
@@ -180,6 +182,7 @@ public class WorkplaceController {
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "근무지(매장) 삭제 성공"),
             @ApiResponse(responseCode = "404", description = "존재하지 않는 근무지(매장)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "근무지에 해당하는 근무자가 존재하지 않음", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     public ResponseEntity<?> deleteWorkplace(
             @Parameter(name = "workplaceId", description = "삭제할 근무지 ID", example = "1", required = true, in = ParameterIn.PATH)
@@ -190,5 +193,78 @@ public class WorkplaceController {
 
         workplaceService.deleteWorkplace(user.getId(), workplaceId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/invite-code/{workplaceId}")
+    @Operation(summary = "초대 코드 생성", description = "근무지(매장) ID를 경로로 전달받아 초대 코드 생성")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "이미 만들어진 초대 코드 존재"),
+            @ApiResponse(responseCode = "201", description = "새로운 초대 코드 생성 성공"),
+            @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 매장", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "초대 코드 생성을 위한 요청 데이터", content = @Content(mediaType = "application/json", schema = @Schema(implementation = InviteCodeGenerateRequest.class)))
+    public ResponseEntity<?> generateInviteCode(
+            @Parameter(name = "workplaceId", description = "초대 코드를 생성할 매장 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable Long workplaceId,
+            @RequestBody @Valid InviteCodeGenerateRequest request
+    ) {
+        Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
+
+        InviteCodeGenerateResponse response = workplaceService.generateInviteCode(user, workplaceId, request);
+        if (response.getReturnAlreadyExists()) {
+            return ResponseEntity.ok().body(response);
+        } else {
+            URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                    .path("/invite-code/{inviteCode}")
+                    .buildAndExpand(response.getInviteCode())
+                    .toUri();
+            return ResponseEntity.created(location).body(response);
+        }
+    }
+
+    @GetMapping("/invite-code/{inviteCode}")
+    @Operation(summary = "초대 코드로 근무지 조회", description = "초대 코드를 경로로 전달받아 근무지 조회")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "근무지 조회 성공"),
+            @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 근무지", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "사용자가 이미 근무자로 존재", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    public ResponseEntity<?> inquireInviteCode(
+            @Parameter(name = "inviteCode", description = "조회할 초대 코드", example = "MUP234", required = true, in = ParameterIn.PATH)
+            @PathVariable String inviteCode
+    ) {
+        Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
+
+        InviteCodeInquiryResponse response = workplaceService.inquireInviteCode(user, inviteCode);
+        return ResponseEntity.ok().body(response);
+    }
+
+    @PostMapping("/invite-code/{inviteCode}")
+    @Operation(summary = "초대 코드를 통해 근무지 참여", description = "초대 코드를 경로로 전달받아 근무지 참여")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "근무지 참여 성공"),
+            @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 근무지", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "사용자가 이미 근무자로 존재", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "근무지 참여를 위한 요청 데이터", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceJoinRequest.class)))
+    public ResponseEntity<?> joinWorkplace(
+            @Parameter(name = "inviteCode", description = "참여할 근무지의 초대 코드", example = "MUP234", required = true, in = ParameterIn.PATH)
+            @PathVariable String inviteCode,
+            @RequestBody @Valid WorkplaceJoinRequest request
+    ) {
+        Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
+
+        WorkplaceJoinResponse response = workplaceService.joinWorkplace(user, inviteCode, request);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}/workers/{workerId}")
+                .buildAndExpand(response.getWorkplaceId(), response.getWorkerId())
+                .toUri();
+        return ResponseEntity.created(location).body(response);
     }
 }

@@ -20,6 +20,16 @@ public interface WorkerRepository {
     Long create(Worker worker);
 
     /**
+     * 근무지 ID와 사용자 ID를 통해 해당 근무지 사용자가 존재하는지 여부를 반환하는 메서드
+     *
+     * @param userId 조회할 사용자 ID
+     * @param workplaceId 조회할 근무지 ID
+     * @return 존재하면 true, 그렇지 않으면 false
+     */
+    @Select("SELECT EXISTS(SELECT 1 FROM workers WHERE user_id = #{userId} AND workplace_id #{workplaceId})")
+    boolean existsByUserIdAndWorkplaceId(Long userId, Long workplaceId);
+
+    /**
      * 근무자 ID와 사용자 ID를 통해 해당 사용자의 근무자 객체를 반환하는 메서드
      *
      * @param id 조회할 근무자 ID

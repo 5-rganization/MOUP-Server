@@ -115,18 +115,24 @@ public class WorkplaceService {
     }
 
     @Transactional
-    public InviteCodeGenerateResponse generateInviteCode(Long userId, Long workplaceId, boolean forceGenerate) {
-        if (!workplaceRepository.existsById(workplaceId)) { throw new WorkplaceNotFoundException(); }
-        String inviteCode = inviteCodeService.generateInviteCode(workplaceId, forceGenerate);
+    public InviteCodeGenerateResponse generateInviteCode(User user, Long workplaceId, InviteCodeGenerateRequest request) {
+        Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+        if (!workplace.getOwnerId().equals(user.getId()) || user.getRole() != Role.ROLE_OWNER) { throw new InvalidRoleAccessException(); }
+
+        boolean returnAlreadyExists = !request.getForceGenerate() && inviteCodeService.existsByWorkplaceId(workplaceId);
+        String inviteCode = inviteCodeService.generateInviteCode(workplaceId, request.getForceGenerate());
 
         return InviteCodeGenerateResponse.builder()
                 .inviteCode(inviteCode)
+                .returnAlreadyExists(returnAlreadyExists)
                 .build();
     }
 
     @Transactional(readOnly = true)
-    public InviteCodeInquiryResponse inquireInviteCode(String inviteCode) {
+    public InviteCodeInquiryResponse inquireInviteCode(User user, String inviteCode) {
         Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCode(inviteCode);
+        if (workerRepository.existsByUserIdAndWorkplaceId(user.getId(), workplaceId)) { throw new WorkerAlreadyExistsException(); }
+
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
 
         return InviteCodeInquiryResponse.builder()
@@ -139,10 +145,16 @@ public class WorkplaceService {
     }
 
     @Transactional
-    public WorkplaceJoinResponse joinWorkplace(Long userId, WorkplaceJoinRequest request) {
+    public WorkplaceJoinResponse joinWorkplace(User user, String inviteCode, WorkplaceJoinRequest request) {
+        if (user.getRole() != Role.ROLE_WORKER) { throw new InvalidRoleAccessException(); }
+
+        Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCode(inviteCode);
+        if (!workplaceRepository.existsById(workplaceId)) { throw new WorkplaceNotFoundException(); }
+        if (workerRepository.existsByUserIdAndWorkplaceId(user.getId(), workplaceId)) { throw new WorkerAlreadyExistsException(); }
+
         Worker worker = Worker.builder()
-                .userId(userId)
-                .workplaceId(request.getWorkplaceId())
+                .userId(user.getId())
+                .workplaceId(workplaceId)
                 .workerBasedLabelColor(request.getWorkerBasedLabelColor())
                 .isAccepted(false)
                 .build();
@@ -167,6 +179,7 @@ public class WorkplaceService {
         salaryRepository.create(salary);
 
         return WorkplaceJoinResponse.builder()
+                .workplaceId(workplaceId)
                 .workerId(worker.getId())
                 .build();
     }
