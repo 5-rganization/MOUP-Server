@@ -12,15 +12,8 @@ import java.util.Optional;
 
 @Mapper
 public interface UserRepository {
-
-    /**
-     * 사용자를 생성하고, 생성된 user_id를 반환.
-     *
-     * @param user
-     * @return user_id
-     */
     @Insert("INSERT INTO users (provider, provider_id, username) VALUES (#{provider}, #{providerId}, #{username})")
-    @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
+    @Options(useGeneratedKeys = true, keyProperty = "userId", keyColumn = "id")
     Long create(UserCreateRequest userCreateRequest);
 
     @Select("SELECT EXISTS(SELECT 1 FROM users WHERE id = #{id})")

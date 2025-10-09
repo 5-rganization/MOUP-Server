@@ -42,7 +42,8 @@ public class UserService {
     @Transactional
     public LoginResponse startCreateUser(UserCreateRequest userCreateRequest) {
         try {
-            Long userId = userRepository.create(userCreateRequest);
+            userRepository.create(userCreateRequest);
+            Long userId = userCreateRequest.getUserId();
 
             // 1. 토큰 관리
             // 1-1. 소셜 토큰 관리
