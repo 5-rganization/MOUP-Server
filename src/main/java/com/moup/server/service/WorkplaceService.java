@@ -173,8 +173,8 @@ public class WorkplaceService {
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
         if (!workplace.getOwnerId().equals(user.getId()) || user.getRole() != Role.ROLE_OWNER) { throw new InvalidPermissionAccessException(); }
 
-        boolean returnAlreadyExists = !request.getForceGenerate() && inviteCodeService.existsByWorkplaceId(workplaceId);
-        String inviteCode = inviteCodeService.generateInviteCode(workplaceId, request.getForceGenerate());
+        boolean returnAlreadyExists = !request.isForceGenerate() && inviteCodeService.existsByWorkplaceId(workplaceId);
+        String inviteCode = inviteCodeService.generateInviteCode(workplaceId, request.isForceGenerate());
 
         return InviteCodeGenerateResponse.builder()
                 .inviteCode(inviteCode)
