@@ -186,7 +186,7 @@ public class WorkplaceService {
     public InviteCodeInquiryResponse inquireInviteCode(User user, String inviteCode) {
         if (user.getRole() != Role.ROLE_WORKER) { throw new InvalidPermissionAccessException(); }
 
-        Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCode(inviteCode);
+        Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCode(inviteCode.toUpperCase());
         if (workerRepository.existsByUserIdAndWorkplaceId(user.getId(), workplaceId)) { throw new WorkerAlreadyExistsException(); }
 
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
@@ -204,7 +204,7 @@ public class WorkplaceService {
     public WorkplaceJoinResponse joinWorkplace(User user, String inviteCode, WorkplaceJoinRequest request) {
         if (user.getRole() != Role.ROLE_WORKER) { throw new InvalidPermissionAccessException(); }
 
-        Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCode(inviteCode);
+        Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCode(inviteCode.toUpperCase());
         if (!workplaceRepository.existsById(workplaceId)) { throw new WorkplaceNotFoundException(); }
         if (workerRepository.existsByUserIdAndWorkplaceId(user.getId(), workplaceId)) { throw new WorkerAlreadyExistsException(); }
 
