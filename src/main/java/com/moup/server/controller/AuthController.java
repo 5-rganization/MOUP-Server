@@ -2,7 +2,6 @@ package com.moup.server.controller;
 
 import com.moup.server.common.Login;
 import com.moup.server.common.Role;
-import com.moup.server.exception.AlreadyDeletedException;
 import com.moup.server.exception.InvalidArgumentException;
 import com.moup.server.exception.InvalidTokenException;
 import com.moup.server.model.dto.*;
@@ -25,7 +24,6 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import javax.naming.InvalidNameException;
 import java.net.URI;
-import java.security.InvalidParameterException;
 import java.util.Map;
 import java.util.Optional;
 
@@ -100,8 +98,10 @@ public class AuthController {
             // 3-a. 유저 정보가 있으면 로그인
             User user = optionalUser.get();
 
-            // 3-a-1. 탈퇴 처리중 여부 확인
-            if (user.getIsDeleted()) { throw new AlreadyDeletedException(); }
+            // 3-a-1. 탈퇴 처리중인 경우 탈퇴 철회
+            if (user.getIsDeleted()) {
+                userService.restoreUserByUserId(user.getId());
+            }
 
             // 3-a-2. 소셜 토큰 관리
             if (socialRefreshToken != null && !socialRefreshToken.isEmpty()) {

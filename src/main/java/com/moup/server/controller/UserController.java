@@ -66,7 +66,7 @@ public class UserController {
     }
 
     @DeleteMapping()
-    @Operation(summary = "유저 삭제", description = "현재 로그인된 유저의 계정을 삭제 (3일의 유예 기간 존재)")
+    @Operation(summary = "유저 탈퇴", description = "현재 로그인된 유저의 계정을 탈퇴 (3일의 유예 기간 존재)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "유저 삭제 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserDeleteResponse.class))),
             @ApiResponse(responseCode = "401", description = "인증 실패 - 토큰 없음 또는 유효하지 않음"),
@@ -79,21 +79,5 @@ public class UserController {
         UserDeleteResponse userDeleteResponse = userService.deleteSoftUserByUserId(userId);
 
         return ResponseEntity.ok().body(userDeleteResponse);
-    }
-
-    @PutMapping("/restore")
-    @Operation(summary = "삭제 철회", description = "삭제 처리된 유저의 삭제 철회")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "삭제 철회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserRestoreResponse.class))),
-            @ApiResponse(responseCode = "401", description = "인증 실패 - 토큰 없음 또는 유효하지 않음"),
-            @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "409", description = "이미 복원된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    public ResponseEntity<?> restoreUser() {
-        Long userId = identityService.getCurrentUserId();
-
-        UserRestoreResponse userRestoreResponse = userService.restoreUserByUserId(userId);
-
-        return ResponseEntity.ok().body(userRestoreResponse);
     }
 }
