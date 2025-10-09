@@ -14,9 +14,9 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @SuperBuilder
 public abstract class BaseWorkplaceUpdateRequest {
-    @Schema(description = "근무지/매장 이름", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "근무지(매장) 이름", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.REQUIRED)
     private String workplaceName;
-    @Schema(description = "근무지/매장 카테고리 이름", example = "편의점", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "근무지(매장) 카테고리 이름", example = "편의점", requiredMode = Schema.RequiredMode.REQUIRED)
     private String categoryName;
     @Schema(description = "주소", example = "경기 화성시 동탄중심상가1길 8 1층", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String address;
