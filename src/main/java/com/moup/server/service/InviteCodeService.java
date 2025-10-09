@@ -56,7 +56,7 @@ public class InviteCodeService {
         }
 
         // 최대 시도 횟수를 초과하면 예외를 발생시킵니다.
-        throw new RuntimeException("서버에 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+        throw new RuntimeException("초대 코드 생성에 실패하였습니다. 잠시 후 다시 시도해주세요.");
     }
 
     /**
