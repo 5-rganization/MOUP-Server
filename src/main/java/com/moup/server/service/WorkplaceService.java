@@ -60,6 +60,60 @@ public class WorkplaceService {
     }
 
     @Transactional(readOnly = true)
+    public BaseWorkplaceDetailResponse getWorkplaceDetail(User user, Long workplaceId) {
+        Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+        Worker worker = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new);
+
+        if (user.getRole() == Role.ROLE_WORKER) {
+            Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElseThrow(SalaryWorkerNotFoundException::new);
+
+            return WorkerWorkplaceDetailResponse.builder()
+                    .workplaceId(workplaceId)
+                    .workplaceName(workplace.getWorkplaceName())
+                    .categoryName(workplace.getCategoryName())
+                    .address(workplace.getAddress())
+                    .latitude(workplace.getLatitude())
+                    .longitude(workplace.getLongitude())
+                    .workerBasedLabelColor(worker.getWorkerBasedLabelColor())
+                    .salaryType(salary.getSalaryType())
+                    .salaryCalculation(salary.getSalaryCalculation())
+                    .hourlyRate(salary.getHourlyRate())
+                    .salaryDate(salary.getSalaryDate())
+                    .hasNationalPension(salary.getHasNationalPension())
+                    .hasHealthInsurance(salary.getHasHealthInsurance())
+                    .hasEmploymentInsurance(salary.getHasEmploymentInsurance())
+                    .hasIndustrialAccident(salary.getHasIndustrialAccident())
+                    .hasIncomeTax(salary.getHasIncomeTax())
+                    .hasNightAllowance(salary.getHasNightAllowance())
+                    .build();
+        } else if (user.getRole() == Role.ROLE_OWNER) {
+            return OwnerWorkplaceDetailResponse.builder()
+                    .workplaceId(workplaceId)
+                    .workplaceName(workplace.getWorkplaceName())
+                    .categoryName(workplace.getCategoryName())
+                    .address(workplace.getAddress())
+                    .latitude(workplace.getLatitude())
+                    .longitude(workplace.getLongitude())
+                    .ownerBasedLabelColor(worker.getOwnerBasedLabelColor())
+                    .build();
+        } else {
+            throw new InvalidPermissionAccessException();
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public WorkplaceSummaryResponse getSummarizedWorkplace(Long userId, Long workplaceId) {
+        Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+        if (!workerRepository.existsByUserIdAndWorkplaceId(userId, workplaceId)) { throw new WorkerWorkplaceNotFoundException(); }
+
+        return WorkplaceSummaryResponse.builder()
+                .workplaceId(workplaceId)
+                .workplaceName(workplace.getWorkplaceName())
+                .isShared(workplace.isShared())
+                .build();
+    }
+
+    @Transactional(readOnly = true)
     public List<WorkplaceSummaryResponse> getAllSummarizedWorkplace(Long userId) {
         List<Worker> userAllWorkers = workerRepository.findAllByUserId(userId);
 
