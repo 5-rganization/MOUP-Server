@@ -76,7 +76,6 @@ public class AuthController {
                         "refreshToken": "string"
                     }
                     """))),
-            @ApiResponse(responseCode = "409", description = "삭제 처리된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "로그인을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginRequest.class)))
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) throws AuthException, InvalidNameException {
@@ -164,8 +163,7 @@ public class AuthController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "회원가입 절차 완료", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RegisterResponse.class))),
             @ApiResponse(responseCode = "400", description = "잘못된 유저 이름", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "50" +
-                    "0", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "회원가입을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RegisterRequest.class)))
     public ResponseEntity<?> register(@RequestBody RegisterRequest registerRequest) {
         Long userId = identityService.getCurrentUserId();
