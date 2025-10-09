@@ -13,6 +13,8 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @SuperBuilder
 public abstract class BaseWorkplaceDetailResponse {
+    @Schema(description = "근무지(매장) ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Long workplaceId;
     @Schema(description = "근무지(매장) 이름", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.REQUIRED)
     private String workplaceName;
     @Schema(description = "근무지(매장) 카테고리 이름", example = "편의점", requiredMode = Schema.RequiredMode.REQUIRED)
