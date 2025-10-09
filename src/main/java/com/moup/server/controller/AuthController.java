@@ -106,7 +106,10 @@ public class AuthController {
             if (socialRefreshToken != null && !socialRefreshToken.isEmpty()) {
                 socialTokenService.saveOrUpdateToken(user.getId(), socialRefreshToken);
             }
-            TokenCreateRequest tokenCreateRequest = TokenCreateRequest.builder().userId(user.getId()).role(user.getRole()).username(user.getUsername()).build();
+            TokenCreateRequest tokenCreateRequest = TokenCreateRequest.builder()
+                    .userId(user.getId())
+                    .username(user.getUsername())
+                    .build();
 
             // 3-a-3. 서비스 토큰 관리
             String accessToken = jwtUtil.createAccessToken(tokenCreateRequest);
@@ -199,7 +202,10 @@ public class AuthController {
         Long userId = jwtUtil.getUserId(refreshToken);
         User user = userService.findUserById(userId);
 
-        TokenCreateRequest tokenCreateRequest = TokenCreateRequest.builder().userId(user.getId()).role(user.getRole()).username(user.getUsername()).build();
+        TokenCreateRequest tokenCreateRequest = TokenCreateRequest.builder()
+                .userId(user.getId())
+                .username(user.getUsername())
+                .build();
 
         String accessToken = jwtUtil.createAccessToken(tokenCreateRequest);
         String newRefreshToken = jwtUtil.createRefreshToken(tokenCreateRequest);

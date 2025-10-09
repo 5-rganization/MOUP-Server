@@ -33,7 +33,6 @@ public class JwtUtil {
     public String createAccessToken(TokenCreateRequest tokenCreateRequest) {
         return Jwts.builder()
                 .subject(String.valueOf(tokenCreateRequest.getUserId()))
-                .claim("role", tokenCreateRequest.getRole().name())
                 .claim("username", tokenCreateRequest.getUsername())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
@@ -55,7 +54,6 @@ public class JwtUtil {
 
         return Jwts.builder()
                 .subject(String.valueOf(tokenCreateRequest.getUserId()))
-                .claim("role", tokenCreateRequest.getRole().name())
                 .claim("username", tokenCreateRequest.getUsername())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + oneYearInMilliseconds))
