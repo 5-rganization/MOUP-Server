@@ -2,6 +2,8 @@ package com.moup.server.exception;
 
 import com.moup.server.model.dto.ErrorResponse;
 import java.util.Map;
+
+import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +36,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<?> handleTypeMismatchException(MethodArgumentTypeMismatchException e) {
         logger.warn("Invalid parameter type provided for '{}': value '{}'", e.getName(), e.getValue());
         return response(ErrorCode.INVALID_ARGUMENT);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<?> handleConstraintViolationException(ConstraintViolationException e) {
+        logger.warn("Invalid varable provided");
+        String errorMessage = e.getMessage();
+        return response(ErrorCode.INVALID_VARIABLE_FORMAT, errorMessage);
     }
 
     @ExceptionHandler(RuntimeException.class)

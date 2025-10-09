@@ -8,7 +8,8 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor
 public enum ErrorCode {
     INVALID_FILE_EXTENSION(HttpStatus.BAD_REQUEST, "FILE_400", "잘못된 파일 형식입니다."),
-    INVALID_FIELD_FORMAT(HttpStatus.UNPROCESSABLE_ENTITY, "FIELD_422", "유효하지 않은 형식입니다."),
+    INVALID_VARIABLE_FORMAT(HttpStatus.BAD_REQUEST, "VARIABLE_404", "유효하지 않은 경로/매개변수 형식입니다."),
+    INVALID_FIELD_FORMAT(HttpStatus.UNPROCESSABLE_ENTITY, "FIELD_422", "유효하지 않은 필드 형식입니다."),
     INVALID_TOKEN(HttpStatus.BAD_REQUEST, "AUTH_400", "유효하지 않은 토큰입니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH_401", "인증되지 않은 사용자입니다."),
     INVALID_ARGUMENT(HttpStatus.BAD_REQUEST, "ARGUMENT_400", "유효하지 않은 인수입니다."),

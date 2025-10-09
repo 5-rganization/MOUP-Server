@@ -74,10 +74,6 @@ public class InviteCodeService {
      * @return 근무지 ID(Long)를 포함한 Optional 객체
      */
     public Long findWorkplaceIdByInviteCode(String inviteCode) {
-        if (inviteCode == null || inviteCode.length() != 6) {
-            throw new IllegalArgumentException("초대 코드는 6자리여야 합니다.");
-        }
-
         return inviteCodeRepository.findWorkplaceIdByInviteCode(inviteCode).orElseThrow(WorkplaceNotFoundException::new);
     }
 }
