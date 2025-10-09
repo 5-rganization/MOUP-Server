@@ -54,22 +54,30 @@ public class AuthController {
     @Operation(summary = "소셜 로그인 혹은 유저 생성(회원가입 절차 시작)", description = "소셜 로그인 타입과 토큰을 입력 받아서 로그인, 토큰이나 회원 정보가 없을 경우 유저 정보 생성 및 회원가입 절차 시작")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "로그인 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginResponse.class, example =
-                            """
-                            {
-                                "userId": 1,
-                                "role": "ROLE_WORKER",
-                                "accessToken": "string",
-                                "refreshToken": "string"
-                            }
-                            """))),
+                    """
+                    {
+                        "userId": 1,
+                        "role": "ROLE_WORKER",
+                        "accessToken": "string",
+                        "refreshToken": "string"
+                    }
+                    """))),
             @ApiResponse(responseCode = "201", description = "회원가입 절차 시작 (유저 생성)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginResponse.class, example =
-                            """
-                            {
-                                "userId": 1,
-                                "accessToken": "string",
-                                "refreshToken": "string"
-                            }
-                            """))),
+                    """
+                    {
+                        "userId": 1,
+                        "accessToken": "string",
+                        "refreshToken": "string"
+                    }
+                    """))),
+            @ApiResponse(responseCode = "202", description = "회원가입 절차 진행중", content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginResponse.class, example =
+                    """
+                    {
+                        "userId": 1,
+                        "accessToken": "string",
+                        "refreshToken": "string"
+                    }
+                    """))),
             @ApiResponse(responseCode = "409", description = "삭제 처리된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "로그인을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginRequest.class)))
@@ -92,7 +100,7 @@ public class AuthController {
             // 3-a. 유저 정보가 있으면 로그인
             User user = optionalUser.get();
 
-            // 3-a-1. 탈퇴 처리된 경우 에러 응답 반환
+            // 3-a-1. 탈퇴 처리중 여부 확인
             if (user.getIsDeleted()) { throw new AlreadyDeletedException(); }
 
             // 3-a-2. 소셜 토큰 관리
@@ -105,9 +113,21 @@ public class AuthController {
             String accessToken = jwtUtil.createAccessToken(tokenCreateRequest);
             String refreshToken = jwtUtil.createRefreshToken(tokenCreateRequest);
             userTokenService.saveOrUpdateToken(refreshToken, jwtUtil.getRefreshTokenExpiration());
-            LoginResponse loginResponse = LoginResponse.builder().userId(user.getId()).role(user.getRole()).accessToken(accessToken).refreshToken(refreshToken).build();
+            LoginResponse loginResponse = LoginResponse.builder()
+                    .userId(user.getId())
+                    .role(user.getRole())
+                    .accessToken(accessToken)
+                    .refreshToken(refreshToken)
+                    .build();
 
-            return ResponseEntity.ok().body(loginResponse);
+            // 3-a-4. 로그인 응답 DTO 반환
+            if (user.getNickname() == null ||user.getRole() == null) {
+                // 회원가입 절차가 진행중인 경우(닉네임이나 역할이 null인 경우) 202 반환
+                return ResponseEntity.accepted().body(loginResponse);
+            } else {
+                // 회원가입 절차가 완료된 경우 200 반환
+                return ResponseEntity.ok().body(loginResponse);
+            }
         } else {
             // 3-b. 유저 정보가 없으면 회원가입
 
