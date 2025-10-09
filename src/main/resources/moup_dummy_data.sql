@@ -40,8 +40,8 @@ VALUES (3, 1, 'red', 'red', 1), -- 최알바 -> GS25 역삼점
        (5, 2, 'blue', 'blue', 1), -- 강알바 -> 메가커피 선릉점
        (3, 2, 'purple', 'purple', 1), -- 최알바 -> 메가커피 선릉점 (한명이 여러곳에서 근무)
        (4, 4, 'orange', 'orange', 1), -- 이알바 -> 올리브영 신촌점
-       (1, 1, 'primary', 'primary', 1), -- 사장님도 근무자로 등록 가능
-       (2, 3, 'primary', 'primary', 1); -- 사장님도 근무자로 등록 가능
+       (1, 1, 'indigo', 'indigo', 1), -- 사장님도 근무자로 등록 가능
+       (2, 3, 'yellow', 'yellow', 1); -- 사장님도 근무자로 등록 가능
 
 -- routines 테이블 더미 데이터
 INSERT INTO `routines` (`user_id`, `routine_name`, `alarm_time`)
