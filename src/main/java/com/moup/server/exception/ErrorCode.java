@@ -11,7 +11,7 @@ public enum ErrorCode {
     INVALID_FIELD_FORMAT(HttpStatus.UNPROCESSABLE_ENTITY, "FIELD_422", "유효하지 않은 형식입니다."),
     INVALID_TOKEN(HttpStatus.BAD_REQUEST, "AUTH_400", "유효하지 않은 토큰입니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH_401", "인증되지 않은 사용자입니다."),
-    INVALID_PARAMETER(HttpStatus.BAD_REQUEST, "PARAMETER_400", "유효하지 않은 매개변수입니다."),
+    INVALID_ARGUMENT(HttpStatus.BAD_REQUEST, "ARGUMENT_400", "유효하지 않은 인수입니다."),
     INVALID_ROLE_ACCESS(HttpStatus.FORBIDDEN, "ROLE_403", "역할에 맞지 않는 접근입니다."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_404", "해당 유저는 존재하지 않습니다."),
     USER_ALREADY_EXISTS(HttpStatus.CONFLICT, "USER_409", "이미 등록된 유저입니다."),

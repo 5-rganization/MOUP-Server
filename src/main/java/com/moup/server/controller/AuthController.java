@@ -3,6 +3,7 @@ package com.moup.server.controller;
 import com.moup.server.common.Login;
 import com.moup.server.common.Role;
 import com.moup.server.exception.AlreadyDeletedException;
+import com.moup.server.exception.InvalidArgumentException;
 import com.moup.server.exception.InvalidTokenException;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.User;
@@ -24,6 +25,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import javax.naming.InvalidNameException;
 import java.net.URI;
+import java.security.InvalidParameterException;
 import java.util.Map;
 import java.util.Optional;
 
@@ -49,7 +51,7 @@ public class AuthController {
     private final NameVerifyUtil nameVerifyUtil;
 
     @PostMapping("/login")
-    @Operation(summary = "소셜 로그인 및 자동 회원가입(유저 생성)", description = "소셜 로그인 타입과 토큰을 입력 받아서 로그인, 토큰이나 회원 정보가 없을 경우 회원가입")
+    @Operation(summary = "소셜 로그인 혹은 유저 생성(회원가입 절차 시작)", description = "소셜 로그인 타입과 토큰을 입력 받아서 로그인, 토큰이나 회원 정보가 없을 경우 유저 정보 생성 및 회원가입 절차 시작")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "로그인 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginResponse.class, example =
                             """
@@ -137,7 +139,7 @@ public class AuthController {
         }
     }
 
-    @PatchMapping("/register")
+    @PatchMapping("/login/register")
     @Operation(summary = "회원가입", description = "닉네임, 역할을 받아서 회원가입 진행")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "회원가입 절차 완료", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RegisterResponse.class))),
@@ -147,18 +149,21 @@ public class AuthController {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "회원가입을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RegisterRequest.class)))
     public ResponseEntity<?> register(@RequestBody RegisterRequest registerRequest) {
         Long userId = identityService.getCurrentUserId();
-        // TODO: Access Token이 있으면 무조건 회원? 만약 앱을 지우지 않고 애플 로그인에서 바로 revoke 시킨다면?
 
-        UserRegisterRequest userRegisterRequest = UserRegisterRequest.builder()
-                .userId(userId)
-                .nickname(registerRequest.getNickname())
-                .role(Role.valueOf(registerRequest.getRole()))
-                .build();
+        try {
+            UserRegisterRequest userRegisterRequest = UserRegisterRequest.builder()
+                    .userId(userId)
+                    .nickname(registerRequest.getNickname())
+                    .role(Role.valueOf(registerRequest.getRole()))
+                    .build();
 
-        // DB에 닉네임, 역할 필드 채움
-        RegisterResponse response = userService.completeCreateUser(userRegisterRequest);
+            // DB에 닉네임, 역할 필드 채움
+            RegisterResponse response = userService.completeCreateUser(userRegisterRequest);
 
-        return ResponseEntity.ok().body(response);
+            return ResponseEntity.ok().body(response);
+        } catch(IllegalArgumentException e) {
+            throw new InvalidArgumentException();
+        }
     }
 
     @PostMapping("/token/refresh")
