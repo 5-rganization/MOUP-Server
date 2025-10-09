@@ -136,16 +136,11 @@ public class UserService {
                 .isDeleted(true).build();
     }
 
-    public UserRestoreResponse restoreUserByUserId(Long userId) {
+    public void restoreUserByUserId(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
-
-        if (!user.getIsDeleted()) {
-            throw new UserAlreadyExistsException();
-        }
+        if (!user.getIsDeleted()) { throw new UserAlreadyExistsException(); }
 
         userRepository.undeleteUserById(userId);
-
-        return UserRestoreResponse.builder().userId(user.getId()).deletedAt(null).isDeleted(false).build();
     }
 
     public UserUpdateNicknameResponse updateNicknameByUserId(Long userId, String nickname) {
