@@ -284,8 +284,8 @@ public class WorkplaceController {
         if (response.getReturnAlreadyExists()) {
             return ResponseEntity.ok().body(response);
         } else {
-            URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                    .path("/invite-code/{inviteCode}")
+            URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
+                    .path("/workplaces/invite-code/{inviteCode}")
                     .buildAndExpand(response.getInviteCode())
                     .toUri();
             return ResponseEntity.created(location).body(response);
@@ -329,8 +329,8 @@ public class WorkplaceController {
         User user = userService.findUserById(userId);
 
         WorkplaceJoinResponse response = workplaceService.joinWorkplace(user, inviteCode, request);
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}/workers/{workerId}")
+        URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/workplaces/{id}/workers/{workerId}")
                 .buildAndExpand(response.getWorkplaceId(), response.getWorkerId())
                 .toUri();
         return ResponseEntity.created(location).body(response);
