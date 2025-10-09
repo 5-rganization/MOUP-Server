@@ -14,7 +14,7 @@ import lombok.experimental.SuperBuilder;
 @Schema(description = "사장님 매장 생성 요청 DTO")
 public class OwnerWorkplaceCreateRequest extends BaseWorkplaceCreateRequest {
     @NotBlank(message = "빈 값 혹은 공백 문자는 받을 수 없습니다.")
-    @Schema(description = "라벨 색상 (사장님 기준)", example = "blue", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "라벨 색상 (사장님 기준)", example = "BLUE", requiredMode = Schema.RequiredMode.REQUIRED)
     private String ownerBasedLabelColor;
 
     public Workplace toWorkplaceEntity(Long userId) {
