@@ -10,8 +10,6 @@ import lombok.Getter;
 public class UserCreateRequest {
     private Login provider;
     private String providerId;
-    private  String username;
-    private  String nickname;
-    private Role role;
+    private String username;
     private String socialRefreshToken;
 }

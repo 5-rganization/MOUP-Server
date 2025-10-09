@@ -33,7 +33,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<?> handleTypeMismatchException(MethodArgumentTypeMismatchException e) {
         logger.warn("Invalid parameter type provided for '{}': value '{}'", e.getName(), e.getValue());
-        return response(ErrorCode.INVALID_PARAMETER);
+        return response(ErrorCode.INVALID_ARGUMENT);
     }
 
     @ExceptionHandler(RuntimeException.class)

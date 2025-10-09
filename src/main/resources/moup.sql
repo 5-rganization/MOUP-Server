@@ -9,7 +9,7 @@ CREATE TABLE `users`
     `provider_id` VARCHAR(100)                                                           NOT NULL,
     `username`    VARCHAR(100),
     `nickname`    VARCHAR(100),
-    `role`        ENUM ('ROLE_WORKER', 'ROLE_OWNER', 'ROLE_ADMIN') DEFAULT 'ROLE_WORKER' NOT NULL,
+    `role`        ENUM ('ROLE_WORKER', 'ROLE_OWNER', 'ROLE_ADMIN') NULL,
     `profile_img` VARCHAR(255),
     `created_at`  TIMESTAMP                                        DEFAULT CURRENT_TIMESTAMP(),
     `deleted_at`  TIMESTAMP,
