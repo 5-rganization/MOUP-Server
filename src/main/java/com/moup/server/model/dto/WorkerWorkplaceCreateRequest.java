@@ -15,7 +15,7 @@ import lombok.experimental.SuperBuilder;
 @Schema(description = "알바생 근무지 생성 요청 DTO")
 public class WorkerWorkplaceCreateRequest extends BaseWorkplaceCreateRequest {
     @NotBlank(message = "빈 값 혹은 공백 문자는 받을 수 없습니다.")
-    @Schema(description = "라벨 색상 (알바생 기준)", example = "red", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "라벨 색상 (알바생 기준)", example = "RED", requiredMode = Schema.RequiredMode.REQUIRED)
     private String workerBasedLabelColor;
 
     @NotBlank(message = "빈 값 혹은 공백 문자는 받을 수 없습니다.")

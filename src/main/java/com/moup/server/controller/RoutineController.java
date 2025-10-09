@@ -13,8 +13,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -22,6 +24,7 @@ import java.net.URI;
 
 @Tag(name = "Routine-Controller", description = "루틴 정보 관리 API 엔드포인트")
 @RestController
+@Validated
 @RequiredArgsConstructor
 @RequestMapping("/routines")
 public class RoutineController {
@@ -95,9 +98,9 @@ public class RoutineController {
             @ApiResponse(responseCode = "400", description = "유효하지 않은 매개변수", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "존재하지 않는 루틴", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    public ResponseEntity<?> getRoutineDetail(
+    public ResponseEntity<?> getRoutine(
             @Parameter(name = "routineId", description = "조회할 루틴 ID", example = "1", required = true, in = ParameterIn.PATH)
-            @PathVariable Long routineId,
+            @PathVariable @Positive(message = "1 이상의 값만 입력해주세요.") Long routineId,
             @Parameter(name = "view", description = "조회 방식 (기본값: 상세 정보, `summary`: 요약 정보)", in = ParameterIn.QUERY, schema = @Schema(allowableValues = {"summary"}))
             @RequestParam(name = "view", required = false) ViewType view
     ) {
@@ -121,7 +124,7 @@ public class RoutineController {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "루틴 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineUpdateRequest.class)))
     public ResponseEntity<?> updateRoutine(
             @Parameter(name = "routineId", description = "업데이트할 루틴 ID", example = "1", required = true, in = ParameterIn.PATH)
-            @PathVariable Long routineId,
+            @PathVariable @Positive(message = "1 이상의 값만 입력해주세요.") Long routineId,
             @RequestBody @Valid RoutineUpdateRequest request
     ) {
         Long userId = identityService.getCurrentUserId();
@@ -136,7 +139,7 @@ public class RoutineController {
             @ApiResponse(responseCode = "204", description = "루틴 삭제 성공", content = @Content(mediaType = "application/json")),
             @ApiResponse(responseCode = "404", description = "존재하지 않는 루틴", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    public ResponseEntity<?> deleteRoutine(@PathVariable Long routineId) {
+    public ResponseEntity<?> deleteRoutine(@PathVariable @Positive(message = "1 이상의 값만 입력해주세요.") Long routineId) {
         Long userId = identityService.getCurrentUserId();
 
         routineService.deleteRoutine(userId, routineId);
