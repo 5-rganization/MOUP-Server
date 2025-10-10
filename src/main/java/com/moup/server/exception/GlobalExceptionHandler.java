@@ -38,7 +38,7 @@ public class GlobalExceptionHandler {
         logger.warn("Invalid field value provided", e);
         ErrorCode errorCode = ErrorCode.INVALID_FIELD_FORMAT;
         String errorMessage = e.getBindingResult().getFieldErrors().stream()
-                .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                .map(fieldError -> String.format("%s: %s", fieldError.getField(), fieldError.getDefaultMessage()))
                 .collect(Collectors.joining(", "));
 
         ErrorResponse errorResponse = ErrorResponse.builder()
@@ -53,9 +53,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<?> handleTypeMismatchException(MethodArgumentTypeMismatchException e) {
         logger.warn("Invalid parameter type provided", e);
         ErrorCode errorCode = ErrorCode.INVALID_ARGUMENT;
+        String errorMessage = String.format("'%s' 항목에 잘못된 타입을 입력했습니다.", e.getName());
+
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .errorCode(errorCode.getCode())
-                .errorMessage(e.getMessage())
+                .errorMessage(errorMessage)
                 .build();
 
         return new ResponseEntity<>(errorResponse, errorCode.getHttpStatus());
