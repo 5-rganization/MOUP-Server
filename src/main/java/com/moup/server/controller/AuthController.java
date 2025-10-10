@@ -122,6 +122,7 @@ public class AuthController {
                 // 회원가입 절차가 진행중인 경우(닉네임이나 역할이 null인 경우) 202 반환
                 LoginResponse loginResponse = LoginResponse.builder()
                         .userId(user.getId())
+                        .role(null)
                         .accessToken(accessToken)
                         .refreshToken(refreshToken)
                         .build();
