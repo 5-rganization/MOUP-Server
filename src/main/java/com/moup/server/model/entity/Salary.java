@@ -2,6 +2,8 @@ package com.moup.server.model.entity;
 
 import lombok.*;
 
+import java.time.DayOfWeek;
+
 @Getter
 @Builder
 @ToString
@@ -13,7 +15,7 @@ public class Salary {
     private Integer hourlyRate;
     private Integer fixedRate;
     private Integer salaryDate;
-    private String salaryDay;
+    private DayOfWeek salaryDay;
     private Boolean hasNationalPension;
     private Boolean hasHealthInsurance;
     private Boolean hasEmploymentInsurance;

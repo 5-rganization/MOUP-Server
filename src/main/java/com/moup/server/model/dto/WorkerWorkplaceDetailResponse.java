@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import java.time.DayOfWeek;
+
 @Getter
 @SuperBuilder
 @NoArgsConstructor
@@ -23,8 +25,8 @@ public class WorkerWorkplaceDetailResponse extends BaseWorkplaceDetailResponse {
     private Integer fixedRate;
     @Schema(description = "급여일", example = "15", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Integer salaryDate;
-    @Schema(description = "급여 요일 (월: MON, 화: TUE, 수: WED, 목: THU, 금: FRI, 토: SAT, 일: SUN)", example = "MON", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    private String salaryDay;
+    @Schema(description = "급여 요일 (월: MONDAY, 화: TUESDAY, 수: WEDNESDAY, 목: THURSDAY, 금: FRIDAY, 토: SATURDAY, 일: SUNDAY)", example = "MON", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    private DayOfWeek salaryDay;
     @Schema(description = "국민연금 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean hasNationalPension;
     @Schema(description = "건강보험 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)

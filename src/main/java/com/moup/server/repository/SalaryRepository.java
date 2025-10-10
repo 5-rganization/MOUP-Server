@@ -37,10 +37,10 @@ public interface SalaryRepository {
     /// @param salary 업데이트할 Salary 객체
     @Update("""
             UPDATE salaries SET salary_type = #{salaryType}, salary_calculation = #{salaryCalculation}, 
-                                  hourly_rate = #{hourlyRate}, fixed_rate = #{fixedRate}, salary_date = #{salaryDate}, salary_day = #{salaryDay},
-                                  has_national_pension = #{hasNationalPension}, has_health_insurance = #{hasHealthInsurance},
-                                  has_employment_insurance = #{hasEmploymentInsurance}, has_industrial_accident = #{hasIndustrialAccident}, 
-                                  has_income_tax = #{hasIncomeTax}, has_night_allowance = #{hasNightAllowance}
+                                hourly_rate = #{hourlyRate}, fixed_rate = #{fixedRate}, salary_date = #{salaryDate}, salary_day = #{salaryDay},
+                                has_national_pension = #{hasNationalPension}, has_health_insurance = #{hasHealthInsurance},
+                                has_employment_insurance = #{hasEmploymentInsurance}, has_industrial_accident = #{hasIndustrialAccident}, 
+                                has_income_tax = #{hasIncomeTax}, has_night_allowance = #{hasNightAllowance}
             WHERE id = #{id} AND worker_id = #{workerId}
             """)
     void update(Salary salary);
