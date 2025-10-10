@@ -1,0 +1,31 @@
+name: Manual DB Initialization
+
+on:
+  workflow_dispatch:
+
+jobs:
+  init-db:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Execute SQL on server
+        run: |
+          sshpass -p "${{ secrets.RPI_PASSWORD }}" ssh -o StrictHostKeyChecking=no -p ${{ secrets.RPI_PORT }} ${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }} << 'EOF'
+          echo "Connecting to server..."
+
+            # Make DB connection info at home directory
+            echo "[client]" > ~/.my.cnf
+            echo "user=root" >> ~/.my.cnf
+            echo "password=${{ secrets.DATABASE_PASSWORD }}" >> ~/.my.cnf
+            chmod 600 ~/.my.cnf
+
+            # Execute SQL
+            echo "Executing SQL script..."
+            cd /home/${{ secrets.RPI_USER }}/MOUP-Server
+            mysql moup < src/main/resources/moup.sql
+
+            # Delete DB connection info
+            rm ~/.my.cnf
+
+            echo "SQL execution complete."
+          EOF
