@@ -121,7 +121,6 @@ public class AuthController {
             if (user.getNickname() == null) {
                 // 회원가입 절차가 진행중인 경우(닉네임이 null인 경우) 202 반환
                 LoginResponse loginResponse = LoginResponse.builder()
-                        .userId(user.getId())
                         .role(null)
                         .accessToken(accessToken)
                         .refreshToken(refreshToken)
@@ -130,7 +129,6 @@ public class AuthController {
             } else {
                 // 회원가입 절차가 이미 완료된 경우 200 반환
                 LoginResponse loginResponse = LoginResponse.builder()
-                        .userId(user.getId())
                         .role(user.getRole())
                         .accessToken(accessToken)
                         .refreshToken(refreshToken)
