@@ -1,16 +1,18 @@
 package com.moup.server.exception;
 
 import com.moup.server.model.dto.ErrorResponse;
-import java.util.Map;
 
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+import java.util.stream.Collectors;
 
 /**
  * @author neoskyclad 전역 예외 처리기
@@ -21,49 +23,65 @@ public class GlobalExceptionHandler {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @ExceptionHandler(CustomException.class)
-    public ResponseEntity<?> handleCustomException(CustomException e) {
-        return response(e.getErrorCode());
+    public ResponseEntity<ErrorResponse> handleCustomException(CustomException e) {
+        logger.warn("Custom exception occurred", e);
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .errorCode(e.getErrorCode().getCode())
+                .errorMessage(e.getMessage())
+                .build();
+
+        return new ResponseEntity<>(errorResponse, e.getErrorCode().getHttpStatus());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleValidationExceptions(MethodArgumentNotValidException e) {
-        logger.warn("Invalid field value provided");
-        String errorMessage = e.getBindingResult().getAllErrors().get(0).getDefaultMessage();
-        return response(ErrorCode.INVALID_FIELD_FORMAT, errorMessage);
+        logger.warn("Invalid field value provided", e);
+        ErrorCode errorCode = ErrorCode.INVALID_FIELD_FORMAT;
+        String errorMessage = e.getBindingResult().getFieldErrors().stream()
+                .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                .collect(Collectors.joining(", "));
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .errorCode(errorCode.getCode())
+                .errorMessage(errorMessage)
+                .build();
+
+        return new ResponseEntity<>(errorResponse, errorCode.getHttpStatus());
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<?> handleTypeMismatchException(MethodArgumentTypeMismatchException e) {
-        logger.warn("Invalid parameter type provided for '{}': value '{}'", e.getName(), e.getValue());
-        return response(ErrorCode.INVALID_ARGUMENT);
+        logger.warn("Invalid parameter type provided", e);
+        ErrorCode errorCode = ErrorCode.INVALID_ARGUMENT;
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .errorCode(errorCode.getCode())
+                .errorMessage(e.getMessage())
+                .build();
+
+        return new ResponseEntity<>(errorResponse, errorCode.getHttpStatus());
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<?> handleConstraintViolationException(ConstraintViolationException e) {
-        logger.warn("Invalid varable provided");
-        String errorMessage = e.getMessage();
-        return response(ErrorCode.INVALID_VARIABLE_FORMAT, errorMessage);
+        logger.warn("Invalid variable provided", e);
+        ErrorCode errorCode = ErrorCode.INVALID_VARIABLE_FORMAT;
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .errorCode(errorCode.getCode())
+                .errorMessage(e.getMessage())
+                .build();
+
+        return new ResponseEntity<>(errorResponse, errorCode.getHttpStatus());
     }
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<?> handleException(RuntimeException e) {
         logger.error("Unhandled runtime exception", e);
-        return e.getMessage().isEmpty() ? response(ErrorCode.INTERNAL_SERVER_ERROR)
-                : response(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage());
-    }
-
-    ResponseEntity<?> response(ErrorCode errorCode) {
-        ErrorResponse errorResponse = ErrorResponse.builder().errorCode(errorCode.getCode())
-                .errorMessage(errorCode.getMessage()).build();
-
-        return ResponseEntity.status(errorCode.getHttpStatus()).body(errorResponse);
-    }
-
-    ResponseEntity<?> response(ErrorCode errorCode, String errorMessage) {
-        ErrorResponse errorResponse = ErrorResponse.builder().errorCode(errorCode.getCode()).errorMessage(errorMessage)
+        ErrorCode errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .errorCode(errorCode.getCode())
+                .errorMessage(errorCode.getMessage())
                 .build();
 
-        return ResponseEntity.status(errorCode.getHttpStatus()).body(errorResponse);
+        return new ResponseEntity<>(errorResponse, errorCode.getHttpStatus());
     }
-
 }

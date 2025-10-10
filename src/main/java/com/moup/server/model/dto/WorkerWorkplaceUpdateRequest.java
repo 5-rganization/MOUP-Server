@@ -13,7 +13,7 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @Schema(description = "알바생 근무지 업데이트 요청 DTO")
 public class WorkerWorkplaceUpdateRequest extends BaseWorkplaceUpdateRequest {
-    @NotBlank(message = "빈 값 혹은 공백문자는 받을 수 없습니다.")
+    @NotBlank(message = "빈 값이나 공백문자는 받을 수 없어요")
     @Schema(description = "라벨 색상 (알바생 기준)", example = "RED", requiredMode = Schema.RequiredMode.REQUIRED)
     private String workerBasedLabelColor;
 

@@ -16,7 +16,7 @@ import java.util.List;
 @Builder
 @Schema(description = "루틴 업데이트 요청 DTO")
 public class RoutineUpdateRequest {
-    @NotBlank(message = "빈 값 혹은 공백 문자는 받을 수 없습니다.")
+    @NotBlank(message = "빈 값이나 공백 문자는 받을 수 없어요")
     @Schema(description = "루틴 이름", example = "오픈", requiredMode = Schema.RequiredMode.REQUIRED)
     private String routineName;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm")

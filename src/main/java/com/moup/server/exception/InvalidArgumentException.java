@@ -1,8 +1,11 @@
 package com.moup.server.exception;
 
 public class InvalidArgumentException extends CustomException {
-    @Override
-    public ErrorCode getErrorCode() {
-        return ErrorCode.INVALID_ARGUMENT;
+    public InvalidArgumentException() {
+        super(ErrorCode.INVALID_ARGUMENT);
+    }
+
+    public InvalidArgumentException(String message) {
+        super(ErrorCode.INVALID_ARGUMENT, message);
     }
 }

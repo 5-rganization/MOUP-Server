@@ -1,8 +1,11 @@
 package com.moup.server.exception;
 
 public class InvalidTokenException extends CustomException {
-  @Override
-  public ErrorCode getErrorCode() {
-    return ErrorCode.INVALID_TOKEN;
-  }
+    public InvalidTokenException() {
+        super(ErrorCode.INVALID_TOKEN);
+    }
+
+    public InvalidTokenException(String message) {
+        super(ErrorCode.INVALID_TOKEN, message);
+    }
 }
