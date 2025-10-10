@@ -1,5 +1,7 @@
 package com.moup.server.model.entity;
 
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import lombok.*;
 
 import java.time.DayOfWeek;
@@ -15,6 +17,7 @@ public class Salary {
     private Integer hourlyRate;
     private Integer fixedRate;
     private Integer salaryDate;
+    @Enumerated(EnumType.STRING)
     private DayOfWeek salaryDay;
     private Boolean hasNationalPension;
     private Boolean hasHealthInsurance;
