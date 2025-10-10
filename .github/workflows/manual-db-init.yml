@@ -10,7 +10,7 @@ on:
         default: true
 
 jobs:
-  init-db:
+  manual-db-init:
     runs-on: ubuntu-latest
 
     steps:
