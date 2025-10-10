@@ -13,5 +13,4 @@ public class RoutineTask {
     private Long routineId;
     private String content;
     private Integer orderIndex;
-    private Boolean isChecked;
 }

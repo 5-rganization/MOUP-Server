@@ -75,13 +75,11 @@ public class RoutineController {
                                                         "routineTaskList": [
                                                             {
                                                                 "content": "바닥 청소",
-                                                                "orderIndex": 0,
-                                                                "isChecked": true
+                                                                "orderIndex": 0
                                                             },
                                                             {
                                                                 "content": "전자레인지 청소",
-                                                                "orderIndex": 1,
-                                                                "isChecked": false
+                                                                "orderIndex": 1
                                                             }
                                                         ]
                                                     }

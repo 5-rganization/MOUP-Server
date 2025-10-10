@@ -48,7 +48,7 @@ public class WorkplaceService {
         } else if (user.getRole() == Role.ROLE_WORKER && request instanceof WorkerWorkplaceCreateRequest workerWorkplaceCreateRequest) {
             Worker createdWorker = createWorkplaceAndWorkerHelper(user.getId(), workerWorkplaceCreateRequest);
 
-            Salary salaryToCreate = workerWorkplaceCreateRequest.toSalaryEntity(createdWorker.getId());
+            Salary salaryToCreate = workerWorkplaceCreateRequest.getSalaryInfo().toEntity(createdWorker.getId());
             salaryRepository.create(salaryToCreate);
 
             return WorkplaceCreateResponse.builder()
@@ -66,15 +66,7 @@ public class WorkplaceService {
 
         if (user.getRole() == Role.ROLE_WORKER) {
             Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElseThrow(SalaryWorkerNotFoundException::new);
-
-            return WorkerWorkplaceDetailResponse.builder()
-                    .workplaceId(workplaceId)
-                    .workplaceName(workplace.getWorkplaceName())
-                    .categoryName(workplace.getCategoryName())
-                    .address(workplace.getAddress())
-                    .latitude(workplace.getLatitude())
-                    .longitude(workplace.getLongitude())
-                    .workerBasedLabelColor(worker.getWorkerBasedLabelColor())
+            WorkerSalaryDetailResponse salaryInfo = WorkerSalaryDetailResponse.builder()
                     .salaryType(salary.getSalaryType())
                     .salaryCalculation(salary.getSalaryCalculation())
                     .hourlyRate(salary.getHourlyRate())
@@ -85,6 +77,17 @@ public class WorkplaceService {
                     .hasIndustrialAccident(salary.getHasIndustrialAccident())
                     .hasIncomeTax(salary.getHasIncomeTax())
                     .hasNightAllowance(salary.getHasNightAllowance())
+                    .build();
+
+            return WorkerWorkplaceDetailResponse.builder()
+                    .workplaceId(workplaceId)
+                    .workplaceName(workplace.getWorkplaceName())
+                    .categoryName(workplace.getCategoryName())
+                    .address(workplace.getAddress())
+                    .latitude(workplace.getLatitude())
+                    .longitude(workplace.getLongitude())
+                    .workerBasedLabelColor(worker.getWorkerBasedLabelColor())
+                    .salaryInfo(salaryInfo)
                     .build();
         } else if (user.getRole() == Role.ROLE_OWNER) {
             return OwnerWorkplaceDetailResponse.builder()
@@ -150,7 +153,7 @@ public class WorkplaceService {
             workerRepository.updateWorkerBasedLabelColor(workerId, user.getId(), workplaceId, workerRequest.getWorkerBasedLabelColor());
 
             Long salaryId = salaryRepository.findByWorkerId(workerId).orElseThrow(SalaryWorkerNotFoundException::new).getId();
-            Salary newSalary = workerRequest.toSalaryEntity(salaryId, workerId);
+            Salary newSalary = workerRequest.getSalaryInfo().toEntity(salaryId, workerId);
             salaryRepository.update(newSalary);
         } else {
             throw new InvalidPermissionAccessException();

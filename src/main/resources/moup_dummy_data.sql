@@ -2,12 +2,13 @@
 USE moup;
 
 -- users 테이블 더미 데이터 (2명의 사장, 3명의 직원)
-INSERT INTO `users` (`provider`, `provider_id`, `username`, `nickname`, `role`, `profile_img`)
-VALUES ('LOGIN_GOOGLE', '100000000000000000001', '김사장', '역삼점사장님', 'ROLE_OWNER', 'https://example.com/profile1.jpg'),
-       ('LOGIN_APPLE', '000001.a1b2c3d4e5f6.0001', '박사장', '홍대점주', 'ROLE_OWNER', 'https://example.com/profile2.jpg'),
-       ('LOGIN_GOOGLE', '100000000000000000002', '최알바', '성실알바최씨', 'ROLE_WORKER', 'https://example.com/profile3.jpg'),
-       ('LOGIN_GOOGLE', '100000000000000000003', '이알바', '주말알바이씨', 'ROLE_WORKER', 'https://example.com/profile4.jpg'),
-       ('LOGIN_APPLE', '000002.f6e5d4c3b2a1.0002', '강알바', '미소알바강씨', 'ROLE_WORKER', 'https://example.com/profile5.jpg');
+-- 'is_deleted'와 'deleted_at' 컬럼을 추가하여 스키마에 맞게 수정했습니다.
+INSERT INTO `users` (`provider`, `provider_id`, `username`, `nickname`, `role`, `profile_img`, `is_deleted`, `deleted_at`)
+VALUES ('LOGIN_GOOGLE', '100000000000000000001', '김사장', '역삼점사장님', 'ROLE_OWNER', 'https://example.com/profile1.jpg', 0, NULL),
+       ('LOGIN_APPLE', '000001.a1b2c3d4e5f6.0001', '박사장', '홍대점주', 'ROLE_OWNER', 'https://example.com/profile2.jpg', 0, NULL),
+       ('LOGIN_GOOGLE', '100000000000000000002', '최알바', '성실알바최씨', 'ROLE_WORKER', 'https://example.com/profile3.jpg', 0, NULL),
+       ('LOGIN_GOOGLE', '100000000000000000003', '이알바', '주말알바이씨', 'ROLE_WORKER', 'https://example.com/profile4.jpg', 0, NULL),
+       ('LOGIN_APPLE', '000002.f6e5d4c3b2a1.0002', '강알바', '미소알바강씨', 'ROLE_WORKER', 'https://example.com/profile5.jpg', 0, NULL);
 
 -- social_tokens 테이블 더미 데이터
 INSERT INTO `social_tokens` (`user_id`, `refresh_token`, `updated_at`)
@@ -18,12 +19,12 @@ VALUES (1, 'google_refresh_token_string_example_1', NOW()),
        (5, 'apple_refresh_token_string_example_5', NOW());
 
 -- user_tokens 테이블 더미 데이터
-INSERT INTO `user_tokens` (`user_id`, `refresh_token`, `expiry_date`)
-VALUES (1, 'jwt_refresh_token_example_user1', DATE_ADD(NOW(), INTERVAL 14 DAY)),
-       (2, 'jwt_refresh_token_example_user2', DATE_ADD(NOW(), INTERVAL 14 DAY)),
-       (3, 'jwt_refresh_token_example_user3', DATE_ADD(NOW(), INTERVAL 14 DAY)),
-       (4, 'jwt_refresh_token_example_user4', DATE_ADD(NOW(), INTERVAL 14 DAY)),
-       (5, 'jwt_refresh_token_example_user5', DATE_ADD(NOW(), INTERVAL 14 DAY));
+INSERT INTO `user_tokens` (`user_id`, `refresh_token`, `expiry_date`, `created_at`)
+VALUES (1, 'jwt_refresh_token_example_user1', DATE_ADD(NOW(), INTERVAL 14 DAY), NOW()),
+       (2, 'jwt_refresh_token_example_user2', DATE_ADD(NOW(), INTERVAL 14 DAY), NOW()),
+       (3, 'jwt_refresh_token_example_user3', DATE_ADD(NOW(), INTERVAL 14 DAY), NOW()),
+       (4, 'jwt_refresh_token_example_user4', DATE_ADD(NOW(), INTERVAL 14 DAY), NOW()),
+       (5, 'jwt_refresh_token_example_user5', DATE_ADD(NOW(), INTERVAL 14 DAY), NOW());
 
 -- workplaces 테이블 더미 데이터
 INSERT INTO `workplaces` (`owner_id`, `workplace_name`, `category_name`, `is_shared`, `address`, `latitude`, `longitude`)
@@ -35,13 +36,13 @@ VALUES (1, 'GS25 역삼점', '편의점', 1, '서울 강남구 역삼동 123-45'
 
 -- workers 테이블 더미 데이터 (3명의 직원을 근무지에 배정)
 INSERT INTO `workers` (`user_id`, `workplace_id`, `worker_based_label_color`, `owner_based_label_color`, `is_accepted`)
-VALUES (3, 1, 'red', 'red', 1), -- 최알바 -> GS25 역삼점
-       (4, 3, 'green', 'green', 1), -- 이알바 -> 홍콩반점 홍대입구역점
-       (5, 2, 'blue', 'blue', 1), -- 강알바 -> 메가커피 선릉점
-       (3, 2, 'purple', 'purple', 1), -- 최알바 -> 메가커피 선릉점 (한명이 여러곳에서 근무)
-       (4, 4, 'orange', 'orange', 1), -- 이알바 -> 올리브영 신촌점
-       (1, 1, 'indigo', 'indigo', 1), -- 사장님도 근무자로 등록 가능
-       (2, 3, 'yellow', 'yellow', 1); -- 사장님도 근무자로 등록 가능
+VALUES (3, 1, 'RED', 'RED', 1), -- 최알바 -> GS25 역삼점
+       (4, 3, 'GREEN', 'GREEN', 1), -- 이알바 -> 홍콩반점 홍대입구역점
+       (5, 2, 'BLUE', 'BLUE', 1), -- 강알바 -> 메가커피 선릉점
+       (3, 2, 'PURPLE', 'PURPLE', 1), -- 최알바 -> 메가커피 선릉점 (한명이 여러곳에서 근무)
+       (4, 4, 'ORANGE', 'ORANGE', 1), -- 이알바 -> 올리브영 신촌점
+       (1, 1, 'INDIGO', 'INDIGO', 1), -- 사장님도 근무자로 등록 가능
+       (2, 3, 'YELLOW', 'YELLOW', 1); -- 사장님도 근무자로 등록 가능
 
 -- routines 테이블 더미 데이터
 INSERT INTO `routines` (`user_id`, `routine_name`, `alarm_time`)
@@ -52,15 +53,15 @@ VALUES (3, '오전 오픈 준비', '08:30'),
        (5, '청결 관리 루틴', '15:00');
 
 -- routine_tasks 테이블 더미 데이터
-INSERT INTO `routine_tasks` (`routine_id`, `content`, `order_index`, `is_checked`)
-VALUES (1, '포스기 켜고 시재 확인', 1, 0),
-       (1, '매장 조명 켜기', 2, 0),
-       (1, '원두 재고 확인', 3, 0),
-       (2, '쓰레기통 비우기', 1, 0),
-       (2, '커피 머신 세척', 2, 1),
-       (3, '유통기한 확인 및 폐기 등록', 1, 0),
-       (4, 'CCTV 확인', 1, 1),
-       (5, '화장실 청소 상태 점검', 1, 0);
+INSERT INTO `routine_tasks` (`routine_id`, `content`, `order_index`)
+VALUES (1, '포스기 켜고 시재 확인', 1),
+       (1, '매장 조명 켜기', 2),
+       (1, '원두 재고 확인', 3),
+       (2, '쓰레기통 비우기', 1),
+       (2, '커피 머신 세척', 2),
+       (3, '유통기한 확인 및 폐기 등록', 1),
+       (4, 'CCTV 확인', 1),
+       (5, '화장실 청소 상태 점검', 1);
 
 -- alarms 테이블 더미 데이터
 INSERT INTO `alarms` (`sender_id`, `receiver_id`, `title`, `content`, `sent_at`, `alarm_type`)
@@ -76,7 +77,7 @@ INSERT INTO `salaries` (`worker_id`, `salary_type`, `salary_calculation`, `hourl
                         `salary_date`, `salary_day`, `has_national_pension`, `has_health_insurance`,
                         `has_employment_insurance`, `has_industrial_accident`, `has_income_tax`, `has_night_allowance`)
 VALUES (1, 'SALARY_MONTHLY', 'SALARY_CALCULATION_HOURLY', 10000, NULL, 10, NULL, 1, 1, 1, 1, 1, 1),
-       (2, 'SALARY_WEEKLY', 'SALARY_CALCULATION_HOURLY', 11000, NULL, NULL, 'MON', 0, 0, 1, 1, 1, 1),
+       (2, 'SALARY_WEEKLY', 'SALARY_CALCULATION_HOURLY', 11000, NULL, NULL, 'MONDAY', 0, 0, 1, 1, 1, 1),
        (3, 'SALARY_MONTHLY', 'SALARY_CALCULATION_FIXED', NULL, 2300000, 25, NULL, 1, 1, 1, 1, 1, 0),
        (4, 'SALARY_DAILY', 'SALARY_CALCULATION_HOURLY', 9860, NULL, NULL, NULL, 0, 0, 0, 1, 1, 0),
        (5, 'SALARY_MONTHLY', 'SALARY_CALCULATION_HOURLY', 12000, NULL, 15, NULL, 1, 1, 1, 1, 1, 1);

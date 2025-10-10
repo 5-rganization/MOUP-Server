@@ -10,6 +10,7 @@ import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.User;
 import com.moup.server.repository.UserRepository;
 import com.moup.server.util.JwtUtil;
+import com.moup.server.util.NameVerifyUtil;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.apache.tomcat.util.http.fileupload.FileUploadException;
@@ -31,14 +32,8 @@ public class UserService {
     private final UserRepository userRepository;
     private final SocialTokenService socialTokenService;
     private final UserTokenService userTokenService;
+    private final NameVerifyUtil nameVerifyUtil;
     private final JwtUtil jwtUtil;
-
-    private static final Pattern CONSONANTS_ONLY_PATTERN = Pattern.compile("^[ㄱ-ㅎ]+$");
-    private static final Pattern VOWELS_ONLY_PATTERN = Pattern.compile("^[ㅏ-ㅣ]+$");
-    private static final Pattern INCOMPLETE_HANGUL_PATTERN = Pattern.compile("[ㄱ-ㅎㅏ-ㅣ]");
-    private static final Pattern HANGUL_PATTERN = Pattern.compile("[가-힣]");
-    private static final Pattern ALPHABET_PATTERN = Pattern.compile("[a-zA-Z]");
-    private static final Pattern SPECIAL_CHAR_PATTERN = Pattern.compile("[^가-힣a-zA-Z0-9]");
 
     @Transactional
     public LoginResponse startCreateUser(UserCreateRequest userCreateRequest) {
@@ -82,7 +77,7 @@ public class UserService {
         if (userToUpdate.getNickname() != null) { throw new UserAlreadyExistsException(); }
 
         String nickname = userRegisterRequest.getNickname();
-        validateNickname(nickname);
+        nameVerifyUtil.validateNickname(nickname);
 
         userRepository.updateById(userId, userRegisterRequest.getNickname(), userRegisterRequest.getRole());
         return RegisterResponse.builder()
@@ -98,9 +93,7 @@ public class UserService {
     public User findUserById(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
 
-        if (user.isDeleted()) {
-            throw new AlreadyDeletedException();
-        }
+        if (user.isDeleted()) { throw new AlreadyDeletedException(); }
 
         return user;
     }
@@ -130,9 +123,7 @@ public class UserService {
     public UserDeleteResponse deleteSoftUserByUserId(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
 
-        if (user.isDeleted()) {
-            throw new AlreadyDeletedException();
-        }
+        if (user.isDeleted()) { throw new AlreadyDeletedException(); }
 
         userRepository.softDeleteUserById(userId);
 
@@ -152,53 +143,14 @@ public class UserService {
 
     public UserUpdateNicknameResponse updateNicknameByUserId(Long userId, String nickname) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
-        if (!user.isDeleted()) { throw new AlreadyDeletedException(); }
+        if (user.isDeleted()) { throw new AlreadyDeletedException(); }
 
-        validateNickname(nickname);
+        nameVerifyUtil.validateNickname(nickname);
         userRepository.updateNicknameById(userId, nickname);
 
         return UserUpdateNicknameResponse.builder()
                 .userId(userId)
                 .nickname(nickname)
                 .build();
-    }
-
-    private void validateNickname(String nickname) {
-        if (nickname == null || nickname.isBlank()) {
-            throw new IllegalArgumentException("한글, 영문 또는 숫자만 사용하여 8자 이하로 입력해주세요");
-        }
-
-        String trimmed = nickname.trim();
-
-        if (!nickname.equals(trimmed) || nickname.contains(" ")) {
-            throw new IllegalArgumentException("닉네임 앞뒤 또는 중간에 공백을 사용할 수 없어요");
-        }
-
-        // 👇 미리 컴파일된 패턴 사용
-        if (CONSONANTS_ONLY_PATTERN.matcher(trimmed).matches()) {
-            throw new IllegalArgumentException("자음만 사용할 수 없어요");
-        }
-
-        if (VOWELS_ONLY_PATTERN.matcher(trimmed).matches()) {
-            throw new IllegalArgumentException("모음만 사용할 수 없어요");
-        }
-
-        if (INCOMPLETE_HANGUL_PATTERN.matcher(trimmed).find()) {
-            throw new IllegalArgumentException("정확한 글자를 입력해주세요");
-        }
-
-        boolean containsHangul = HANGUL_PATTERN.matcher(trimmed).find();
-        boolean containsAlphabet = ALPHABET_PATTERN.matcher(trimmed).find();
-        if (containsHangul && containsAlphabet) {
-            throw new IllegalArgumentException("한글 또는 영문만 사용할 수 있어요");
-        }
-
-        if (SPECIAL_CHAR_PATTERN.matcher(trimmed).find()) {
-            throw new IllegalArgumentException("특수문자는 사용할 수 없어요");
-        }
-
-        if (trimmed.length() > 8) {
-            throw new IllegalArgumentException("8자 이하로 입력해주세요");
-        }
     }
 }

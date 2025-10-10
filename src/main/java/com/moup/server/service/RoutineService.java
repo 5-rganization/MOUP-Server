@@ -48,7 +48,7 @@ public class RoutineService {
         return RoutineSummaryResponse.builder()
                 .routineId(routine.getId())
                 .routineName(routine.getRoutineName())
-                .alarmTime(routine.getAlarmTime() != null ? routine.getAlarmTime().toString() : null)
+                .alarmTime(routine.getAlarmTime())
                 .build();
     }
 
@@ -59,7 +59,7 @@ public class RoutineService {
                 .map(routine -> RoutineSummaryResponse.builder()
                         .routineId(routine.getId())
                         .routineName(routine.getRoutineName())
-                        .alarmTime(routine.getAlarmTime() != null ? routine.getAlarmTime().toString() : null)
+                        .alarmTime(routine.getAlarmTime())
                         .build())
                 .toList();
 
@@ -78,14 +78,13 @@ public class RoutineService {
                         .routineId(task.getRoutineId())
                         .content(task.getContent())
                         .orderIndex(task.getOrderIndex())
-                        .isChecked(task.getIsChecked())
                         .build())
                 .toList();
 
         return RoutineDetailResponse.builder()
                 .routineId(routine.getId())
                 .routineName(routine.getRoutineName())
-                .alarmTime(routine.getAlarmTime() != null ? routine.getAlarmTime().toString() : null)
+                .alarmTime(routine.getAlarmTime())
                 .routineTaskList(routineTaskDetailResponseList)
                 .build();
     }

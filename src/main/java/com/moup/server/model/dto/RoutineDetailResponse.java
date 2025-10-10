@@ -1,9 +1,11 @@
 package com.moup.server.model.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalTime;
 import java.util.List;
 
 @Getter
@@ -14,20 +16,19 @@ public class RoutineDetailResponse {
     private Long routineId;
     @Schema(description = "루틴 이름", example = "오픈 루틴", requiredMode = Schema.RequiredMode.REQUIRED)
     private String routineName;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm")
     @Schema(description = "알람 시간 (HH:mm)", example = "14:30", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    private String alarmTime;
+    private LocalTime alarmTime;
     @Schema(description = "할 일 리스트 (없으면 빈 배열)",
             example = """
             [
                 {
                     "content": "바닥 청소",
-                    "orderIndex": 0,
-                    "isChecked": true
+                    "orderIndex": 0
                 },
                 {
                     "content": "전자레인지 청소",
-                    "orderIndex": 1,
-                    "isChecked": false
+                    "orderIndex": 1
                 }
             ]
             """,
