@@ -100,9 +100,7 @@ public class UserService {
     public User findUserById(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
 
-        if (user.isDeleted()) {
-            throw new AlreadyDeletedException();
-        }
+        if (user.isDeleted()) { throw new AlreadyDeletedException(); }
 
         return user;
     }
@@ -132,9 +130,7 @@ public class UserService {
     public UserDeleteResponse deleteSoftUserByUserId(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
 
-        if (user.isDeleted()) {
-            throw new AlreadyDeletedException();
-        }
+        if (user.isDeleted()) { throw new AlreadyDeletedException(); }
 
         userRepository.softDeleteUserById(userId);
 
@@ -147,14 +143,14 @@ public class UserService {
 
     public void restoreUserByUserId(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
-        if (!user.isDeleted()) { throw new UserAlreadyExistsException(); }
+        if (user.isDeleted()) { throw new UserAlreadyExistsException(); }
 
         userRepository.undeleteUserById(userId);
     }
 
     public UserUpdateNicknameResponse updateNicknameByUserId(Long userId, String nickname) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
-        if (!user.isDeleted()) { throw new AlreadyDeletedException(); }
+        if (user.isDeleted()) { throw new AlreadyDeletedException(); }
 
         nameVerifyUtil.validateNickname(nickname);
         userRepository.updateNicknameById(userId, nickname);
