@@ -2,6 +2,11 @@ name: Manual DB Initialization
 
 on:
   workflow_dispatch:
+    inputs:
+      sql_file:
+        description: '실행할 SQL 파일 경로'
+        required: true
+        default: 'src/main/resources/moup.sql'
 
 jobs:
   init-db:
@@ -22,7 +27,7 @@ jobs:
             # Execute SQL
             echo "Executing SQL script..."
             cd /home/${{ secrets.RPI_USER }}/MOUP-Server
-            mysql moup < src/main/resources/moup.sql
+            mysql moup < ${{ github.event.inputs.sql_file }}
 
             # Delete DB connection info
             rm ~/.my.cnf
