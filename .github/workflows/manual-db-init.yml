@@ -3,10 +3,11 @@ name: Manual DB Initialization
 on:
   workflow_dispatch:
     inputs:
-      sql_file:
-        description: '실행할 SQL 파일 경로'
+      insert_dummy_data:
+        description: '기본 DB 생성 후 더미 데이터를 추가로 삽입합니다.'
         required: true
-        default: 'src/main/resources/moup.sql'
+        type: boolean
+        default: true
 
 jobs:
   init-db:
@@ -16,7 +17,9 @@ jobs:
       - name: Execute SQL on server
         run: |
           sshpass -p "${{ secrets.RPI_PASSWORD }}" ssh -o StrictHostKeyChecking=no -p ${{ secrets.RPI_PORT }} ${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }} << 'EOF'
-          echo "Connecting to server..."
+            set -e
+            
+            echo "Connecting to server..."
 
             # Make DB connection info at home directory
             echo "[client]" > ~/.my.cnf
@@ -24,10 +27,17 @@ jobs:
             echo "password=${{ secrets.DATABASE_PASSWORD }}" >> ~/.my.cnf
             chmod 600 ~/.my.cnf
 
-            # Execute SQL
+            # Execute SQL DB Schema
             echo "Executing SQL script..."
-            cd /home/${{ secrets.RPI_USER }}/MOUP-Server
-            mysql moup < ${{ github.event.inputs.sql_file }}
+            mysql moup < src/main/resources/moup.sql
+
+            # (Optional) Execute SQL Dummy Data
+            if [[ "${{ github.event.inputs.insert_dummy_data }}" == "true" ]]; then
+              echo "Checkbox is checked. Inserting dummy data..."
+              mysql moup < src/main/resources/moup_dummy_data.sql
+            else
+              echo "Checkbox is not checked. Skipping dummy data insertion."
+            fi
 
             # Delete DB connection info
             rm ~/.my.cnf
