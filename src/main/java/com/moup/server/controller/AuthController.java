@@ -116,19 +116,25 @@ public class AuthController {
             String accessToken = jwtUtil.createAccessToken(tokenCreateRequest);
             String refreshToken = jwtUtil.createRefreshToken(tokenCreateRequest);
             userTokenService.saveOrUpdateToken(refreshToken, jwtUtil.getRefreshTokenExpiration());
-            LoginResponse loginResponse = LoginResponse.builder()
-                    .userId(user.getId())
-                    .role(user.getRole())
-                    .accessToken(accessToken)
-                    .refreshToken(refreshToken)
-                    .build();
 
             // 3-a-4. 로그인 응답 DTO 반환
             if (!user.isRegisterCompleted()) {
                 // 회원가입 절차가 진행중인 경우(닉네임이나 역할이 null인 경우) 202 반환
+                LoginResponse loginResponse = LoginResponse.builder()
+                        .userId(user.getId())
+                        .role(null)
+                        .accessToken(accessToken)
+                        .refreshToken(refreshToken)
+                        .build();
                 return ResponseEntity.accepted().body(loginResponse);
             } else {
                 // 회원가입 절차가 완료된 경우 200 반환
+                LoginResponse loginResponse = LoginResponse.builder()
+                        .userId(user.getId())
+                        .role(user.getRole())
+                        .accessToken(accessToken)
+                        .refreshToken(refreshToken)
+                        .build();
                 return ResponseEntity.ok().body(loginResponse);
             }
         } else {
