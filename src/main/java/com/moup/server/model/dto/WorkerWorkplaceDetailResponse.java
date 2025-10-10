@@ -1,5 +1,7 @@
 package com.moup.server.model.dto;
 
+import com.moup.server.model.enums.SalaryCalculation;
+import com.moup.server.model.enums.SalaryType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,9 +18,9 @@ public class WorkerWorkplaceDetailResponse extends BaseWorkplaceDetailResponse {
     private String workerBasedLabelColor;
 
     @Schema(description = "급여 유형 (매월: SALARY_MONTHLY, 매주: SALARY_WEEKLY, 매일: SALARY_DAILY)", example = "SALARY_MONTHLY", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String salaryType;
+    private SalaryType salaryType;
     @Schema(description = "급여 계산 (시급: SALARY_CALCULATION_HOURLY, 고정: SALARY_CALCULATION_FIXED)", example = "SALARY_CALCULATION_HOURLY", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String salaryCalculation;
+    private SalaryCalculation salaryCalculation;
     @Schema(description = "시급", example = "10030", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Integer hourlyRate;
     @Schema(description = "고정급", example = "2156880", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
