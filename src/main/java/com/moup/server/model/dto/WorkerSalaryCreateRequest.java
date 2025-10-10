@@ -30,7 +30,7 @@ public class WorkerSalaryCreateRequest {
     @Max(value = 31, message = "최대 범위 초과입니다.")
     @Schema(description = "급여일", example = "15", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Integer salaryDate;
-    @Schema(description = "급여 요일 (월: MONDAY, 화: TUESDAY, 수: WEDNESDAY, 목: THURSDAY, 금: FRIDAY, 토: SATURDAY, 일: SUNDAY)", example = "MON", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @Schema(description = "급여 요일 (월: MONDAY, 화: TUESDAY, 수: WEDNESDAY, 목: THURSDAY, 금: FRIDAY, 토: SATURDAY, 일: SUNDAY)", example = "MONDAY", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private DayOfWeek salaryDay;
     @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "국민연금 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
