@@ -46,8 +46,10 @@ public class GlobalExceptionHandler {
             String fieldName = cause.getPath().stream()
                     .map(com.fasterxml.jackson.databind.JsonMappingException.Reference::getFieldName)
                     .collect(Collectors.joining("."));
-            String allowedValues = Arrays.toString(cause.getTargetType().getEnumConstants());
-
+            String allowedValues = "알 수 없음";
+            if (cause.getTargetType() != null && cause.getTargetType().isEnum()) {
+                allowedValues = Arrays.toString(cause.getTargetType().getEnumConstants());
+            }
             errorMessage = String.format(
                     "'%s' 필드에 허용되지 않는 값('%s')이 입력되었습니다. (허용된 값: %s)",
                     fieldName, cause.getValue(), allowedValues
