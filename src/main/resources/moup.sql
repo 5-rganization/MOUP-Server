@@ -79,8 +79,8 @@ CREATE TABLE `workplaces`
     `category_name`  VARCHAR(50)                  NOT NULL,
     `is_shared`      TINYINT(1)  DEFAULT 0        NOT NULL,
     `address`        VARCHAR(100)                 NULL,
-    `latitude`       DECIMAL                      NULL,
-    `longitude`      DECIMAL                      NULL,
+    `latitude`       DECIMAL(9, 6)                NULL,
+    `longitude`      DECIMAL(9, 6)                NULL,
     FOREIGN KEY (`owner_id`) REFERENCES users (`id`) ON DELETE SET NULL
 );
 

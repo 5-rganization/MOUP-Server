@@ -128,7 +128,7 @@ public class AuthController {
                         .build();
                 return ResponseEntity.accepted().body(loginResponse);
             } else {
-                // 회원가입 절차가 완료된 경우 200 반환
+                // 회원가입 절차가 이미 완료된 경우 200 반환
                 LoginResponse loginResponse = LoginResponse.builder()
                         .userId(user.getId())
                         .role(user.getRole())

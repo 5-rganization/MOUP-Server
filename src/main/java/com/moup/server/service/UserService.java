@@ -78,7 +78,8 @@ public class UserService {
 
     public RegisterResponse completeCreateUser(UserRegisterRequest userRegisterRequest) {
         Long userId = userRegisterRequest.getUserId();
-        if (!userRepository.existById(userId)) { throw new UserNotFoundException(); }
+        User userToUpdate = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+        if (userToUpdate.isRegisterCompleted()) { throw new UserAlreadyExistsException(); }
 
         String nickname = userRegisterRequest.getNickname();
         validateNickname(nickname);
