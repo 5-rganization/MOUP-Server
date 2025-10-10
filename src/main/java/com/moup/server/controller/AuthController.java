@@ -98,7 +98,7 @@ public class AuthController {
             User user = optionalUser.get();
 
             // 3-a-1. 탈퇴 처리중인 경우 탈퇴 철회
-            if (user.getIsDeleted()) {
+            if (user.isDeleted()) {
                 userService.restoreUserByUserId(user.getId());
             }
 
@@ -106,7 +106,11 @@ public class AuthController {
             if (socialRefreshToken != null && !socialRefreshToken.isEmpty()) {
                 socialTokenService.saveOrUpdateToken(user.getId(), socialRefreshToken);
             }
-            TokenCreateRequest tokenCreateRequest = TokenCreateRequest.builder().userId(user.getId()).role(user.getRole()).username(user.getUsername()).build();
+            TokenCreateRequest tokenCreateRequest = TokenCreateRequest.builder()
+                    .userId(user.getId())
+                    .role(user.getRole())
+                    .username(user.getUsername())
+                    .build();
 
             // 3-a-3. 서비스 토큰 관리
             String accessToken = jwtUtil.createAccessToken(tokenCreateRequest);
@@ -120,7 +124,7 @@ public class AuthController {
                     .build();
 
             // 3-a-4. 로그인 응답 DTO 반환
-            if (user.getNickname() == null ||user.getRole() == null) {
+            if (!user.isRegisterCompleted()) {
                 // 회원가입 절차가 진행중인 경우(닉네임이나 역할이 null인 경우) 202 반환
                 return ResponseEntity.accepted().body(loginResponse);
             } else {
@@ -199,7 +203,11 @@ public class AuthController {
         Long userId = jwtUtil.getUserId(refreshToken);
         User user = userService.findUserById(userId);
 
-        TokenCreateRequest tokenCreateRequest = TokenCreateRequest.builder().userId(user.getId()).role(user.getRole()).username(user.getUsername()).build();
+        TokenCreateRequest tokenCreateRequest = TokenCreateRequest.builder()
+                .userId(user.getId())
+                .role(user.getRole())
+                .username(user.getUsername())
+                .build();
 
         String accessToken = jwtUtil.createAccessToken(tokenCreateRequest);
         String newRefreshToken = jwtUtil.createRefreshToken(tokenCreateRequest);

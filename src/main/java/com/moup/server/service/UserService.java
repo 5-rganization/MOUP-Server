@@ -2,6 +2,7 @@ package com.moup.server.service;
 
 import com.moup.server.common.File;
 import com.moup.server.common.Login;
+import com.moup.server.common.Role;
 import com.moup.server.exception.AlreadyDeletedException;
 import com.moup.server.exception.UserAlreadyExistsException;
 import com.moup.server.exception.UserNotFoundException;
@@ -55,6 +56,7 @@ public class UserService {
 
             TokenCreateRequest tokenCreateRequest = TokenCreateRequest.builder()
                     .userId(userId)
+                    .role(Role.ROLE_WORKER)  // SQL role 기본값
                     .username(userCreateRequest.getUsername())
                     .build();
 
@@ -81,7 +83,7 @@ public class UserService {
         String nickname = userRegisterRequest.getNickname();
         validateNickname(nickname);
 
-        userRepository.updateById(userId, userRegisterRequest.getNickname(), userRegisterRequest.getRole());
+        userRepository.updateById(userId, userRegisterRequest.getNickname(), userRegisterRequest.getRole(), true);
         return RegisterResponse.builder()
                 .userId(userId)
                 .role(userRegisterRequest.getRole())
@@ -95,7 +97,7 @@ public class UserService {
     public User findUserById(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
 
-        if (user.getIsDeleted()) {
+        if (user.isDeleted()) {
             throw new AlreadyDeletedException();
         }
 
@@ -127,7 +129,7 @@ public class UserService {
     public UserDeleteResponse deleteSoftUserByUserId(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
 
-        if (user.getIsDeleted()) {
+        if (user.isDeleted()) {
             throw new AlreadyDeletedException();
         }
 
@@ -139,14 +141,14 @@ public class UserService {
 
     public void restoreUserByUserId(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
-        if (!user.getIsDeleted()) { throw new UserAlreadyExistsException(); }
+        if (!user.isDeleted()) { throw new UserAlreadyExistsException(); }
 
         userRepository.undeleteUserById(userId);
     }
 
     public UserUpdateNicknameResponse updateNicknameByUserId(Long userId, String nickname) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
-        if (!user.getIsDeleted()) { throw new AlreadyDeletedException(); }
+        if (!user.isDeleted()) { throw new AlreadyDeletedException(); }
 
         validateNickname(nickname);
         userRepository.updateNicknameById(userId, nickname);

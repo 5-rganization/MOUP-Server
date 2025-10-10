@@ -4,16 +4,17 @@ USE moup;
 
 CREATE TABLE `users`
 (
-    `id`          BIGINT AUTO_INCREMENT                                                  NOT NULL PRIMARY KEY,
-    `provider`    ENUM ('LOGIN_GOOGLE', 'LOGIN_APPLE')                                   NOT NULL,
-    `provider_id` VARCHAR(100)                                                           NOT NULL,
-    `username`    VARCHAR(100),
-    `nickname`    VARCHAR(100),
-    `role`        ENUM ('ROLE_WORKER', 'ROLE_OWNER', 'ROLE_ADMIN') NULL,
-    `profile_img` VARCHAR(255),
-    `created_at`  TIMESTAMP                                        DEFAULT CURRENT_TIMESTAMP(),
-    `deleted_at`  TIMESTAMP,
-    `is_deleted`  TINYINT(1)                                       DEFAULT 0,
+    `id`                    BIGINT AUTO_INCREMENT                                       NOT NULL PRIMARY KEY,
+    `provider`              ENUM ('LOGIN_GOOGLE', 'LOGIN_APPLE')                        NOT NULL,
+    `provider_id`           VARCHAR(100)                                                NOT NULL,
+    `username`              VARCHAR(100),
+    `nickname`              VARCHAR(100),
+    `role`                  ENUM ('ROLE_WORKER', 'ROLE_OWNER', 'ROLE_ADMIN')            DEFAULT 'ROLE_WORKER',
+    `is_register_completed` TINYINT(1)                                                  DEFAULT FALSE,
+    `profile_img`           VARCHAR(255),
+    `created_at`            TIMESTAMP                                                   DEFAULT CURRENT_TIMESTAMP(),
+    `deleted_at`            TIMESTAMP,
+    `is_deleted`            TINYINT(1)                                                  DEFAULT 0,
     UNIQUE KEY `unique_provider` (`provider`, `provider_id`)
 );
 
