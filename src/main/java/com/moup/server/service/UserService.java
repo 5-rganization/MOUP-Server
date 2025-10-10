@@ -136,7 +136,7 @@ public class UserService {
 
     public void restoreUserByUserId(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
-        if (user.isDeleted()) { throw new UserAlreadyExistsException(); }
+        if (!user.isDeleted()) { throw new UserAlreadyExistsException(); }
 
         userRepository.undeleteUserById(userId);
     }
