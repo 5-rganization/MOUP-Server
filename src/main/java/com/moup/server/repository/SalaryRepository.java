@@ -7,12 +7,10 @@ import java.util.Optional;
 
 @Mapper
 public interface SalaryRepository {
-    /**
-     * 급여를 생성하는 메서드
-     *
-     * @param salary 생성할 Salary 객체
-     * @return 생성된 행의 수
-     */
+    /// 급여를 생성하는 메서드
+    ///
+    /// @param salary 생성할 Salary 객체
+    /// @return 생성된 행의 수
     @Insert("""
             INSERT INTO salaries (
                                     worker_id, salary_type, salary_calculation, hourly_rate, fixed_rate, salary_date, salary_day,
@@ -27,20 +25,16 @@ public interface SalaryRepository {
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
     Long create(Salary salary);
 
-    /**
-     * 근무자 ID를 통해 해당 근무자의 급여를 찾고, 그 급여의 객체를 반환하는 메서드
-     *
-     * @param workerId 조회할 급여의 근무자 ID
-     * @return 조회된 Salary 객체, 없으면 Optional.empty
-     */
+    /// 근무자 ID를 통해 해당 근무자의 급여를 찾고, 그 급여의 객체를 반환하는 메서드
+    ///
+    /// @param workerId 조회할 급여의 근무자 ID
+    /// @return 조회된 Salary 객체, 없으면 Optional.empty
     @Select("SELECT * FROM salaries WHERE worker_id = #{workerId}")
     Optional<Salary> findByWorkerId(Long workerId);
 
-    /**
-     * 급여 ID와 근무자 ID에 해당하는 급여 정보를 업데이트하는 메서드.
-     *
-     * @param salary 업데이트할 Salary 객체
-     */
+    /// 급여 ID와 근무자 ID에 해당하는 급여 정보를 업데이트하는 메서드.
+    ///
+    /// @param salary 업데이트할 Salary 객체
     @Update("""
             UPDATE salaries SET salary_type = #{salaryType}, salary_calculation = #{salaryCalculation}, 
                                   hourly_rate = #{hourlyRate}, fixed_rate = #{fixedRate}, salary_date = #{salaryDate}, salary_day = #{salaryDay},
@@ -51,12 +45,10 @@ public interface SalaryRepository {
             """)
     void update(Salary salary);
 
-    /**
-     * 급여 ID와 근무자 ID에 해당하는 급여를 삭제하는 메서드.
-     *
-     * @param id 삭제할 급여의 ID
-     * @param workerId 삭제할 급여의 근무자 ID
-     */
+    /// 급여 ID와 근무자 ID에 해당하는 급여를 삭제하는 메서드.
+    ///
+    /// @param id 삭제할 급여의 ID
+    /// @param workerId 삭제할 급여의 근무자 ID
     @Delete("DELETE FROM salaries WHERE id = #{id} AND worker_id = #{workerId}")
     void deleteByIdAndWorkerId(Long id, Long workerId);
 }
