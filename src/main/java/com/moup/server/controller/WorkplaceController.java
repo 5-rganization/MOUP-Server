@@ -65,16 +65,19 @@ public class WorkplaceController {
                                                             "latitude": 37.200089,
                                                             "longitude": 127.072006,
                                                             "workerBasedLabelColor": "RED",
-                                                            "salaryType": "SALARY_MONTHLY",
-                                                            "salaryCalculation": "SALARY_CALCULATION_HOURLY",
-                                                            "hourlyRate": 10030,
-                                                            "salaryDate": 15,
-                                                            "hasNationalPension": true,
-                                                            "hasHealthInsurance": true,
-                                                            "hasEmploymentInsurance": true,
-                                                            "hasIndustrialAccident": true,
-                                                            "hasIncomeTax": false,
-                                                            "hasNightAllowance": false
+                                                            "salaryInfo":
+                                                            {
+                                                                "salaryType": "SALARY_MONTHLY",
+                                                                "salaryCalculation": "SALARY_CALCULATION_HOURLY",
+                                                                "hourlyRate": 10030,
+                                                                "salaryDate": 15,
+                                                                "hasNationalPension": true,
+                                                                "hasHealthInsurance": true,
+                                                                "hasEmploymentInsurance": true,
+                                                                "hasIndustrialAccident": true,
+                                                                "hasIncomeTax": false,
+                                                                "hasNightAllowance": false
+                                                            }
                                                         }
                                                         """),
                                         @ExampleObject(name = "사장님 매장 생성", summary = "사장님 매장 생성 요청 DTO",
@@ -117,16 +120,19 @@ public class WorkplaceController {
                                                         "latitude": 37.200089,
                                                         "longitude": 127.072006,
                                                         "workerBasedLabelColor": "red",
-                                                        "salaryType": "SALARY_MONTHLY",
-                                                        "salaryCalculation": "SALARY_CALCULATION_HOURLY",
-                                                        "hourlyRate": 10030,
-                                                        "salaryDate": 15,
-                                                        "hasNationalPension": true,
-                                                        "hasHealthInsurance": true,
-                                                        "hasEmploymentInsurance": true,
-                                                        "hasIndustrialAccident": true,
-                                                        "hasIncomeTax": false,
-                                                        "hasNightAllowance": false
+                                                        "salaryInfo":
+                                                        {
+                                                            "salaryType": "SALARY_MONTHLY",
+                                                            "salaryCalculation": "SALARY_CALCULATION_HOURLY",
+                                                            "hourlyRate": 10030,
+                                                            "salaryDate": 15,
+                                                            "hasNationalPension": true,
+                                                            "hasHealthInsurance": true,
+                                                            "hasEmploymentInsurance": true,
+                                                            "hasIndustrialAccident": true,
+                                                            "hasIncomeTax": false,
+                                                            "hasNightAllowance": false
+                                                        }
                                                     }
                                                     """),
                                     @ExampleObject(name = "상세 정보 조회 (기본값) - 사장님", summary = "매장 상세 정보",
@@ -213,16 +219,19 @@ public class WorkplaceController {
                                                         "latitude": 37.200089,
                                                         "longitude": 127.072006,
                                                         "workerBasedLabelColor": "RED",
-                                                        "salaryType": "SALARY_MONTHLY",
-                                                        "salaryCalculation": "SALARY_CALCULATION_HOURLY",
-                                                        "hourlyRate": 10030,
-                                                        "salaryDate": 15,
-                                                        "hasNationalPension": true,
-                                                        "hasHealthInsurance": true,
-                                                        "hasEmploymentInsurance": true,
-                                                        "hasIndustrialAccident": true,
-                                                        "hasIncomeTax": false,
-                                                        "hasNightAllowance": false
+                                                        "salaryInfo":
+                                                        {
+                                                            "salaryType": "SALARY_MONTHLY",
+                                                            "salaryCalculation": "SALARY_CALCULATION_HOURLY",
+                                                            "hourlyRate": 10030,
+                                                            "salaryDate": 15,
+                                                            "hasNationalPension": true,
+                                                            "hasHealthInsurance": true,
+                                                            "hasEmploymentInsurance": true,
+                                                            "hasIndustrialAccident": true,
+                                                            "hasIncomeTax": false,
+                                                            "hasNightAllowance": false
+                                                        }
                                                     }
                                                     """),
                                     @ExampleObject(name = "사장님 매장 업데이트", summary = "사장님 매장 업데이트 요청 DTO",

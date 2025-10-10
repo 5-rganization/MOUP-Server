@@ -48,7 +48,7 @@ public class WorkplaceService {
         } else if (user.getRole() == Role.ROLE_WORKER && request instanceof WorkerWorkplaceCreateRequest workerWorkplaceCreateRequest) {
             Worker createdWorker = createWorkplaceAndWorkerHelper(user.getId(), workerWorkplaceCreateRequest);
 
-            Salary salaryToCreate = workerWorkplaceCreateRequest.toSalaryEntity(createdWorker.getId());
+            Salary salaryToCreate = workerWorkplaceCreateRequest.getSalaryInfo().toEntity(createdWorker.getId());
             salaryRepository.create(salaryToCreate);
 
             return WorkplaceCreateResponse.builder()
@@ -150,7 +150,7 @@ public class WorkplaceService {
             workerRepository.updateWorkerBasedLabelColor(workerId, user.getId(), workplaceId, workerRequest.getWorkerBasedLabelColor());
 
             Long salaryId = salaryRepository.findByWorkerId(workerId).orElseThrow(SalaryWorkerNotFoundException::new).getId();
-            Salary newSalary = workerRequest.toSalaryEntity(salaryId, workerId);
+            Salary newSalary = workerRequest.getSalaryInfo().toEntity(salaryId, workerId);
             salaryRepository.update(newSalary);
         } else {
             throw new InvalidPermissionAccessException();

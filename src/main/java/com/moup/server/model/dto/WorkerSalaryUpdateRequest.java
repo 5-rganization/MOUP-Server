@@ -15,12 +15,6 @@ import java.time.DayOfWeek;
 @Schema(description = "알바생 급여 업데이트 요청 DTO")
 public class WorkerSalaryUpdateRequest {
     @NotNull(message = "필수 입력값입니다.")
-    @Schema(description = "급여 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
-    private Long salaryId;
-    @NotNull(message = "필수 입력값입니다.")
-    @Schema(description = "근무자 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
-    private Long workerId;
-    @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "급여 유형 (매월: SALARY_MONTHLY, 매주: SALARY_WEEKLY, 매일: SALARY_DAILY)", example = "SALARY_MONTHLY", requiredMode = Schema.RequiredMode.REQUIRED)
     private SalaryType salaryType;
     @NotNull(message = "필수 입력값입니다.")
@@ -57,7 +51,7 @@ public class WorkerSalaryUpdateRequest {
     @Schema(description = "야간수당 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean hasNightAllowance;
 
-    public Salary toEntity() {
+    public Salary toEntity(Long salaryId, Long workerId) {
         return Salary.builder()
                 .id(salaryId)
                 .workerId(workerId)
