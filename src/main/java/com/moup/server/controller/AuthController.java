@@ -118,8 +118,8 @@ public class AuthController {
             userTokenService.saveOrUpdateToken(refreshToken, jwtUtil.getRefreshTokenExpiration());
 
             // 3-a-4. 로그인 응답 DTO 반환
-            if (!user.isRegisterCompleted()) {
-                // 회원가입 절차가 진행중인 경우(닉네임이나 역할이 null인 경우) 202 반환
+            if (user.getNickname() == null) {
+                // 회원가입 절차가 진행중인 경우(닉네임이 null인 경우) 202 반환
                 LoginResponse loginResponse = LoginResponse.builder()
                         .userId(user.getId())
                         .role(null)

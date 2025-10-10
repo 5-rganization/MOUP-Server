@@ -2,12 +2,12 @@
 USE moup;
 
 -- users 테이블 더미 데이터 (2명의 사장, 3명의 직원)
-INSERT INTO `users` (`provider`, `provider_id`, `username`, `nickname`, `role`, `is_register_completed`, `profile_img`)
-VALUES ('LOGIN_GOOGLE', '100000000000000000001', '김사장', '역삼점사장님', 'ROLE_OWNER', true, 'https://example.com/profile1.jpg'),
-       ('LOGIN_APPLE', '000001.a1b2c3d4e5f6.0001', '박사장', '홍대점주', 'ROLE_OWNER', true, 'https://example.com/profile2.jpg'),
-       ('LOGIN_GOOGLE', '100000000000000000002', '최알바', '성실알바최씨', 'ROLE_WORKER', true, 'https://example.com/profile3.jpg'),
-       ('LOGIN_GOOGLE', '100000000000000000003', '이알바', '주말알바이씨', 'ROLE_WORKER', true, 'https://example.com/profile4.jpg'),
-       ('LOGIN_APPLE', '000002.f6e5d4c3b2a1.0002', '강알바', '미소알바강씨', 'ROLE_WORKER', true, 'https://example.com/profile5.jpg');
+INSERT INTO `users` (`provider`, `provider_id`, `username`, `nickname`, `role`, `profile_img`)
+VALUES ('LOGIN_GOOGLE', '100000000000000000001', '김사장', '역삼점사장님', 'ROLE_OWNER', 'https://example.com/profile1.jpg'),
+       ('LOGIN_APPLE', '000001.a1b2c3d4e5f6.0001', '박사장', '홍대점주', 'ROLE_OWNER', 'https://example.com/profile2.jpg'),
+       ('LOGIN_GOOGLE', '100000000000000000002', '최알바', '성실알바최씨', 'ROLE_WORKER', 'https://example.com/profile3.jpg'),
+       ('LOGIN_GOOGLE', '100000000000000000003', '이알바', '주말알바이씨', 'ROLE_WORKER', 'https://example.com/profile4.jpg'),
+       ('LOGIN_APPLE', '000002.f6e5d4c3b2a1.0002', '강알바', '미소알바강씨', 'ROLE_WORKER', 'https://example.com/profile5.jpg');
 
 -- social_tokens 테이블 더미 데이터
 INSERT INTO `social_tokens` (`user_id`, `refresh_token`, `updated_at`)

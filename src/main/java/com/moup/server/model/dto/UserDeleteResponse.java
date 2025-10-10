@@ -13,5 +13,5 @@ public class UserDeleteResponse {
     @Schema(description = "삭제 처리 시각", example = "2025-01-01 12:34:56")
     private String deletedAt;
     @Schema(description = "삭제 요청 여부", example = "true")
-    private Boolean isDeleted;
+    private boolean isDeleted;
 }

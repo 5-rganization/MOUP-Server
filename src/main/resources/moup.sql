@@ -10,7 +10,6 @@ CREATE TABLE `users`
     `username`              VARCHAR(100),
     `nickname`              VARCHAR(100),
     `role`                  ENUM ('ROLE_WORKER', 'ROLE_OWNER', 'ROLE_ADMIN')            DEFAULT 'ROLE_WORKER',
-    `is_register_completed` TINYINT(1)                                                  DEFAULT FALSE,
     `profile_img`           VARCHAR(255),
     `created_at`            TIMESTAMP                                                   DEFAULT CURRENT_TIMESTAMP(),
     `deleted_at`            TIMESTAMP,

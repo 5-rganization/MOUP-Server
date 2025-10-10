@@ -79,12 +79,12 @@ public class UserService {
     public RegisterResponse completeCreateUser(UserRegisterRequest userRegisterRequest) {
         Long userId = userRegisterRequest.getUserId();
         User userToUpdate = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
-        if (userToUpdate.isRegisterCompleted()) { throw new UserAlreadyExistsException(); }
+        if (userToUpdate.getNickname() != null) { throw new UserAlreadyExistsException(); }
 
         String nickname = userRegisterRequest.getNickname();
         validateNickname(nickname);
 
-        userRepository.updateById(userId, userRegisterRequest.getNickname(), userRegisterRequest.getRole(), true);
+        userRepository.updateById(userId, userRegisterRequest.getNickname(), userRegisterRequest.getRole());
         return RegisterResponse.builder()
                 .userId(userId)
                 .role(userRegisterRequest.getRole())
@@ -136,8 +136,11 @@ public class UserService {
 
         userRepository.softDeleteUserById(userId);
 
-        return UserDeleteResponse.builder().userId(user.getId()).deletedAt(String.valueOf(LocalDateTime.now())) // 현재 시간을 직접 사용
-                .isDeleted(true).build();
+        return UserDeleteResponse.builder()
+                .userId(user.getId())
+                .deletedAt(String.valueOf(LocalDateTime.now())) // 현재 시간을 직접 사용
+                .isDeleted(true)
+                .build();
     }
 
     public void restoreUserByUserId(Long userId) {

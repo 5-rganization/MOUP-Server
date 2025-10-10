@@ -20,7 +20,6 @@ public class User {
     private String nickname;
     private Role role;
     private String profileImg;
-    private boolean isRegisterCompleted;
     private String createdAt;
     private String deletedAt;
     private boolean isDeleted;

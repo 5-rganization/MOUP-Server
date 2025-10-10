@@ -13,5 +13,5 @@ public class UserRestoreResponse {
     @Schema(description = "삭제 처리 시각")
     private String deletedAt;
     @Schema(description = "삭제 요청 여부", example = "false")
-    private Boolean isDeleted;
+    private boolean isDeleted;
 }
