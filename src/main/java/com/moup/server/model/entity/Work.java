@@ -16,16 +16,15 @@ import java.util.List;
 public class Work {
     private Long id;
     private Long workerId;
-    private Long routineId;
     private LocalDate workDate;
-    private LocalTime startTime;
+    private LocalDateTime startTime;
     private LocalDateTime actualStartTime;
-    private LocalTime endTime;
+    private LocalDateTime endTime;
     private LocalDateTime actualEndTime;
-    private LocalTime restTime;
+    private Integer restTime;
     private String memo;
+    private Integer hourlyRate;
     private Integer dailyIncome;
-    private Boolean isRepeated;
-    private String repeatDays;
+    private List<DayOfWeek> repeatDays;
     private LocalDate repeatEndDate;
 }

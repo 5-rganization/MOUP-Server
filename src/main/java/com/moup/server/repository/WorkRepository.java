@@ -15,10 +15,10 @@ public interface WorkRepository {
     /// @param work 생성할 근무 Worker 객체
     /// @return 생성된 행의 수
     @Insert("""
-            INSERT INTO works (worker_id, routine_id, work_date, start_time, actual_start_time, end_time, actual_end_time,
-                               rest_time, memo, daily_income, repeat_days, repeat_end_date)
-            VALUES (#{workerId}, #{routineId}, #{workDate}, #{startTime}, #{actualStartTime}, #{endTime}, #{actualEndTime},
-                    #{restTime}, #{memo}, #{dailyIncome}, #{repeatDays}, #{repeatEndDate})
+            INSERT INTO works (worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time,
+                               rest_time, memo, hourly_rate, daily_income, repeat_days, repeat_end_date)
+            VALUES (#{workerId}, #{workDate}, #{startTime}, #{actualStartTime}, #{endTime}, #{actualEndTime},
+                    #{restTime}, #{memo}, #{hourlyRate}, #{dailyIncome}, #{repeatDays}, #{repeatEndDate})
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
     Long create(Work work);
