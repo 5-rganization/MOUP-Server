@@ -22,6 +22,7 @@ jobs:
             echo "Connecting to server..."
 
             # Make DB connection info at home directory
+            echo "Making DB connection info..."
             echo "[client]" > ~/.my.cnf
             echo "user=root" >> ~/.my.cnf
             echo "password=${{ secrets.DATABASE_PASSWORD }}" >> ~/.my.cnf
@@ -41,6 +42,7 @@ jobs:
             fi
 
             # Delete DB connection info
+            echo "Deleting DB connection info..."
             rm ~/.my.cnf
 
             echo "SQL execution complete."
