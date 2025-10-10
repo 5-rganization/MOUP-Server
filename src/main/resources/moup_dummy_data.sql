@@ -52,15 +52,15 @@ VALUES (3, '오전 오픈 준비', '08:30'),
        (5, '청결 관리 루틴', '15:00');
 
 -- routine_tasks 테이블 더미 데이터
-INSERT INTO `routine_tasks` (`routine_id`, `content`, `order_index`, `is_checked`)
-VALUES (1, '포스기 켜고 시재 확인', 1, 0),
-       (1, '매장 조명 켜기', 2, 0),
-       (1, '원두 재고 확인', 3, 0),
-       (2, '쓰레기통 비우기', 1, 0),
-       (2, '커피 머신 세척', 2, 1),
-       (3, '유통기한 확인 및 폐기 등록', 1, 0),
-       (4, 'CCTV 확인', 1, 1),
-       (5, '화장실 청소 상태 점검', 1, 0);
+INSERT INTO `routine_tasks` (`routine_id`, `content`, `order_index`)
+VALUES (1, '포스기 켜고 시재 확인', 1),
+       (1, '매장 조명 켜기', 2),
+       (1, '원두 재고 확인', 3),
+       (2, '쓰레기통 비우기', 1),
+       (2, '커피 머신 세척', 2),
+       (3, '유통기한 확인 및 폐기 등록', 1),
+       (4, 'CCTV 확인', 1),
+       (5, '화장실 청소 상태 점검', 1);
 
 -- alarms 테이블 더미 데이터
 INSERT INTO `alarms` (`sender_id`, `receiver_id`, `title`, `content`, `sent_at`, `alarm_type`)

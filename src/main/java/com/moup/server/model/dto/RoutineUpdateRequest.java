@@ -34,13 +34,11 @@ public class RoutineUpdateRequest {
                     "taskId": 1,
                     "content": "바닥 청소",
                     "orderIndex": 0,
-                    "isChecked": true
                 },
                 {
                     "taskId": 2,
                     "content": "전자레인지 청소",
                     "orderIndex": 1,
-                    "isChecked": false
                 }
             ]
             """,

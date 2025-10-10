@@ -15,7 +15,7 @@ public interface RoutineTaskRepository {
      * @param routineTask 생성할 RoutineTask 객체
      * @return 생성된 행의 수
      */
-    @Insert("INSERT INTO routine_tasks (routine_id, content, order_index, is_checked) VALUES (#{routineId}, #{content}, #{orderIndex}, #{isChecked})")
+    @Insert("INSERT INTO routine_tasks (routine_id, content, order_index) VALUES (#{routineId}, #{content}, #{orderIndex})")
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
     Long create(RoutineTask routineTask);
 
@@ -34,7 +34,7 @@ public interface RoutineTaskRepository {
      *
      * @param routineTask 업데이트할 RoutineTas 객체
      */
-    @Update("UPDATE routine_tasks SET content = #{content}, order_index = #{orderIndex}, is_checked = #{isChecked} WHERE id = #{id} AND routine_id = #{routineId}")
+    @Update("UPDATE routine_tasks SET content = #{content}, order_index = #{orderIndex} WHERE id = #{id} AND routine_id = #{routineId}")
     void update(RoutineTask routineTask);
 
     /**

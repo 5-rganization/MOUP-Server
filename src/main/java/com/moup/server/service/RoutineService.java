@@ -78,7 +78,6 @@ public class RoutineService {
                         .routineId(task.getRoutineId())
                         .content(task.getContent())
                         .orderIndex(task.getOrderIndex())
-                        .isChecked(task.getIsChecked())
                         .build())
                 .toList();
 

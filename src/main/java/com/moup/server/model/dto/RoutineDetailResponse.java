@@ -22,12 +22,10 @@ public class RoutineDetailResponse {
                 {
                     "content": "바닥 청소",
                     "orderIndex": 0,
-                    "isChecked": true
                 },
                 {
                     "content": "전자레인지 청소",
                     "orderIndex": 1,
-                    "isChecked": false
                 }
             ]
             """,
