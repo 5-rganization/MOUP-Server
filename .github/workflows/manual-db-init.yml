@@ -29,6 +29,7 @@ jobs:
 
             # Execute SQL DB Schema
             echo "Executing SQL script..."
+            cd /home/${{ secrets.RPI_USER }}/MOUP-Server
             mysql moup < src/main/resources/moup.sql
 
             # (Optional) Execute SQL Dummy Data
