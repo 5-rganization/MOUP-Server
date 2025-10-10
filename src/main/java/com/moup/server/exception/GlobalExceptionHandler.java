@@ -1,17 +1,19 @@
 package com.moup.server.exception;
 
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.moup.server.model.dto.ErrorResponse;
 
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
 /**
@@ -31,6 +33,37 @@ public class GlobalExceptionHandler {
                 .build();
 
         return new ResponseEntity<>(errorResponse, e.getErrorCode().getHttpStatus());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
+        logger.warn("Invalid HTTP request body", e);
+        ErrorCode errorCode;
+        String errorMessage;
+        if (e.getCause() instanceof InvalidFormatException cause) {
+            // 원인 예외가 InvalidFormatException인 경우 (Enum, 날짜 형식 등 내용 오류) -> 422
+            errorCode = ErrorCode.INVALID_FIELD_FORMAT;
+            String fieldName = cause.getPath().stream()
+                    .map(com.fasterxml.jackson.databind.JsonMappingException.Reference::getFieldName)
+                    .collect(Collectors.joining("."));
+            String allowedValues = Arrays.toString(cause.getTargetType().getEnumConstants());
+
+            errorMessage = String.format(
+                    "'%s' 필드에 허용되지 않는 값('%s')이 입력되었습니다. (허용된 값: %s)",
+                    fieldName, cause.getValue(), allowedValues
+            );
+        }  else {
+            // 그 외 대부분의 경우 (JSON 문법 오류 등 구조적 문제) -> 400
+            errorCode = ErrorCode.BAD_REQUEST;
+            errorMessage = errorCode.getMessage();
+        }
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .errorCode(errorCode.getCode())
+                .errorMessage(errorMessage)
+                .build();
+
+        return new ResponseEntity<>(errorResponse, errorCode.getHttpStatus());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
