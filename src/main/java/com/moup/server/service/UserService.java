@@ -35,13 +35,6 @@ public class UserService {
     private final NameVerifyUtil nameVerifyUtil;
     private final JwtUtil jwtUtil;
 
-    private static final Pattern CONSONANTS_ONLY_PATTERN = Pattern.compile("^[ㄱ-ㅎ]+$");
-    private static final Pattern VOWELS_ONLY_PATTERN = Pattern.compile("^[ㅏ-ㅣ]+$");
-    private static final Pattern INCOMPLETE_HANGUL_PATTERN = Pattern.compile("[ㄱ-ㅎㅏ-ㅣ]");
-    private static final Pattern HANGUL_PATTERN = Pattern.compile("[가-힣]");
-    private static final Pattern ALPHABET_PATTERN = Pattern.compile("[a-zA-Z]");
-    private static final Pattern SPECIAL_CHAR_PATTERN = Pattern.compile("[^가-힣a-zA-Z0-9]");
-
     @Transactional
     public LoginResponse startCreateUser(UserCreateRequest userCreateRequest) {
         try {
