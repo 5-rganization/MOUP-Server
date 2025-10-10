@@ -61,7 +61,6 @@ public class UserService {
             userTokenService.saveOrUpdateToken(refreshToken, jwtUtil.getRefreshTokenExpiration());
 
             return LoginResponse.builder()
-                    .userId(userId)
                     .role(null)
                     .accessToken(accessToken)
                     .refreshToken(refreshToken)
@@ -81,7 +80,6 @@ public class UserService {
 
         userRepository.updateById(userId, userRegisterRequest.getNickname(), userRegisterRequest.getRole());
         return RegisterResponse.builder()
-                .userId(userId)
                 .role(userRegisterRequest.getRole())
                 .build();
     }
