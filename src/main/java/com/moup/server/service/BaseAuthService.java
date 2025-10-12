@@ -53,8 +53,6 @@ public abstract class BaseAuthService implements AuthService {
     /// 모든 재시도가 실패했을 때 호출될 복구 메서드
     @Recover
     public void recoverRevokeToken(IOException e, Long userId) throws AuthException {
-        log.error("All retries failed for revokeToken. userId: {}. Error: {}", userId, e.getMessage());
-        // 여기에 실패 내역을 DB에 기록하는 등의 후처리 로직을 추가할 수 있습니다.
         throw new AuthException(getProvider().toString() + " Revoke API 호출 중 오류가 발생했습니다.", e);
     }
 
