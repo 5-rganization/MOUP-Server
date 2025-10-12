@@ -16,7 +16,6 @@ import java.util.*;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class GoogleAuthService extends BaseAuthService {
@@ -30,7 +29,6 @@ public class GoogleAuthService extends BaseAuthService {
     @Value("${google.redirect.uri}")
     private String googleRedirectUri;
 
-    // 생성자를 통해 SocialTokenRepository를 부모 클래스로 전달합니다.
     public GoogleAuthService(SocialTokenRepository socialTokenRepository) {
         super(socialTokenRepository);
     }
@@ -45,7 +43,6 @@ public class GoogleAuthService extends BaseAuthService {
     protected String buildRevokeRequestBody(String refreshToken) { return String.format("token=%s", refreshToken); }
 
     @Override
-    @Transactional
     public Map<String, Object> exchangeAuthCode(String authCode) throws AuthException {
         // 이 메서드는 Google Client Library를 사용하므로 기존 로직을 그대로 유지합니다.
         try {
