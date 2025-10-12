@@ -54,14 +54,10 @@ public class AppleAuthService extends BaseAuthService {
     }
 
     @Override
-    public Login getProvider() {
-        return Login.LOGIN_APPLE;
-    }
+    public Login getProvider() { return Login.LOGIN_APPLE; }
 
     @Override
-    protected String getRevokeUrl() {
-        return APPLE_REVOKE_URL;
-    }
+    protected String getRevokeUrl() { return APPLE_REVOKE_URL; }
 
     @Override
     protected String buildRevokeRequestBody(String refreshToken) throws AuthException {
@@ -86,10 +82,10 @@ public class AppleAuthService extends BaseAuthService {
 
             // 4. JSON 응답 파싱 및 토큰 추출
             Gson gson = new Gson();
-            Map<String, String> tokenResponse = gson.fromJson(responseBody, Map.class);
-            String idTokenString = tokenResponse.get("id_token");
-            String socialAccessToken = tokenResponse.get("access_token");
-            String socialRefreshToken = tokenResponse.get("refresh_token");
+            Map<String, Object> tokenResponse = gson.fromJson(responseBody, Map.class);
+            String idTokenString = (String) tokenResponse.get("id_token");
+            String socialAccessToken = (String) tokenResponse.get("access_token");
+            String socialRefreshToken = (String) tokenResponse.get("refresh_token");
 
             // 5. ID 토큰 검증
             ConfigurableJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();

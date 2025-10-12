@@ -18,19 +18,16 @@ import java.util.Map;
 
 @RequiredArgsConstructor
 public abstract class BaseAuthService implements AuthService {
+
     protected final SocialTokenRepository socialTokenRepository;
 
     // `getProviderId`와 `getUsername`은 모든 서비스에서 동일하게 작동하므로 공통 구현을 제공합니다.
     @Override
-    public String getProviderId(Map<String, Object> userInfo) {
-        return (String) userInfo.get("userId");
-    }
+    public String getProviderId(Map<String, Object> userInfo) { return (String) userInfo.get("userId"); }
 
+    // Apple은 이름 정보를 제공하지 않으므로 null을 반환할 수 있습니다.
     @Override
-    public String getUsername(Map<String, Object> userInfo) {
-        // Apple은 이름 정보를 제공하지 않으므로 null을 반환할 수 있습니다.
-        return (String) userInfo.get("name");
-    }
+    public String getUsername(Map<String, Object> userInfo) { return (String) userInfo.get("name"); }
 
     /// \[템플릿 메서드\] 토큰 해제의 전체적인 흐름을 정의합니다.
     @Override
