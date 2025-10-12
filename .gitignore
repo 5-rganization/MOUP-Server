@@ -39,4 +39,5 @@ out/
 
 ### Custom ###
 src/main/**/config/TokenGeneratorConfig.java
+/src/main/resources/keys/
 **.p12
