@@ -1,7 +1,7 @@
--- MOuP 더미데이터 (FK 일관성 보장 버전)
+-- MOuP 더미데이터 (FK 일관성 보장 및 스키마 수정사항 반영 버전)
 USE moup;
 
--- 깨끗하게 초기화 (선택)
+-- 깨끗하게 초기화
 SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE TABLE work_routine_mappings;
 TRUNCATE TABLE works;
@@ -113,72 +113,72 @@ INSERT INTO routines (user_id, routine_name, alarm_time) VALUES
     (@u_bob,'오픈체크','08:50:00');
 SET @r_bob_open = LAST_INSERT_ID();
 
-INSERT INTO routine_tasks (routine_id, content, order_index, is_checked) VALUES
-                                                                             (@r_bob_open,'키오스크 전원',1,0),
-                                                                             (@r_bob_open,'원두/소모품 보충',2,0),
-                                                                             (@r_bob_open,'POS 점검',3,0);
+INSERT INTO routine_tasks (routine_id, content, order_index) VALUES
+                                                                 (@r_bob_open,'키오스크 전원',1),
+                                                                 (@r_bob_open,'원두/소모품 보충',2),
+                                                                 (@r_bob_open,'POS 점검',3);
 
 -- Dana
 INSERT INTO routines (user_id, routine_name, alarm_time) VALUES
     (@u_dana,'마감체크','22:05:00');
 SET @r_dana_close = LAST_INSERT_ID();
 
-INSERT INTO routine_tasks (routine_id, content, order_index, is_checked) VALUES
-                                                                             (@r_dana_close,'유통기한 확인',1,0),
-                                                                             (@r_dana_close,'폐기 등록',2,0),
-                                                                             (@r_dana_close,'캐셔 정산',3,0);
+INSERT INTO routine_tasks (routine_id, content, order_index) VALUES
+                                                                 (@r_dana_close,'유통기한 확인',1),
+                                                                 (@r_dana_close,'폐기 등록',2),
+                                                                 (@r_dana_close,'캐셔 정산',3);
 
 -- Evan
 INSERT INTO routines (user_id, routine_name, alarm_time) VALUES
     (@u_evan,'알바준비','10:00:00');
 SET @r_evan_prep = LAST_INSERT_ID();
 
-INSERT INTO routine_tasks (routine_id, content, order_index, is_checked) VALUES
-                                                                             (@r_evan_prep,'유니폼/명찰',1,0),
-                                                                             (@r_evan_prep,'출근 보고',2,0);
+INSERT INTO routine_tasks (routine_id, content, order_index) VALUES
+                                                                 (@r_evan_prep,'유니폼/명찰',1),
+                                                                 (@r_evan_prep,'출근 보고',2);
 
 -- Grace
 INSERT INTO routines (user_id, routine_name, alarm_time) VALUES
     (@u_grace,'오픈체크','11:50:00');
 SET @r_grace_open = LAST_INSERT_ID();
 
-INSERT INTO routine_tasks (routine_id, content, order_index, is_checked) VALUES
-                                                                             (@r_grace_open,'PC 부팅/패치',1,0),
-                                                                             (@r_grace_open,'음료 냉장고 점검',2,0);
+INSERT INTO routine_tasks (routine_id, content, order_index) VALUES
+                                                                 (@r_grace_open,'PC 부팅/패치',1),
+                                                                 (@r_grace_open,'음료 냉장고 점검',2);
 
 -- Henry (루틴 추가해 매핑 가능하게)
 INSERT INTO routines (user_id, routine_name, alarm_time) VALUES
     (@u_henry,'저녁점검','17:45:00');
 SET @r_henry_evening = LAST_INSERT_ID();
 
-INSERT INTO routine_tasks (routine_id, content, order_index, is_checked) VALUES
-    (@r_henry_evening,'헤드셋/마이크 점검',1,0);
+INSERT INTO routine_tasks (routine_id, content, order_index) VALUES
+    (@r_henry_evening,'헤드셋/마이크 점검',1);
 
 -- =====================================
 -- 5) WORKS (근무 스케줄/실근무)
 -- =====================================
 -- Bob @ Cafe (2건)
 INSERT INTO works (worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time, rest_time, memo, daily_income, hourly_rate, repeat_days, repeat_end_date)
-VALUES (@wk_bob,'2025-10-10','09:00:00','09:05:00','13:00:00','13:10:00','00:15:00','오픈 대체',48000,12000,'MON,WED,FRI','2025-12-31 00:00:00');
+VALUES (@wk_bob,'2025-10-10','2025-10-10 09:00:00','2025-10-10 09:05:00','2025-10-10 13:00:00','2025-10-10 13:10:00',15,'오픈 대체',48000,12000,'MON,WED,FRI','2025-12-31 00:00:00');
 SET @work_bob_1 = LAST_INSERT_ID();
 
 INSERT INTO works (worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time, rest_time, memo, daily_income, hourly_rate, repeat_days, repeat_end_date)
-VALUES (@wk_bob,'2025-10-12','09:00:00','09:02:00','13:00:00','13:05:00','00:10:00','브런치 러시',48000,12000,'MON,WED,FRI','2025-12-31 00:00:00');
+VALUES (@wk_bob,'2025-10-12','2025-10-12 09:00:00','2025-10-12 09:02:00','2025-10-12 13:00:00','2025-10-12 13:05:00',10,'브런치 러시',48000,12000,'MON,WED,FRI','2025-12-31 00:00:00');
 SET @work_bob_2 = LAST_INSERT_ID();
 
 -- Dana @ Mart (1건)
 INSERT INTO works (worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time, rest_time, memo, daily_income, hourly_rate, repeat_days, repeat_end_date)
-VALUES (@wk_dana,'2025-10-11','14:00:00','13:55:00','22:00:00','22:05:00','01:00:00','마감 교육',NULL,NULL,'TUE,THU,SAT','2025-12-31 00:00:00');
+VALUES (@wk_dana,'2025-10-11','2025-10-11 14:00:00','2025-10-11 13:55:00','2025-10-11 22:00:00','2025-10-11 22:05:00',60,'마감 교육',NULL,NULL,'TUE,THU,SAT','2025-12-31 00:00:00');
 SET @work_dana_1 = LAST_INSERT_ID();
 
 -- Grace @ PC방 (1건)
 INSERT INTO works (worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time, rest_time, memo, daily_income, hourly_rate, repeat_days, repeat_end_date)
-VALUES (@wk_grace,'2025-10-11','12:00:00','11:58:00','18:00:00','18:10:00','00:30:00','오픈/음료 진열',90000,NULL,'SAT,SUN','2025-11-30 00:00:00');
+VALUES (@wk_grace,'2025-10-11','2025-10-11 12:00:00','2025-10-11 11:58:00','2025-10-11 18:00:00','2025-10-11 18:10:00',30,'오픈/음료 진열',90000,NULL,'SAT,SUN','2025-11-30 00:00:00');
 SET @work_grace_1 = LAST_INSERT_ID();
 
 -- Henry @ PC방 (1건)
 INSERT INTO works (worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time, rest_time, memo, daily_income, hourly_rate, repeat_days, repeat_end_date)
-VALUES (@wk_henry,'2025-10-11','18:00:00','18:01:00','23:00:00','23:02:00','00:20:00','피크타임 지원',NULL,11000,'FRI,SAT','2025-12-31 00:00:00');
+VALUES (@wk_henry,'2025-10-11','2025-10-11 18:00:00','2025-10-11 18:01:00','2025-10-11 23:00:00','2025-10-11 23:02:00',20,'피크타임 지원',NULL,11000,'FRI,SAT','2025-12-31 00:00:00');
 SET @work_henry_1 = LAST_INSERT_ID();
 
 -- =====================================
