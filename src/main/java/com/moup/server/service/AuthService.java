@@ -1,11 +1,9 @@
 package com.moup.server.service;
 
 import com.moup.server.common.Login;
-import com.moup.server.exception.InvalidTokenException;
 
 import jakarta.security.auth.message.AuthException;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
 import java.util.Map;
 
 public interface AuthService {

@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Slf4j
 @Service
@@ -18,18 +18,21 @@ public class UserDeletionService {
     private final UserRepository userRepository;
     private final AuthServiceFactory authServiceFactory;
 
-    @Async("taskExecutor")
-    @Transactional
-    public void processUserDeletion(User user) {
-        try {
-            Login provider = user.getProvider();
-            AuthService authService = authServiceFactory.getService(provider);
+    private final TransactionTemplate transactionTemplate;
 
+    @Async("taskExecutor")
+    public void processUserDeletion(User user) {
+        Login provider = user.getProvider();
+        AuthService authService = authServiceFactory.getService(provider);
+
+        try {
             // 동기적으로 revokeToken 호출 (결과를 기다림)
             authService.revokeToken(user.getId());
 
-            // revoke가 성공적으로 끝나면, DB에서 유저를 삭제
-            userRepository.hardDeleteUserById(user.getId());
+            transactionTemplate.executeWithoutResult(status -> {
+                // revoke가 성공적으로 끝나면, DB에서 유저를 삭제
+                userRepository.hardDeleteUserById(user.getId());
+            });
 
         } catch (AuthException e) {
             log.error("Auth revoke failed for user: {}. Error: {}", user.getId(), e.getMessage());
