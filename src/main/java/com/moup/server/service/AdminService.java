@@ -21,7 +21,7 @@ public class AdminService {
     public void hardDeleteOldUsers() {
         LocalDateTime threeDaysAgo = LocalDateTime.now().minusDays(gracePeriod);
         
-        // 1. 하드 삭제 대상 유저 목록 조회
+        // 하드 삭제 대상 유저 목록 조회
         List<User> hardDeleteUsers = userRepository.findAllHardDeleteUsers(threeDaysAgo);
         
         for (User user : hardDeleteUsers) {
