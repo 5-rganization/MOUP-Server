@@ -18,6 +18,12 @@ jobs:
           # Navigate to the project directory
           cd /home/${{ secrets.RPI_USER }}/MOUP-Server
           
+          # Start the ssh-agent
+          eval "$(ssh-agent -s)"
+          
+          # Add the SSH private key from the secret to the agent
+          echo "${{ secrets.RPI_DEPLOY_KEY }}" | ssh-add -
+          
           # Pull the latest changes
           git pull origin main
           
