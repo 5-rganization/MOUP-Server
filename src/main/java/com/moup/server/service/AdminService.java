@@ -3,7 +3,6 @@ package com.moup.server.service;
 import com.moup.server.common.Login;
 import com.moup.server.model.entity.User;
 import com.moup.server.repository.UserRepository;
-import jakarta.security.auth.message.AuthException;
 import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,7 +15,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AdminService {
     private final UserRepository userRepository;
-    private final AppleAuthService appleAuthService;
+    private final AuthServiceFactory authServiceFactory;
 
     @Value("${user.delete.grace-period}")
     private int gracePeriod;
@@ -29,19 +28,21 @@ public class AdminService {
         List<User> hardDeleteUsers = userRepository.findAllHardDeleteUsers(threeDaysAgo);
         
         for (User user : hardDeleteUsers) {
-            // 2. 애플 유저의 토큰 revoke 처리
-            if(user.getProvider() == Login.LOGIN_APPLE) {
-                try {
-                    appleAuthService.revokeToken(user.getId());
-                    // revoke 성공 시 DB에서 유저 하드 삭제
-                    userRepository.hardDeleteUserById(user.getId());
-                } catch (Exception e) {
-                    // TODO: revoke 실패 시 로직 추가
-                    // 유저의 revoke 실패 flag 설정?
-                }
-            } else {
-                // 3. DB에서 유저 하드 삭제
+            try {
+                // 2. 유저의 소셜 로그인 타입 가져옴
+                Login provider = user.getProvider();
+
+                // 3. Factory를 통해 provider에 맞는 AuthService 구현체를 가져옴
+                AuthService authService = authServiceFactory.getService(provider);
+
+                // 4. 가져온 서비스의 revokeToken 메서드를 호출
+                authService.revokeToken(user.getId());
+
+                // 5. revoke 성공 시 DB에서 유저를 완전히 삭제
                 userRepository.hardDeleteUserById(user.getId());
+            } catch (Exception e) {
+                // TODO: revoke 실패 시 로직 추가
+                // 유저의 revoke 실패 flag 설정?
             }
         }
     }
