@@ -23,4 +23,5 @@ public class User {
     private String createdAt;
     private String deletedAt;
     private boolean isDeleted;
+    private String fcmToken;
 }

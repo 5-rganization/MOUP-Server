@@ -13,4 +13,5 @@ public class UserCreateRequest {
     private String providerId;
     private String username;
     private String socialRefreshToken;
+    private String fcmToken;
 }
