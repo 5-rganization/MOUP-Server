@@ -1,8 +1,11 @@
 package com.moup.server.exception;
 
 public class WorkplaceNotFoundException extends CustomException {
-    @Override
-    public ErrorCode getErrorCode() {
-        return ErrorCode.WORKPLACE_NOT_FOUND;
+    public WorkplaceNotFoundException() {
+        super(ErrorCode.WORKPLACE_NOT_FOUND);
+    }
+
+    public WorkplaceNotFoundException(String message) {
+        super(ErrorCode.WORKPLACE_NOT_FOUND, message);
     }
 }

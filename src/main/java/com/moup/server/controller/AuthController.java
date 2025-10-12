@@ -73,6 +73,9 @@ public class AuthController {
                         "refreshToken": "string"
                     }
                     """))),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 사용자 이름 형식 (Apple 로그인 시)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "유효하지 않은 Authorization Code", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "이미 가입된 유저 (처리 중 오류)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "로그인을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginRequest.class)))
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) throws AuthException, InvalidNameException {
@@ -164,10 +167,14 @@ public class AuthController {
     }
 
     @PatchMapping("/login/register")
-    @Operation(summary = "회원가입", description = "닉네임, 역할을 받아서 회원가입 진행")
+    @Operation(summary = "회원가입(추가 정보 입력)", description = "닉네임, 역할을 받아서 회원가입 진행")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "회원가입 절차 완료", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RegisterResponse.class))),
-            @ApiResponse(responseCode = "400", description = "잘못된 유저 이름", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 역할(Role) 값", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "유효하지 않은 토큰", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "이미 회원가입이 완료된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "422", description = "유효하지 않은 필드 형식", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "회원가입을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RegisterRequest.class)))
     public ResponseEntity<?> register(@RequestBody RegisterRequest registerRequest) {
@@ -191,7 +198,12 @@ public class AuthController {
 
     @PostMapping("/token/refresh")
     @Operation(summary = "액세스 토큰 재발급", description = "리프레시 토큰으로 액세스 토큰 재발급")
-    @ApiResponses({@ApiResponse(responseCode = "200", description = "재발급 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RefreshTokenResponse.class))), @ApiResponse(responseCode = "400", description = "유효하지 않은 토큰", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))), @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))), @ApiResponse(responseCode = "409", description = "삭제 처리된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))), @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "재발급 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RefreshTokenResponse.class))),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 토큰", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "삭제 처리된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "액세스 토큰 재발급을 위한 요청 DTO", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RefreshTokenRequest.class)))
     public ResponseEntity<?> refreshToken(@RequestBody RefreshTokenRequest refreshTokenRequest) {
         String refreshToken = refreshTokenRequest.getRefreshToken();

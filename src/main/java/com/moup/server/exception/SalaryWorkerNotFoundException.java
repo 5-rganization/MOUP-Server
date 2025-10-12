@@ -1,7 +1,11 @@
 package com.moup.server.exception;
 
 public class SalaryWorkerNotFoundException extends CustomException {
-    public ErrorCode getErrorCode() {
-        return ErrorCode.SALARY_WORKER_NOT_FOUND;
+    public SalaryWorkerNotFoundException() {
+        super(ErrorCode.SALARY_WORKER_NOT_FOUND);
+    }
+
+    public SalaryWorkerNotFoundException(String message) {
+        super(ErrorCode.SALARY_WORKER_NOT_FOUND, message);
     }
 }
