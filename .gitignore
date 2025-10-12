@@ -40,3 +40,4 @@ out/
 ### Custom ###
 src/main/**/config/TokenGeneratorConfig.java
 **.p12
+**.log
