@@ -31,12 +31,20 @@ jobs:
             # Execute SQL DB Schema
             echo "Executing SQL script..."
             cd /home/${{ secrets.RPI_USER }}/MOUP-Server
-            mysql moup < src/main/resources/moup.sql
+            mysql --defaults-file=~/.my.cnf moup < src/main/resources/moup.sql 2> /tmp/mysql_error.log || true
+            
+            echo "--- MySQL Error Log (moup.sql) ---"
+            cat /tmp/mysql_error.log
+            echo "------------------------------------"
 
             # (Optional) Execute SQL Dummy Data
             if [[ "${{ github.event.inputs.insert_dummy_data }}" == "true" ]]; then
               echo "Checkbox is checked. Inserting dummy data..."
-              mysql moup < src/main/resources/moup_dummy_data.sql
+              mysql --defaults-file=~/.my.cnf moup < src/main/resources/moup_dummy_data.sql 2> /tmp/mysql_dummy_error.log || true
+              
+              echo "--- MySQL Error Log (moup_dummy_data.sql) ---"
+              cat /tmp/mysql_dummy_error.log
+              echo "------------------------------------"
             else
               echo "Checkbox is not checked. Skipping dummy data insertion."
             fi
@@ -44,6 +52,5 @@ jobs:
             # Delete DB connection info
             echo "Deleting DB connection info..."
             rm ~/.my.cnf
-
             echo "SQL execution complete."
           EOF

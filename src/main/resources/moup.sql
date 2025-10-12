@@ -4,16 +4,17 @@ USE moup;
 
 CREATE TABLE `users`
 (
-    `id`                    BIGINT AUTO_INCREMENT                                       NOT NULL PRIMARY KEY,
-    `provider`              ENUM ('LOGIN_GOOGLE', 'LOGIN_APPLE')                        NOT NULL,
-    `provider_id`           VARCHAR(100)                                                NOT NULL,
-    `username`              VARCHAR(100),
-    `nickname`              VARCHAR(100),
-    `role`                  ENUM ('ROLE_WORKER', 'ROLE_OWNER', 'ROLE_ADMIN')            DEFAULT 'ROLE_WORKER',
-    `profile_img`           VARCHAR(255),
-    `created_at`            TIMESTAMP                                                   DEFAULT CURRENT_TIMESTAMP(),
-    `deleted_at`            TIMESTAMP,
-    `is_deleted`            TINYINT(1)                                                  DEFAULT 0,
+    `id`          BIGINT AUTO_INCREMENT                NOT NULL PRIMARY KEY,
+    `provider`    ENUM ('LOGIN_GOOGLE', 'LOGIN_APPLE') NOT NULL,
+    `provider_id` VARCHAR(100)                         NOT NULL,
+    `username`    VARCHAR(20),
+    `nickname`    VARCHAR(20),
+    `role`        ENUM ('ROLE_WORKER', 'ROLE_OWNER', 'ROLE_ADMIN') DEFAULT 'ROLE_WORKER',
+    `profile_img` VARCHAR(255),
+    `created_at`  TIMESTAMP                                        DEFAULT CURRENT_TIMESTAMP(),
+    `deleted_at`  TIMESTAMP,
+    `is_deleted`  TINYINT(1)                                       DEFAULT 0,
+    `fcm_token`   TEXT,
     UNIQUE KEY `unique_provider` (`provider`, `provider_id`)
 );
 
@@ -41,7 +42,7 @@ CREATE TABLE `routines`
 (
     `id`           BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
     `user_id`      BIGINT                NOT NULL,
-    `routine_name` VARCHAR(100)          NOT NULL,
+    `routine_name` VARCHAR(20)           NOT NULL,
     `alarm_time`   TIME                  NULL,
     FOREIGN KEY (`user_id`) REFERENCES users (`id`) ON DELETE CASCADE
 );
@@ -50,46 +51,57 @@ CREATE TABLE `routine_tasks`
 (
     `id`          BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
     `routine_id`  BIGINT                NOT NULL,
-    `content`     VARCHAR(100)          NOT NULL,
+    `content`     VARCHAR(30)           NOT NULL,
     `order_index` INT                   NOT NULL,
+    `is_checked`  TINYINT(1),
     FOREIGN KEY (`routine_id`) REFERENCES routines (`id`) ON DELETE CASCADE,
     UNIQUE KEY `unique_routine_order` (`routine_id`, `order_index`)
 );
 
-CREATE TABLE `alarms`
+CREATE TABLE `normal_alarms`
 (
-    `id`          BIGINT AUTO_INCREMENT       NOT NULL PRIMARY KEY,
-    `sender_id`   BIGINT                      NULL,
-    `receiver_id` BIGINT                      NOT NULL,
-    `title`       TEXT                        NOT NULL,
-    `content`     TEXT                        NULL,
-    `sent_at`     DATETIME                    NOT NULL,
-    `alarm_type`  ENUM ('ALARM_NOTIFICATION') NOT NULL
+    `id`          BIGINT AUTO_INCREMENT                                                                             NOT NULL PRIMARY KEY,
+    `sender_id`   BIGINT                                                                                            NOT NULL,
+    `receiver_id` BIGINT                                                                                            NOT NULL,
+    `title`       TEXT                                                                                              NOT NULL,
+    `content`     TEXT                                                                                              NULL,
+    `sent_at`     DATETIME                                                                                          NOT NULL,
+    `read_at`     DATETIME                                                                                          NULL,
+    `alarm_type`  ENUM ('ALARM_NOTIFICATION', 'ALARM_INVITE_REQUEST', 'ALARM_INVITE_ACCEPT', 'ALARM_INVITE_REJECT') NOT NULL
+);
+
+CREATE TABLE `admin_alarms`
+(
+    `id`         BIGINT AUTO_INCREMENT       NOT NULL PRIMARY KEY,
+    `title`      TEXT                        NOT NULL,
+    `content`    TEXT                        NULL,
+    `sent_at`    DATETIME                    NOT NULL,
+    `alarm_type` ENUM ('ALARM_ANNOUNCEMENT') NOT NULL
 );
 --
 
 -- 근무지 DB --
 CREATE TABLE `workplaces`
 (
-    `id`             BIGINT AUTO_INCREMENT        NOT NULL PRIMARY KEY,
-    `owner_id`       BIGINT                       NULL,
-    `workplace_name` VARCHAR(100)                 NOT NULL,
-    `category_name`  VARCHAR(50)                  NOT NULL,
-    `is_shared`      TINYINT(1)  DEFAULT 0        NOT NULL,
-    `address`        VARCHAR(100)                 NULL,
-    `latitude`       DECIMAL(9, 6)                NULL,
-    `longitude`      DECIMAL(9, 6)                NULL,
+    `id`             BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+    `owner_id`       BIGINT                NULL,
+    `workplace_name` VARCHAR(50)           NOT NULL,
+    `category_name`  VARCHAR(10)           NOT NULL,
+    `is_shared`      TINYINT(1) DEFAULT 0  NOT NULL,
+    `address`        VARCHAR(100)          NULL,
+    `latitude`       DECIMAL(9, 6)         NULL,
+    `longitude`      DECIMAL(9, 6)         NULL,
     FOREIGN KEY (`owner_id`) REFERENCES users (`id`) ON DELETE SET NULL
 );
 
 CREATE TABLE `workers`
 (
-    `id`           BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
-    `user_id`      BIGINT                NOT NULL,
-    `workplace_id` BIGINT                NOT NULL,
-    `worker_based_label_color`    VARCHAR(20) NULL,
-    `owner_based_label_color`    VARCHAR(20) NULL,
-    `is_accepted`  TINYINT(1)            NULL,
+    `id`                       BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+    `user_id`                  BIGINT                NOT NULL,
+    `workplace_id`             BIGINT                NOT NULL,
+    `worker_based_label_color` VARCHAR(10)           NULL,
+    `owner_based_label_color`  VARCHAR(10)           NULL,
+    `is_accepted`              TINYINT(1)            NULL,
     FOREIGN KEY (`user_id`) REFERENCES users (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`workplace_id`) REFERENCES workplaces (`id`) ON DELETE CASCADE
 );
@@ -98,37 +110,45 @@ CREATE TABLE `works`
 (
     `id`                BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
     `worker_id`         BIGINT                NOT NULL,
-    `routine_id`        BIGINT                NULL,
     `work_date`         DATE                  NOT NULL,
     `start_time`        TIME                  NOT NULL,
     `actual_start_time` TIME                  NOT NULL,
     `end_time`          TIME                  NOT NULL,
     `actual_end_time`   TIME                  NOT NULL,
     `rest_time`         TIME                  NULL,
-    `memo`              VARCHAR(50)           NULL,
+    `memo`              VARCHAR(200)          NULL,
     `daily_income`      INT                   NULL,
-    `is_repeated`       TINYINT(1)            NULL,
-    `repeat_enddate`    DATETIME              NULL,
-    FOREIGN KEY (`worker_id`) REFERENCES workers (`id`) ON DELETE CASCADE,
+    `hourly_rate`       INT                   NULL,
+    `repeat_days`       VARCHAR(100)          NULL,
+    `repeat_end_date`   DATETIME              NULL,
+    FOREIGN KEY (`worker_id`) REFERENCES workers (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `work_routine_mappings`
+(
+    `id`         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `work_id`    BIGINT NOT NULL,
+    `routine_id` BIGINT NOT NULL,
+    FOREIGN KEY (`work_id`) REFERENCES workers (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`routine_id`) REFERENCES routines (`id`) ON DELETE CASCADE
 );
 
 CREATE TABLE `salaries`
 (
     `id`                       BIGINT AUTO_INCREMENT PRIMARY KEY,
-    `worker_id`                BIGINT                                                                               NOT NULL,
-    `salary_type`              ENUM ('SALARY_MONTHLY', 'SALARY_WEEKLY', 'SALARY_DAILY')                             NOT NULL,
-    `salary_calculation`       ENUM ('SALARY_CALCULATION_HOURLY', 'SALARY_CALCULATION_FIXED')                       NOT NULL,
-    `hourly_rate`              INT                                                                                  NULL,
-    `fixed_rate`               INT                                                                                  NULL,
-    `salary_date`              INT CHECK (salary_date >= 1 AND salary_date <= 31)                                   NULL,
-    `salary_day`               ENUM ('MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY')  NULL,
-    `has_national_pension`     TINYINT(1)                                                                           NOT NULL,
-    `has_health_insurance`     TINYINT(1)                                                                           NOT NULL,
-    `has_employment_insurance` TINYINT(1)                                                                           NOT NULL,
-    `has_industrial_accident`  TINYINT(1)                                                                           NOT NULL,
-    `has_income_tax`           TINYINT(1)                                                                           NOT NULL,
-    `has_night_allowance`      TINYINT(1)                                                                           NOT NULL,
+    `worker_id`                BIGINT                                                                              NOT NULL,
+    `salary_type`              ENUM ('SALARY_MONTHLY', 'SALARY_WEEKLY', 'SALARY_DAILY')                            NOT NULL,
+    `salary_calculation`       ENUM ('SALARY_CALCULATION_HOURLY', 'SALARY_CALCULATION_FIXED')                      NOT NULL,
+    `hourly_rate`              INT                                                                                 NULL,
+    `fixed_rate`               INT                                                                                 NULL,
+    `salary_date`              INT CHECK (salary_date >= 1 AND salary_date <= 31)                                  NULL,
+    `salary_day`               ENUM ('MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY') NULL,
+    `has_national_pension`     TINYINT(1)                                                                          NOT NULL,
+    `has_health_insurance`     TINYINT(1)                                                                          NOT NULL,
+    `has_employment_insurance` TINYINT(1)                                                                          NOT NULL,
+    `has_industrial_accident`  TINYINT(1)                                                                          NOT NULL,
+    `has_income_tax`           TINYINT(1)                                                                          NOT NULL,
+    `has_night_allowance`      TINYINT(1)                                                                          NOT NULL,
     FOREIGN KEY (`worker_id`) REFERENCES workers (`id`) ON DELETE CASCADE
 );
 --

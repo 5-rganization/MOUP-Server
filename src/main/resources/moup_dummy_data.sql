@@ -1,95 +1,232 @@
--- moup 스키마 사용
+-- MOuP 더미데이터 (FK 일관성 보장 버전)
 USE moup;
 
--- users 테이블 더미 데이터 (2명의 사장, 3명의 직원)
--- 'is_deleted'와 'deleted_at' 컬럼을 추가하여 스키마에 맞게 수정했습니다.
-INSERT INTO `users` (`provider`, `provider_id`, `username`, `nickname`, `role`, `profile_img`, `is_deleted`, `deleted_at`)
-VALUES ('LOGIN_GOOGLE', '100000000000000000001', '김사장', '역삼점사장님', 'ROLE_OWNER', 'https://example.com/profile1.jpg', 0, NULL),
-       ('LOGIN_APPLE', '000001.a1b2c3d4e5f6.0001', '박사장', '홍대점주', 'ROLE_OWNER', 'https://example.com/profile2.jpg', 0, NULL),
-       ('LOGIN_GOOGLE', '100000000000000000002', '최알바', '성실알바최씨', 'ROLE_WORKER', 'https://example.com/profile3.jpg', 0, NULL),
-       ('LOGIN_GOOGLE', '100000000000000000003', '이알바', '주말알바이씨', 'ROLE_WORKER', 'https://example.com/profile4.jpg', 0, NULL),
-       ('LOGIN_APPLE', '000002.f6e5d4c3b2a1.0002', '강알바', '미소알바강씨', 'ROLE_WORKER', 'https://example.com/profile5.jpg', 0, NULL);
+-- 깨끗하게 초기화 (선택)
+SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE TABLE work_routine_mappings;
+TRUNCATE TABLE works;
+TRUNCATE TABLE routine_tasks;
+TRUNCATE TABLE routines;
+TRUNCATE TABLE salaries;
+TRUNCATE TABLE workers;
+TRUNCATE TABLE workplaces;
+TRUNCATE TABLE normal_alarms;
+TRUNCATE TABLE admin_alarms;
+TRUNCATE TABLE social_tokens;
+TRUNCATE TABLE user_tokens;
+TRUNCATE TABLE users;
+SET FOREIGN_KEY_CHECKS = 1;
 
--- social_tokens 테이블 더미 데이터
-INSERT INTO `social_tokens` (`user_id`, `refresh_token`, `updated_at`)
-VALUES (1, 'google_refresh_token_string_example_1', NOW()),
-       (2, 'apple_refresh_token_string_example_2', NOW()),
-       (3, 'google_refresh_token_string_example_3', NOW()),
-       (4, 'google_refresh_token_string_example_4', NOW()),
-       (5, 'apple_refresh_token_string_example_5', NOW());
+-- =====================================
+-- 1) USERS
+-- =====================================
+INSERT INTO users (provider, provider_id, username, nickname, role, profile_img, is_deleted, fcm_token)
+VALUES ('LOGIN_GOOGLE','ggl-1001','alice','앨리스','ROLE_OWNER',NULL,0,'fcm_token_alice');
+SET @u_alice = LAST_INSERT_ID();
 
--- user_tokens 테이블 더미 데이터
-INSERT INTO `user_tokens` (`user_id`, `refresh_token`, `expiry_date`, `created_at`)
-VALUES (1, 'jwt_refresh_token_example_user1', DATE_ADD(NOW(), INTERVAL 14 DAY), NOW()),
-       (2, 'jwt_refresh_token_example_user2', DATE_ADD(NOW(), INTERVAL 14 DAY), NOW()),
-       (3, 'jwt_refresh_token_example_user3', DATE_ADD(NOW(), INTERVAL 14 DAY), NOW()),
-       (4, 'jwt_refresh_token_example_user4', DATE_ADD(NOW(), INTERVAL 14 DAY), NOW()),
-       (5, 'jwt_refresh_token_example_user5', DATE_ADD(NOW(), INTERVAL 14 DAY), NOW());
+INSERT INTO users (provider, provider_id, username, nickname, role, profile_img, is_deleted, fcm_token)
+VALUES ('LOGIN_GOOGLE','ggl-2001','bob','밥','ROLE_WORKER',NULL,0,NULL);
+SET @u_bob = LAST_INSERT_ID();
 
--- workplaces 테이블 더미 데이터
-INSERT INTO `workplaces` (`owner_id`, `workplace_name`, `category_name`, `is_shared`, `address`, `latitude`, `longitude`)
-VALUES (1, 'GS25 역삼점', '편의점', 1, '서울 강남구 역삼동 123-45', 37.5009, 127.0374),
-       (1, '메가커피 선릉점', '카페', 0, '서울 강남구 대치동 678-90', 37.5042, 127.0488),
-       (2, '홍콩반점 홍대입구역점', '음식점', 1, '서울 마포구 서교동 345-67', 37.5567, 126.9237),
-       (2, '올리브영 신촌점', '판매점', 0, '서울 서대문구 창천동 543-21', 37.5598, 126.9423),
-       (1, '개인 스터디 카페', '카페', 0, '서울 관악구 신림동 111-22', 37.4844, 126.9294);
+INSERT INTO users (provider, provider_id, username, nickname, role, profile_img, is_deleted, fcm_token)
+VALUES ('LOGIN_APPLE','apl-1002','charlie','찰리','ROLE_OWNER',NULL,0,NULL);
+SET @u_charlie = LAST_INSERT_ID();
 
--- workers 테이블 더미 데이터 (3명의 직원을 근무지에 배정)
-INSERT INTO `workers` (`user_id`, `workplace_id`, `worker_based_label_color`, `owner_based_label_color`, `is_accepted`)
-VALUES (3, 1, 'RED', 'RED', 1), -- 최알바 -> GS25 역삼점
-       (4, 3, 'GREEN', 'GREEN', 1), -- 이알바 -> 홍콩반점 홍대입구역점
-       (5, 2, 'BLUE', 'BLUE', 1), -- 강알바 -> 메가커피 선릉점
-       (3, 2, 'PURPLE', 'PURPLE', 1), -- 최알바 -> 메가커피 선릉점 (한명이 여러곳에서 근무)
-       (4, 4, 'ORANGE', 'ORANGE', 1), -- 이알바 -> 올리브영 신촌점
-       (1, 1, 'INDIGO', 'INDIGO', 1), -- 사장님도 근무자로 등록 가능
-       (2, 3, 'YELLOW', 'YELLOW', 1); -- 사장님도 근무자로 등록 가능
+INSERT INTO users (provider, provider_id, username, nickname, role, profile_img, is_deleted, fcm_token)
+VALUES ('LOGIN_GOOGLE','ggl-2002','dana','다나','ROLE_WORKER',NULL,0,NULL);
+SET @u_dana = LAST_INSERT_ID();
 
--- routines 테이블 더미 데이터
-INSERT INTO `routines` (`user_id`, `routine_name`, `alarm_time`)
-VALUES (3, '오전 오픈 준비', '08:30'),
-       (3, '오후 마감 정리', '22:00'),
-       (4, '주말 오픈 루틴', '10:00'),
-       (1, '매니저 확인 사항', '09:00'),
-       (5, '청결 관리 루틴', '15:00');
+INSERT INTO users (provider, provider_id, username, nickname, role, profile_img, is_deleted, fcm_token)
+VALUES ('LOGIN_GOOGLE','ggl-2003','evan','에반','ROLE_WORKER',NULL,0,NULL);
+SET @u_evan = LAST_INSERT_ID();
 
--- routine_tasks 테이블 더미 데이터
-INSERT INTO `routine_tasks` (`routine_id`, `content`, `order_index`)
-VALUES (1, '포스기 켜고 시재 확인', 1),
-       (1, '매장 조명 켜기', 2),
-       (1, '원두 재고 확인', 3),
-       (2, '쓰레기통 비우기', 1),
-       (2, '커피 머신 세척', 2),
-       (3, '유통기한 확인 및 폐기 등록', 1),
-       (4, 'CCTV 확인', 1),
-       (5, '화장실 청소 상태 점검', 1);
+INSERT INTO users (provider, provider_id, username, nickname, role, profile_img, is_deleted, fcm_token)
+VALUES ('LOGIN_GOOGLE','ggl-1003','fiona','피오나','ROLE_OWNER',NULL,0,NULL);
+SET @u_fiona = LAST_INSERT_ID();
 
--- alarms 테이블 더미 데이터
-INSERT INTO `alarms` (`sender_id`, `receiver_id`, `title`, `content`, `sent_at`, `alarm_type`)
-VALUES (1, 3, '근무 시간 변경 요청', '내일 1시간 일찍 출근 가능할까요?', NOW(), 'ALARM_NOTIFICATION'),
-       (2, 4, '급여 지급 완료', '9월 급여가 지급되었습니다. 확인해주세요.', NOW(), 'ALARM_NOTIFICATION'),
-       (3, 1, '업무 관련 문의', '신제품 재고가 부족합니다.', NOW(), 'ALARM_NOTIFICATION'),
-       (4, 2, '대타 근무 가능 문의', '다음 주 화요일 대타 가능하신 분 찾습니다.', NOW(), 'ALARM_NOTIFICATION'),
-       (1, 5, '공지사항', '이번 주말 워크샵 관련 공지입니다.', NOW(), 'ALARM_NOTIFICATION');
+INSERT INTO users (provider, provider_id, username, nickname, role, profile_img, is_deleted, fcm_token)
+VALUES ('LOGIN_APPLE','apl-2004','grace','그레이스','ROLE_WORKER',NULL,0,NULL);
+SET @u_grace = LAST_INSERT_ID();
 
--- salaries 테이블 더미 데이터
--- 주의: worker_id는 위 workers 테이블에 삽입된 후 생성된 ID를 참조해야 합니다. (자동 증가 값이 1, 2, 3, 4, 5, 6, 7 이라고 가정)
-INSERT INTO `salaries` (`worker_id`, `salary_type`, `salary_calculation`, `hourly_rate`, `fixed_rate`,
-                        `salary_date`, `salary_day`, `has_national_pension`, `has_health_insurance`,
-                        `has_employment_insurance`, `has_industrial_accident`, `has_income_tax`, `has_night_allowance`)
-VALUES (1, 'SALARY_MONTHLY', 'SALARY_CALCULATION_HOURLY', 10000, NULL, 10, NULL, 1, 1, 1, 1, 1, 1),
-       (2, 'SALARY_WEEKLY', 'SALARY_CALCULATION_HOURLY', 11000, NULL, NULL, 'MONDAY', 0, 0, 1, 1, 1, 1),
-       (3, 'SALARY_MONTHLY', 'SALARY_CALCULATION_FIXED', NULL, 2300000, 25, NULL, 1, 1, 1, 1, 1, 0),
-       (4, 'SALARY_DAILY', 'SALARY_CALCULATION_HOURLY', 9860, NULL, NULL, NULL, 0, 0, 0, 1, 1, 0),
-       (5, 'SALARY_MONTHLY', 'SALARY_CALCULATION_HOURLY', 12000, NULL, 15, NULL, 1, 1, 1, 1, 1, 1);
+INSERT INTO users (provider, provider_id, username, nickname, role, profile_img, is_deleted, fcm_token)
+VALUES ('LOGIN_GOOGLE','ggl-2005','henry','헨리','ROLE_WORKER',NULL,0,NULL);
+SET @u_henry = LAST_INSERT_ID();
 
--- works 테이블 더미 데이터
--- 주의: worker_id와 routine_id는 위 테이블들에서 생성된 ID를 참조해야 합니다.
-INSERT INTO `works` (`worker_id`, `routine_id`, `work_date`, `start_time`, `actual_start_time`, `end_time`,
-                     `actual_end_time`, `rest_time`, `memo`, `daily_income`, `is_repeated`, `repeat_enddate`)
-VALUES (1, 1, '2025-09-15', '09:00', '08:58', '18:00', '18:03', '01:00', '월요일 오픈 근무', 80000, 0, NULL),
-       (2, NULL, '2025-09-16', '14:00', '14:05', '22:00', '22:10', '01:00', '재고 정리', 77000, 0, NULL),
-       (3, NULL, '2025-09-17', '10:00', '10:00', '19:00', '19:00', '01:00', NULL, 100000, 0, NULL),
-       (4, 1, '2025-09-18', '18:00', '17:55', '23:00', '23:00', '00:30', '마감 근무', 45000, 0, NULL),
-       (5, NULL, '2025-09-19', '09:00', '09:02', '15:00', '15:00', '00:30', '오전 파트타임', 54230, 0, NULL),
-       (1, NULL, '2025-09-22', '09:00', '09:00', '18:00', '18:00', '01:00', '반복 근무 테스트', 80000, 1, '2025-10-22'),
-       (2, NULL, '2025-09-23', '14:00', '14:00', '22:00', '22:00', '01:00', NULL, 77000, 1, '2025-11-23');
+-- 토큰
+INSERT INTO social_tokens (user_id, refresh_token, updated_at) VALUES
+                                                                   (@u_alice,'refresh_alice_XXX',NOW()),
+                                                                   (@u_charlie,'refresh_charlie_YYY',NOW()),
+                                                                   (@u_grace,'refresh_grace_ZZZ',NOW());
+
+INSERT INTO user_tokens (user_id, refresh_token, expiry_date, created_at) VALUES
+                                                                              (@u_bob,'rt_bob_111',DATE_ADD(NOW(), INTERVAL 30 DAY),NOW()),
+                                                                              (@u_dana,'rt_dana_222',DATE_ADD(NOW(), INTERVAL 45 DAY),NOW()),
+                                                                              (@u_grace,'rt_grace_333',DATE_ADD(NOW(), INTERVAL 60 DAY),NOW());
+
+-- =====================================
+-- 2) WORKPLACES
+-- =====================================
+INSERT INTO workplaces (owner_id, workplace_name, category_name, is_shared, address, latitude, longitude)
+VALUES (@u_alice,'Cafe MoUp','CAFE',0,'서울시 중구 어딘가 1',37.566536,126.977966);
+SET @wp_cafe = LAST_INSERT_ID();
+
+INSERT INTO workplaces (owner_id, workplace_name, category_name, is_shared, address, latitude, longitude)
+VALUES (@u_charlie,'OneStop Mart','MART',0,'서울시 강남구 어딘가 2',37.497942,127.027621);
+SET @wp_mart = LAST_INSERT_ID();
+
+INSERT INTO workplaces (owner_id, workplace_name, category_name, is_shared, address, latitude, longitude)
+VALUES (NULL,'Popup Store','POPUP',1,'서울시 마포구 어딘가 3',37.549889,126.914561);
+SET @wp_popup = LAST_INSERT_ID();
+
+INSERT INTO workplaces (owner_id, workplace_name, category_name, is_shared, address, latitude, longitude)
+VALUES (@u_fiona,'NightOwl PC','PC_BANG',0,'서울시 송파구 어딘가 4',37.511197,127.098129);
+SET @wp_pc = LAST_INSERT_ID();
+
+-- =====================================
+-- 3) WORKERS (user↔workplace)
+-- =====================================
+INSERT INTO workers (user_id, workplace_id, worker_based_label_color, owner_based_label_color, is_accepted)
+VALUES (@u_bob, @wp_cafe, '#FFAA00', '#0088FF', 1);
+SET @wk_bob = LAST_INSERT_ID();
+
+INSERT INTO workers (user_id, workplace_id, worker_based_label_color, owner_based_label_color, is_accepted)
+VALUES (@u_dana, @wp_mart, '#55CC77', '#CC5577', 1);
+SET @wk_dana = LAST_INSERT_ID();
+
+INSERT INTO workers (user_id, workplace_id, worker_based_label_color, owner_based_label_color, is_accepted)
+VALUES (@u_evan, @wp_popup, '#999999', NULL, 0);
+SET @wk_evan = LAST_INSERT_ID();
+
+INSERT INTO workers (user_id, workplace_id, worker_based_label_color, owner_based_label_color, is_accepted)
+VALUES (@u_grace, @wp_pc, '#AA66FF', '#66FFAA', 1);
+SET @wk_grace = LAST_INSERT_ID();
+
+INSERT INTO workers (user_id, workplace_id, worker_based_label_color, owner_based_label_color, is_accepted)
+VALUES (@u_henry, @wp_pc, '#4444FF', '#FF4444', 1);
+SET @wk_henry = LAST_INSERT_ID();
+
+-- =====================================
+-- 4) ROUTINES (per user) + TASKS
+-- =====================================
+-- Bob
+INSERT INTO routines (user_id, routine_name, alarm_time) VALUES
+    (@u_bob,'오픈체크','08:50:00');
+SET @r_bob_open = LAST_INSERT_ID();
+
+INSERT INTO routine_tasks (routine_id, content, order_index, is_checked) VALUES
+                                                                             (@r_bob_open,'키오스크 전원',1,0),
+                                                                             (@r_bob_open,'원두/소모품 보충',2,0),
+                                                                             (@r_bob_open,'POS 점검',3,0);
+
+-- Dana
+INSERT INTO routines (user_id, routine_name, alarm_time) VALUES
+    (@u_dana,'마감체크','22:05:00');
+SET @r_dana_close = LAST_INSERT_ID();
+
+INSERT INTO routine_tasks (routine_id, content, order_index, is_checked) VALUES
+                                                                             (@r_dana_close,'유통기한 확인',1,0),
+                                                                             (@r_dana_close,'폐기 등록',2,0),
+                                                                             (@r_dana_close,'캐셔 정산',3,0);
+
+-- Evan
+INSERT INTO routines (user_id, routine_name, alarm_time) VALUES
+    (@u_evan,'알바준비','10:00:00');
+SET @r_evan_prep = LAST_INSERT_ID();
+
+INSERT INTO routine_tasks (routine_id, content, order_index, is_checked) VALUES
+                                                                             (@r_evan_prep,'유니폼/명찰',1,0),
+                                                                             (@r_evan_prep,'출근 보고',2,0);
+
+-- Grace
+INSERT INTO routines (user_id, routine_name, alarm_time) VALUES
+    (@u_grace,'오픈체크','11:50:00');
+SET @r_grace_open = LAST_INSERT_ID();
+
+INSERT INTO routine_tasks (routine_id, content, order_index, is_checked) VALUES
+                                                                             (@r_grace_open,'PC 부팅/패치',1,0),
+                                                                             (@r_grace_open,'음료 냉장고 점검',2,0);
+
+-- Henry (루틴 추가해 매핑 가능하게)
+INSERT INTO routines (user_id, routine_name, alarm_time) VALUES
+    (@u_henry,'저녁점검','17:45:00');
+SET @r_henry_evening = LAST_INSERT_ID();
+
+INSERT INTO routine_tasks (routine_id, content, order_index, is_checked) VALUES
+    (@r_henry_evening,'헤드셋/마이크 점검',1,0);
+
+-- =====================================
+-- 5) WORKS (근무 스케줄/실근무)
+-- =====================================
+-- Bob @ Cafe (2건)
+INSERT INTO works (worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time, rest_time, memo, daily_income, hourly_rate, repeat_days, repeat_end_date)
+VALUES (@wk_bob,'2025-10-10','09:00:00','09:05:00','13:00:00','13:10:00','00:15:00','오픈 대체',48000,12000,'MON,WED,FRI','2025-12-31 00:00:00');
+SET @work_bob_1 = LAST_INSERT_ID();
+
+INSERT INTO works (worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time, rest_time, memo, daily_income, hourly_rate, repeat_days, repeat_end_date)
+VALUES (@wk_bob,'2025-10-12','09:00:00','09:02:00','13:00:00','13:05:00','00:10:00','브런치 러시',48000,12000,'MON,WED,FRI','2025-12-31 00:00:00');
+SET @work_bob_2 = LAST_INSERT_ID();
+
+-- Dana @ Mart (1건)
+INSERT INTO works (worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time, rest_time, memo, daily_income, hourly_rate, repeat_days, repeat_end_date)
+VALUES (@wk_dana,'2025-10-11','14:00:00','13:55:00','22:00:00','22:05:00','01:00:00','마감 교육',NULL,NULL,'TUE,THU,SAT','2025-12-31 00:00:00');
+SET @work_dana_1 = LAST_INSERT_ID();
+
+-- Grace @ PC방 (1건)
+INSERT INTO works (worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time, rest_time, memo, daily_income, hourly_rate, repeat_days, repeat_end_date)
+VALUES (@wk_grace,'2025-10-11','12:00:00','11:58:00','18:00:00','18:10:00','00:30:00','오픈/음료 진열',90000,NULL,'SAT,SUN','2025-11-30 00:00:00');
+SET @work_grace_1 = LAST_INSERT_ID();
+
+-- Henry @ PC방 (1건)
+INSERT INTO works (worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time, rest_time, memo, daily_income, hourly_rate, repeat_days, repeat_end_date)
+VALUES (@wk_henry,'2025-10-11','18:00:00','18:01:00','23:00:00','23:02:00','00:20:00','피크타임 지원',NULL,11000,'FRI,SAT','2025-12-31 00:00:00');
+SET @work_henry_1 = LAST_INSERT_ID();
+
+-- =====================================
+-- 6) WORK_ROUTINE_MAPPINGS (works.id ↔ routines.id)
+-- =====================================
+INSERT INTO work_routine_mappings (work_id, routine_id) VALUES
+                                                            (@work_bob_1,   @r_bob_open),
+                                                            (@work_bob_2,   @r_bob_open),
+                                                            (@work_dana_1,  @r_dana_close),
+                                                            (@work_grace_1, @r_grace_open),
+                                                            (@work_henry_1, @r_henry_evening);
+
+-- =====================================
+-- 7) SALARIES (급여 정책)
+-- =====================================
+-- Bob: 주급/시급
+INSERT INTO salaries (worker_id, salary_type, salary_calculation, hourly_rate, fixed_rate, salary_date, salary_day,
+                      has_national_pension, has_health_insurance, has_employment_insurance, has_industrial_accident, has_income_tax, has_night_allowance)
+VALUES (@wk_bob,'SALARY_WEEKLY','SALARY_CALCULATION_HOURLY',12000,NULL,NULL,'FRIDAY',0,0,1,1,1,0);
+
+-- Dana: 월급/고정, 25일
+INSERT INTO salaries (worker_id, salary_type, salary_calculation, hourly_rate, fixed_rate, salary_date, salary_day,
+                      has_national_pension, has_health_insurance, has_employment_insurance, has_industrial_accident, has_income_tax, has_night_allowance)
+VALUES (@wk_dana,'SALARY_MONTHLY','SALARY_CALCULATION_FIXED',NULL,2000000,25,NULL,1,1,1,1,1,1);
+
+-- Evan: 주급/시급(대기지만 정책 선등록)
+INSERT INTO salaries (worker_id, salary_type, salary_calculation, hourly_rate, fixed_rate, salary_date, salary_day,
+                      has_national_pension, has_health_insurance, has_employment_insurance, has_industrial_accident, has_income_tax, has_night_allowance)
+VALUES (@wk_evan,'SALARY_WEEKLY','SALARY_CALCULATION_HOURLY',13000,NULL,NULL,'SATURDAY',0,0,1,1,1,0);
+
+-- Grace: 일급/고정
+INSERT INTO salaries (worker_id, salary_type, salary_calculation, hourly_rate, fixed_rate, salary_date, salary_day,
+                      has_national_pension, has_health_insurance, has_employment_insurance, has_industrial_accident, has_income_tax, has_night_allowance)
+VALUES (@wk_grace,'SALARY_DAILY','SALARY_CALCULATION_FIXED',NULL,100000,NULL,NULL,0,0,1,1,1,0);
+
+-- Henry: 주급/시급
+INSERT INTO salaries (worker_id, salary_type, salary_calculation, hourly_rate, fixed_rate, salary_date, salary_day,
+                      has_national_pension, has_health_insurance, has_employment_insurance, has_industrial_accident, has_income_tax, has_night_allowance)
+VALUES (@wk_henry,'SALARY_WEEKLY','SALARY_CALCULATION_HOURLY',11000,NULL,NULL,'FRIDAY',0,0,1,1,1,1);
+
+-- =====================================
+-- 8) ALARMS
+-- =====================================
+INSERT INTO normal_alarms (sender_id, receiver_id, title, content, sent_at, read_at, alarm_type) VALUES
+                                                                                                     (@u_alice, @u_evan,  '근무지 초대', 'Popup Store로 초대합니다.', '2025-10-08 10:00:00', NULL, 'ALARM_INVITE_REQUEST'),
+                                                                                                     (@u_evan,  @u_alice, '초대 거절', '개인 사정으로 이번 주는 어렵습니다.', '2025-10-08 12:00:00', '2025-10-08 12:10:00', 'ALARM_INVITE_REJECT'),
+                                                                                                     (@u_fiona, @u_grace, '공지 알림', '주말 오픈 10분 전 점검 부탁', '2025-10-10 11:30:00', '2025-10-10 11:35:00', 'ALARM_NOTIFICATION'),
+                                                                                                     (@u_alice, @u_bob,   '초대 수락', 'Cafe MoUp 근무 배정 완료', '2025-10-09 09:00:00', '2025-10-09 09:05:00', 'ALARM_INVITE_ACCEPT');
+
+INSERT INTO admin_alarms (title, content, sent_at, alarm_type) VALUES
+    ('시스템 점검 안내','10/15 02:00~03:00 서버 점검 예정','2025-10-12 09:00:00','ALARM_ANNOUNCEMENT');
