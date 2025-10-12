@@ -7,24 +7,21 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleTokenResponse;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.moup.server.common.Login;
-import com.moup.server.exception.InvalidTokenException;
-import com.moup.server.exception.UserNotFoundException;
-import com.moup.server.model.entity.User;
+import com.moup.server.repository.SocialTokenRepository;
 import jakarta.security.auth.message.AuthException;
+
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.StringTokenizer;
-import lombok.RequiredArgsConstructor;
+import java.util.*;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
-public class GoogleAuthService implements AuthService {
+public class GoogleAuthService extends BaseAuthService {
+
+    private static final String GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 
     @Value("${google.client.id}")
     private String googleClientId;
@@ -33,28 +30,31 @@ public class GoogleAuthService implements AuthService {
     @Value("${google.redirect.uri}")
     private String googleRedirectUri;
 
-    @Override
-    public Login getProvider() {
-        return Login.LOGIN_GOOGLE;
+    // 생성자를 통해 SocialTokenRepository를 부모 클래스로 전달합니다.
+    public GoogleAuthService(SocialTokenRepository socialTokenRepository) {
+        super(socialTokenRepository);
     }
+
+    @Override
+    public Login getProvider() { return Login.LOGIN_GOOGLE; }
+
+    @Override
+    protected String getRevokeUrl() { return GOOGLE_REVOKE_URL; }
+
+    @Override
+    protected String buildRevokeRequestBody(String refreshToken) { return String.format("token=%s", refreshToken); }
 
     @Override
     @Transactional
     public Map<String, Object> exchangeAuthCode(String authCode) throws AuthException {
+        // 이 메서드는 Google Client Library를 사용하므로 기존 로직을 그대로 유지합니다.
         try {
-            // 1. 소셜 OAuth 서버로 토큰 교환 요청 (code_verifier 추가)
             GoogleTokenResponse tokenResponse = new GoogleAuthorizationCodeTokenRequest(
-                    new NetHttpTransport(),
-                    new GsonFactory(),
-                    googleClientId,
-                    googleClientSecret,
-                    authCode,
-                ""
-            ).execute();
+                    new NetHttpTransport(), new GsonFactory(), googleClientId, googleClientSecret, authCode, "")
+                    .execute();
 
-            // 2. ID 토큰 검증
-            GoogleIdTokenVerifier idTokenVerifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(),
-                    new GsonFactory()).setAudience(Collections.singletonList(googleClientId)).build();
+            GoogleIdTokenVerifier idTokenVerifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new GsonFactory())
+                    .setAudience(Collections.singletonList(googleClientId)).build();
 
             GoogleIdToken idToken = tokenResponse.parseIdToken();
 
@@ -62,12 +62,10 @@ public class GoogleAuthService implements AuthService {
                 throw new AuthException("ID 토큰 검증에 실패했습니다.");
             }
 
-            // 3. 사용자 정보 추출
             GoogleIdToken.Payload payload = idToken.getPayload();
             String userId = payload.getSubject();
             String name = (String) payload.get("name");
 
-            // 4. 소셜 토큰 정보 추출 및 반환
             String accessToken = tokenResponse.getAccessToken();
             String refreshToken = tokenResponse.getRefreshToken();
 
@@ -79,17 +77,7 @@ public class GoogleAuthService implements AuthService {
 
             return userInfo;
         } catch (IOException | GeneralSecurityException e) {
-            throw new AuthException("인증 코드 교환 또는 ID 토큰 검증 실패.");
+            throw new AuthException("Google 인증 코드 교환 또는 ID 토큰 검증에 실패했습니다.", e);
         }
-    }
-
-    @Override
-    public String getProviderId(Map<String, Object> userInfo) {
-        return (String) userInfo.get("userId");
-    }
-
-    @Override
-    public String getUsername(Map<String, Object> userInfo) {
-        return (String) userInfo.get("name");
     }
 }

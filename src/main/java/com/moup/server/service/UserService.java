@@ -45,7 +45,7 @@ public class UserService {
             // 1-1. 소셜 토큰 관리
             String socialRefreshToken = userCreateRequest.getSocialRefreshToken();
             if (!socialRefreshToken.isEmpty()) {
-                // Apple 로그인의 경우 Revoke를 위한 Social Refresh Token 저장
+                // Revoke를 위한 Social Refresh Token 저장
                 socialTokenService.saveOrUpdateToken(userId, socialRefreshToken);
             }
 
