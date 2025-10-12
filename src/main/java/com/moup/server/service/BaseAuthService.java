@@ -4,8 +4,10 @@ import com.moup.server.model.entity.SocialToken;
 import com.moup.server.repository.SocialTokenRepository;
 import jakarta.security.auth.message.AuthException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -16,6 +18,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
+@Slf4j
 @RequiredArgsConstructor
 public abstract class BaseAuthService implements AuthService {
 
@@ -31,23 +34,28 @@ public abstract class BaseAuthService implements AuthService {
 
     /// \[템플릿 메서드\] 토큰 해제의 전체적인 흐름을 정의합니다.
     @Override
-    @Async
-    @Transactional(readOnly = true)
-    public void revokeToken(Long userId) throws AuthException {
+    @Retryable(
+            retryFor = { IOException.class },
+            backoff = @Backoff(delay = 1000, multiplier = 2.0)
+    )
+    public void revokeToken(Long userId) throws AuthException, IOException {
         // 1. DB에서 공급자(provider)에 맞는 리프레시 토큰 조회
         SocialToken socialToken = socialTokenRepository.findByUserId(userId)
                 .orElseThrow(() -> new AuthException(getProvider().toString() + " 소셜 리프레시 토큰이 없습니다."));
 
-        try {
-            // 2. 각 공급자(provider)에 맞는 요청 본문 생성
-            String postData = buildRevokeRequestBody(socialToken.getRefreshToken());
+        // 2. 각 공급자(provider)에 맞는 요청 본문 생성
+        String postData = buildRevokeRequestBody(socialToken.getRefreshToken());
 
-            // 3. 공통 HTTP 요청 로직 호출
-            sendPostRequest(new URL(getRevokeUrl()), postData);
+        // 3. 공통 HTTP 요청 로직 호출
+        sendPostRequest(new URL(getRevokeUrl()), postData);
+    }
 
-        } catch (IOException e) {
-            throw new AuthException(getProvider().toString() + " Revoke API 호출 중 오류가 발생했습니다.", e);
-        }
+    /// 모든 재시도가 실패했을 때 호출될 복구 메서드
+    @Recover
+    public void recoverRevokeToken(IOException e, Long userId) throws AuthException {
+        log.error("All retries failed for revokeToken. userId: {}. Error: {}", userId, e.getMessage());
+        throw new AuthException(getProvider().toString() + " Revoke API 호출 중 오류가 발생했습니다.", e);
+        // 여기에 실패 내역을 DB에 기록하는 등의 후처리 로직을 추가할 수 있습니다.
     }
 
     /// \[헬퍼 메서드\] POST 요청을 보내고 응답 코드가 200 OK가 아니면 예외를 던집니다.
@@ -109,6 +117,8 @@ public abstract class BaseAuthService implements AuthService {
 
         return response.toString();
     }
+
+    // --- 하위 클래스에서 반드시 구현해야 할 추상 메서드들 ---
 
     /// 토큰 해제 API의 전체 URL
     protected abstract String getRevokeUrl();

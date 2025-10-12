@@ -60,7 +60,7 @@ public class AppleAuthService extends BaseAuthService {
     protected String getRevokeUrl() { return APPLE_REVOKE_URL; }
 
     @Override
-    protected String buildRevokeRequestBody(String refreshToken) throws AuthException {
+    protected String buildRevokeRequestBody(String refreshToken) {
         String clientSecret = appleJwtUtil.createClientSecret();
         return String.format("client_id=%s&client_secret=%s&token=%s&token_type_hint=%s",
                 appleClientId, clientSecret, refreshToken, "refresh_token");

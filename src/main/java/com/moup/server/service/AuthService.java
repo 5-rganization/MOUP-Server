@@ -31,5 +31,5 @@ public interface AuthService {
     /// 소셜 로그인의 연결을 끊습니다.
     /// @param userId 사용자 ID
     /// @throws AuthException Authorization Code 혹은 토큰 검증 실패
-    void revokeToken(Long userId) throws AuthException;
+    void revokeToken(Long userId) throws AuthException, IOException;
 }
