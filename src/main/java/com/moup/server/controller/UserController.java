@@ -76,7 +76,7 @@ public class UserController {
     public ResponseEntity<?> deleteUser() {
         Long userId = identityService.getCurrentUserId();
 
-        UserDeleteResponse userDeleteResponse = userService.deleteSoftUserByUserId(userId);
+        UserDeleteResponse userDeleteResponse = userService.deleteUserSoftlyByUserId(userId);
 
         return ResponseEntity.ok().body(userDeleteResponse);
     }

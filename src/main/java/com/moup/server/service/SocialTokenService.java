@@ -2,7 +2,6 @@ package com.moup.server.service;
 
 import com.moup.server.model.entity.SocialToken;
 import com.moup.server.repository.SocialTokenRepository;
-import com.moup.server.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,7 +12,6 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class SocialTokenService {
 
-    private final JwtUtil jwtUtil;
     private final SocialTokenRepository socialTokenRepository;
 
     @Transactional
@@ -35,5 +33,4 @@ public class SocialTokenService {
             socialTokenRepository.save(newToken);
         }
     }
-
 }
