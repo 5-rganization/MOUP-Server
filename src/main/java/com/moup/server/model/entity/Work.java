@@ -25,6 +25,6 @@ public class Work {
     private String memo;
     private Integer hourlyRate;
     private Integer dailyIncome;
-    private List<DayOfWeek> repeatDays;
+    private String repeatDays;
     private LocalDate repeatEndDate;
 }

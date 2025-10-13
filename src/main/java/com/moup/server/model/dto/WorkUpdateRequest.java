@@ -11,6 +11,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 @Builder
@@ -45,6 +46,10 @@ public class WorkUpdateRequest {
     private LocalDate repeatEndDate;
 
     public Work toEntity(Long workId, Long workerId, LocalDate workDate, Integer hourlyRate, Integer dailyIncome) {
+        String repeatDaysStr = repeatDays.stream()
+                .map(DayOfWeek::name)
+                .collect(Collectors.joining(","));
+
         return Work.builder()
                 .id(workId)
                 .workerId(workerId)
@@ -57,7 +62,7 @@ public class WorkUpdateRequest {
                 .memo(memo)
                 .hourlyRate(hourlyRate)
                 .dailyIncome(dailyIncome)
-                .repeatDays(repeatDays)
+                .repeatDays(repeatDaysStr)
                 .repeatEndDate(repeatEndDate)
                 .build();
     }
