@@ -14,10 +14,12 @@ import lombok.*;
 @AllArgsConstructor
 public class User {
     private Long id;
+    @Enumerated(EnumType.STRING)
     private Login provider;
     private String providerId;
     private String username;
     private String nickname;
+    @Enumerated(EnumType.STRING)
     private Role role;
     private String profileImg;
     private String createdAt;

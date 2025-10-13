@@ -11,27 +11,28 @@ import com.moup.server.model.entity.User;
 import com.moup.server.repository.UserRepository;
 import com.moup.server.util.JwtUtil;
 import com.moup.server.util.NameVerifyUtil;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.apache.tomcat.util.http.fileupload.FileUploadException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.Optional;
-import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
     private final FileService fileService;
     private final S3Service s3Service;
-    private final UserRepository userRepository;
     private final SocialTokenService socialTokenService;
     private final UserTokenService userTokenService;
+
+    private final UserRepository userRepository;
+
     private final NameVerifyUtil nameVerifyUtil;
     private final JwtUtil jwtUtil;
     private final FCMTokenService fcmTokenService;
@@ -46,7 +47,7 @@ public class UserService {
             // 1-1. 소셜 토큰 관리
             String socialRefreshToken = userCreateRequest.getSocialRefreshToken();
             if (!socialRefreshToken.isEmpty()) {
-                // Apple 로그인의 경우 Revoke를 위한 Social Refresh Token 저장
+                // Revoke를 위한 Social Refresh Token 저장
                 socialTokenService.saveOrUpdateToken(userId, socialRefreshToken);
             }
 
@@ -74,6 +75,7 @@ public class UserService {
         }
     }
 
+    @Transactional
     public RegisterResponse completeCreateUser(UserRegisterRequest userRegisterRequest) {
         Long userId = userRegisterRequest.getUserId();
         User userToUpdate = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
@@ -88,6 +90,7 @@ public class UserService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
     public Optional<User> findByProviderAndId(Login provider, String providerId) {
         return userRepository.findByProviderAndId(provider, providerId);
     }
@@ -100,6 +103,7 @@ public class UserService {
         return user;
     }
 
+    @Transactional
     public UserProfileImageResponse updateProfileImage(Long userId, MultipartFile profileImage) throws FileUploadException {
         User user = findUserById(userId);
 
@@ -122,7 +126,8 @@ public class UserService {
         }
     }
 
-    public UserDeleteResponse deleteSoftUserByUserId(Long userId) {
+    @Transactional
+    public UserDeleteResponse deleteUserSoftlyByUserId(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
 
         if (user.isDeleted()) { throw new AlreadyDeletedException(); }
@@ -136,6 +141,12 @@ public class UserService {
                 .build();
     }
 
+    @Transactional
+    public void deleteUserHardlyByUserId(Long userId) {
+        userRepository.hardDeleteUserById(userId);
+    }
+
+    @Transactional
     public void restoreUserByUserId(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
         if (!user.isDeleted()) { throw new UserAlreadyExistsException(); }
@@ -143,6 +154,7 @@ public class UserService {
         userRepository.undeleteUserById(userId);
     }
 
+    @Transactional
     public UserUpdateNicknameResponse updateNicknameByUserId(Long userId, String nickname) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
         if (user.isDeleted()) { throw new AlreadyDeletedException(); }

@@ -4,16 +4,16 @@ USE moup;
 
 CREATE TABLE `users`
 (
-    `id`          BIGINT AUTO_INCREMENT                NOT NULL PRIMARY KEY,
-    `provider`    ENUM ('LOGIN_GOOGLE', 'LOGIN_APPLE') NOT NULL,
-    `provider_id` VARCHAR(100)                         NOT NULL,
+    `id`          BIGINT AUTO_INCREMENT                                              NOT NULL PRIMARY KEY,
+    `provider`    ENUM ('LOGIN_GOOGLE', 'LOGIN_APPLE', 'LOGIN_NAVER', 'LOGIN_KAKAO') NOT NULL,
+    `provider_id` VARCHAR(100)                                                       NOT NULL,
     `username`    VARCHAR(20),
     `nickname`    VARCHAR(20),
-    `role`        ENUM ('ROLE_WORKER', 'ROLE_OWNER', 'ROLE_ADMIN') DEFAULT 'ROLE_WORKER',
+    `role`        ENUM ('ROLE_WORKER', 'ROLE_OWNER', 'ROLE_ADMIN')                   DEFAULT 'ROLE_WORKER',
     `profile_img` VARCHAR(255),
-    `created_at`  TIMESTAMP                                        DEFAULT CURRENT_TIMESTAMP(),
+    `created_at`  TIMESTAMP                                                          DEFAULT CURRENT_TIMESTAMP(),
     `deleted_at`  TIMESTAMP,
-    `is_deleted`  TINYINT(1)                                       DEFAULT 0,
+    `is_deleted`  TINYINT(1)                                                         DEFAULT 0,
     `fcm_token`   TEXT,
     UNIQUE KEY `unique_provider` (`provider`, `provider_id`)
 );
@@ -53,7 +53,6 @@ CREATE TABLE `routine_tasks`
     `routine_id`  BIGINT                NOT NULL,
     `content`     VARCHAR(30)           NOT NULL,
     `order_index` INT                   NOT NULL,
-    `is_checked`  TINYINT(1),
     FOREIGN KEY (`routine_id`) REFERENCES routines (`id`) ON DELETE CASCADE,
     UNIQUE KEY `unique_routine_order` (`routine_id`, `order_index`)
 );
@@ -111,11 +110,11 @@ CREATE TABLE `works`
     `id`                BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
     `worker_id`         BIGINT                NOT NULL,
     `work_date`         DATE                  NOT NULL,
-    `start_time`        TIME                  NOT NULL,
-    `actual_start_time` TIME                  NOT NULL,
-    `end_time`          TIME                  NOT NULL,
-    `actual_end_time`   TIME                  NOT NULL,
-    `rest_time`         TIME                  NULL,
+    `start_time`        DATETIME              NOT NULL,
+    `actual_start_time` DATETIME              NOT NULL,
+    `end_time`          DATETIME              NOT NULL,
+    `actual_end_time`   DATETIME              NOT NULL,
+    `rest_time`         INT                   NULL,
     `memo`              VARCHAR(200)          NULL,
     `daily_income`      INT                   NULL,
     `hourly_rate`       INT                   NULL,
@@ -129,7 +128,7 @@ CREATE TABLE `work_routine_mappings`
     `id`         BIGINT AUTO_INCREMENT PRIMARY KEY,
     `work_id`    BIGINT NOT NULL,
     `routine_id` BIGINT NOT NULL,
-    FOREIGN KEY (`work_id`) REFERENCES workers (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`work_id`) REFERENCES works (`id`) ON DELETE CASCADE,
     FOREIGN KEY (`routine_id`) REFERENCES routines (`id`) ON DELETE CASCADE
 );
 

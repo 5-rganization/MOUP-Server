@@ -2,7 +2,6 @@ package com.moup.server.service;
 
 import com.google.gson.Gson;
 import com.moup.server.common.Login;
-import com.moup.server.model.entity.SocialToken;
 import com.moup.server.repository.SocialTokenRepository;
 import com.moup.server.util.AppleJwtUtil;
 import com.nimbusds.jose.JOSEException;
@@ -19,27 +18,20 @@ import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import jakarta.security.auth.message.AuthException;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.*;
 
-import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
-public class AppleAuthService implements AuthService {
+public class AppleAuthService extends BaseAuthService {
 
     private static final String APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys";
+    private static final String APPLE_ISSUER_URL = "https://appleid.apple.com";
     private static final String APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token";
     private static final String APPLE_REVOKE_URL = "https://appleid.apple.com/auth/revoke";
 
@@ -50,174 +42,83 @@ public class AppleAuthService implements AuthService {
 
     private final JWKSource<SecurityContext> jwkSet;
     private final AppleJwtUtil appleJwtUtil;
-    private final SocialTokenRepository socialTokenRepository;
 
     public AppleAuthService(@Value("${apple.team.id}") String appleTeamId,
                             @Value("${apple.key.id}") String appleKeyId,
                             @Value("${apple.private.key}") String applePrivateKey,
                             @Value("${apple.client.id}") String appleClientId,
                             SocialTokenRepository socialTokenRepository) throws MalformedURLException {
-        // @Value로 주입받는 값들을 사용해 필드 초기화
+        super(socialTokenRepository);
         this.appleJwtUtil = new AppleJwtUtil(appleTeamId, appleKeyId, applePrivateKey, appleClientId);
-        // jwkSet 초기화
         this.jwkSet = JWKSourceBuilder.create(new URL(APPLE_JWKS_URL)).build();
-        // Repository 주입
-        this.socialTokenRepository = socialTokenRepository;
     }
 
     @Override
-    public Login getProvider() {
-        return Login.LOGIN_APPLE;
+    public Login getProvider() { return Login.LOGIN_APPLE; }
+
+    @Override
+    protected String getRevokeUrl() { return APPLE_REVOKE_URL; }
+
+    @Override
+    protected String buildRevokeRequestBody(String refreshToken) {
+        String clientSecret = appleJwtUtil.createClientSecret();
+        return String.format("client_id=%s&client_secret=%s&token=%s&token_type_hint=%s",
+                appleClientId, clientSecret, refreshToken, "refresh_token");
     }
 
     @Override
     public Map<String, Object> exchangeAuthCode(String authCode) throws AuthException {
-
         try {
             // 1. JWT 형식의 Client Secret 동적 생성
             String clientSecret = appleJwtUtil.createClientSecret();
 
-            // 2. HTTP 요청으로 토큰 교환
-            URL url = new URL(APPLE_TOKEN_URL);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("POST");
-            conn.setDoOutput(true);
-
+            // 2. 토큰 요청을 위한 본문(body) 데이터 구성
             String postData = String.format("client_id=%s&client_secret=%s&code=%s&grant_type=%s&redirect_uri=%s",
                     appleClientId, clientSecret, authCode, "authorization_code", appleRedirectUri);
 
-            try (OutputStream os = conn.getOutputStream()) {
-                byte[] input = postData.getBytes(StandardCharsets.UTF_8);
-                os.write(input, 0, input.length);
-            }
+            // 3. 공통 헬퍼를 사용해 Apple 서버에 토큰 요청 후, 응답(JSON)을 문자열로 받기
+            URL tokenUrl = new URL(APPLE_TOKEN_URL);
+            String responseBody = sendPostRequestAndGetResponse(tokenUrl, postData);
 
-            int responseCode = conn.getResponseCode();
-            if (responseCode != HttpURLConnection.HTTP_OK) {
-                // 토큰 교환 실패 시 오류 메시지 읽기
-                try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getErrorStream()))) {
-                    String line;
-                    StringBuilder response = new StringBuilder();
-                    while ((line = br.readLine()) != null) {
-                        response.append(line);
-                    }
-                    throw new AuthException("Apple Auth Code 교환 실패: " + response);
-                }
-            }
+            // 4. JSON 응답 파싱 및 토큰 추출
+            Gson gson = new Gson();
+            Map<String, Object> tokenResponse = gson.fromJson(responseBody, Map.class);
+            String idTokenString = (String) tokenResponse.get("id_token");
+            String socialAccessToken = (String) tokenResponse.get("access_token");
+            String socialRefreshToken = (String) tokenResponse.get("refresh_token");
 
-            // HTTP 응답 파싱 및 토큰 추출
-            try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
-                String line;
-                StringBuilder response = new StringBuilder();
-                while ((line = br.readLine()) != null) {
-                    response.append(line);
-                }
+            // 5. ID 토큰 검증
+            ConfigurableJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
+            JWSKeySelector<SecurityContext> keySelector = new JWSVerificationKeySelector<>(JWSAlgorithm.RS256, jwkSet);
+            jwtProcessor.setJWSKeySelector(keySelector);
 
-                // 3. 응답에서 ID 토큰, Access Token, Refresh Token 추출
-                Gson gson = new Gson();
-                Map<String, Object> tokenResponse = gson.fromJson(response.toString(), Map.class);
-                String idTokenString = (String) tokenResponse.get("id_token");
-                String socialAccessToken = (String) tokenResponse.get("access_token");
-                String socialRefreshToken = (String) tokenResponse.get("refresh_token");
+            // ID 토큰의 Audience, Issuer 등 필수 클레임 검증 설정
+            jwtProcessor.setJWTClaimsSetVerifier(
+                    new DefaultJWTClaimsVerifier<>(
+                            new HashSet<>(Collections.singletonList(appleClientId)), // Audience
+                            new JWTClaimsSet.Builder().issuer(APPLE_ISSUER_URL).build(), // Issuer
+                            new HashSet<>(Arrays.asList("exp", "iat", "sub")), // 필수 클레임
+                            null
+                    )
+            );
 
-                // 4. ID 토큰 검증
-                ConfigurableJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
-                JWSKeySelector<SecurityContext> keySelector = new JWSVerificationKeySelector<>(JWSAlgorithm.RS256, jwkSet);
-                jwtProcessor.setJWSKeySelector(keySelector);
+            JWTClaimsSet claimsSet = jwtProcessor.process(idTokenString, null);
 
-                JWTClaimsSet exactMatchClaims = new JWTClaimsSet.Builder().issuer("https://appleid.apple.com").build();
-                Set<String> requiredClaims = new HashSet<>();
-                requiredClaims.add("exp");
-                requiredClaims.add("iat");
+            // 6. 검증된 토큰에서 사용자 정보 추출
+            String userId = claimsSet.getSubject();  // 사용자의 고유 ID
+            String email = claimsSet.getStringClaim("email");
 
-                jwtProcessor.setJWTClaimsSetVerifier(
-                        new DefaultJWTClaimsVerifier<>(
-                                new HashSet<>(Collections.singletonList(appleClientId)),
-                                exactMatchClaims,
-                                requiredClaims,
-                                null
-                        )
-                );
+            // 7. 결과 정보를 Map에 담아 반환
+            Map<String, Object> userInfo = new HashMap<>();
+            userInfo.put("userId", userId);
+            userInfo.put("email", email);  // Apple 정책에 따라 최초 1회만 제공될 수 있음
+            userInfo.put("socialAccessToken", socialAccessToken);
+            userInfo.put("socialRefreshToken", socialRefreshToken);
 
-                JWTClaimsSet claimsSet = jwtProcessor.process(idTokenString, null);
+            return userInfo;
 
-                // 5. 사용자 정보 추출
-                String userId = claimsSet.getSubject();
-                String email = claimsSet.getStringClaim("email");
-
-                Map<String, Object> userInfo = new HashMap<>();
-                userInfo.put("userId", userId);
-                userInfo.put("email", email);
-                userInfo.put("socialAccessToken", socialAccessToken);
-                userInfo.put("socialRefreshToken", socialRefreshToken);
-                return userInfo;
-            }
-
-        } catch (JOSEException | ParseException | BadJOSEException | IOException | GeneralSecurityException e) {
-            throw new AuthException("Apple 인증 코드 교환 또는 ID 토큰 검증 실패.", e);
-        }
-    }
-
-    @Override
-    public String getProviderId(Map<String, Object> userInfo) {
-        return (String) userInfo.get("userId");
-    }
-
-    @Override
-    public String getUsername(Map<String, Object> userInfo) {
-        return null;
-    }
-
-    @Async
-    public void revokeToken(Long userId) throws AuthException {
-        // 1. DB에서 해당 유저의 refreshToken 조회
-        Optional<SocialToken> socialTokenOptional = socialTokenRepository.findByUserId(userId);
-
-        if (socialTokenOptional.isPresent()) {
-            SocialToken socialToken = socialTokenOptional.get();
-            String refreshToken = socialToken.getRefreshToken();
-
-            // 2. JWT 형식의 Client Secret 동적 생성
-            String clientSecret = appleJwtUtil.createClientSecret();
-
-            try {
-                // 3. Apple Revoke API 호출을 위한 HTTP 연결 설정
-                URL url = new URL(APPLE_REVOKE_URL);
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("POST");
-                connection.setDoOutput(true);
-                connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-
-                // 4. 요청 본문(form-data) 구성
-                String postData = String.format("client_id=%s&client_secret=%s&token=%s&token_type_hint=%s",
-                        appleClientId, clientSecret, refreshToken, "refresh_token");
-
-                // 5. 요청 전송
-                try (OutputStream os = connection.getOutputStream()) {
-                    byte[] input = postData.getBytes(StandardCharsets.UTF_8);
-                    os.write(input, 0, input.length);
-                }
-
-                // 6. 응답 코드 확인
-                int responseCode = connection.getResponseCode();
-                if (responseCode != HttpURLConnection.HTTP_OK) {
-                    // 200 OK가 아니면 실패로 간주하고 에러 메시지 반환
-                    try (BufferedReader br = new BufferedReader(new InputStreamReader(connection.getErrorStream()))) {
-                        String line;
-                        StringBuilder response = new StringBuilder();
-                        while ((line = br.readLine()) != null) {
-                            response.append(line);
-                        }
-                        throw new AuthException("Apple Revoke API 호출 실패: " + response);
-                    }
-                }
-                // 200 OK 응답을 받으면 성공으로 간주, 별도의 응답 본문은 없음
-                // DB에서 해당 토큰 정보 삭제 로직은 AdminService에서 처리
-
-            } catch (IOException e) {
-                throw new AuthException("Apple Revoke API 호출 중 네트워크 오류 발생.", e);
-            }
-        } else {
-            throw new AuthException("Apple Revoke API 호출 실패: 소셜 리프레시 토큰 없음");
+        } catch (JOSEException | ParseException | BadJOSEException | IOException e) {
+            throw new AuthException("Apple 인증 코드 교환 또는 ID 토큰 검증에 실패했습니다.", e);
         }
     }
 }
