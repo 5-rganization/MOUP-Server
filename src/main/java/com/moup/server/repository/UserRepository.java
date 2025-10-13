@@ -40,11 +40,8 @@ public interface UserRepository {
     @Delete("DELETE FROM users WHERE id = #{id}")
     void hardDeleteUserById(Long id);
 
-    @Select("SELECT * FROM users WHERE is_deleted = 1")
-    List<User> findAllHardDeleteUsers();
-
     @Select("SELECT * FROM users WHERE is_deleted = 1 AND deleted_at < #{threeDaysAgo}")
-    List<User> findAllOldHardDeleteUsers(LocalDateTime threeDaysAgo);
+    List<User> findAllHardDeleteUsers(LocalDateTime threeDaysAgo);
 
     @Update("UPDATE users SET nickname = #{nickname}, role = #{role} WHERE id = #{id}")
     void updateById(Long id, String nickname, Role role);
