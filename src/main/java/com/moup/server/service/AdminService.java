@@ -18,10 +18,10 @@ public class AdminService {
     @Value("${user.delete.grace-period}")
     private int gracePeriod;
 
-    public void hardDeleteOldUsers(Boolean immediate) {
+    public void hardDeleteOldUsers(Boolean isImmediate) {
         // 하드 삭제 대상 유저 목록 조회
         List<User> hardDeleteUsers;
-        if (Boolean.TRUE.equals(immediate)) {
+        if (Boolean.TRUE.equals(isImmediate)) {
             hardDeleteUsers = userRepository.findAllHardDeleteUsers();
         } else {
             LocalDateTime threeDaysAgo = LocalDateTime.now().minusDays(gracePeriod);
