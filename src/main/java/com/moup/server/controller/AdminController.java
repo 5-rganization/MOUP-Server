@@ -32,9 +32,9 @@ public class AdminController {
     @PreAuthorize("hasRole('ROLE_ADMIN')") // 관리자 권한 필요
     public ResponseEntity<Void> hardDeleteOldUsers(
             @Parameter(name = "immediate", description = "삭제 범위 (빈 값 or `false`: 유예 기간 이상 삭제 상태인 유저 삭제, `true`: 유예 기간에 상관없이 삭제 상태인 유저 즉시 삭제)", in = ParameterIn.QUERY, schema = @Schema(allowableValues = {"false", "true"}))
-            @RequestParam(name = "immediate", required = false) Boolean isImmediate
+            @RequestParam(name = "immediate", required = false) Boolean immediate
     ) {
-        adminService.hardDeleteOldUsers(isImmediate);
+        adminService.hardDeleteOldUsers(immediate);
         return ResponseEntity.noContent().build();
     }
 }
