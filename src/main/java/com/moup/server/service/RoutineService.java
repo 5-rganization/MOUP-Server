@@ -141,4 +141,15 @@ public class RoutineService {
             throw new RoutineNotFoundException();
         }
     }
+
+    @Transactional
+    public void mappingRoutineToWork(Long userId, Long routineId, Long workId) {
+        if (!routineRepository.existByIdAndUserId(routineId, userId)) { throw new RoutineNotFoundException(); }
+        routineRepository.mappingRoutineToWork(routineId, workId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Routine> getMappedRoutineByWorkId(Long workId) {
+        return routineRepository.findRoutinesByWorkId(workId);
+    }
 }

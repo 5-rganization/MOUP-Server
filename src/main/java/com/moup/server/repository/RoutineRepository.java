@@ -63,17 +63,20 @@ public interface RoutineRepository {
 
     /// 루틴과 근무를 연결하는 매핑을 생성합니다.
     ///
-    /// @param workId 연결할 근무의 ID
+    /// @param workId    연결할 근무의 ID
     /// @param routineId 연결할 루틴의 ID
-    /// @return 생성된 행의 수
     @Insert("INSERT INTO work_routine_mappings (work_id, routine_id) VALUES (#{workId}, #{routineId})")
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
-    Long mappingRoutineToWork(Long routineId, Long workId);
+    void mappingRoutineToWork(Long routineId, Long workId);
 
     /// 루틴의 ID와 사용자 ID를 통해 해당 루틴을 찾고, 그 루틴 객체를 반환하는 메서드
     ///
     /// @param workId 조회할 근무의 ID
     /// @return 조회된 Routine 객체, 없으면 Optional.empty
-    @Select("SELECT routine_id FROM work_routine_mappings WHERE work_id = #{workId}")
-    Optional<Routine> findByWorkId(Long workId);
+    @Select("""
+            SELECT * FROM routines
+            JOIN work_routine_mappings ON routines.id = work_routine_mappings.routine_id
+            WHERE work_routine_mappings.work_id = #{workId}
+            """)
+    List<Routine> findRoutinesByWorkId(Long workId);
 }
