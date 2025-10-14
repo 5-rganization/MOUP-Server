@@ -39,6 +39,9 @@ dependencies {
     implementation 'com.google.api-client:google-api-client:2.7.2'
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
     implementation 'com.nimbusds:nimbus-jose-jwt:10.0.2'
+    
+    // Firebase 의존성
+    implementation("com.google.firebase:firebase-admin:8.1.0")
 
     compileOnly 'org.projectlombok:lombok'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'

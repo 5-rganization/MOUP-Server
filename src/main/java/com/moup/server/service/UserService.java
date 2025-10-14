@@ -35,6 +35,7 @@ public class UserService {
 
     private final NameVerifyUtil nameVerifyUtil;
     private final JwtUtil jwtUtil;
+    private final FCMTokenService fcmTokenService;
 
     @Transactional
     public LoginResponse startCreateUser(UserCreateRequest userCreateRequest) {
@@ -60,6 +61,9 @@ public class UserService {
             String accessToken = jwtUtil.createAccessToken(tokenCreateRequest);
             String refreshToken = jwtUtil.createRefreshToken(tokenCreateRequest);
             userTokenService.saveOrUpdateToken(refreshToken, jwtUtil.getRefreshTokenExpiration());
+            
+            // 1-3. FCM 토큰 관리
+            fcmTokenService.updateUserFCMToken(userId, userCreateRequest.getFcmToken());
 
             return LoginResponse.builder()
                     .role(null)

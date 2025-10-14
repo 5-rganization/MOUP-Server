@@ -20,4 +20,6 @@ public class LoginRequest {
     private String authCode;
     @Schema(description = "유저 이름(신규 가입 시 필요 - Apple 한정)", example = "김모업", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String username;
+    @Schema(description = "FCM 푸시 알림 토큰 (신규 가입 시 필요)", example = "4/0Ad-Q...very-long-string-of-code...", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    private String fcmToken;
 }
