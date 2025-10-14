@@ -19,11 +19,19 @@ public class AdminService {
     private int gracePeriod;
 
     public void hardDeleteOldUsers() {
+        // 유예기간이 지난 하드 삭제 대상 유저 목록 조회
         LocalDateTime threeDaysAgo = LocalDateTime.now().minusDays(gracePeriod);
+        List<User> hardDeleteUsers = userRepository.findAllOldHardDeleteUsers(threeDaysAgo);
         
-        // 하드 삭제 대상 유저 목록 조회
-        List<User> hardDeleteUsers = userRepository.findAllHardDeleteUsers(threeDaysAgo);
-        
+        for (User user : hardDeleteUsers) {
+            userDeletionService.processUserDeletion(user);
+        }
+    }
+
+    public void hardDeleteUsersImmediately() {
+        // 모든 하드 삭제 대상 유저 목록 조회
+        List<User> hardDeleteUsers = userRepository.findAllHardDeleteUsers();
+
         for (User user : hardDeleteUsers) {
             userDeletionService.processUserDeletion(user);
         }
