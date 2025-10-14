@@ -10,7 +10,6 @@ import com.moup.server.model.entity.Work;
 import com.moup.server.repository.SalaryRepository;
 import com.moup.server.repository.WorkRepository;
 import com.moup.server.repository.WorkerRepository;
-import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

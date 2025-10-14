@@ -18,6 +18,6 @@ public interface MonthlySalaryRepository {
         VALUES (#{workerId}, #{salaryMonth}, #{grossIncome}, #{nationalPension}, #{healthInsurance},
                 #{employmentInsurance}, #{incomeTax}, #{localIncomeTax}, #{netIncome})
     """)
-    @Options(useGeneratedKeys = true, keyProperty = "id")
-    void save(MonthlySalary monthlySalary);
+    @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
+    Long create(MonthlySalary monthlySalary);
 }

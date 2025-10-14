@@ -12,8 +12,7 @@ import java.time.LocalTime;
 import java.util.List;
 
 @Getter
-@Setter
-@Builder
+@Builder(toBuilder = true)
 @ToString
 public class Work {
     private Long id;

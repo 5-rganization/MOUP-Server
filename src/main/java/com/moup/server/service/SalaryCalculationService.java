@@ -76,18 +76,19 @@ public class SalaryCalculationService {
         // 계산된 주휴수당을 근무일 수로 나누어 일급에 분배합니다.
         int dailyHolidayAllowance = weekWorks.isEmpty() ? 0 : weeklyHolidayAllowance / weekWorks.size();
 
+        List<Work> updatedWorks = weekWorks.stream()
+                .map(work -> calculateDailyIncome(work, dailyHolidayAllowance))
+                .toList();
+
         // 해당 주의 모든 근무일에 대해 일급을 재계산합니다.
-        for (Work work : weekWorks) {
-            calculateDailyIncome(work, dailyHolidayAllowance);
-            workRepository.update(work);
-        }
+        updatedWorks.forEach(workRepository::update);
 
         // 마지막으로, 월 전체의 '추정 세후 일급'을 다시 계산하여 캘린더 표시용 데이터를 업데이트합니다.
         recalculateEstimatedNetIncomeForMonth(workerId, date.getYear(), date.getMonthValue());
     }
 
     /// 하루 근무에 대한 세전 일급(각종 수당 포함)을 상세하게 계산합니다.
-    private void calculateDailyIncome(Work work, int dailyHolidayAllowance) {
+    private Work calculateDailyIncome(Work work, int dailyHolidayAllowance) {
         LocalDateTime start = work.getStartTime();
         LocalDateTime end = work.getEndTime();
         int restMinutes = work.getRestTimeMinutes() != null ? work.getRestTimeMinutes() : 0;
@@ -123,12 +124,14 @@ public class SalaryCalculationService {
         int nightAllowance = (int) (nightWorkMinutes / 60.0 * work.getHourlyRate() * 0.5);
         int overtimeAllowance = (int) (overtimeMinutes / 60.0 * work.getHourlyRate() * 0.5);
 
-        // 계산된 모든 급여 항목을 Work 객체에 저장합니다.
-        work.setBasePay(basePay);
-        work.setNightAllowance(nightAllowance);
-        work.setOvertimeAllowance(overtimeAllowance);
-        work.setHolidayAllowance(dailyHolidayAllowance);
-        work.setGrossIncome(basePay + nightAllowance + overtimeAllowance + dailyHolidayAllowance);
+        // 계산된 모든 급여 항목을 Work 객체로 반환합니다.
+        return work.toBuilder()
+                .basePay(basePay)
+                .nightAllowance(nightAllowance)
+                .overtimeAllowance(overtimeAllowance)
+                .holidayAllowance(dailyHolidayAllowance)
+                .grossIncome(basePay + nightAllowance + overtimeAllowance + dailyHolidayAllowance)
+                .build();
     }
 
     /// 캘린더에 표시될 '추정 세후 일급'을 월 단위로 재계산합니다.
@@ -173,11 +176,14 @@ public class SalaryCalculationService {
         int estimatedDailyDeduction = (int) (estimatedMonthlyDeduction / (double) estimatedTotalWorkingDays);
 
         // 해당 월의 모든 근무 기록에 '세전 일급 - 일일 추정 공제액'을 하여 '추정 세후 일급'을 업데이트합니다.
-        for (Work work : monthWorks) {
+        monthWorks.forEach(work -> {
             int netIncome = work.getGrossIncome() - estimatedDailyDeduction;
-            work.setEstimatedNetIncome(Math.max(netIncome, 0)); // 음수가 되지 않도록 처리
-            workRepository.update(work);
-        }
+            Work updatedWork = work.toBuilder()
+                    .estimatedNetIncome(Math.max(netIncome, 0))
+                    .build();
+
+            workRepository.update(updatedWork);
+        });
     }
 
     /// 보험 적용 대상인지 판단하는 헬퍼 메서드
@@ -250,7 +256,7 @@ public class SalaryCalculationService {
                 .build();
 
         // TODO: 이미 해당 월의 정산 내역이 있다면 UPDATE, 없다면 INSERT 하는 로직(UPSERT) 구현 필요
-        monthlySalaryRepository.save(monthlySalary);
+        monthlySalaryRepository.create(monthlySalary);
 
         return monthlySalary;
     }
