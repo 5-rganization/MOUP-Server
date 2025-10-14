@@ -14,8 +14,29 @@ import java.util.List;
 @Builder
 @Schema(description = "근무 상세 조회 응답 DTO")
 public class WorkDetailResponse {
-    @Schema(description = "연결된 루틴 ID 리스트 (없으면 빈 배열)", example = "[1, 2]", requiredMode = Schema.RequiredMode.REQUIRED)
-    private List<Long> routineIdList;
+    @Schema(description = "근무지(매장) 요약 정보",
+            example =
+            """
+            {
+                "workplaceId": 1,
+                "workplaceName": "세븐일레븐 동탄중심상가점",
+                "isShared": true
+            }
+            """,
+            requiredMode = Schema.RequiredMode.REQUIRED)
+    private WorkplaceSummaryResponse workplaceSummary;
+    @Schema(description = "근무에 연결된 루틴 요약 정보 배열 (없으면 빈 배열)", example =
+            """
+            [
+                {
+                    "routineId": 1,
+                    "routineName": "오픈 루틴",
+                    "알람 시간": "08:00"
+                }
+            ]
+            """,
+            requiredMode = Schema.RequiredMode.REQUIRED)
+    private List<RoutineSummaryResponse> routineSummaryList;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     @Schema(description = "근무 날짜 (yyyy-MM-dd)", example = "2025-10-11", requiredMode = Schema.RequiredMode.REQUIRED)
     private LocalDate workDate;
@@ -44,6 +65,4 @@ public class WorkDetailResponse {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     @Schema(description = "반복 종료 날짜 (yyyy-MM-dd)", example = "2025-11-11", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private LocalDate repeatEndDate;
-    @Schema(description = "근무에 연결된 루틴 요약 배열 (없으면 빈 배열)", example = "[ {\"routineId\": 1, \"routineName\": \"오픈 루틴\", \"알람 시간\": \"08:00\"} ]", requiredMode = Schema.RequiredMode.REQUIRED)
-    private List<RoutineSummaryResponse> routineSummaryList;
 }

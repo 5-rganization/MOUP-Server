@@ -11,7 +11,8 @@ import java.util.List;
 @Schema(description = "모든 근무지(매장) 요약 조회 응답 DTO")
 public class WorkplaceSummaryListResponse {
     @Schema(description = "근무지(매장) 요약 조회 배열 (없으면 빈 배열)",
-            example = """
+            example =
+            """
             [
                 {
                     "workplaceId": 1,

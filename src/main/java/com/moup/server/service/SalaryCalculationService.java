@@ -58,7 +58,7 @@ public class SalaryCalculationService {
         LocalDate startOfWeek = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         LocalDate endOfWeek = date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
 
-        List<Work> weekWorks = workRepository.findByWorkerIdAndDateRange(workerId, startOfWeek, endOfWeek);
+        List<Work> weekWorks = workRepository.findAllByWorkerIdAndDateRange(workerId, startOfWeek, endOfWeek);
         if (weekWorks.isEmpty()) return;
 
         // 주 총 근무시간을 계산하여 주휴수당 발생 조건(15시간 이상)을 확인합니다.
@@ -141,7 +141,7 @@ public class SalaryCalculationService {
         LocalDate startDate = LocalDate.of(year, month, 1);
         LocalDate endDate = startDate.with(TemporalAdjusters.lastDayOfMonth());
 
-        List<Work> monthWorks = workRepository.findByWorkerIdAndDateRange(workerId, startDate, endDate);
+        List<Work> monthWorks = workRepository.findAllByWorkerIdAndDateRange(workerId, startDate, endDate);
         if (monthWorks.isEmpty()) return;
 
         // 현재까지의 근무 기록을 바탕으로 예상 월급을 추정합니다.
@@ -201,7 +201,7 @@ public class SalaryCalculationService {
         LocalDate startDate = targetMonth.atDay(1);
         LocalDate endDate = targetMonth.atEndOfMonth();
 
-        List<Work> works = workRepository.findByWorkerIdAndDateRange(workerId, startDate, endDate);
+        List<Work> works = workRepository.findAllByWorkerIdAndDateRange(workerId, startDate, endDate);
         if (works.isEmpty()) return null;
 
         Salary salaryInfo = salaryRepository.findByWorkerId(workerId)

@@ -153,7 +153,7 @@ public class RoutineService {
     }
 
     @Transactional(readOnly = true)
-    public RoutineSummaryListResponse getRoutineMappedWork(Long userId, Long workId) {
+    public RoutineSummaryListResponse getRoutineByWorkRoutineMapping(Long userId, Long workId) {
         List<WorkRoutineMapping> workRoutineMappingList = workRoutineMappingRepository.findAllByWorkId(workId);
         List<RoutineSummaryResponse> routineSummaryResponseList = workRoutineMappingList
                 .stream()
@@ -170,5 +170,10 @@ public class RoutineService {
         return RoutineSummaryListResponse.builder()
                 .routineSummaryList(routineSummaryResponseList)
                 .build();
+    }
+
+    @Transactional
+    public void deleteWorkRoutineMapping(Long workId) {
+        workRoutineMappingRepository.delete(workId);
     }
 }
