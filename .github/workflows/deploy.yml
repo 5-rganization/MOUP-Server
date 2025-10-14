@@ -54,6 +54,7 @@ jobs:
           echo "APPLE_PRIVATE_KEY=${{ secrets.APPLE_PRIVATE_KEY }}" >> .env
           echo "APPLE_REDIRECT_URI=${{ secrets.APPLE_REDIRECT_URI }}" >> .env
           echo "ADMIN_AUTH_TOKEN=${{ secrets.ADMIN_AUTH_TOKEN }}" >> .env
+          echo "FIREBASE_ACCOUNT_KEY_PATH=${{ secrets.FIREBASE_ACCOUNT_KEY_PATH }}" >> .env
           
           # .env 파일의 환경 변수 로드
           set -a && source .env
