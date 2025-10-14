@@ -44,7 +44,7 @@ public interface WorkRepository {
     @Select("SELECT * FROM works WHERE worker_id = #{workerId} AND work_date = #{workDate}")
     List<Work> findByWorkerIdAndWorkDate(Long workerId, LocalDate workDate);
 
-    /// 근무자의 특정 기간동안 모든 근무 기록을 조회하는 메서드
+    /// 근무자 ID에 해당하는 근무 중에서 특정 기간동안 모든 근무 기록을 조회하는 메서드
     ///
     /// @param workerId 조회할 근무자 ID
     /// @param startDate 조회할 시작일
@@ -59,22 +59,11 @@ public interface WorkRepository {
     @Update("""
         UPDATE works
         SET
-            work_date = #{workDate},
-            start_time = #{startTime},
-            actual_start_time = #{actualStartTime},
-            end_time = #{endTime},
-            actual_end_time = #{actualEndTime},
-            rest_time_minutes = #{restTimeMinutes},
-            memo = #{memo},
-            hourly_rate = #{hourlyRate},
-            base_pay = #{basePay},
-            night_allowance = #{nightAllowance},
-            overtime_allowance = #{overtimeAllowance},
-            holiday_allowance = #{holidayAllowance},
-            gross_income = #{grossIncome},
-            estimated_net_income = #{estimatedNetIncome},
-            repeat_days = #{repeatDays},
-            repeat_end_date = #{repeatEndDate}
+            work_date = #{workDate}, start_time = #{startTime}, actual_start_time = #{actualStartTime},
+            end_time = #{endTime}, actual_end_time = #{actualEndTime}, rest_time_minutes = #{restTimeMinutes},
+            memo = #{memo}, hourly_rate = #{hourlyRate}, base_pay = #{basePay},
+            night_allowance = #{nightAllowance}, overtime_allowance = #{overtimeAllowance}, holiday_allowance = #{holidayAllowance},
+            gross_income = #{grossIncome}, estimated_net_income = #{estimatedNetIncome}, repeat_days = #{repeatDays}, repeat_end_date = #{repeatEndDate}
         WHERE id = #{id} AND worker_id = #{workerId}
         """)
     void update(Work work);

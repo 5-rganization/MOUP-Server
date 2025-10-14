@@ -52,7 +52,7 @@ public class SalaryCalculationService {
     private static final LocalTime NIGHT_END_TIME = LocalTime.of(6, 0);
 
     /// 특정 날짜가 포함된 '주' 단위로 급여(주휴수당 등)를 재계산합니다.
-    /// 근무 기록이 추가/수정될 때마다 호출되어 주 전체에 영향을 미치는 값을 업데이트합니다.
+    /// 근무가 생성/업데이트 될 때마다 호출되어 주 전체에 영향을 미치는 값을 업데이트합니다.
     @Transactional
     public void recalculateWorkWeek(Long workerId, LocalDate date) {
         LocalDate startOfWeek = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));

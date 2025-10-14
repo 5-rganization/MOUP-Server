@@ -9,7 +9,7 @@ import java.util.Optional;
 @Mapper
 public interface RoutineRepository {
 
-    /// 루틴을 생성하는 메서드.
+    /// 루틴을 생성하는 메서드
     ///
     /// @param routine 생성할 루틴 엔티티
     /// @return 생성된 행의 수
@@ -48,35 +48,16 @@ public interface RoutineRepository {
     @Select("SELECT * FROM routines WHERE user_id = #{userId} ORDER BY alarm_time IS NULL ASC, alarm_time ASC")
     List<Routine> findAllByUserId(Long userId);
 
-    /// 루틴의 ID와 사용자 ID에 해당하는 루틴을 업데이트하는 메서드.
+    /// 루틴의 ID와 사용자 ID에 해당하는 루틴을 업데이트하는 메서드
     ///
     /// @param routine 업데이트할 루틴 엔티티
     @Update("UPDATE routines SET routine_name = #{routineName}, alarm_time = #{alarmTime} WHERE id = #{id} AND user_id = #{userId}")
     void update(Routine routine);
 
-    /// 루틴의 ID와 사용자 ID에 해당하는 루틴을 삭제하는 메서드.
+    /// 루틴의 ID와 사용자 ID에 해당하는 루틴을 삭제하는 메서드
     ///
     /// @param id 삭제할 루틴의 ID
     /// @param userId 삭제할 루틴의 사용자 ID
     @Delete("DELETE FROM routines WHERE id = #{id} AND user_id = #{userId}")
     void deleteByIdAndUserId(Long id, Long userId);
-
-    /// 루틴과 근무를 연결하는 매핑을 생성합니다.
-    ///
-    /// @param workId    연결할 근무의 ID
-    /// @param routineId 연결할 루틴의 ID
-    @Insert("INSERT INTO work_routine_mappings (work_id, routine_id) VALUES (#{workId}, #{routineId})")
-    @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
-    void mappingRoutineToWork(Long routineId, Long workId);
-
-    /// 루틴의 ID와 사용자 ID를 통해 해당 루틴을 찾고, 그 루틴 객체를 반환하는 메서드
-    ///
-    /// @param workId 조회할 근무의 ID
-    /// @return 조회된 Routine 객체, 없으면 Optional.empty
-    @Select("""
-            SELECT * FROM routines
-            JOIN work_routine_mappings ON routines.id = work_routine_mappings.routine_id
-            WHERE work_routine_mappings.work_id = #{workId}
-            """)
-    List<Routine> findRoutinesByWorkId(Long workId);
 }

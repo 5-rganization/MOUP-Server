@@ -25,12 +25,6 @@ public interface RoutineTaskRepository {
     @Select("SELECT * FROM routine_tasks WHERE id = #{id} AND routine_id = #{routineId}")
     Optional<RoutineTask> findByIdAndRoutineId(Long id, Long routineId);
 
-    /// 여러 개의 할 일을 한 번에 업데이트하는 메서드 (배치 UPDATE)
-    ///
-    /// @param routineTask 업데이트할 RoutineTas 객체
-    @Update("UPDATE routine_tasks SET content = #{content}, order_index = #{orderIndex} WHERE id = #{id} AND routine_id = #{routineId}")
-    void update(RoutineTask routineTask);
-
     /// 루틴 ID를 통해 해당 루틴의 모든 할 일 객체를 리스트로 반환하는 메서드
     ///
     /// @param routineId 조회할 할 일의 루틴 ID

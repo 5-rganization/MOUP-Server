@@ -5,6 +5,7 @@ import com.moup.server.exception.WorkerWorkplaceNotFoundException;
 import com.moup.server.model.dto.WorkCreateRequest;
 import com.moup.server.model.dto.WorkCreateResponse;
 import com.moup.server.model.dto.WorkDetailResponse;
+import com.moup.server.model.dto.WorkUpdateRequest;
 import com.moup.server.model.entity.Salary;
 import com.moup.server.model.entity.Work;
 import com.moup.server.repository.SalaryRepository;
@@ -45,9 +46,7 @@ public class WorkService {
         work = request.toEntity(workerId, salary.getHourlyRate());
         workRepository.create(work);
 
-        for (Long routineId : request.getRoutineIdList()) {
-            routineService.mapRoutineToWork(userId, routineId, work.getId());
-        }
+        routineService.saveWorkRoutineMapping(userId, request.getRoutineIdList(), work.getId());
 
         return WorkCreateResponse.builder()
                 .workId(work.getId())
@@ -59,6 +58,21 @@ public class WorkService {
     public WorkDetailResponse getWorkDetail(Long userId, Long workId) {
         // TODO: 상세 조회 로직 구현
         return null;
+    }
+
+    @Transactional
+    public void updateWork(Long userId, Long workplaceId, Long workId, WorkUpdateRequest request) {
+        Long workerId = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
+                .orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
+        Salary salary = salaryRepository.findByWorkerId(workerId)
+                .orElseThrow(SalaryWorkerNotFoundException::new);
+
+        Work work = request.toEntity(workId, workerId, salary.getHourlyRate());
+        workRepository.update(work);
+
+        salaryCalculationService.recalculateWorkWeek(work.getWorkerId(), work.getWorkDate());
+
+        routineService.saveWorkRoutineMapping(userId, request.getRoutineIdList(), work.getId());
     }
 
     private Integer calculateGrossDailyIncome(LocalDateTime startTime, LocalDateTime endTime, int restMinutes, int hourlyRate, boolean hasNightAllowance) {

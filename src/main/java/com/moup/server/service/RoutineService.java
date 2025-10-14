@@ -1,40 +1,52 @@
 package com.moup.server.service;
 
+import com.moup.server.exception.DataLimitExceedException;
 import com.moup.server.exception.RoutineNameAlreadyUsedException;
 import com.moup.server.exception.RoutineNotFoundException;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.Routine;
 import com.moup.server.model.entity.RoutineTask;
+import com.moup.server.model.entity.WorkRoutineMapping;
 import com.moup.server.repository.RoutineRepository;
 import com.moup.server.repository.RoutineTaskRepository;
+import com.moup.server.repository.WorkRoutineMappingRepository;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class RoutineService {
     private final RoutineRepository routineRepository;
     private final RoutineTaskRepository routineTaskRepository;
+    private final WorkRoutineMappingRepository workRoutineMappingRepository;
+
+    private static final int MAX_ROUTINE_COUNT_PER_USER = 20; // 사용자당 루틴 연결 최대 개수
+    private static final int MAX_TASK_COUNT_PER_ROUTINE = 50; // 루틴당 할 일 연결 최대 개수
+    private static final int MAX_ROUTINE_COUNT_PER_WORK = 10; // 근무당 루틴 연결 최대 개수
 
     @Transactional
     public RoutineCreateResponse createRoutine(Long userId, RoutineCreateRequest request) {
+        if (routineRepository.findAllByUserId(userId).size() > MAX_ROUTINE_COUNT_PER_USER) {
+            throw new DataLimitExceedException("루틴은 사용자당 최대 " + MAX_ROUTINE_COUNT_PER_USER + "개까지 생성할 수 있습니다.");
+        }
         if (routineRepository.existByUserIdAndRoutineName(userId, request.getRoutineName())) { throw new RoutineNameAlreadyUsedException(); }
+
+        List<RoutineTaskCreateRequest> routineTaskCreateRequestList = request.getRoutineTaskList();
+        if (routineTaskCreateRequestList.size() > MAX_TASK_COUNT_PER_ROUTINE) {
+            throw new DataLimitExceedException("할 일은 루틴당 최대 " + MAX_TASK_COUNT_PER_ROUTINE + "개까지 생성할 수 있습니다.");
+        }
 
         Routine routineToCreate = request.toEntity(userId);
         routineRepository.create(routineToCreate);
 
-        List<RoutineTaskCreateRequest> routineTaskCreateRequestList = request.getRoutineTaskList();
-        List<RoutineTask> tasksToCreate = routineTaskCreateRequestList.stream()
+        List<RoutineTask> taskListToCreate = routineTaskCreateRequestList.stream()
                 .map(taskCreateRequest -> taskCreateRequest.toEntity(routineToCreate.getId()))
                 .toList();
 
-        for (RoutineTask task : tasksToCreate) { routineTaskRepository.create(task); }
+        for (RoutineTask task : taskListToCreate) { routineTaskRepository.create(task); }
 
         return RoutineCreateResponse.builder()
                 .routineId(routineToCreate.getId())
@@ -95,42 +107,21 @@ public class RoutineService {
         if (!oldRoutine.getRoutineName().equals(request.getRoutineName())
                 && routineRepository.existByUserIdAndRoutineName(userId, request.getRoutineName())) { throw new RoutineNameAlreadyUsedException(); }
 
+        List<RoutineTaskUpdateRequest> routineTaskUpdateRequestList = request.getRoutineTaskList();
+        if (routineTaskUpdateRequestList.size() > MAX_TASK_COUNT_PER_ROUTINE) {
+            throw new DataLimitExceedException("할 일은 루틴당 최대 " + MAX_TASK_COUNT_PER_ROUTINE + "개까지 생성할 수 있습니다.");
+        }
+
         Routine newRoutine = request.toEntity(routineId, userId);
         routineRepository.update(newRoutine);
 
-        List<RoutineTask> existingTaskList = routineTaskRepository.findAllByRoutineId(newRoutine.getId());
-        List<RoutineTaskUpdateRequest> requestDtoList = request.getRoutineTaskList();
-        boolean isStructureChanged = false;
-        if (existingTaskList.size() != requestDtoList.size()) {
-            isStructureChanged = true;
-        } else {
-            Map<Long, RoutineTask> existingTaskMap = existingTaskList.stream()
-                    .collect(Collectors.toMap(RoutineTask::getId, Function.identity()));
+        routineTaskRepository.deleteAllByRoutineId(routineId);
 
-            for (RoutineTaskUpdateRequest dto : requestDtoList) {
-                if (dto.getTaskId() == null
-                        || !existingTaskMap.containsKey(dto.getTaskId())
-                        || !existingTaskMap.get(dto.getTaskId()).getOrderIndex().equals(dto.getOrderIndex())) {
-                    isStructureChanged = true;
-                    break;
-                }
-            }
-        }
+        List<RoutineTask> taskListToCreate = routineTaskUpdateRequestList.stream()
+                .map(routineTaskUpdateRequest -> routineTaskUpdateRequest.toEntity(routineId))
+                .toList();
 
-        if (isStructureChanged) {
-            routineTaskRepository.deleteAllByRoutineId(newRoutine.getId());
-            if (!requestDtoList.isEmpty()) {
-                List<RoutineTask> tasksToCreate = requestDtoList.stream()
-                        .map(taskUpdateRequest -> taskUpdateRequest.toEntity(routineId))
-                        .toList();
-                for (RoutineTask task : tasksToCreate) { routineTaskRepository.create(task); }
-            }
-        } else {
-            List<RoutineTask> tasksToUpdate = requestDtoList.stream()
-                    .map(taskUpdateRequest -> taskUpdateRequest.toEntity(routineId))
-                    .toList();
-            for (RoutineTask task : tasksToUpdate) { routineTaskRepository.update(task); }
-        }
+        for (RoutineTask task : taskListToCreate) { routineTaskRepository.create(task); }
     }
 
     @Transactional
@@ -143,13 +134,40 @@ public class RoutineService {
     }
 
     @Transactional
-    public void mapRoutineToWork(Long userId, Long routineId, Long workId) {
-        if (!routineRepository.existByIdAndUserId(routineId, userId)) { throw new RoutineNotFoundException(); }
-        routineRepository.mappingRoutineToWork(routineId, workId);
+    public void saveWorkRoutineMapping(Long userId, List<Long> routineIdList, Long workId) {
+        if (routineIdList.size() > MAX_ROUTINE_COUNT_PER_WORK) {
+            throw new DataLimitExceedException("루틴은 한 근무당 최대 " + MAX_ROUTINE_COUNT_PER_WORK + "개까지 연결할 수 있습니다.");
+        }
+
+        workRoutineMappingRepository.delete(workId);
+
+        for (Long routineId : routineIdList) {
+            if (!routineRepository.existByIdAndUserId(routineId, userId)) { throw new RoutineNotFoundException(); }
+            WorkRoutineMapping workRoutineMapping = WorkRoutineMapping.builder()
+                    .workId(workId)
+                    .routineId(routineId)
+                    .build();
+            workRoutineMappingRepository.create(workRoutineMapping);
+        }
     }
 
     @Transactional(readOnly = true)
-    public List<Routine> getMappedRoutineByWorkId(Long workId) {
-        return routineRepository.findRoutinesByWorkId(workId);
+    public RoutineSummaryListResponse getRoutineMappedWork(Long userId, Long workId) {
+        List<WorkRoutineMapping> workRoutineMappingList = workRoutineMappingRepository.findAllByWorkId(workId);
+        List<RoutineSummaryResponse> routineSummaryResponseList = workRoutineMappingList
+                .stream()
+                .map(mapping -> routineRepository.findByIdAndUserId(mapping.getRoutineId(), userId)
+                        .orElseThrow(RoutineNotFoundException::new))
+                .map(routine -> RoutineSummaryResponse.builder()
+                        .routineId(routine.getId())
+                        .routineName(routine.getRoutineName())
+                        .alarmTime(routine.getAlarmTime())
+                        .build())
+                .toList();
+
+
+        return RoutineSummaryListResponse.builder()
+                .routineSummaryList(routineSummaryResponseList)
+                .build();
     }
 }
