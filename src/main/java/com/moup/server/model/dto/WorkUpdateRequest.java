@@ -45,7 +45,7 @@ public class WorkUpdateRequest {
     @Schema(description = "반복 종료 날짜 (yyyy-MM-dd)", example = "2025-11-11", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private LocalDate repeatEndDate;
 
-    public Work toEntity(Long workId, Long workerId, Integer hourlyRate, Integer dailyIncome) {
+    public Work toEntity(Long workId, Long workerId, Integer hourlyRate) {
         LocalDate workDate = actualStartTime != null ? actualStartTime.toLocalDate() : startTime.toLocalDate();
 
         String repeatDaysStr = repeatDays.stream()
@@ -60,10 +60,9 @@ public class WorkUpdateRequest {
                 .actualStartTime(actualStartTime)
                 .endTime(endTime)
                 .actualEndTime(actualEndTime)
-                .restTime(restTime)
+                .restTimeMinutes(restTime)
                 .memo(memo)
                 .hourlyRate(hourlyRate)
-                .dailyIncome(dailyIncome)
                 .repeatDays(repeatDaysStr)
                 .repeatEndDate(repeatEndDate)
                 .build();

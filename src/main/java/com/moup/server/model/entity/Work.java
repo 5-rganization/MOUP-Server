@@ -2,6 +2,7 @@ package com.moup.server.model.entity;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.ToString;
 
 import java.time.DayOfWeek;
@@ -11,6 +12,7 @@ import java.time.LocalTime;
 import java.util.List;
 
 @Getter
+@Setter
 @Builder
 @ToString
 public class Work {
@@ -21,10 +23,15 @@ public class Work {
     private LocalDateTime actualStartTime;
     private LocalDateTime endTime;
     private LocalDateTime actualEndTime;
-    private Integer restTime;
+    private Integer restTimeMinutes;
     private String memo;
     private Integer hourlyRate;
-    private Integer dailyIncome;
+    private Integer basePay;
+    private Integer nightAllowance;
+    private Integer overtimeAllowance;
+    private Integer holidayAllowance;
+    private Integer grossIncome;
+    private Integer estimatedNetIncome;
     private String repeatDays;
     private LocalDate repeatEndDate;
 }

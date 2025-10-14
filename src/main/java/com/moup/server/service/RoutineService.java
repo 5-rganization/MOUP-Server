@@ -143,7 +143,7 @@ public class RoutineService {
     }
 
     @Transactional
-    public void mappingRoutineToWork(Long userId, Long routineId, Long workId) {
+    public void mapRoutineToWork(Long userId, Long routineId, Long workId) {
         if (!routineRepository.existByIdAndUserId(routineId, userId)) { throw new RoutineNotFoundException(); }
         routineRepository.mappingRoutineToWork(routineId, workId);
     }

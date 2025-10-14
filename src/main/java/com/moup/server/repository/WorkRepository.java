@@ -16,9 +16,9 @@ public interface WorkRepository {
     /// @return 생성된 행의 수
     @Insert("""
             INSERT INTO works (worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time,
-                               rest_time, memo, hourly_rate, daily_income, repeat_days, repeat_end_date)
+                               rest_time_minutes, memo, hourly_rate, repeat_days, repeat_end_date)
             VALUES (#{workerId}, #{workDate}, #{startTime}, #{actualStartTime}, #{endTime}, #{actualEndTime},
-                    #{restTime}, #{memo}, #{hourlyRate}, #{dailyIncome}, #{repeatDays}, #{repeatEndDate})
+                    #{restTimeMinutes}, #{memo}, #{hourlyRate}, #{repeatDays}, #{repeatEndDate})
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
     Long create(Work work);
@@ -38,13 +38,22 @@ public interface WorkRepository {
     @Select("SELECT * FROM works WHERE worker_id = #{workerId} AND work_date = #{workDate}")
     List<Work> findByWorkerIdAndWorkDate(Long workerId, LocalDate workDate);
 
+    /// 근무자의 특정 기간동안 모든 근무 기록을 조회하는 메서드
+    ///
+    /// @param workerId 조회할 근무자 ID
+    /// @param startDate 조회할 시작일
+    /// @param endDate 조회할 마지막일
+    /// @return 조회된 Work 객체 리스트
+    @Select("SELECT * FROM works WHERE worker_id = #{workerId} AND work_date BETWEEN #{startDate} AND #{endDate}")
+    List<Work> findByWorkerIdAndDateRange(Long workerId, LocalDate startDate, LocalDate endDate);
+
     /// 근무 ID와 근무자 ID에 해당하는 근무를 업데이트하는 메서드.
     ///
     /// @param work 업데이트할 Work 객체
     @Update("""
             UPDATE works
             SET work_date = #{workDate}, start_time = #{startTime}, actual_start_time = #{actualStartTime}, end_time = #{endTime}, actual_end_time = #{actualEndTime},
-                rest_time = #{restTime}, memo = #{memo}, daily_income = #{dailyIncome}, repeat_days = #{repeatDays}, repeat_end_date = #{repeatEndDate}
+                rest_time_minutes = #{restTimeMinutes}, memo = #{memo}, repeat_days = #{repeatDays}, repeat_end_date = #{repeatEndDate}
             WHERE id = #{id} AND worker_id = #{workerId}
             """)
     void update(Work work);
