@@ -127,7 +127,8 @@ public class RoutineService {
     @Transactional
     public void deleteRoutine(Long userId, Long routineId) {
         if (routineRepository.existByIdAndUserId(routineId, userId)) {
-            routineRepository.deleteByIdAndUserId(routineId, userId);
+            routineTaskRepository.delete(userId, routineId);
+            routineRepository.delete(routineId, userId);
         } else {
             throw new RoutineNotFoundException();
         }

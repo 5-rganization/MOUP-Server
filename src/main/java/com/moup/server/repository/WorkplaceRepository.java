@@ -8,7 +8,7 @@ import java.util.Optional;
 @Mapper
 public interface WorkplaceRepository {
 
-    /// 근무지를 생성하는 메서드.
+    /// 근무지를 생성하는 메서드
     ///
     /// @param workplace 생성할 근무지 Workplace 객체
     /// @return 생성된 행의 수
@@ -41,7 +41,7 @@ public interface WorkplaceRepository {
     @Select("SELECT * FROM workplaces WHERE id = #{id}")
     Optional<Workplace> findById(Long id);
 
-    /// 근무지의 ID와 등록자 ID에 해당하는 근무지를 업데이트하는 메서드.
+    /// 근무지의 ID와 등록자 ID에 해당하는 근무지를 업데이트하는 메서드
     ///
     /// @param workplace 업데이트할 Workplace 객체
     @Update("""
@@ -56,5 +56,5 @@ public interface WorkplaceRepository {
     /// @param id 삭제할 근무지의 ID
     /// @param ownerId 삭제할 근무지의 등록자 ID
     @Delete("DELETE FROM workplaces WHERE id = #{id} AND owner_id = #{ownerId}")
-    void deleteByIdAndOwnerId(Long id, Long ownerId);
+    void delete(Long id, Long ownerId);
 }

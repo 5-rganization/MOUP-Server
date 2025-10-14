@@ -10,7 +10,7 @@ import java.util.Optional;
 @Mapper
 public interface WorkRepository {
 
-    /// 근무를 생성하는 메서드.
+    /// 근무를 생성하는 메서드
     ///
     /// @param work 생성할 근무 Worker 객체
     /// @return 생성된 행의 수
@@ -53,7 +53,7 @@ public interface WorkRepository {
     @Select("SELECT * FROM works WHERE worker_id = #{workerId} AND work_date BETWEEN #{startDate} AND #{endDate}")
     List<Work> findByWorkerIdAndDateRange(Long workerId, LocalDate startDate, LocalDate endDate);
 
-    /// 근무 ID와 근무자 ID에 해당하는 근무를 업데이트하는 메서드.
+    /// 근무 ID와 근무자 ID에 해당하는 근무를 업데이트하는 메서드
     ///
     /// @param work 업데이트할 Work 객체
     @Update("""
@@ -68,7 +68,7 @@ public interface WorkRepository {
         """)
     void update(Work work);
 
-    /// 근무 ID와 근무자 ID에 해당하는 근무를 삭제하는 메서드.
+    /// 근무 ID와 근무자 ID에 해당하는 근무를 삭제하는 메서드
     ///
     /// @param id 삭제할 근무의 ID
     /// @param workerId 삭제할 근무의 근무자 ID

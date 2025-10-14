@@ -59,5 +59,5 @@ public interface RoutineRepository {
     /// @param id 삭제할 루틴의 ID
     /// @param userId 삭제할 루틴의 사용자 ID
     @Delete("DELETE FROM routines WHERE id = #{id} AND user_id = #{userId}")
-    void deleteByIdAndUserId(Long id, Long userId);
+    void delete(Long id, Long userId);
 }

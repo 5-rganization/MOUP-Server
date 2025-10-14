@@ -45,10 +45,9 @@ public interface SalaryRepository {
             """)
     void update(Salary salary);
 
-    /// 급여 ID와 근무자 ID에 해당하는 급여를 삭제하는 메서드.
+    /// 근무자 ID에 해당하는 급여를 삭제하는 메서드
     ///
-    /// @param id 삭제할 급여의 ID
     /// @param workerId 삭제할 급여의 근무자 ID
-    @Delete("DELETE FROM salaries WHERE id = #{id} AND worker_id = #{workerId}")
-    void deleteByIdAndWorkerId(Long id, Long workerId);
+    @Delete("DELETE FROM salaries WHERE worker_id = #{workerId}")
+    void delete(Long workerId);
 }
