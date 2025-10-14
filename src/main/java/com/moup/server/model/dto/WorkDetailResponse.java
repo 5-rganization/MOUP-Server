@@ -44,4 +44,6 @@ public class WorkDetailResponse {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     @Schema(description = "반복 종료 날짜 (yyyy-MM-dd)", example = "2025-11-11", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private LocalDate repeatEndDate;
+    @Schema(description = "근무에 연결된 루틴 요약 배열 (없으면 빈 배열)", example = "[ {\"routineId\": 1, \"routineName\": \"오픈 루틴\", \"알람 시간\": \"08:00\"} ]", requiredMode = Schema.RequiredMode.REQUIRED)
+    private List<RoutineSummaryResponse> routineSummaryList;
 }
