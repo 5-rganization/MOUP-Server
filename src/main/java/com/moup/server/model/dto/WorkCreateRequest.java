@@ -48,6 +48,10 @@ public class WorkCreateRequest {
     public Work toEntity(Long workerId, Integer hourlyRate) {
         LocalDate workDate = startTime.toLocalDate();
 
+        String repeatDaysStr = repeatDays.stream()
+                .map(DayOfWeek::name)
+                .collect(Collectors.joining(","));
+
         return Work.builder()
                 .id(null)
                 .workerId(workerId)
@@ -59,7 +63,7 @@ public class WorkCreateRequest {
                 .restTimeMinutes(restTimeMinutes)
                 .memo(memo)
                 .hourlyRate(hourlyRate)
-                .repeatDays(repeatDays)
+                .repeatDays(repeatDaysStr)
                 .repeatEndDate(repeatEndDate)
                 .build();
     }

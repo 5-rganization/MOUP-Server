@@ -5,6 +5,7 @@ import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.Salary;
 import com.moup.server.model.entity.Work;
 import com.moup.server.model.entity.Worker;
+import com.moup.server.model.entity.Workplace;
 import com.moup.server.repository.SalaryRepository;
 import com.moup.server.repository.WorkRepository;
 import com.moup.server.repository.WorkerRepository;
@@ -13,10 +14,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -35,7 +39,8 @@ public class WorkService {
     public WorkCreateResponse createWork(Long userId, Long workplaceId, WorkCreateRequest request) {
         Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
-        checkPermission(userId, worker.getUserId(), workplaceId);
+        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
+        checkPermission(userId, worker.getUserId(), workplaceOwnerId);
         Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElseThrow(SalaryWorkerNotFoundException::new);
 
         // 1. Work 엔티티 생성 및 기본 정보 저장
@@ -44,9 +49,6 @@ public class WorkService {
 
         // 2. 해당 근무일이 포함된 주의 모든 근무 기록을 다시 계산 (주휴수당 때문)
         salaryCalculationService.recalculateWorkWeek(worker.getId(), work.getWorkDate());
-
-        work = request.toEntity(worker.getId(), salary.getHourlyRate());
-        workRepository.create(work);
 
         routineService.saveWorkRoutineMapping(userId, request.getRoutineIdList(), work.getId());
 
@@ -60,12 +62,19 @@ public class WorkService {
     public WorkDetailResponse getWorkDetail(Long userId, Long workplaceId, Long workId) {
         Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
-        checkPermission(userId, worker.getUserId(), workplaceId);
+        Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+        checkPermission(userId, worker.getUserId(), workplace.getOwnerId());
         Work work = workRepository.findByIdAndWorkerId(workId, worker.getId()).orElseThrow(WorkNotFoundException::new);
 
-        WorkplaceSummaryResponse workplaceSummary = workplaceService.getSummarizedWorkplace(userId, workplaceId);
+        WorkplaceSummaryResponse workplaceSummary = WorkplaceSummaryResponse.builder()
+                .workplaceId(workplace.getId())
+                .workplaceName(workplace.getWorkplaceName())
+                .isShared(workplace.isShared())
+                .build();
 
         List<RoutineSummaryResponse> routineSummaryList = routineService.getAllSummarizedRoutineByWorkRoutineMapping(userId, workId);
+
+        List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(work.getRepeatDays());
 
         return WorkDetailResponse.builder()
                 .workplaceSummary(workplaceSummary)
@@ -77,7 +86,7 @@ public class WorkService {
                 .actualEndTime(work.getActualEndTime())
                 .restTimeMinutes(work.getRestTimeMinutes())
                 .memo(work.getMemo())
-                .repeatDays(work.getRepeatDays())
+                .repeatDays(repeatDays)
                 .repeatEndDate(work.getRepeatEndDate())
                 .build();
     }
@@ -99,6 +108,8 @@ public class WorkService {
                 Duration workDuration = Duration.between(work.getStartTime(), work.getEndTime());
                 long workMinutes = workDuration.toMinutes();
 
+                List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(work.getRepeatDays());
+
                 WorkSummaryResponse workSummaryResponse = WorkSummaryResponse.builder()
                         .workplaceSummary(workplaceSummary)
                         .workDate(work.getWorkDate())
@@ -106,7 +117,7 @@ public class WorkService {
                         .endTime(work.getEndTime())
                         .workMinutes(workMinutes)
                         .restTimeMinutes(work.getRestTimeMinutes())
-                        .repeatDays(work.getRepeatDays())
+                        .repeatDays(repeatDays)
                         .repeatEndDate(work.getRepeatEndDate())
                         .build();
                 workSummaryList.add(workSummaryResponse);
@@ -139,7 +150,8 @@ public class WorkService {
         Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
         if (!workRepository.existsByIdAndWorkerId(workId, worker.getUserId())) { throw new WorkNotFoundException(); }
-        checkPermission(userId, worker.getUserId(), workplaceId);
+        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
+        checkPermission(userId, worker.getUserId(), workplaceOwnerId);
 
         routineService.deleteWorkRoutineMapping(workId);
 
@@ -149,9 +161,20 @@ public class WorkService {
         salaryCalculationService.recalculateWorkWeek(worker.getUserId(), work.getWorkDate());
     }
 
-    @Transactional(readOnly = true)
-    protected void checkPermission(Long userId, Long workerUserId, Long workplaceId) {
-        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        if (!workerUserId.equals(userId) || !workplaceOwnerId.equals(userId)) { throw new InvalidPermissionAccessException(); }
+    private void checkPermission(Long userId, Long workerUserId, Long workplaceOwnerId) {
+        if (!workerUserId.equals(userId) || !workplaceOwnerId.equals(userId)) {
+            throw new InvalidPermissionAccessException();
+        }
+    }
+
+    private List<DayOfWeek> convertDayOfWeekStrToList(String repeatDaysStr) {
+        if (repeatDaysStr == null || repeatDaysStr.isEmpty()) {
+            return Collections.emptyList();
+        } else {
+            return Arrays.stream(repeatDaysStr.split(","))
+                    .map(String::trim)
+                    .map(DayOfWeek::valueOf)
+                    .toList();
+        }
     }
 }
