@@ -27,9 +27,9 @@ public class TokenGeneratorConfig {
     return args -> {
       // 테스트용 가상의 TokenCreate 객체 생성
       TokenCreateRequest testToken = TokenCreateRequest.builder()
-          .role(Role.ROLE_OWNER)
+          .role(Role.ROLE_ADMIN)
           .userId(1L)
-          .username("김사장").build();
+          .username("alice").build();
 
       // createToken 메서드를 사용하여 토큰 생성
       String staticToken = jwtUtil.createTestToken(testToken);

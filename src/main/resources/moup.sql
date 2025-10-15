@@ -64,9 +64,8 @@ CREATE TABLE `normal_alarms`
     `receiver_id` BIGINT                                                                                            NOT NULL,
     `title`       TEXT                                                                                              NOT NULL,
     `content`     TEXT                                                                                              NULL,
-    `sent_at`     DATETIME                                                                                          NOT NULL,
-    `read_at`     DATETIME                                                                                          NULL,
-    `alarm_type`  ENUM ('ALARM_NOTIFICATION', 'ALARM_INVITE_REQUEST', 'ALARM_INVITE_ACCEPT', 'ALARM_INVITE_REJECT') NOT NULL
+    `sent_at`     DATETIME                                                                                          NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    `read_at`     DATETIME                                                                                          NULL
 );
 
 CREATE TABLE `admin_alarms`
@@ -74,8 +73,7 @@ CREATE TABLE `admin_alarms`
     `id`         BIGINT AUTO_INCREMENT       NOT NULL PRIMARY KEY,
     `title`      TEXT                        NOT NULL,
     `content`    TEXT                        NULL,
-    `sent_at`    DATETIME                    NOT NULL,
-    `alarm_type` ENUM ('ALARM_ANNOUNCEMENT') NOT NULL
+    `sent_at`    DATETIME                    NOT NULL DEFAULT CURRENT_TIMESTAMP()
 );
 --
 

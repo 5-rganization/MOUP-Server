@@ -222,11 +222,11 @@ VALUES (@wk_henry,'SALARY_WEEKLY','SALARY_CALCULATION_HOURLY',11000,NULL,NULL,'F
 -- =====================================
 -- 8) ALARMS
 -- =====================================
-INSERT INTO normal_alarms (sender_id, receiver_id, title, content, sent_at, read_at, alarm_type) VALUES
-                                                                                                     (@u_alice, @u_evan,  '근무지 초대', 'Popup Store로 초대합니다.', '2025-10-08 10:00:00', NULL, 'ALARM_INVITE_REQUEST'),
-                                                                                                     (@u_evan,  @u_alice, '초대 거절', '개인 사정으로 이번 주는 어렵습니다.', '2025-10-08 12:00:00', '2025-10-08 12:10:00', 'ALARM_INVITE_REJECT'),
-                                                                                                     (@u_fiona, @u_grace, '공지 알림', '주말 오픈 10분 전 점검 부탁', '2025-10-10 11:30:00', '2025-10-10 11:35:00', 'ALARM_NOTIFICATION'),
-                                                                                                     (@u_alice, @u_bob,   '초대 수락', 'Cafe MoUp 근무 배정 완료', '2025-10-09 09:00:00', '2025-10-09 09:05:00', 'ALARM_INVITE_ACCEPT');
+INSERT INTO normal_alarms (sender_id, receiver_id, title, content, sent_at, read_at) VALUES
+                                                                                                     (@u_alice, @u_evan,  '근무지 초대', 'Popup Store로 초대합니다.', '2025-10-08 10:00:00', NULL),
+                                                                                                     (@u_evan,  @u_alice, '초대 거절', '개인 사정으로 이번 주는 어렵습니다.', '2025-10-08 12:00:00', '2025-10-08 12:10:00'),
+                                                                                                     (@u_fiona, @u_grace, '공지 알림', '주말 오픈 10분 전 점검 부탁', '2025-10-10 11:30:00', '2025-10-10 11:35:00'),
+                                                                                                     (@u_alice, @u_bob,   '초대 수락', 'Cafe MoUp 근무 배정 완료', '2025-10-09 09:00:00', '2025-10-09 09:05:00');
 
-INSERT INTO admin_alarms (title, content, sent_at, alarm_type) VALUES
-    ('시스템 점검 안내','10/15 02:00~03:00 서버 점검 예정','2025-10-12 09:00:00','ALARM_ANNOUNCEMENT');
+INSERT INTO admin_alarms (title, content, sent_at) VALUES
+    ('시스템 점검 안내','10/15 02:00~03:00 서버 점검 예정','2025-10-12 09:00:00');
