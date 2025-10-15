@@ -95,8 +95,6 @@ public class SalaryCalculationService {
 
         // --- 야간 및 연장 근무 시간 계산 ---
         long nightWorkMinutes = 0;
-        long overtimeMinutes = 0;
-        final long dailyWorkHourLimit = 8 * 60; // 8시간(분 단위)
         long regularWorkMinutes = 0; // 휴게시간 제외 순수 근무시간
 
         // 근무 시간을 1분 단위로 순회하며 야간/연장 시간을 카운트합니다.
@@ -112,25 +110,18 @@ public class SalaryCalculationService {
 
         regularWorkMinutes -= restMinutes;
 
-        // 순수 근무시간이 8시간을 넘으면 연장 근무로 처리합니다.
-        if (regularWorkMinutes > dailyWorkHourLimit) {
-            overtimeMinutes = regularWorkMinutes - dailyWorkHourLimit;
-        }
-
         // --- 수당 계산 ---
-        // 기본급: (순수 근무시간 - 연장근무 시간)에 대한 급여
-        int basePay = (int) ((regularWorkMinutes - overtimeMinutes) / 60.0 * work.getHourlyRate());
+        // 기본급: 휴게시간 제외한 전체 근무시간에 대한 급여
+        int basePay = (int) (regularWorkMinutes / 60.0 * work.getHourlyRate());
         // 야간수당 및 연장수당: 각각의 시간에 대해 50% 가산 (시급 * 0.5)
         int nightAllowance = (int) (nightWorkMinutes / 60.0 * work.getHourlyRate() * 0.5);
-        int overtimeAllowance = (int) (overtimeMinutes / 60.0 * work.getHourlyRate() * 0.5);
 
         // 계산된 모든 급여 항목을 Work 객체로 반환합니다.
         return work.toBuilder()
                 .basePay(basePay)
                 .nightAllowance(nightAllowance)
-                .overtimeAllowance(overtimeAllowance)
                 .holidayAllowance(dailyHolidayAllowance)
-                .grossIncome(basePay + nightAllowance + overtimeAllowance + dailyHolidayAllowance)
+                .grossIncome(basePay + nightAllowance + dailyHolidayAllowance)
                 .build();
     }
 

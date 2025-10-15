@@ -17,13 +17,13 @@ public interface WorkRepository {
     @Insert("""
         INSERT INTO works (
             worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time,
-            rest_time_minutes, memo, hourly_rate, base_pay, night_allowance, overtime_allowance,
-            holiday_allowance, gross_income, estimated_net_income, repeat_days, repeat_end_date
+            rest_time_minutes, memo, hourly_rate, base_pay, night_allowance, holiday_allowance,
+            gross_income, estimated_net_income, repeat_days, repeat_end_date
         )
         VALUES (
             #{workerId}, #{workDate}, #{startTime}, #{actualStartTime}, #{endTime}, #{actualEndTime},
-            #{restTimeMinutes}, #{memo}, #{hourlyRate}, #{basePay}, #{nightAllowance}, #{overtimeAllowance},
-            #{holidayAllowance}, #{grossIncome}, #{estimatedNetIncome}, #{repeatDays}, #{repeatEndDate}
+            #{restTimeMinutes}, #{memo}, #{hourlyRate}, #{basePay}, #{nightAllowance}, #{holidayAllowance},
+            #{grossIncome}, #{estimatedNetIncome}, #{repeatDays}, #{repeatEndDate}
         )
         """)
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")

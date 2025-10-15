@@ -27,7 +27,6 @@ public class Work {
     private Integer hourlyRate;
     private Integer basePay;
     private Integer nightAllowance;
-    private Integer overtimeAllowance;
     private Integer holidayAllowance;
     private Integer grossIncome;
     private Integer estimatedNetIncome;

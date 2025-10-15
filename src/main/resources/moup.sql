@@ -119,7 +119,6 @@ CREATE TABLE `works`
     `hourly_rate`             INT                   NULL,
     `base_pay`                INT                   DEFAULT 0,  -- 기본급 (휴게시간 제외)
     `night_allowance`         INT                   DEFAULT 0,  -- 야간수당
-    `overtime_allowance`      INT                   DEFAULT 0,  -- 연장수당
     `holiday_allowance`       INT                   DEFAULT 0,  -- 주휴수당 (해당 주에 발생한 수당을 N등분하여 일별로 저장)
     `gross_income`            INT                   DEFAULT 0,  -- 세전 일급 (위 4가지의 합)
     `estimated_net_income`    INT                   DEFAULT 0,  -- 추정 세후 일급 (캘린더 표시용)
