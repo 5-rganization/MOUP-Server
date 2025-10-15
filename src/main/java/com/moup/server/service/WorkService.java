@@ -14,9 +14,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.DayOfWeek;
-import java.util.Arrays;
-import java.util.Collections;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -68,17 +69,6 @@ public class WorkService {
 
         List<RoutineSummaryResponse> routineSummaryList = routineService.getAllSummarizedRoutineByWorkRoutineMapping(userId, workId);
 
-        List<DayOfWeek> repeatDays;
-        String repeatDaysStr = work.getRepeatDays();
-        if (repeatDaysStr == null || repeatDaysStr.isEmpty()) {
-            repeatDays = Collections.emptyList();
-        } else {
-            repeatDays = Arrays.stream(repeatDaysStr.split(","))
-                    .map(String::trim)
-                    .map(DayOfWeek::valueOf)
-                    .toList();
-        }
-
         return WorkDetailResponse.builder()
                 .workplaceSummary(workplaceSummary)
                 .routineSummaryList(routineSummaryList)
@@ -89,15 +79,46 @@ public class WorkService {
                 .actualEndTime(work.getActualEndTime())
                 .restTimeMinutes(work.getRestTimeMinutes())
                 .memo(work.getMemo())
-                .repeatDays(repeatDays)
+                .repeatDays(work.getRepeatDays())
                 .repeatEndDate(work.getRepeatEndDate())
                 .build();
     }
 
-//    @Transactional(readOnly = true)
-//    public WorkSummaryResponse getWorkSummary() {
-//
-//    }
+    @Transactional(readOnly = true)
+    public WorkCalendarResponse getWorkCalendarSummary(Long userId, YearMonth baseYearMonth, Boolean isShared) {
+        LocalDate startDate = baseYearMonth.minusMonths(6).atDay(1);
+        LocalDate endDate = baseYearMonth.plusMonths(6).atEndOfMonth();
+
+        ArrayList<WorkSummaryResponse> workSummaryList = new ArrayList<>();
+
+        List<Worker> workerList = workerRepository.findAllByUserId(userId);
+        for (Worker worker : workerList) {
+            List<Work> workList = workRepository.findAllByWorkerIdAndDateRange(worker.getId(), startDate, endDate);
+            for (Work work : workList) {
+                WorkplaceSummaryResponse workplaceSummary = workplaceService.getSummarizedWorkplace(userId, worker.getWorkplaceId());
+                if (workplaceSummary.getIsShared() != isShared) { continue; }
+
+                Duration workDuration = Duration.between(work.getStartTime(), work.getEndTime());
+                long workMinutes = workDuration.toMinutes();
+
+                WorkSummaryResponse workSummaryResponse = WorkSummaryResponse.builder()
+                        .workplaceSummary(workplaceSummary)
+                        .workDate(work.getWorkDate())
+                        .startTime(work.getStartTime())
+                        .endTime(work.getEndTime())
+                        .workMinutes(workMinutes)
+                        .restTimeMinutes(work.getRestTimeMinutes())
+                        .repeatDays(work.getRepeatDays())
+                        .repeatEndDate(work.getRepeatEndDate())
+                        .build();
+                workSummaryList.add(workSummaryResponse);
+            }
+        }
+
+        return WorkCalendarResponse.builder()
+                .workSummaryList(workSummaryList)
+                .build();
+    }
 
     @Transactional
     public void updateWork(Long userId, Long workplaceId, Long workId, WorkUpdateRequest request) {

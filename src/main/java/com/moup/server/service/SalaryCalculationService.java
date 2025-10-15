@@ -63,7 +63,7 @@ public class SalaryCalculationService {
 
         // 주 총 근무시간을 계산하여 주휴수당 발생 조건(15시간 이상)을 확인합니다.
         long weeklyWorkMinutes = weekWorks.stream()
-                .mapToLong(w -> Duration.between(w.getStartTime(), w.getEndTime()).toMinutes() - (w.getRestTimeMinutes() != null ? w.getRestTimeMinutes() : 0))
+                .mapToLong(work -> Duration.between(work.getStartTime(), work.getEndTime()).toMinutes() - (work.getRestTimeMinutes() != null ? work.getRestTimeMinutes() : 0))
                 .sum();
 
         int weeklyHolidayAllowance = 0;
@@ -151,7 +151,7 @@ public class SalaryCalculationService {
 
         int estimatedMonthlyIncome = (int) ((double) currentGrossSum / daysWorked * estimatedTotalWorkingDays);
 
-        long totalMinutesWorked = monthWorks.stream().mapToLong(w -> Duration.between(w.getStartTime(), w.getEndTime()).toMinutes() - (w.getRestTimeMinutes() != null ? w.getRestTimeMinutes() : 0)).sum();
+        long totalMinutesWorked = monthWorks.stream().mapToLong(work -> Duration.between(work.getStartTime(), work.getEndTime()).toMinutes() - (work.getRestTimeMinutes() != null ? work.getRestTimeMinutes() : 0)).sum();
         long estimatedTotalHours = (long)((double) totalMinutesWorked / daysWorked * estimatedTotalWorkingDays / 60.0);
 
         // 예상 월급 기준으로 월 총 공제액(4대보험, 소득세)을 추정합니다.
@@ -200,7 +200,7 @@ public class SalaryCalculationService {
 
         // 월 총 세전 소득과 월 총 근무 시간을 정확하게 계산합니다.
         int grossMonthlyIncome = works.stream().mapToInt(Work::getGrossIncome).sum();
-        long totalWorkMinutes = works.stream().mapToLong(w -> Duration.between(w.getStartTime(), w.getEndTime()).toMinutes() - (w.getRestTimeMinutes() != null ? w.getRestTimeMinutes() : 0)).sum();
+        long totalWorkMinutes = works.stream().mapToLong(work -> Duration.between(work.getStartTime(), work.getEndTime()).toMinutes() - (work.getRestTimeMinutes() != null ? work.getRestTimeMinutes() : 0)).sum();
         long totalWorkHours = totalWorkMinutes / 60;
 
         int nationalPension = 0;
