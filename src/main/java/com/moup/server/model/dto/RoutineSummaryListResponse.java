@@ -10,7 +10,8 @@ import java.util.List;
 @Builder
 @Schema(description = "모든 루틴 요약 조회 응답 DTO")
 public class RoutineSummaryListResponse {
-    @Schema(description = "루틴 요약 조회 배열 (없으면 빈 배열)", example =
+    @Schema(description = "루틴 요약 조회 배열 (없으면 빈 배열)",
+            example =
             """
             [
                 {
