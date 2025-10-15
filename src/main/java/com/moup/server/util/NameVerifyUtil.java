@@ -60,7 +60,7 @@ public class NameVerifyUtil {
     /// @param nickname 검사할 닉네임 문자열
     /// @throws IllegalArgumentException 닉네임이 유효성 규칙에 맞지 않을 경우
     ///
-    public void validateNickname(String nickname) {
+    public void verifyNickname(String nickname) {
         if (nickname == null || nickname.isBlank()) {
             throw new InvalidFieldFormatException("한글, 영문 또는 숫자만 사용하여 8자 이하로 입력해주세요");
         }

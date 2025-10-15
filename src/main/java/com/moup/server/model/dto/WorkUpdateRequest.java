@@ -36,7 +36,7 @@ public class WorkUpdateRequest {
     private LocalDateTime actualEndTime;
     @NotNull(message = "값이 없을 경우 0을 전달해야 합니다.")
     @Schema(description = "휴게 시간 (분단위, 없을 경우 0)", example = "15", requiredMode = Schema.RequiredMode.REQUIRED)
-    private Integer restTime;
+    private Integer restTimeMinutes;
     @Schema(description = "메모", example = "단체 회의 있음", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String memo;
     @Schema(description = "반복 요일", example = "[MONDAY, WEDNESDAY]", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
@@ -46,7 +46,7 @@ public class WorkUpdateRequest {
     private LocalDate repeatEndDate;
 
     public Work toEntity(Long workId, Long workerId, Integer hourlyRate) {
-        LocalDate workDate = actualStartTime != null ? actualStartTime.toLocalDate() : startTime.toLocalDate();
+        LocalDate workDate = startTime.toLocalDate();
 
         String repeatDaysStr = repeatDays.stream()
                 .map(DayOfWeek::name)
@@ -60,7 +60,7 @@ public class WorkUpdateRequest {
                 .actualStartTime(actualStartTime)
                 .endTime(endTime)
                 .actualEndTime(actualEndTime)
-                .restTimeMinutes(restTime)
+                .restTimeMinutes(restTimeMinutes)
                 .memo(memo)
                 .hourlyRate(hourlyRate)
                 .repeatDays(repeatDaysStr)

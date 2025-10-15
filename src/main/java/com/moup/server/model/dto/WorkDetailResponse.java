@@ -53,13 +53,9 @@ public class WorkDetailResponse {
     @Schema(description = "실제 퇴근 시간 (yyyy-MM-dd HH:mm)", example = "2025-10-11 15:40", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private LocalDateTime actualEndTime;
     @Schema(description = "휴게 시간 (분단위, 없을 경우 0)", example = "15", requiredMode = Schema.RequiredMode.REQUIRED)
-    private Integer restTime;
+    private Integer restTimeMinutes;
     @Schema(description = "메모", example = "단체 회의 있음", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String memo;
-    @Schema(description = "일급", example = "70210", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    private Integer dailyIncome;
-    @Schema(description = "실제 일급", example = "70000", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    private Integer actualDailyIncome;
     @Schema(description = "반복 요일", example = "[MONDAY, WEDNESDAY]", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private List<DayOfWeek> repeatDays;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")

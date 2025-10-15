@@ -1,10 +1,7 @@
 package com.moup.server.service;
 
 import com.moup.server.exception.*;
-import com.moup.server.model.dto.WorkCreateRequest;
-import com.moup.server.model.dto.WorkCreateResponse;
-import com.moup.server.model.dto.WorkDetailResponse;
-import com.moup.server.model.dto.WorkUpdateRequest;
+import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.Salary;
 import com.moup.server.model.entity.Work;
 import com.moup.server.model.entity.Worker;
@@ -17,6 +14,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -28,6 +30,7 @@ public class WorkService {
 
     private final RoutineService routineService;
     private final SalaryCalculationService salaryCalculationService;
+    private final WorkplaceService workplaceService;
 
     @Transactional
     public WorkCreateResponse createWork(Long userId, Long workplaceId, WorkCreateRequest request) {
@@ -58,10 +61,37 @@ public class WorkService {
     public WorkDetailResponse getWorkDetail(Long userId, Long workplaceId, Long workId) {
         Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
-        if (!workRepository.existsByIdAndWorkerId(workId, worker.getId())) { throw new WorkNotFoundException(); }
         checkPermission(userId, worker.getUserId(), workplaceId);
-        Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElseThrow(SalaryWorkerNotFoundException::new);
-        return null;
+        Work work = workRepository.findByIdAndWorkerId(workId, worker.getId()).orElseThrow(WorkNotFoundException::new);
+
+        WorkplaceSummaryResponse workplaceSummary = workplaceService.getSummarizedWorkplace(userId, workplaceId);
+
+        List<RoutineSummaryResponse> routineSummaryList = routineService.getAllSummarizedRoutineByWorkRoutineMapping(userId, workId);
+
+        List<DayOfWeek> repeatDays;
+        String repeatDaysStr = work.getRepeatDays();
+        if (repeatDaysStr == null || repeatDaysStr.isEmpty()) {
+            repeatDays = Collections.emptyList();
+        } else {
+            repeatDays = Arrays.stream(repeatDaysStr.split(","))
+                    .map(String::trim)
+                    .map(DayOfWeek::valueOf)
+                    .toList();
+        }
+
+        return WorkDetailResponse.builder()
+                .workplaceSummary(workplaceSummary)
+                .routineSummaryList(routineSummaryList)
+                .workDate(work.getWorkDate())
+                .startTime(work.getStartTime())
+                .actualStartTime(work.getActualStartTime())
+                .endTime(work.getEndTime())
+                .actualEndTime(work.getActualEndTime())
+                .restTimeMinutes(work.getRestTimeMinutes())
+                .memo(work.getMemo())
+                .repeatDays(repeatDays)
+                .repeatEndDate(work.getRepeatEndDate())
+                .build();
     }
 
 //    @Transactional(readOnly = true)
@@ -73,8 +103,8 @@ public class WorkService {
     public void updateWork(Long userId, Long workplaceId, Long workId, WorkUpdateRequest request) {
         Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
-        if (!workRepository.existsByIdAndWorkerId(workId, worker.getUserId())) { throw new WorkNotFoundException(); }
         checkPermission(userId, worker.getUserId(), workplaceId);
+        if (!workRepository.existsByIdAndWorkerId(workId, worker.getUserId())) { throw new WorkNotFoundException(); }
         Salary salary = salaryRepository.findByWorkerId(worker.getUserId()).orElseThrow(SalaryWorkerNotFoundException::new);
 
         Work work = request.toEntity(workId, worker.getUserId(), salary.getHourlyRate());
@@ -94,17 +124,15 @@ public class WorkService {
 
         routineService.deleteWorkRoutineMapping(workId);
 
-        Work work = workRepository.findById(workId).orElseThrow(WorkNotFoundException::new);
+        Work work = workRepository.findByIdAndWorkerId(workId, worker.getId()).orElseThrow(WorkNotFoundException::new);
         workRepository.delete(workId, worker.getUserId());
 
         salaryCalculationService.recalculateWorkWeek(worker.getUserId(), work.getWorkDate());
     }
 
-    private void checkPermission(Long userId, Long workerUserId, Long workplaceId) {
-        Long workplaceOwnerId = workplaceRepository.findById(workplaceId)
-                .orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        if (!workerUserId.equals(userId) || !workplaceOwnerId.equals(userId)) {
-            throw new InvalidPermissionAccessException();
-        }
+    @Transactional(readOnly = true)
+    protected void checkPermission(Long userId, Long workerUserId, Long workplaceId) {
+        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
+        if (!workerUserId.equals(userId) || !workplaceOwnerId.equals(userId)) { throw new InvalidPermissionAccessException(); }
     }
 }

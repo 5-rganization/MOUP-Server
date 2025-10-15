@@ -153,10 +153,9 @@ public class RoutineService {
     }
 
     @Transactional(readOnly = true)
-    public RoutineSummaryListResponse getRoutineByWorkRoutineMapping(Long userId, Long workId) {
+    public List<RoutineSummaryResponse> getAllSummarizedRoutineByWorkRoutineMapping(Long userId, Long workId) {
         List<WorkRoutineMapping> workRoutineMappingList = workRoutineMappingRepository.findAllByWorkId(workId);
-        List<RoutineSummaryResponse> routineSummaryResponseList = workRoutineMappingList
-                .stream()
+        return workRoutineMappingList.stream()
                 .map(mapping -> routineRepository.findByIdAndUserId(mapping.getRoutineId(), userId)
                         .orElseThrow(RoutineNotFoundException::new))
                 .map(routine -> RoutineSummaryResponse.builder()
@@ -165,11 +164,6 @@ public class RoutineService {
                         .alarmTime(routine.getAlarmTime())
                         .build())
                 .toList();
-
-
-        return RoutineSummaryListResponse.builder()
-                .routineSummaryList(routineSummaryResponseList)
-                .build();
     }
 
     @Transactional
