@@ -47,13 +47,13 @@ public class WorkService {
     }
 
     @Transactional
-    public WorkCreateResponse createWorkForWorkerId(Long userId, Long workplaceId, Long workerId, WorkCreateRequest request) {
+    public WorkCreateResponse createWorkForWorkerId(Long requesterId, Long workplaceId, Long workerId, WorkCreateRequest request) {
         Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        verifyPermission(userId, worker.getUserId(), workplaceOwnerId);
+        verifyPermission(requesterId, worker.getUserId(), workplaceOwnerId);
 
-        Work work = createWorkHelper(userId, worker, request);
+        Work work = createWorkHelper(requesterId, worker, request);
 
         return WorkCreateResponse.builder()
                 .workId(work.getId())
