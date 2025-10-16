@@ -14,7 +14,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
 
-@Tag(name = "Routine-Controller", description = "루틴 정보 관리 API 엔드포인트")
+@Tag(name = "Routine", description = "루틴 정보 관리 API 엔드포인트")
 @RestController
 @Validated
 @RequiredArgsConstructor
@@ -23,6 +23,7 @@ public class RoutineController implements RoutineSpecification {
     private final IdentityService identityService;
     private final RoutineService routineService;
 
+    @Override
     @PostMapping
     public ResponseEntity<?> createRoutine(@RequestBody @Valid RoutineCreateRequest request) {
         Long userId = identityService.getCurrentUserId();
@@ -35,6 +36,7 @@ public class RoutineController implements RoutineSpecification {
         return ResponseEntity.created(location).body(response);
     }
 
+    @Override
     @GetMapping
     public ResponseEntity<?> getAllSummarizedRoutine() {
         Long userId = identityService.getCurrentUserId();
@@ -43,6 +45,7 @@ public class RoutineController implements RoutineSpecification {
         return ResponseEntity.ok().body(routineSummaryListResponse);
     }
 
+    @Override
     @GetMapping("/{routineId}")
     public ResponseEntity<?> getRoutine(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long routineId,
@@ -59,6 +62,7 @@ public class RoutineController implements RoutineSpecification {
         return ResponseEntity.ok().body(response);
     }
 
+    @Override
     @PatchMapping("/{routineId}")
     public ResponseEntity<?> updateRoutine(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long routineId,
@@ -70,6 +74,7 @@ public class RoutineController implements RoutineSpecification {
         return ResponseEntity.noContent().build();
     }
 
+    @Override
     @DeleteMapping("/{routineId}")
     public ResponseEntity<?> deleteRoutine(@PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long routineId) {
         Long userId = identityService.getCurrentUserId();

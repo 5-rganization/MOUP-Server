@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
@@ -16,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 public interface WorkplaceSpecification {
+    @Tag(name = "Workplace", description = "근무지(매장) 정보 관리 API 엔드포인트")
     @PostMapping
     @Operation(summary = "근무지(매장) 생성", description = "사용자 역할에 따라 근무지(매장)을 생성")
     @ApiResponses({
@@ -71,6 +73,7 @@ public interface WorkplaceSpecification {
                     )) @RequestBody @Valid BaseWorkplaceCreateRequest request
     );
 
+    @Tag(name = "Workplace", description = "근무지(매장) 정보 관리 API 엔드포인트")
     @GetMapping("/{workplaceId}")
     @Operation(summary = "근무지(매장) 조회", description = "조회할 근무지(매장)의 ID를 경로로 전달받아 조회 (기본적으로 상세 정보 반환, `?view=summary` 파라미터 사용 시 요약 정보 반환)")
     @ApiResponses({
@@ -131,13 +134,18 @@ public interface WorkplaceSpecification {
             @RequestParam(name = "view", required = false) ViewType view
     );
 
+    @Tag(name = "Workplace", description = "근무지(매장) 정보 관리 API 엔드포인트")
     @GetMapping("/summary")
     @Operation(summary = "모든 근무지(매장) 요약 조회", description = "사용자의 모든 근무지(매장) 조회 및 요약")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "모든 근무지(매장) 조회 및 요약 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceSummaryListResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    ResponseEntity<?> getAllSummarizedWorkplace();
+    ResponseEntity<?> getAllSummarizedWorkplace(
+            @Parameter(name = "isShared", description = "공유 근무지(매장) 조회 여부", in = ParameterIn.QUERY)
+            @RequestParam(name = "isShared", required = false) Boolean isShared
+    );
 
+    @Tag(name = "Workplace", description = "근무지(매장) 정보 관리 API 엔드포인트")
     @PatchMapping("/{workplaceId}")
     @Operation(summary = "근무지(매장) 업데이트", description = "사용자 역할에 따라 근무지(매장) 정보를 업데이트")
     @ApiResponses({
@@ -196,6 +204,7 @@ public interface WorkplaceSpecification {
                     )) @RequestBody @Valid BaseWorkplaceUpdateRequest request
     );
 
+    @Tag(name = "Workplace", description = "근무지(매장) 정보 관리 API 엔드포인트")
     @DeleteMapping("/{workplaceId}")
     @Operation(summary = "근무지(매장) 삭제", description = "삭제할 근무지(매장) ID를 경로로 전달받아 삭제")
     @ApiResponses({
@@ -207,6 +216,7 @@ public interface WorkplaceSpecification {
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId
     );
 
+    @Tag(name = "Invite Code", description = "근무지(매장) 초대 코드 관리 API 엔드포인트")
     @PutMapping("/invite-code/{workplaceId}")
     @Operation(summary = "초대 코드 생성", description = "근무지(매장) ID를 경로로 전달받아 초대 코드 생성")
     @ApiResponses({
@@ -222,6 +232,7 @@ public interface WorkplaceSpecification {
             @RequestBody @Valid InviteCodeGenerateRequest request
     );
 
+    @Tag(name = "Invite Code", description = "근무지(매장) 초대 코드 관리 API 엔드포인트")
     @GetMapping("/invite-code/{inviteCode}")
     @Operation(summary = "초대 코드로 근무지 조회", description = "초대 코드를 경로로 전달받아 근무지 조회")
     @ApiResponses({
@@ -235,6 +246,7 @@ public interface WorkplaceSpecification {
             @PathVariable @Pattern(regexp = "^[a-zA-Z0-9]{6}$", message = "초대 코드는 영문 또는 숫자로 이루어진 6자리여야 합니다.") String inviteCode
     );
 
+    @Tag(name = "Invite Code", description = "근무지(매장) 초대 코드 관리 API 엔드포인트")
     @PostMapping("/invite-code/{inviteCode}")
     @Operation(summary = "초대 코드를 통해 근무지 참여", description = "초대 코드를 경로로 전달받아 근무지 참여")
     @ApiResponses({

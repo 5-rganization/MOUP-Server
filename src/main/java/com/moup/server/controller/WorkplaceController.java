@@ -5,6 +5,8 @@ import com.moup.server.model.entity.User;
 import com.moup.server.service.IdentityService;
 import com.moup.server.service.UserService;
 import com.moup.server.service.WorkplaceService;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
@@ -24,7 +26,6 @@ import java.util.List;
  * <p>
  * 근무지 정보 관리를 위한 Controller
  */
-@Tag(name = "Workplace-Controller", description = "근무지(매장) 정보 관리 API 엔드포인트")
 @RestController
 @Validated
 @RequiredArgsConstructor
@@ -68,11 +69,14 @@ public class WorkplaceController implements WorkplaceSpecification {
 
     @Override
     @GetMapping("/summary")
-    public ResponseEntity<?> getAllSummarizedWorkplace() {
+    public ResponseEntity<?> getAllSummarizedWorkplace(
+            @Parameter(name = "isShared", description = "공유 근무지(매장) 조회 여부", in = ParameterIn.QUERY)
+            @RequestParam(name = "isShared", required = false) Boolean isShared
+    ) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
-        List<WorkplaceSummaryResponse> summaryResponseList = workplaceService.getAllSummarizedWorkplace(user.getId());
+        List<WorkplaceSummaryResponse> summaryResponseList = workplaceService.getAllSummarizedWorkplace(user.getId(), isShared);
 
         WorkplaceSummaryListResponse response = WorkplaceSummaryListResponse.builder()
                 .workplaceSummaryList(summaryResponseList)

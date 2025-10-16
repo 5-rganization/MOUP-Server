@@ -14,29 +14,9 @@ import java.util.List;
 @Builder
 @Schema(description = "근무 상세 조회 응답 DTO")
 public class WorkDetailResponse {
-    @Schema(description = "근무지(매장) 요약 정보",
-            example =
-            """
-            {
-                "workplaceId": 1,
-                "workplaceName": "세븐일레븐 동탄중심상가점",
-                "isShared": true
-            }
-            """,
-            requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "근무지(매장) 요약 정보", requiredMode = Schema.RequiredMode.REQUIRED)
     private WorkplaceSummaryResponse workplaceSummary;
-    @Schema(description = "근무에 연결된 루틴 요약 정보 배열 (없으면 빈 배열)",
-            example =
-            """
-            [
-                {
-                    "routineId": 1,
-                    "routineName": "오픈 루틴",
-                    "알람 시간": "08:00"
-                }
-            ]
-            """,
-            requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "근무에 연결된 루틴 요약 정보 배열 (없으면 빈 배열)", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<RoutineSummaryResponse> routineSummaryList;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     @Schema(description = "근무 날짜 (yyyy-MM-dd)", example = "2025-10-11", requiredMode = Schema.RequiredMode.REQUIRED)
@@ -55,11 +35,13 @@ public class WorkDetailResponse {
     private LocalDateTime actualEndTime;
     @Schema(description = "휴게 시간 (분단위, 없을 경우 0)", example = "15", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer restTimeMinutes;
-    @Schema(description = "메모", example = "단체 회의 있음", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @Schema(description = "메모", example = "오늘 재고 정리하는 날", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String memo;
-    @Schema(description = "반복 요일", example = "[MONDAY, WEDNESDAY]", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @Schema(description = "반복 요일", example = "[\"MONDAY\", \"WEDNESDAY\"]", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private List<DayOfWeek> repeatDays;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     @Schema(description = "반복 종료 날짜 (yyyy-MM-dd)", example = "2025-11-11", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private LocalDate repeatEndDate;
+    @Schema(description = "현재 사용자의 수정 가능 여부", example = "true", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    private Boolean isEditable;
 }

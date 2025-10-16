@@ -90,11 +90,12 @@ public class WorkService {
                 .memo(work.getMemo())
                 .repeatDays(repeatDays)
                 .repeatEndDate(work.getRepeatEndDate())
+                .isEditable(checkEditable(userId, worker.getUserId(), workplace.getOwnerId()))
                 .build();
     }
 
     @Transactional(readOnly = true)
-    public WorkSummaryResponse getWorkSummary(Long userId, Long workplaceId, Long workId) {
+    public WorkSummaryResponse getSummarizedWork(Long userId, Long workplaceId, Long workId) {
         Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
@@ -117,43 +118,93 @@ public class WorkService {
                 .restTimeMinutes(work.getRestTimeMinutes())
                 .repeatDays(repeatDays)
                 .repeatEndDate(work.getRepeatEndDate())
+                .isEditable(checkEditable(userId, worker.getUserId(), workplaceOwnerId))
                 .build();
     }
 
     @Transactional(readOnly = true)
-    public WorkCalendarResponse getWorkCalendarSummary(Long userId, YearMonth baseYearMonth, Boolean isShared) {
+    public WorkCalendarListResponse getAllSummarizedWorkForAllWorkplaces(Long userId, YearMonth baseYearMonth) {
         LocalDate startDate = baseYearMonth.minusMonths(6).atDay(1);
         LocalDate endDate = baseYearMonth.plusMonths(6).atEndOfMonth();
 
         ArrayList<WorkSummaryResponse> workSummaryList = new ArrayList<>();
 
-        List<Worker> workerList = workerRepository.findAllByUserId(userId);
-        for (Worker worker : workerList) {
-            List<Work> workList = workRepository.findAllByWorkerIdAndDateRange(worker.getId(), startDate, endDate);
-            for (Work work : workList) {
-                WorkplaceSummaryResponse workplaceSummary = workplaceService.getSummarizedWorkplace(userId, worker.getWorkplaceId());
-                if (workplaceSummary.getIsShared() != isShared) { continue; }
 
-                Duration workDuration = Duration.between(work.getStartTime(), work.getEndTime());
-                long workMinutes = workDuration.toMinutes();
+        return WorkCalendarListResponse.builder()
+                .workSummaryList(workSummaryList)
+                .build();
+    }
 
-                List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(work.getRepeatDays());
+    @Transactional(readOnly = true)
+    public WorkCalendarListResponse getAllSummarizedWorkByWorkplace(Long userId, Long workplaceId, YearMonth baseYearMonth, Boolean isShared) {
+        LocalDate startDate = baseYearMonth.minusMonths(6).atDay(1);
+        LocalDate endDate = baseYearMonth.plusMonths(6).atEndOfMonth();
 
-                WorkSummaryResponse workSummaryResponse = WorkSummaryResponse.builder()
-                        .workplaceSummary(workplaceSummary)
-                        .workDate(work.getWorkDate())
-                        .startTime(work.getStartTime())
-                        .endTime(work.getEndTime())
-                        .workMinutes(workMinutes)
-                        .restTimeMinutes(work.getRestTimeMinutes())
-                        .repeatDays(repeatDays)
-                        .repeatEndDate(work.getRepeatEndDate())
-                        .build();
-                workSummaryList.add(workSummaryResponse);
+        Long workerId = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
+        Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+        verifyPermission(userId, workerId, workplace.getOwnerId());
+        if (isShared == true && !workplace.isShared()) { throw new InvalidPermissionAccessException(); }
+
+        WorkplaceSummaryResponse workplaceSummary = WorkplaceSummaryResponse.builder()
+                .workplaceId(workplace.getId())
+                .workplaceName(workplace.getWorkplaceName())
+                .isShared(workplace.isShared())
+                .build();
+
+        // isShared == true 면 근무지의 모든 근무자 근무 반환, false 면 내 근무만
+        List<WorkSummaryResponse> workSummaryList = new ArrayList<>();
+        if (isShared) {
+            List<Worker> workplaceWorkerList = workerRepository.findAllByWorkplaceId(workplaceId);
+            for (Worker workplaceWorker : workplaceWorkerList) {
+                List<Work> workerWorkList = workRepository.findAllByWorkerIdAndDateRange(workplaceWorker.getId(), startDate, endDate);
+                List<WorkSummaryResponse> workerWorkSummaryList = workerWorkList.stream()
+                        .map(work -> {
+                            Duration workDuration = Duration.between(work.getStartTime(), work.getEndTime());
+                            long workMinutes = workDuration.toMinutes();
+
+                            List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(work.getRepeatDays());
+
+                            return WorkSummaryResponse.builder()
+                                    .workplaceSummary(workplaceSummary)
+                                    .workDate(work.getWorkDate())
+                                    .startTime(work.getStartTime())
+                                    .endTime(work.getEndTime())
+                                    .workMinutes(workMinutes)
+                                    .restTimeMinutes(work.getRestTimeMinutes())
+                                    .repeatDays(repeatDays)
+                                    .repeatEndDate(work.getRepeatEndDate())
+                                    .isEditable(checkEditable(userId, workplaceWorker.getUserId(), workplace.getOwnerId()))
+                                    .build();
+                        })
+                        .toList();
+                workSummaryList.addAll(workerWorkSummaryList);
             }
+        } else {
+            List<Work> userWorkList = workRepository.findAllByWorkerIdAndDateRange(workerId, startDate, endDate);
+            workSummaryList = userWorkList.stream()
+                    .map(work -> {
+                        Duration workDuration = Duration.between(work.getStartTime(), work.getEndTime());
+                        long workMinutes = workDuration.toMinutes();
+
+                        List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(work.getRepeatDays());
+
+                        return WorkSummaryResponse.builder()
+                                .workplaceSummary(workplaceSummary)
+                                .workDate(work.getWorkDate())
+                                .startTime(work.getStartTime())
+                                .endTime(work.getEndTime())
+                                .workMinutes(workMinutes)
+                                .restTimeMinutes(work.getRestTimeMinutes())
+                                .repeatDays(repeatDays)
+                                .repeatEndDate(work.getRepeatEndDate())
+                                .isEditable(checkEditable(userId, workerId, workplace.getOwnerId()))
+                                .build();
+
+                    })
+                    .toList();
         }
 
-        return WorkCalendarResponse.builder()
+        return WorkCalendarListResponse.builder()
                 .workSummaryList(workSummaryList)
                 .build();
     }
@@ -195,7 +246,8 @@ public class WorkService {
         salaryCalculationService.recalculateWorkWeek(worker.getUserId(), work.getWorkDate());
     }
 
-    private Work createWorkHelper(Long userId, Worker worker, WorkCreateRequest request) {
+    @Transactional
+    protected Work createWorkHelper(Long userId, Worker worker, WorkCreateRequest request) {
         int hourlyRate = salaryRepository.findByWorkerId(worker.getId())
                 .map(Salary::getHourlyRate)
                 .orElse(0);
@@ -232,5 +284,9 @@ public class WorkService {
                     .map(DayOfWeek::valueOf)
                     .toList();
         }
+    }
+
+    private boolean checkEditable(Long userId, Long workerUserId, Long workplaceOwnerId) {
+        return workerUserId.equals(userId) || workplaceOwnerId.equals(userId);
     }
 }

@@ -59,7 +59,7 @@ public interface WorkRepository {
     /// @param startDate 조회할 시작일
     /// @param endDate 조회할 마지막일
     /// @return 조회된 Work 객체 리스트
-    @Select("SELECT * FROM works WHERE worker_id = #{workerId} AND work_date BETWEEN #{startDate} AND #{endDate}")
+    @Select("SELECT * FROM works WHERE worker_id = #{workerId} AND work_date BETWEEN #{startDate} AND #{endDate} ORDER BY work_date")
     List<Work> findAllByWorkerIdAndDateRange(Long workerId, LocalDate startDate, LocalDate endDate);
 
     /// 근무 ID와 근무자 ID에 해당하는 근무를 업데이트하는 메서드
@@ -71,7 +71,7 @@ public interface WorkRepository {
             work_date = #{workDate}, start_time = #{startTime}, actual_start_time = #{actualStartTime},
             end_time = #{endTime}, actual_end_time = #{actualEndTime}, rest_time_minutes = #{restTimeMinutes},
             memo = #{memo}, hourly_rate = #{hourlyRate}, base_pay = #{basePay},
-            night_allowance = #{nightAllowance}, overtime_allowance = #{overtimeAllowance}, holiday_allowance = #{holidayAllowance},
+            night_allowance = #{nightAllowance}, holiday_allowance = #{holidayAllowance},
             gross_income = #{grossIncome}, estimated_net_income = #{estimatedNetIncome}, repeat_days = #{repeatDays}, repeat_end_date = #{repeatEndDate}
         WHERE id = #{id} AND worker_id = #{workerId}
         """)

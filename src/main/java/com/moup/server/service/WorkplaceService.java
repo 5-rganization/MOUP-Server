@@ -25,18 +25,7 @@ public class WorkplaceService {
     private final SalaryRepository salaryRepository;
     private final InviteCodeService inviteCodeService;
 
-    @Transactional
-    protected Worker createWorkplaceAndWorkerHelper(Long userId, BaseWorkplaceCreateRequest request) {
-        if (workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, request.getWorkplaceName())) { throw new WorkplaceNameAlreadyUsedException(); }
-
-        Workplace workplaceToCreate = request.toWorkplaceEntity(userId);
-        workplaceRepository.create(workplaceToCreate);
-
-        Worker workerToCreate = request.toWorkerEntity(userId, workplaceToCreate.getId());
-        workerRepository.create(workerToCreate);
-
-        return workerToCreate;
-    }
+    // ========== 근무지 메서드 ==========
 
     @Transactional
     public WorkplaceCreateResponse createWorkplace(User user, BaseWorkplaceCreateRequest request) {
@@ -117,11 +106,12 @@ public class WorkplaceService {
     }
 
     @Transactional(readOnly = true)
-    public List<WorkplaceSummaryResponse> getAllSummarizedWorkplace(Long userId) {
+    public List<WorkplaceSummaryResponse> getAllSummarizedWorkplace(Long userId, Boolean isShared) {
         List<Worker> userAllWorkers = workerRepository.findAllByUserId(userId);
 
         return userAllWorkers.stream()
                 .map(worker -> workplaceRepository.findById(worker.getWorkplaceId()).orElseThrow(WorkplaceNotFoundException::new))
+                .filter(workplace -> isShared == null || workplace.isShared() == isShared)
                 .map(workplace -> WorkplaceSummaryResponse.builder()
                         .workplaceId(workplace.getId())
                         .workplaceName(workplace.getWorkplaceName())
@@ -129,18 +119,6 @@ public class WorkplaceService {
                         .build())
                 .sorted(Comparator.comparing(WorkplaceSummaryResponse::getWorkplaceName))
                 .toList();
-    }
-
-    @Transactional
-    protected Long updateWorkplaceAndWorkerHelper(Long userId, Long workplaceId, BaseWorkplaceUpdateRequest request) {
-        Workplace oldWorkplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
-        if (!oldWorkplace.getWorkplaceName().equals(request.getWorkplaceName())
-                && workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, request.getWorkplaceName())) { throw new WorkplaceNameAlreadyUsedException(); }
-
-        Workplace newWorkplace = request.toWorkplaceEntity(workplaceId, userId);
-        workplaceRepository.update(newWorkplace);
-
-        return workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
     }
 
     @Transactional
@@ -176,6 +154,33 @@ public class WorkplaceService {
             workerRepository.delete(worker.getId(), userId, workplaceId);
         }
     }
+
+    @Transactional
+    protected Worker createWorkplaceAndWorkerHelper(Long userId, BaseWorkplaceCreateRequest request) {
+        if (workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, request.getWorkplaceName())) { throw new WorkplaceNameAlreadyUsedException(); }
+
+        Workplace workplaceToCreate = request.toWorkplaceEntity(userId);
+        workplaceRepository.create(workplaceToCreate);
+
+        Worker workerToCreate = request.toWorkerEntity(userId, workplaceToCreate.getId());
+        workerRepository.create(workerToCreate);
+
+        return workerToCreate;
+    }
+
+    @Transactional
+    protected Long updateWorkplaceAndWorkerHelper(Long userId, Long workplaceId, BaseWorkplaceUpdateRequest request) {
+        Workplace oldWorkplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+        if (!oldWorkplace.getWorkplaceName().equals(request.getWorkplaceName())
+                && workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, request.getWorkplaceName())) { throw new WorkplaceNameAlreadyUsedException(); }
+
+        Workplace newWorkplace = request.toWorkplaceEntity(workplaceId, userId);
+        workplaceRepository.update(newWorkplace);
+
+        return workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
+    }
+
+    // ========== 초대 코드 메서드 ==========
 
     @Transactional
     public InviteCodeGenerateResponse generateInviteCode(User user, Long workplaceId, InviteCodeGenerateRequest request) {

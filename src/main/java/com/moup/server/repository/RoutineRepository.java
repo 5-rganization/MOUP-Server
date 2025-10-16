@@ -45,7 +45,7 @@ public interface RoutineRepository {
     ///
     /// @param userId 조회할 루틴의 사용자 ID
     /// @return 조회된 Routine 객체 리스트, 없으면 빈 배열
-    @Select("SELECT * FROM routines WHERE user_id = #{userId} ORDER BY alarm_time IS NULL ASC, alarm_time ASC")
+    @Select("SELECT * FROM routines WHERE user_id = #{userId} ORDER BY alarm_time IS NULL, alarm_time")
     List<Routine> findAllByUserId(Long userId);
 
     /// 루틴의 ID와 사용자 ID에 해당하는 루틴을 업데이트하는 메서드
