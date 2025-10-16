@@ -19,6 +19,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -46,7 +47,8 @@ public class WorkplaceController {
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "근무지(매장) 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceCreateResponse.class))),
             @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "409", description = "사용자가 이미 등록한 근무지 이름", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "사용자가 이미 등록한 근무지(매장) 이름", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "422", description = "올바르지 않은 필드값 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     public ResponseEntity<?> createWorkplace(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -155,11 +157,12 @@ public class WorkplaceController {
                                                     }
                                                     """)
                             })),
-            @ApiResponse(responseCode = "404", description = "1. 존재하지 않는 근무지(매장)\n2. 요청한 근무지(매장)에 해당하는 근무자가 존재하지 않음 - 권한 없음", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 매개변수", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     public ResponseEntity<?> getWorkplace(
             @Parameter(name = "workplaceId", description = "조회할 근무지(매장) ID", example = "1", required = true, in = ParameterIn.PATH)
-            @PathVariable @Positive(message = "1 이상의 값만 입력해주세요.") Long workplaceId,
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
             @Parameter(name = "view", description = "조회 방식 (기본값: 상세 정보, `summary`: 요약 정보)", in = ParameterIn.QUERY, schema = @Schema(allowableValues = {"summary"}))
             @RequestParam(name = "view", required = false) ViewType view
     ) {
@@ -197,12 +200,13 @@ public class WorkplaceController {
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "근무지(매장) 업데이트 성공"),
             @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "1. 존재하지 않는 근무지(매장)\n2. 요청한 근무지(매장)에 해당하는 근무자가 존재하지 않음 - 권한 없음\n3.근무지(매장)에 해당하는 급여가 존재하지 않음", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "409", description = "사용자가 이미 등록한 근무지(매장) 이름", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "422", description = "올바르지 않은 필드값 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     public ResponseEntity<?> updateWorkplace(
             @Parameter(name = "workplaceId", description = "업데이트할 근무지(매장) ID", example = "1", required = true, in = ParameterIn.PATH)
-            @PathVariable @Positive(message = "1 이상의 값만 입력해주세요.") Long workplaceId,
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "근무지(매장) 생성 요청 DTO",
                     required = true,
@@ -259,11 +263,11 @@ public class WorkplaceController {
     @Operation(summary = "근무지(매장) 삭제", description = "삭제할 근무지(매장) ID를 경로로 전달받아 삭제")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "근무지(매장) 삭제 성공"),
-            @ApiResponse(responseCode = "404", description = "1. 존재하지 않는 근무지(매장)\n2. 근무지에 해당하는 근무자가 존재하지 않음 - 권한 없음", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     public ResponseEntity<?> deleteWorkplace(
             @Parameter(name = "workplaceId", description = "삭제할 근무지(매장) ID", example = "1", required = true, in = ParameterIn.PATH)
-            @PathVariable @Positive(message = "1 이상의 값만 입력해주세요.") Long workplaceId
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId
     ) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
@@ -278,12 +282,13 @@ public class WorkplaceController {
             @ApiResponse(responseCode = "200", description = "이미 만들어진 초대 코드 존재"),
             @ApiResponse(responseCode = "201", description = "새로운 초대 코드 생성 성공"),
             @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "존재하지 않는 매장", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "초대 코드 생성을 위한 요청 데이터", content = @Content(mediaType = "application/json", schema = @Schema(implementation = InviteCodeGenerateRequest.class)))
+    @PreAuthorize("hasRole('ROLE_OWNER')")
     public ResponseEntity<?> generateInviteCode(
             @Parameter(name = "workplaceId", description = "초대 코드를 생성할 매장 ID", example = "1", required = true, in = ParameterIn.PATH)
-            @PathVariable @Positive(message = "1 이상의 값만 입력해주세요.") Long workplaceId,
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
             @RequestBody @Valid InviteCodeGenerateRequest request
     ) {
         Long userId = identityService.getCurrentUserId();
@@ -306,9 +311,10 @@ public class WorkplaceController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "근무지 조회 성공"),
             @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "존재하지 않는 근무지", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "409", description = "사용자가 이미 근무자로 존재", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    @PreAuthorize("hasRole('ROLE_WORKER')")
     public ResponseEntity<?> inquireInviteCode(
             @Parameter(name = "inviteCode", description = "조회할 초대 코드", example = "MUP234", required = true, in = ParameterIn.PATH)
             @PathVariable @Pattern(regexp = "^[a-zA-Z0-9]{6}$", message = "초대 코드는 영문 또는 숫자로 이루어진 6자리여야 합니다.") String inviteCode
@@ -325,10 +331,11 @@ public class WorkplaceController {
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "근무지 참여 성공"),
             @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "존재하지 않는 근무지", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "409", description = "사용자가 이미 근무자로 존재", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "근무지 참여를 위한 요청 데이터", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceJoinRequest.class)))
+    @PreAuthorize("hasRole('ROLE_WORKER')")
     public ResponseEntity<?> joinWorkplace(
             @Parameter(name = "inviteCode", description = "참여할 근무지의 초대 코드", example = "MUP234", required = true, in = ParameterIn.PATH)
             @PathVariable @Pattern(regexp = "^[a-zA-Z0-9]{6}$", message = "초대 코드는 영문 또는 숫자로 이루어진 6자리여야 합니다.") String inviteCode,

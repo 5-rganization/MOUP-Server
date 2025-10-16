@@ -14,10 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.DayOfWeek;
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.YearMonth;
+import java.time.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -40,30 +37,35 @@ public class WorkService {
         Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        checkPermission(userId, worker.getUserId(), workplaceOwnerId);
-        Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElseThrow(SalaryWorkerNotFoundException::new);
+        verifyPermission(userId, worker.getUserId(), workplaceOwnerId);
 
-        // 1. Work 엔티티 생성 및 기본 정보 저장
-        Work work = request.toEntity(worker.getId(), salary.getHourlyRate());
-        workRepository.create(work); // DB에 먼저 저장되어야 ID가 생성됨
-
-        // 2. 해당 근무일이 포함된 주의 모든 근무 기록을 다시 계산 (주휴수당 때문)
-        salaryCalculationService.recalculateWorkWeek(worker.getId(), work.getWorkDate());
-
-        routineService.saveWorkRoutineMapping(userId, request.getRoutineIdList(), work.getId());
+        Work work = createWorkHelper(userId, worker, request);
 
         return WorkCreateResponse.builder()
                 .workId(work.getId())
                 .build();
     }
 
+    @Transactional
+    public WorkCreateResponse createWorkForWorkerId(Long userId, Long workplaceId, Long workerId, WorkCreateRequest request) {
+        Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)
+                .orElseThrow(WorkerWorkplaceNotFoundException::new);
+        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
+        verifyPermission(userId, worker.getUserId(), workplaceOwnerId);
+
+        Work work = createWorkHelper(userId, worker, request);
+
+        return WorkCreateResponse.builder()
+                .workId(work.getId())
+                .build();
+    }
 
     @Transactional(readOnly = true)
     public WorkDetailResponse getWorkDetail(Long userId, Long workplaceId, Long workId) {
         Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
-        checkPermission(userId, worker.getUserId(), workplace.getOwnerId());
+        verifyPermission(userId, worker.getUserId(), workplace.getOwnerId());
         Work work = workRepository.findByIdAndWorkerId(workId, worker.getId()).orElseThrow(WorkNotFoundException::new);
 
         WorkplaceSummaryResponse workplaceSummary = WorkplaceSummaryResponse.builder()
@@ -133,11 +135,16 @@ public class WorkService {
     public void updateWork(Long userId, Long workplaceId, Long workId, WorkUpdateRequest request) {
         Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
-        checkPermission(userId, worker.getUserId(), workplaceId);
+        verifyPermission(userId, worker.getUserId(), workplaceId);
         if (!workRepository.existsByIdAndWorkerId(workId, worker.getUserId())) { throw new WorkNotFoundException(); }
-        Salary salary = salaryRepository.findByWorkerId(worker.getUserId()).orElseThrow(SalaryWorkerNotFoundException::new);
 
-        Work work = request.toEntity(workId, worker.getUserId(), salary.getHourlyRate());
+        int hourlyRate = salaryRepository.findByWorkerId(worker.getId())
+                .map(Salary::getHourlyRate)
+                .orElse(0);
+
+        verifyStartEndTime(request.getStartTime(), request.getEndTime());
+
+        Work work = request.toEntity(workId, worker.getUserId(), hourlyRate);
         workRepository.update(work);
 
         salaryCalculationService.recalculateWorkWeek(worker.getUserId(), work.getWorkDate());
@@ -151,7 +158,7 @@ public class WorkService {
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
         if (!workRepository.existsByIdAndWorkerId(workId, worker.getUserId())) { throw new WorkNotFoundException(); }
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        checkPermission(userId, worker.getUserId(), workplaceOwnerId);
+        verifyPermission(userId, worker.getUserId(), workplaceOwnerId);
 
         routineService.deleteWorkRoutineMapping(workId);
 
@@ -161,10 +168,32 @@ public class WorkService {
         salaryCalculationService.recalculateWorkWeek(worker.getUserId(), work.getWorkDate());
     }
 
-    private void checkPermission(Long userId, Long workerUserId, Long workplaceOwnerId) {
-        if (!workerUserId.equals(userId) || !workplaceOwnerId.equals(userId)) {
+    private Work createWorkHelper(Long userId, Worker worker, WorkCreateRequest request) {
+        int hourlyRate = salaryRepository.findByWorkerId(worker.getId())
+                .map(Salary::getHourlyRate)
+                .orElse(0);
+
+        verifyStartEndTime(request.getStartTime(), request.getEndTime());
+
+        Work work = request.toEntity(worker.getId(), hourlyRate);
+        workRepository.create(work);
+
+        salaryCalculationService.recalculateWorkWeek(worker.getId(), work.getWorkDate());
+
+        routineService.saveWorkRoutineMapping(userId, request.getRoutineIdList(), work.getId());
+
+        return work;
+    }
+
+    private void verifyPermission(Long userId, Long workerUserId, Long workplaceOwnerId) {
+        // 요청자가 해당 근무지의 근무자도 아니고 사장님도 아니면 예외 발생
+        if (!workerUserId.equals(userId) && !workplaceOwnerId.equals(userId)) {
             throw new InvalidPermissionAccessException();
         }
+    }
+
+    private void verifyStartEndTime(LocalDateTime startTime, LocalDateTime endTime) {
+        if (endTime.isBefore(startTime)) { throw new InvalidFieldFormatException("퇴근 시간은 출근 시간보다 미래여야 합니다."); }
     }
 
     private List<DayOfWeek> convertDayOfWeekStrToList(String repeatDaysStr) {

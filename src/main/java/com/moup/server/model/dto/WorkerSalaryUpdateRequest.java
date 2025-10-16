@@ -26,8 +26,8 @@ public class WorkerSalaryUpdateRequest {
     @Positive
     @Schema(description = "고정급", example = "2156880", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Integer fixedRate;
-    @Min(value = 1, message = "올바른 급여일을 입력해주세요")
-    @Max(value = 31, message = "올바른 급여일을 입력해주세요")
+    @Min(value = 1, message = "1부터 31까지의 숫자를 입력해야합니다.")
+    @Max(value = 31, message = "1부터 31까지의 숫자를 입력해야합니다.")
     @Schema(description = "급여일", example = "15", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Integer salaryDate;
     @Schema(description = "급여 요일 (월: MONDAY, 화: TUESDAY, 수: WEDNESDAY, 목: THURSDAY, 금: FRIDAY, 토: SATURDAY, 일: SUNDAY)", example = "MONDAY", requiredMode = Schema.RequiredMode.NOT_REQUIRED)

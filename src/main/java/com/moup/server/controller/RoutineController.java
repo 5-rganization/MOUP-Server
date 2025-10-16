@@ -35,6 +35,8 @@ public class RoutineController {
     @Operation(summary = "루틴 생성", description = "사용자가 루틴 정보를 입력하여 생성")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "루틴 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineCreateResponse.class))),
+            @ApiResponse(responseCode = "409", description = "사용자가 이미 등록한 루틴 이름", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "422", description = "올바르지 않은 필드값 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "루틴 생성을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineCreateRequest.class)))
     public ResponseEntity<?> createRoutine(@RequestBody @Valid RoutineCreateRequest request) {
@@ -98,7 +100,7 @@ public class RoutineController {
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     public ResponseEntity<?> getRoutine(
             @Parameter(name = "routineId", description = "조회할 루틴 ID", example = "1", required = true, in = ParameterIn.PATH)
-            @PathVariable @Positive(message = "1 이상의 값만 입력해주세요.") Long routineId,
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long routineId,
             @Parameter(name = "view", description = "조회 방식 (기본값: 상세 정보, `summary`: 요약 정보)", in = ParameterIn.QUERY, schema = @Schema(allowableValues = {"summary"}))
             @RequestParam(name = "view", required = false) ViewType view
     ) {
@@ -118,11 +120,13 @@ public class RoutineController {
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "루틴 업데이트 성공", content = @Content(mediaType = "application/json")),
             @ApiResponse(responseCode = "404", description = "존재하지 않는 루틴", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "사용자가 이미 등록한 루틴 이름", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "422", description = "올바르지 않은 필드값 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "루틴 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineUpdateRequest.class)))
     public ResponseEntity<?> updateRoutine(
             @Parameter(name = "routineId", description = "업데이트할 루틴 ID", example = "1", required = true, in = ParameterIn.PATH)
-            @PathVariable @Positive(message = "1 이상의 값만 입력해주세요.") Long routineId,
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long routineId,
             @RequestBody @Valid RoutineUpdateRequest request
     ) {
         Long userId = identityService.getCurrentUserId();
@@ -137,7 +141,7 @@ public class RoutineController {
             @ApiResponse(responseCode = "204", description = "루틴 삭제 성공", content = @Content(mediaType = "application/json")),
             @ApiResponse(responseCode = "404", description = "존재하지 않는 루틴", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    public ResponseEntity<?> deleteRoutine(@PathVariable @Positive(message = "1 이상의 값만 입력해주세요.") Long routineId) {
+    public ResponseEntity<?> deleteRoutine(@PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long routineId) {
         Long userId = identityService.getCurrentUserId();
 
         routineService.deleteRoutine(userId, routineId);
