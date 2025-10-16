@@ -10,7 +10,7 @@ public enum ErrorCode {
     BAD_REQUEST(HttpStatus.BAD_REQUEST, "COMMON_400", "잘못된 요청입니다."),
     DATA_LIMIT_EXCEED(HttpStatus.BAD_REQUEST, "DATA_LIMIT_400", "허용된 개수를 초과한 데이터 요청입니다."),
     INVALID_FILE_EXTENSION(HttpStatus.BAD_REQUEST, "FILE_400", "잘못된 파일 형식입니다."),
-    INVALID_VARIABLE_FORMAT(HttpStatus.BAD_REQUEST, "VARIABLE_404", "유효하지 않은 경로/매개변수 형식입니다."),
+    INVALID_VARIABLE_FORMAT(HttpStatus.BAD_REQUEST, "VARIABLE_400", "유효하지 않은 경로/매개변수 형식입니다."),
     INVALID_FIELD_FORMAT(HttpStatus.UNPROCESSABLE_ENTITY, "FIELD_422", "유효하지 않은 필드 형식입니다."),
     INVALID_TOKEN(HttpStatus.BAD_REQUEST, "AUTH_400", "유효하지 않은 토큰입니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH_401", "인증되지 않은 사용자입니다."),

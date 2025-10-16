@@ -94,6 +94,33 @@ public class WorkService {
     }
 
     @Transactional(readOnly = true)
+    public WorkSummaryResponse getWorkSummary(Long userId, Long workplaceId, Long workId) {
+        Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
+                .orElseThrow(WorkerWorkplaceNotFoundException::new);
+        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
+        verifyPermission(userId, worker.getUserId(), workplaceOwnerId);
+        Work work = workRepository.findByIdAndWorkerId(workId, worker.getId()).orElseThrow(WorkNotFoundException::new);
+
+        WorkplaceSummaryResponse workplaceSummary = workplaceService.getSummarizedWorkplace(userId, worker.getWorkplaceId());
+
+        Duration workDuration = Duration.between(work.getStartTime(), work.getEndTime());
+        long workMinutes = workDuration.toMinutes();
+
+        List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(work.getRepeatDays());
+
+        return WorkSummaryResponse.builder()
+                .workplaceSummary(workplaceSummary)
+                .workDate(work.getWorkDate())
+                .startTime(work.getStartTime())
+                .endTime(work.getEndTime())
+                .workMinutes(workMinutes)
+                .restTimeMinutes(work.getRestTimeMinutes())
+                .repeatDays(repeatDays)
+                .repeatEndDate(work.getRepeatEndDate())
+                .build();
+    }
+
+    @Transactional(readOnly = true)
     public WorkCalendarResponse getWorkCalendarSummary(Long userId, YearMonth baseYearMonth, Boolean isShared) {
         LocalDate startDate = baseYearMonth.minusMonths(6).atDay(1);
         LocalDate endDate = baseYearMonth.plusMonths(6).atEndOfMonth();

@@ -2,7 +2,7 @@
 USE moup;
 
 -- 깨끗하게 초기화
-SET FOREIGN_KEY_CHECKS = 0;
+SET FOREIGN_key_CHECKS = 0;
 TRUNCATE TABLE work_routine_mappings;
 TRUNCATE TABLE monthly_salaries;
 TRUNCATE TABLE works;
@@ -16,7 +16,7 @@ TRUNCATE TABLE admin_alarms;
 TRUNCATE TABLE social_tokens;
 TRUNCATE TABLE user_tokens;
 TRUNCATE TABLE users;
-SET FOREIGN_KEY_CHECKS = 1;
+SET FOREIGN_key_CHECKS = 1;
 
 -- =====================================
 -- 1) USERS
@@ -124,16 +124,31 @@ INSERT INTO salaries (worker_id, salary_type, salary_calculation, hourly_rate, f
                                                                                                                                                                                                                                                             (@wk_lee_olive, 'SALARY_MONTHLY', 'SALARY_CALCULATION_HOURLY', 12000, NULL, 15, NULL, 1, 1, 1, 1, 1, 1);
 
 -- =====================================
--- 7) WORKS (근무 기록)
+-- 7) WORKS (근무 기록) - 스키마에 맞게 급여 필드 추가 및 재계산
 -- =====================================
-INSERT INTO works (worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time, rest_time_minutes, memo, base_pay, gross_income, estimated_net_income, repeat_days, repeat_end_date) VALUES
-                                                                                                                                                                                                            (@wk_choi_gs25, '2025-09-15', '2025-09-15 09:00:00', '2025-09-15 08:58:00', '2025-09-15 18:00:00', '2025-09-15 18:03:00', 60, '월요일 오픈 근무', 80000, 80000, 77360, NULL, NULL),
-                                                                                                                                                                                                            (@wk_lee_hongkong, '2025-09-16', '2025-09-16 14:00:00', '2025-09-16 14:05:00', '2025-09-16 22:00:00', '2025-09-16 22:10:00', 60, '재고 정리', 77000, 77000, 74490, NULL, NULL),
-                                                                                                                                                                                                            (@wk_kang_mega, '2025-09-17', '2025-09-17 10:00:00', '2025-09-17 10:00:00', '2025-09-17 19:00:00', '2025-09-17 19:00:00', 60, NULL, 100000, 100000, 96700, NULL, NULL),
-                                                                                                                                                                                                            (@wk_choi_mega, '2025-09-18', '2025-09-18 18:00:00', '2025-09-18 17:55:00', '2025-09-18 23:00:00', '2025-09-18 23:00:00', 30, '마감 근무', 45000, 45000, 43515, NULL, NULL),
-                                                                                                                                                                                                            (@wk_lee_olive, '2025-09-19', '2025-09-19 09:00:00', '2025-09-19 09:02:00', '2025-09-19 15:00:00', '2025-09-19 15:00:00', 30, '오전 파트타임', 54230, 54230, 52430, NULL, NULL),
-                                                                                                                                                                                                            (@wk_choi_gs25, '2025-09-22', '2025-09-22 09:00:00', '2025-09-22 09:00:00', '2025-09-22 18:00:00', '2025-09-22 18:00:00', 60, '반복 근무 테스트', 80000, 80000, 77360, 'MONDAY', '2025-10-22 00:00:00'),
-                                                                                                                                                                                                            (@wk_lee_hongkong, '2025-09-23', '2025-09-23 14:00:00', '2025-09-23 14:00:00', '2025-09-23 22:00:00', '2025-09-23 22:00:00', 60, NULL, 77000, 77000, 74490, 'TUESDAY', '2025-11-23 00:00:00');
+-- hourly_rate: salaries 테이블에서 가져온 시급
+-- base_pay: (총 근무시간 - 휴게시간) * 시급
+-- night_allowance: 야간 근무(22:00~06:00)에 대한 추가 수당 (야간 근무시간 * 시급 * 0.5)
+-- holiday_allowance: 주휴수당 (예시 데이터에서는 0으로 통일)
+-- gross_income: 세전 일급 (base_pay + night_allowance + holiday_allowance)
+INSERT INTO works (worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time, rest_time_minutes, memo, hourly_rate, base_pay, night_allowance, holiday_allowance, gross_income, estimated_net_income, repeat_days, repeat_end_date) VALUES
+-- 1. 최알바 @ GS25: 9-18시(휴게1시간), 시급 10,000원 -> 8시간 * 10,000 = 80,000원
+(@wk_choi_gs25, '2025-09-15', '2025-09-15 09:00:00', '2025-09-15 08:58:00', '2025-09-15 18:00:00', '2025-09-15 18:03:00', 60, '월요일 오픈 근무', 10000, 80000, 0, 0, 80000, 77360, NULL, NULL),
+-- 2. 이알바 @ 홍콩반점: 14-22시(휴게1시간), 시급 11,000원 -> 7시간 * 11,000 = 77,000원
+(@wk_lee_hongkong, '2025-09-16', '2025-09-16 14:00:00', '2025-09-16 14:05:00', '2025-09-16 22:00:00', '2025-09-16 22:10:00', 60, '재고 정리', 11000, 77000, 0, 0, 77000, 74490, NULL, NULL),
+-- 3. 강알바 @ 메가커피: 월급제 근무자. base_pay, gross_income은 별도 계산된 값으로 가정.
+(@wk_kang_mega, '2025-09-17', '2025-09-17 10:00:00', '2025-09-17 10:00:00', '2025-09-17 19:00:00', '2025-09-17 19:00:00', 60, NULL, NULL, 100000, 0, 0, 100000, 96700, NULL, NULL),
+-- 4. 최알바 @ 메가커피: 18-23시(휴게30분), 시급 9,860원 -> 4.5시간 근무. 22-23시 1시간 야간.
+--   - base_pay: 4.5 * 9860 = 44,370원
+--   - night_allowance: 1시간 * 9860 * 0.5 = 4,930원
+--   - gross_income: 44370 + 4930 = 49,300원
+(@wk_choi_mega, '2025-09-18', '2025-09-18 18:00:00', '2025-09-18 17:55:00', '2025-09-18 23:00:00', '2025-09-18 23:00:00', 30, '마감 근무', 9860, 44370, 4930, 0, 49300, 47670, NULL, NULL),
+-- 5. 이알바 @ 올리브영: 9-15시(휴게30분), 시급 12,000원 -> 5.5시간 * 12,000 = 66,000원
+(@wk_lee_olive, '2025-09-19', '2025-09-19 09:00:00', '2025-09-19 09:02:00', '2025-09-19 15:00:00', '2025-09-19 15:00:00', 30, '오전 파트타임', 12000, 66000, 0, 0, 66000, 63820, NULL, NULL),
+-- 6. 최알바 @ GS25: 반복 근무. 계산은 1번과 동일
+(@wk_choi_gs25, '2025-09-22', '2025-09-22 09:00:00', '2025-09-22 09:00:00', '2025-09-22 18:00:00', '2025-09-22 18:00:00', 60, '반복 근무 테스트', 10000, 80000, 0, 0, 80000, 77360, 'MONDAY', '2025-10-22 00:00:00'),
+-- 7. 이알바 @ 홍콩반점: 반복 근무. 계산은 2번과 동일
+(@wk_lee_hongkong, '2025-09-23', '2025-09-23 14:00:00', '2025-09-23 14:00:00', '2025-09-23 22:00:00', '2025-09-23 22:00:00', 60, NULL, 11000, 77000, 0, 0, 77000, 74490, 'TUESDAY', '2025-11-23 00:00:00');
 
 SET @work_1 = 1;
 SET @work_2 = 2;
@@ -151,11 +166,30 @@ INSERT INTO work_routine_mappings (work_id, routine_id) VALUES
                                                             (@work_4, @r_choi_open);
 
 -- =====================================
--- 9) NORMAL_ALARMS (알림)
+-- 9) MONTHLY_SALARIES (월별 급여 정산)
+-- =====================================
+-- 2025년 9월 최알바(@wk_choi_gs25)의 급여를 예시로 계산
+-- gross_income (세전 총소득): 9/15 근무(80,000) + 9/22 근무(80,000) = 160,000원
+-- national_pension (국민연금 4.5%): 7,200원
+-- health_insurance (건강보험 3.545%): 5,672원
+-- employment_insurance (고용보험 0.9%): 1,440원
+-- income_tax (소득세): 1,600원 (간이세액표 기준, 예시)
+-- local_income_tax (지방소득세, 소득세의 10%): 160원
+-- net_income (세후 실지급액): 160,000 - (7200+5672+1440+1600+160) = 143,928원
+INSERT INTO monthly_salaries (worker_id, salary_month, gross_income, national_pension, health_insurance, employment_insurance, income_tax, local_income_tax, net_income) VALUES
+    (@wk_choi_gs25, '2025-09', 160000, 7200, 5672, 1440, 1600, 160, 143928);
+
+
+-- =====================================
+-- 10) ALARMS (알림)
 -- =====================================
 INSERT INTO normal_alarms (sender_id, receiver_id, title, content, sent_at, read_at, alarm_type) VALUES
                                                                                                      (@u_kim_owner, @u_choi_worker, '근무 시간 변경 요청', '내일 1시간 일찍 출근 가능할까요?', '2025-09-14 10:00:00', '2025-09-14 10:05:00', 'ALARM_NOTIFICATION'),
                                                                                                      (@u_park_owner, @u_lee_worker, '급여 지급 완료', '9월 급여가 지급되었습니다. 확인해주세요.', '2025-09-25 11:00:00', NULL, 'ALARM_NOTIFICATION'),
                                                                                                      (@u_choi_worker, @u_kim_owner, '업무 관련 문의', '신제품 재고가 부족합니다.', '2025-09-16 14:30:00', '2025-09-16 14:32:00', 'ALARM_NOTIFICATION'),
-                                                                                                     (@u_lee_worker, @u_park_owner, '대타 근무 가능 문의', '다음 주 화요일 대타 가능하신 분 찾습니다.', '2025-09-20 18:00:00', NULL, 'ALARM_NOTIFICATION'),
-                                                                                                     (@u_kim_owner, @u_kang_worker, '공지사항', '이번 주말 워크샵 관련 공지입니다.', '2025-09-12 09:00:00', '2025-09-12 11:20:00', 'ALARM_NOTIFICATION');
+                                                                                                     (@u_kim_owner, @u_kang_worker, 'GS25 역삼점 근무 초대', '안녕하세요 강알바님, GS25 역삼점에서 함께 일하고 싶습니다. 수락하시겠습니까?', '2025-10-01 09:00:00', NULL, 'ALARM_INVITE_REQUEST'),
+                                                                                                     (@u_kang_worker, @u_kim_owner, '근무 초대를 수락했습니다.', '강알바님이 GS25 역삼점 근무 초대를 수락했습니다.', '2025-10-01 11:20:00', '2025-10-01 11:21:00', 'ALARM_INVITE_ACCEPT');
+
+INSERT INTO admin_alarms (title, content, sent_at, alarm_type) VALUES
+                                                                   ('시스템 정기 점검 안내', '서비스 개선을 위해 10월 20일 오전 2시부터 4시까지 시스템 정기 점검이 진행될 예정입니다. 이용에 참고 부탁드립니다.', '2025-10-15 09:00:00', 'ALARM_ANNOUNCEMENT'),
+                                                                   ('추석 연휴 고객센터 운영 안내', '풍성한 한가위 되세요! 추석 연휴 기간 동안 고객센터는 단축 운영됩니다. 자세한 내용은 공지사항을 확인해주세요.', '2025-09-20 10:00:00', 'ALARM_ANNOUNCEMENT');
