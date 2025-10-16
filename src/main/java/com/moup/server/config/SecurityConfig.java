@@ -18,7 +18,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final String[] NO_AUTH_URL = {"/auth/**"};
-    private final String[] USER_AUTH_URL = {"/users/**", "/files/**"};
+    private final String[] USER_AUTH_URL = {"/users/**", "/files/**", "/workplaces/**", "/routines/**", "/alarms/**"};
     private final String[] ADMIN_AUTH_URL = {"/admin/**"};
     private final String[] SWAGGER_URL = {"/v3/api-docs/**", "/swagger-ui/**", "/swagger-resources/**",
             "/swagger-ui.html"};

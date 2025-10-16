@@ -48,14 +48,14 @@ public class UserController {
         return ResponseEntity.ok().body(userProfileResponse);
     }
 
-    @PutMapping("/nickname")
+    @PatchMapping("/nickname")
     @Operation(summary = "닉네임 변경", description = "유저의 닉네임 변경")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "변경 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserUpdateNicknameResponse.class))),
             @ApiResponse(responseCode = "400", description = "잘못된 닉네임", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "401", description = "인증 실패 - 토큰 없음 또는 유효하지 않음"),
             @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "409", description = "이미 복원된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "이미 삭제 처리된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     public ResponseEntity<?> updateNickname(@RequestBody UserUpdateNicknameRequest userUpdateNicknameRequest) {
         Long userId = identityService.getCurrentUserId();
@@ -63,6 +63,38 @@ public class UserController {
         UserUpdateNicknameResponse userUpdateNicknameResponse = userService.updateNicknameByUserId(userId, userUpdateNicknameRequest.getNickname());
 
         return ResponseEntity.ok().body(userUpdateNicknameResponse);
+    }
+
+    @PatchMapping("/fcm-token")
+    @Operation(summary = "FCM 토큰 갱신", description = "유저의 FCM 토큰 갱신")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "갱신 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserUpdateFCMTokenResponse.class))),
+        @ApiResponse(responseCode = "401", description = "인증 실패 - 토큰 없음 또는 유효하지 않음"),
+        @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "409", description = "이미 삭제 처리된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    public ResponseEntity<?> updateFCMToken(@RequestBody UserUpdateFCMTokenRequest userUpdateFCMTokenRequest) {
+        Long userId = identityService.getCurrentUserId();
+
+        userService.updateFCMTokenByUserId(userId, userUpdateFCMTokenRequest.getFcmToken());
+
+        return ResponseEntity.ok().body(UserUpdateFCMTokenResponse.builder().userId(userId).build());
+    }
+
+    @PatchMapping("/logout")
+    @Operation(summary = "로그아웃", description = "유저 로그아웃")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "로그아웃 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserLogoutResponse.class))),
+        @ApiResponse(responseCode = "401", description = "인증 실패 - 토큰 없음 또는 유효하지 않음"),
+        @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "409", description = "이미 삭제 처리된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    public ResponseEntity<?> logout() {
+        Long userId = identityService.getCurrentUserId();
+
+        userService.logout(userId);
+
+        return ResponseEntity.ok().body(UserLogoutResponse.builder().userId(userId).build());
     }
 
     @DeleteMapping()
