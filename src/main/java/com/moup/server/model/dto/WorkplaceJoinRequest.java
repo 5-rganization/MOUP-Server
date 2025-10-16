@@ -15,5 +15,5 @@ public class WorkplaceJoinRequest {
     private String workerBasedLabelColor;
     @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "알바생 급여 생성 요청 DTO", requiredMode = Schema.RequiredMode.REQUIRED)
-    private WorkerSalaryCreateRequest salaryInfo;
+    private SalaryCreateRequest salaryCreateRequest;
 }

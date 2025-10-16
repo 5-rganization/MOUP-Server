@@ -19,7 +19,7 @@ public class WorkerWorkplaceUpdateRequest extends BaseWorkplaceUpdateRequest {
 
     @Valid
     @Schema(description = "급여 정보", requiredMode = Schema.RequiredMode.REQUIRED)
-    private WorkerSalaryUpdateRequest salaryInfo;
+    private SalaryUpdateRequest salaryUpdateRequest;
 
     public Workplace toWorkplaceEntity(Long workplaceId, Long ownerId) {
         return Workplace.builder()

@@ -14,10 +14,14 @@ import java.util.List;
 @Builder
 @Schema(description = "근무 상세 조회 응답 DTO")
 public class WorkDetailResponse {
+    @Schema(description = "근무 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Long workId;
+    @Schema(description = "근무자 요약 정보", requiredMode = Schema.RequiredMode.REQUIRED)
+    private WorkerSummaryResponse workerSummaryInfo;
     @Schema(description = "근무지(매장) 요약 정보", requiredMode = Schema.RequiredMode.REQUIRED)
-    private WorkplaceSummaryResponse workplaceSummary;
+    private WorkplaceSummaryResponse workplaceSummaryInfo;
     @Schema(description = "근무에 연결된 루틴 요약 정보 배열 (없으면 빈 배열)", requiredMode = Schema.RequiredMode.REQUIRED)
-    private List<RoutineSummaryResponse> routineSummaryList;
+    private List<RoutineSummaryResponse> routineSummaryInfoList;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     @Schema(description = "근무 날짜 (yyyy-MM-dd)", example = "2025-10-11", requiredMode = Schema.RequiredMode.REQUIRED)
     private LocalDate workDate;
@@ -35,6 +39,8 @@ public class WorkDetailResponse {
     private LocalDateTime actualEndTime;
     @Schema(description = "휴게 시간 (분단위, 없을 경우 0)", example = "15", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer restTimeMinutes;
+    @Schema(description = "근무 시간 (분단위)", example = "420", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Long workMinutes;
     @Schema(description = "메모", example = "오늘 재고 정리하는 날", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String memo;
     @Schema(description = "반복 요일", example = "[\"MONDAY\", \"WEDNESDAY\"]", requiredMode = Schema.RequiredMode.NOT_REQUIRED)

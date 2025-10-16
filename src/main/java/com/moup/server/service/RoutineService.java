@@ -76,7 +76,7 @@ public class RoutineService {
                 .toList();
 
         return RoutineSummaryListResponse.builder()
-                .routineSummaryList(routineSummaryResponseList)
+                .routineSummaryInfoList(routineSummaryResponseList)
                 .build();
     }
 

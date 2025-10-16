@@ -14,17 +14,12 @@ import java.util.List;
 @Builder
 @Schema(description = "근무 요약 조회 응답 DTO")
 public class WorkSummaryResponse {
-    @Schema(description = "근무지(매장) 요약 정보",
-            example =
-                    """
-                    {
-                        "workplaceId": 1,
-                        "workplaceName": "세븐일레븐 동탄중심상가점",
-                        "isShared": true
-                    }
-                    """,
-            requiredMode = Schema.RequiredMode.REQUIRED)
-    private WorkplaceSummaryResponse workplaceSummary;
+    @Schema(description = "근무 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Long workId;
+    @Schema(description = "근무자 요약 정보", requiredMode = Schema.RequiredMode.REQUIRED)
+    private WorkerSummaryResponse workerSummaryInfo;
+    @Schema(description = "근무지(매장) 요약 정보", requiredMode = Schema.RequiredMode.REQUIRED)
+    private WorkplaceSummaryResponse workplaceSummaryInfo;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     @Schema(description = "근무 날짜 (yyyy-MM-dd)", example = "2025-10-11", requiredMode = Schema.RequiredMode.REQUIRED)
     private LocalDate workDate;

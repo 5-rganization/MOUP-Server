@@ -1,7 +1,9 @@
 package com.moup.server.controller;
 
 import com.moup.server.model.dto.*;
+import com.moup.server.model.entity.User;
 import com.moup.server.service.IdentityService;
+import com.moup.server.service.UserService;
 import com.moup.server.service.WorkService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -21,6 +23,7 @@ import java.time.YearMonth;
 @Validated
 @RequiredArgsConstructor
 public class WorkController implements WorkSpecification {
+    private final UserService userService;
     private final IdentityService identityService;
     private final WorkService workService;
 
@@ -59,20 +62,21 @@ public class WorkController implements WorkSpecification {
     }
 
     @Override
-    @GetMapping("/workplaces/{workplaceId}/works/{workId}")
+    @GetMapping("/workplaces/{workplaceId}/workers/{workerId}/works/{workId}")
     public ResponseEntity<?> getWork(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workerId,
             @RequestParam(name = "view", required = false) ViewType view
     ) {
         Long userId = identityService.getCurrentUserId();
 
         if (view == ViewType.SUMMARY) {
-            WorkSummaryResponse response = workService.getSummarizedWork(userId, workplaceId, workId);
+            WorkSummaryResponse response = workService.getSummarizedWork(userId, workplaceId, workerId, workId);
             return ResponseEntity.ok().body(response);
         }
 
-        WorkDetailResponse response = workService.getWorkDetail(userId, workplaceId, workId);
+        WorkDetailResponse response = workService.getWorkDetail(userId, workplaceId, workerId, workId);
         return ResponseEntity.ok().body(response);
     }
 
@@ -83,7 +87,7 @@ public class WorkController implements WorkSpecification {
     ) {
         Long userId = identityService.getCurrentUserId();
 
-        WorkCalendarListResponse response = workService.getAllSummarizedWorkForAllWorkplaces(userId, baseYearMonth);
+        WorkCalendarListResponse response = workService.getAllSummarizedMyWorkForAllWorkplaces(userId, baseYearMonth);
         return ResponseEntity.ok().body(response);
     }
 
@@ -95,8 +99,9 @@ public class WorkController implements WorkSpecification {
             @RequestParam(name = "isShared", required = false) Boolean isShared
     ) {
         Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
 
-        WorkCalendarListResponse response = workService.getAllSummarizedWorkByWorkplace(userId, workplaceId, baseYearMonth, isShared);
+        WorkCalendarListResponse response = workService.getAllSummarizedWorkByWorkplace(user, workplaceId, baseYearMonth, isShared);
         return ResponseEntity.ok().body(response);
     }
 }

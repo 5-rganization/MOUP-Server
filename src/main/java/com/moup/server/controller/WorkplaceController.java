@@ -7,7 +7,6 @@ import com.moup.server.service.UserService;
 import com.moup.server.service.WorkplaceService;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
@@ -79,7 +78,7 @@ public class WorkplaceController implements WorkplaceSpecification {
         List<WorkplaceSummaryResponse> summaryResponseList = workplaceService.getAllSummarizedWorkplace(user.getId(), isShared);
 
         WorkplaceSummaryListResponse response = WorkplaceSummaryListResponse.builder()
-                .workplaceSummaryList(summaryResponseList)
+                .workplaceSummaryInfoList(summaryResponseList)
                 .build();
         return ResponseEntity.ok().body(response);
     }

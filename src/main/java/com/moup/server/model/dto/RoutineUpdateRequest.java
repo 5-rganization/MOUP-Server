@@ -24,22 +24,7 @@ public class RoutineUpdateRequest {
     private LocalTime alarmTime;
     @NotNull(message = "값이 없을 경우 빈 배열을 전달해야 합니다.")
     @Valid
-    @Schema(description = "할 일 리스트",
-            example = """
-            [
-                {
-                    "taskId": 1,
-                    "content": "바닥 청소",
-                    "orderIndex": 0
-                },
-                {
-                    "taskId": 2,
-                    "content": "전자레인지 청소",
-                    "orderIndex": 1
-                }
-            ]
-            """,
-            requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "할 일 리스트", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<RoutineTaskUpdateRequest> routineTaskList;
 
     public Routine toEntity(Long routineId, Long userId) {

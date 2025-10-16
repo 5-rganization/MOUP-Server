@@ -2,14 +2,8 @@ package com.moup.server.service;
 
 import com.moup.server.exception.*;
 import com.moup.server.model.dto.*;
-import com.moup.server.model.entity.Salary;
-import com.moup.server.model.entity.Work;
-import com.moup.server.model.entity.Worker;
-import com.moup.server.model.entity.Workplace;
-import com.moup.server.repository.SalaryRepository;
-import com.moup.server.repository.WorkRepository;
-import com.moup.server.repository.WorkerRepository;
-import com.moup.server.repository.WorkplaceRepository;
+import com.moup.server.model.entity.*;
+import com.moup.server.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,16 +24,24 @@ public class WorkService {
 
     private final RoutineService routineService;
     private final SalaryCalculationService salaryCalculationService;
-    private final WorkplaceService workplaceService;
+    private final UserRepository userRepository;
+
+    private record VerifiedWorkContext(
+            Work work,
+            long workMinutes,
+            WorkerSummaryResponse workerSummaryInfo,
+            WorkplaceSummaryResponse workplaceSummaryInfo,
+            boolean isEditable
+    ) {}
 
     @Transactional
     public WorkCreateResponse createWork(Long userId, Long workplaceId, WorkCreateRequest request) {
-        Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
+        Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        verifyPermission(userId, worker.getUserId(), workplaceOwnerId);
+        verifyPermission(userId, userWorker.getUserId(), workplaceOwnerId);
 
-        Work work = createWorkHelper(userId, worker, request);
+        Work work = createWorkHelper(userId, userWorker, request);
 
         return WorkCreateResponse.builder()
                 .workId(work.getId())
@@ -61,89 +63,106 @@ public class WorkService {
     }
 
     @Transactional(readOnly = true)
-    public WorkDetailResponse getWorkDetail(Long userId, Long workplaceId, Long workId) {
-        Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
-                .orElseThrow(WorkerWorkplaceNotFoundException::new);
-        Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
-        verifyPermission(userId, worker.getUserId(), workplace.getOwnerId());
-        Work work = workRepository.findByIdAndWorkerId(workId, worker.getId()).orElseThrow(WorkNotFoundException::new);
-
-        WorkplaceSummaryResponse workplaceSummary = WorkplaceSummaryResponse.builder()
-                .workplaceId(workplace.getId())
-                .workplaceName(workplace.getWorkplaceName())
-                .isShared(workplace.isShared())
-                .build();
+    public WorkDetailResponse getWorkDetail(Long userId, Long workplaceId, Long workerId, Long workId) {
+        VerifiedWorkContext context = getVerifiedWorkContext(userId, workplaceId, workerId, workId);
 
         List<RoutineSummaryResponse> routineSummaryList = routineService.getAllSummarizedRoutineByWorkRoutineMapping(userId, workId);
 
-        List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(work.getRepeatDays());
+        List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(context.work().getRepeatDays());
 
         return WorkDetailResponse.builder()
-                .workplaceSummary(workplaceSummary)
-                .routineSummaryList(routineSummaryList)
-                .workDate(work.getWorkDate())
-                .startTime(work.getStartTime())
-                .actualStartTime(work.getActualStartTime())
-                .endTime(work.getEndTime())
-                .actualEndTime(work.getActualEndTime())
-                .restTimeMinutes(work.getRestTimeMinutes())
-                .memo(work.getMemo())
+                .workId(context.work().getId())
+                .workerSummaryInfo(context.workerSummaryInfo())
+                .workplaceSummaryInfo(context.workplaceSummaryInfo())
+                .routineSummaryInfoList(routineSummaryList)
+                .workDate(context.work().getWorkDate())
+                .startTime(context.work().getStartTime())
+                .actualStartTime(context.work().getActualStartTime())
+                .endTime(context.work().getEndTime())
+                .actualEndTime(context.work().getActualEndTime())
+                .restTimeMinutes(context.work().getRestTimeMinutes())
+                .workMinutes(context.workMinutes())
+                .memo(context.work().getMemo())
                 .repeatDays(repeatDays)
-                .repeatEndDate(work.getRepeatEndDate())
-                .isEditable(checkEditable(userId, worker.getUserId(), workplace.getOwnerId()))
+                .repeatEndDate(context.work().getRepeatEndDate())
+                .isEditable(context.isEditable())
                 .build();
     }
 
     @Transactional(readOnly = true)
-    public WorkSummaryResponse getSummarizedWork(Long userId, Long workplaceId, Long workId) {
-        Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
-                .orElseThrow(WorkerWorkplaceNotFoundException::new);
-        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        verifyPermission(userId, worker.getUserId(), workplaceOwnerId);
-        Work work = workRepository.findByIdAndWorkerId(workId, worker.getId()).orElseThrow(WorkNotFoundException::new);
+    public WorkSummaryResponse getSummarizedWork(Long userId, Long workplaceId, Long workerId, Long workId) {
+        VerifiedWorkContext context = getVerifiedWorkContext(userId, workplaceId, workerId, workId);
 
-        WorkplaceSummaryResponse workplaceSummary = workplaceService.getSummarizedWorkplace(userId, worker.getWorkplaceId());
-
-        Duration workDuration = Duration.between(work.getStartTime(), work.getEndTime());
-        long workMinutes = workDuration.toMinutes();
-
-        List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(work.getRepeatDays());
+        List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(context.work().getRepeatDays());
 
         return WorkSummaryResponse.builder()
-                .workplaceSummary(workplaceSummary)
-                .workDate(work.getWorkDate())
-                .startTime(work.getStartTime())
-                .endTime(work.getEndTime())
-                .workMinutes(workMinutes)
-                .restTimeMinutes(work.getRestTimeMinutes())
+                .workId(context.work().getId())
+                .workerSummaryInfo(context.workerSummaryInfo())
+                .workplaceSummaryInfo(context.workplaceSummaryInfo())
+                .workDate(context.work().getWorkDate())
+                .startTime(context.work().getStartTime())
+                .endTime(context.work().getEndTime())
+                .workMinutes(context.workMinutes())
+                .restTimeMinutes(context.work().getRestTimeMinutes())
                 .repeatDays(repeatDays)
-                .repeatEndDate(work.getRepeatEndDate())
-                .isEditable(checkEditable(userId, worker.getUserId(), workplaceOwnerId))
+                .repeatEndDate(context.work().getRepeatEndDate())
+                .isEditable(context.isEditable())
                 .build();
     }
 
     @Transactional(readOnly = true)
-    public WorkCalendarListResponse getAllSummarizedWorkForAllWorkplaces(Long userId, YearMonth baseYearMonth) {
+    public WorkCalendarListResponse getAllSummarizedMyWorkForAllWorkplaces(Long userId, YearMonth baseYearMonth) {
         LocalDate startDate = baseYearMonth.minusMonths(6).atDay(1);
         LocalDate endDate = baseYearMonth.plusMonths(6).atEndOfMonth();
 
-        ArrayList<WorkSummaryResponse> workSummaryList = new ArrayList<>();
+        List<WorkSummaryResponse> userWorkSummaryList = new ArrayList<>();
 
+        List<Worker> userWorkerList = workerRepository.findAllByUserId(userId);
+        for (Worker userWorker : userWorkerList) {
+            Workplace workplace = workplaceRepository.findById(userWorker.getWorkplaceId()).orElseThrow(WorkplaceNotFoundException::new);
+            verifyPermission(userId, userWorker.getUserId(), workplace.getOwnerId());
+
+            WorkerSummaryResponse workerSummaryInfo = createWorkerSummary(userWorker);
+
+            WorkplaceSummaryResponse workplaceSummaryInfo = WorkplaceSummaryResponse.builder()
+                    .workplaceId(workplace.getId())
+                    .workplaceName(workplace.getWorkplaceName())
+                    .isShared(workplace.isShared())
+                    .build();
+
+            List<Work> userWorkList = workRepository.findAllByWorkerIdAndDateRange(userWorker.getId(), startDate, endDate);
+            List<WorkSummaryResponse> workSummaryList = userWorkList.stream()
+                    .map(work -> {
+                        long workMinutes = Duration.between(work.getStartTime(), work.getEndTime()).toMinutes();
+                        boolean isEditable = checkEditable(userId, userWorker.getUserId(), workplace.getOwnerId());
+
+                        return convertWorkToSummaryResponse(
+                                work,
+                                workerSummaryInfo,
+                                workplaceSummaryInfo,
+                                workMinutes,
+                                isEditable
+                        );
+                    })
+                    .toList();
+            userWorkSummaryList.addAll(workSummaryList);
+        }
 
         return WorkCalendarListResponse.builder()
-                .workSummaryList(workSummaryList)
+                .workSummaryInfoList(userWorkSummaryList)
                 .build();
     }
 
     @Transactional(readOnly = true)
-    public WorkCalendarListResponse getAllSummarizedWorkByWorkplace(Long userId, Long workplaceId, YearMonth baseYearMonth, Boolean isShared) {
+    public WorkCalendarListResponse getAllSummarizedWorkByWorkplace(User user, Long workplaceId, YearMonth baseYearMonth, Boolean isShared) {
         LocalDate startDate = baseYearMonth.minusMonths(6).atDay(1);
         LocalDate endDate = baseYearMonth.plusMonths(6).atEndOfMonth();
 
-        Long workerId = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
+        Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId)
+                .orElseThrow(WorkerWorkplaceNotFoundException::new);
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
-        verifyPermission(userId, workerId, workplace.getOwnerId());
-        if (isShared == true && !workplace.isShared()) { throw new InvalidPermissionAccessException(); }
+        verifyPermission(user.getId(), userWorker.getUserId(), workplace.getOwnerId());
+        if (Boolean.TRUE.equals(isShared) && !workplace.isShared()) { throw new InvalidPermissionAccessException(); }
 
         WorkplaceSummaryResponse workplaceSummary = WorkplaceSummaryResponse.builder()
                 .workplaceId(workplace.getId())
@@ -151,61 +170,41 @@ public class WorkService {
                 .isShared(workplace.isShared())
                 .build();
 
-        // isShared == true 면 근무지의 모든 근무자 근무 반환, false 면 내 근무만
-        List<WorkSummaryResponse> workSummaryList = new ArrayList<>();
-        if (isShared) {
+        List<WorkSummaryResponse> workSummaryInfoList = new ArrayList<>();
+        if (Boolean.TRUE.equals(isShared)) {
+            // 근무지의 모든 근무자 근무 반환
             List<Worker> workplaceWorkerList = workerRepository.findAllByWorkplaceId(workplaceId);
             for (Worker workplaceWorker : workplaceWorkerList) {
                 List<Work> workerWorkList = workRepository.findAllByWorkerIdAndDateRange(workplaceWorker.getId(), startDate, endDate);
+
+                WorkerSummaryResponse workerSummaryInfo = createWorkerSummary(workplaceWorker);
                 List<WorkSummaryResponse> workerWorkSummaryList = workerWorkList.stream()
                         .map(work -> {
-                            Duration workDuration = Duration.between(work.getStartTime(), work.getEndTime());
-                            long workMinutes = workDuration.toMinutes();
+                            long workMinutes = Duration.between(work.getStartTime(), work.getEndTime()).toMinutes();
+                            boolean isEditable = checkEditable(user.getId(), workplaceWorker.getUserId(), workplace.getOwnerId());
 
-                            List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(work.getRepeatDays());
-
-                            return WorkSummaryResponse.builder()
-                                    .workplaceSummary(workplaceSummary)
-                                    .workDate(work.getWorkDate())
-                                    .startTime(work.getStartTime())
-                                    .endTime(work.getEndTime())
-                                    .workMinutes(workMinutes)
-                                    .restTimeMinutes(work.getRestTimeMinutes())
-                                    .repeatDays(repeatDays)
-                                    .repeatEndDate(work.getRepeatEndDate())
-                                    .isEditable(checkEditable(userId, workplaceWorker.getUserId(), workplace.getOwnerId()))
-                                    .build();
+                            return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummary, workMinutes, isEditable);
                         })
                         .toList();
-                workSummaryList.addAll(workerWorkSummaryList);
+                workSummaryInfoList.addAll(workerWorkSummaryList);
             }
         } else {
-            List<Work> userWorkList = workRepository.findAllByWorkerIdAndDateRange(workerId, startDate, endDate);
-            workSummaryList = userWorkList.stream()
-                    .map(work -> {
-                        Duration workDuration = Duration.between(work.getStartTime(), work.getEndTime());
-                        long workMinutes = workDuration.toMinutes();
+            // 사용자의 근무만 반환
+            WorkerSummaryResponse userWorkerSummaryInfo = createWorkerSummary(userWorker);
 
-                        List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(work.getRepeatDays());
+            List<Work> userWorkList = workRepository.findAllByWorkerIdAndDateRange(userWorker.getId(), startDate, endDate);
+            workSummaryInfoList = userWorkList.stream()
+                    .map(userWork -> {
+                        long workMinutes = Duration.between(userWork.getStartTime(), userWork.getEndTime()).toMinutes();
+                        boolean isEditable = checkEditable(user.getId(), userWorker.getUserId(), workplace.getOwnerId());
 
-                        return WorkSummaryResponse.builder()
-                                .workplaceSummary(workplaceSummary)
-                                .workDate(work.getWorkDate())
-                                .startTime(work.getStartTime())
-                                .endTime(work.getEndTime())
-                                .workMinutes(workMinutes)
-                                .restTimeMinutes(work.getRestTimeMinutes())
-                                .repeatDays(repeatDays)
-                                .repeatEndDate(work.getRepeatEndDate())
-                                .isEditable(checkEditable(userId, workerId, workplace.getOwnerId()))
-                                .build();
-
+                        return convertWorkToSummaryResponse(userWork, userWorkerSummaryInfo, workplaceSummary, workMinutes, isEditable);
                     })
                     .toList();
         }
 
         return WorkCalendarListResponse.builder()
-                .workSummaryList(workSummaryList)
+                .workSummaryInfoList(workSummaryInfoList)
                 .build();
     }
 
@@ -246,8 +245,7 @@ public class WorkService {
         salaryCalculationService.recalculateWorkWeek(worker.getUserId(), work.getWorkDate());
     }
 
-    @Transactional
-    protected Work createWorkHelper(Long userId, Worker worker, WorkCreateRequest request) {
+    private Work createWorkHelper(Long userId, Worker worker, WorkCreateRequest request) {
         int hourlyRate = salaryRepository.findByWorkerId(worker.getId())
                 .map(Salary::getHourlyRate)
                 .orElse(0);
@@ -262,6 +260,56 @@ public class WorkService {
         routineService.saveWorkRoutineMapping(userId, request.getRoutineIdList(), work.getId());
 
         return work;
+    }
+
+    private VerifiedWorkContext getVerifiedWorkContext(Long userId, Long workplaceId, Long workerId, Long workId) {
+        // 1. 요청자(현재 사용자)의 Worker 정보와 Workplace 정보 조회
+        Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
+                .orElseThrow(WorkerWorkplaceNotFoundException::new);
+        Workplace workplace = workplaceRepository.findById(workplaceId)
+                .orElseThrow(WorkplaceNotFoundException::new);
+
+        // 2. 현재 사용자가 이 근무 기록에 접근할 권한이 있는지 검증
+        verifyPermission(userId, userWorker.getUserId(), workplace.getOwnerId());
+
+        // 3. 실제 요청된 근무(Work) 정보 조회
+        Work work = workRepository.findByIdAndWorkerId(workId, workerId)
+                .orElseThrow(WorkNotFoundException::new);
+
+        long workMinutes = Duration.between(work.getStartTime(), work.getEndTime()).toMinutes();
+
+        // 4. 근무를 수행한 근무자(Worker)와 사용자(User) 정보 조회
+        Worker requestedWorker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)
+                .orElseThrow(WorkerWorkplaceNotFoundException::new);
+
+        // 5. 근무자 요약 DTO 생성
+        WorkerSummaryResponse workerSummaryInfo = createWorkerSummary(requestedWorker);
+
+        // 6. 근무지 요약 DTO 생성
+        WorkplaceSummaryResponse workplaceSummary = WorkplaceSummaryResponse.builder()
+                .workplaceId(workplace.getId())
+                .workplaceName(workplace.getWorkplaceName())
+                .isShared(workplace.isShared())
+                .build();
+
+        // 7. 수정 가능 여부 계산
+        boolean isEditable = checkEditable(userId, userWorker.getUserId(), workplace.getOwnerId());
+
+        // 8. 모든 데이터를 컨테이너에 담아 반환
+        return new VerifiedWorkContext(work, workMinutes, workerSummaryInfo, workplaceSummary, isEditable);
+    }
+
+    private WorkerSummaryResponse createWorkerSummary(Worker worker) {
+        User user = userRepository.findById(worker.getUserId())
+                .orElseThrow(UserNotFoundException::new);
+
+        return WorkerSummaryResponse.builder()
+                .workerId(worker.getId())
+                .workerBasedLabelColor(worker.getWorkerBasedLabelColor())
+                .ownerBasedLabelColor(worker.getOwnerBasedLabelColor())
+                .nickname(user.getNickname())
+                .profileImg(user.getProfileImg())
+                .build();
     }
 
     private void verifyPermission(Long userId, Long workerUserId, Long workplaceOwnerId) {
@@ -284,6 +332,30 @@ public class WorkService {
                     .map(DayOfWeek::valueOf)
                     .toList();
         }
+    }
+
+    private WorkSummaryResponse convertWorkToSummaryResponse(
+            Work work,
+            WorkerSummaryResponse workerSummaryInfo,
+            WorkplaceSummaryResponse workplaceSummaryInfo,
+            long workMinutes,
+            boolean isEditable
+    ) {
+        List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(work.getRepeatDays());
+
+        return WorkSummaryResponse.builder()
+                .workId(work.getId())
+                .workerSummaryInfo(workerSummaryInfo)
+                .workplaceSummaryInfo(workplaceSummaryInfo)
+                .workDate(work.getWorkDate())
+                .startTime(work.getStartTime())
+                .endTime(work.getEndTime())
+                .workMinutes(workMinutes)
+                .restTimeMinutes(work.getRestTimeMinutes())
+                .repeatDays(repeatDays)
+                .repeatEndDate(work.getRepeatEndDate())
+                .isEditable(isEditable)
+                .build();
     }
 
     private boolean checkEditable(Long userId, Long workerUserId, Long workplaceOwnerId) {
