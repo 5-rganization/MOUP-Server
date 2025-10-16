@@ -2,7 +2,9 @@ package com.moup.server.service;
 
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.moup.server.common.FCMTopic;
-import com.moup.server.model.dto.AnnouncementRequest;
+import com.moup.server.exception.UserNotFoundException;
+import com.moup.server.model.dto.AdminAnnouncementRequest;
+import com.moup.server.model.dto.AdminNotificationRequest;
 import com.moup.server.model.entity.User;
 import com.moup.server.repository.UserRepository;
 import java.time.LocalDateTime;
@@ -10,6 +12,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -41,8 +44,20 @@ public class AdminService {
     }
   }
 
-  public void announce(AnnouncementRequest announcementRequest) throws FirebaseMessagingException {
-    fCMService.sendToTopic(FCMTopic.ADMIN_ALARM, announcementRequest.getTitle(),
-        announcementRequest.getContent());
+  public void announce(AdminAnnouncementRequest adminAnnouncementRequest)
+      throws FirebaseMessagingException {
+    fCMService.sendToTopic(FCMTopic.ADMIN_ALARM, adminAnnouncementRequest.getTitle(),
+        adminAnnouncementRequest.getContent());
+  }
+
+  @Transactional
+  public void notify(Long adminId, AdminNotificationRequest adminNotificationRequest)
+      throws FirebaseMessagingException {
+    User receiver = userRepository.findById(adminNotificationRequest.getReceiverId()).orElseThrow(
+        UserNotFoundException::new);
+
+    fCMService.sendToSingleUser(adminId, adminNotificationRequest.getReceiverId(),
+        adminNotificationRequest.getTitle(),
+        adminNotificationRequest.getContent());
   }
 }

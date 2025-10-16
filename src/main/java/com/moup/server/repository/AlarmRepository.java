@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import javax.swing.text.html.Option;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
@@ -34,4 +35,7 @@ public interface AlarmRepository {
 
   @Update("UPDATE normal_alarms SET read_at = #{readTime} WHERE id = #{notificationId} AND receiver_id = #{userId}")
   void updateReadAtById(Long userId, Long notificationId, LocalDateTime readTime);
+
+  @Delete("DELETE FROM normal_alarms WHERE id = #{notificationId}")
+  void deleteNormalAlarmById(Long notificationId);
 }

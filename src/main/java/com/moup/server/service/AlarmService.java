@@ -103,4 +103,18 @@ public class AlarmService {
         .readAt(readTime)
         .build();
   }
+
+  /**
+   * 일반 알림을 삭제. receiver_id가 본인일 떄 삭제.
+   *
+   * @param userId
+   * @param notificationId
+   */
+  public void deleteNotificationById(Long userId, Long notificationId) {
+
+    alarmRepository.findNormalAlarmById(userId, notificationId)
+        .orElseThrow(AlarmNotFoundException::new);
+
+    alarmRepository.deleteNormalAlarmById(notificationId);
+  }
 }

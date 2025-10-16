@@ -1,9 +1,10 @@
 package com.moup.server.controller;
 
 import com.google.firebase.messaging.FirebaseMessagingException;
-import com.moup.server.model.dto.AnnouncementRequest;
-import com.moup.server.model.dto.LoginRequest;
+import com.moup.server.model.dto.AdminAnnouncementRequest;
+import com.moup.server.model.dto.AdminNotificationRequest;
 import com.moup.server.service.AdminService;
+import com.moup.server.service.IdentityService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminController {
 
     private final AdminService adminService;
+    private final IdentityService identityService;
 
     @DeleteMapping("/users")
     @Operation(summary = "유저 DB 영구 삭제", description = "유예 기간 이상 삭제 상태인 유저를 DB에서 영구 삭제")
@@ -49,18 +52,34 @@ public class AdminController {
         return ResponseEntity.noContent().build();
     }
 
-    @DeleteMapping("/alarms/announcement")
+    @PostMapping("/alarms/announcements")
     @Operation(summary = "전체 공지 푸시 알림 전송", description = "모든 유저에게 공지 사항을 푸시 알림으로 전송합니다.")
     @ApiResponses({
-        @ApiResponse(responseCode = "204", description = "삭제 성공"),
+        @ApiResponse(responseCode = "204", description = "전송 요청 성공"),
         @ApiResponse(responseCode = "401", description = "인증 실패"),
         @ApiResponse(responseCode = "403", description = "권한 없음"),
         @ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "로그인을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = AnnouncementRequest.class)))
-    public ResponseEntity<?> announce(@RequestBody AnnouncementRequest announcementRequest)
+    public ResponseEntity<?> announce(@RequestBody AdminAnnouncementRequest adminAnnouncementRequest)
         throws FirebaseMessagingException {
-        adminService.announce(announcementRequest);
+        adminService.announce(adminAnnouncementRequest);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/alarms/notification")
+    @Operation(summary = "일반 알림 전송", description = "특정 유저에게 푸시 알림으로 전송합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "전송 요청 성공"),
+        @ApiResponse(responseCode = "401", description = "인증 실패"),
+        @ApiResponse(responseCode = "403", description = "권한 없음"),
+        @ApiResponse(responseCode = "404", description = "유저 찾을 수 없음"),
+        @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    public ResponseEntity<?> notify(@RequestBody AdminNotificationRequest adminNotificationRequest)
+        throws FirebaseMessagingException {
+        Long userId = identityService.getCurrentUserId();
+
+        adminService.notify(userId, adminNotificationRequest);
         return ResponseEntity.noContent().build();
     }
 }

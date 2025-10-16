@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -79,7 +80,7 @@ public class AlarmController {
     return ResponseEntity.ok().body(notification);
   }
 
-  @PatchMapping("/notifications/{notificationId}")
+  @PatchMapping("/notifications/{notificationId}/read")
   @Operation(summary = "일반 알림 읽음 처리", description = "일반 알림 id를 기준으로 알림을 읽음 처리합니다.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "읽음 처리 성공", content = @Content(mediaType = "application/json", schema =  @Schema(implementation = Notification.class))),
@@ -93,5 +94,20 @@ public class AlarmController {
     Notification notification = alarmService.readNotificationById(userId, notificationId);
 
     return ResponseEntity.ok().body(notification);
+  }
+
+  @DeleteMapping("/notifications/{notificationId}")
+  @Operation(summary = "일반 알림 삭제", description = "일반 알림 id를 기준으로 알림을 삭제합니다.")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "삭제 성공", content = @Content(mediaType = "application/json")),
+      @ApiResponse(responseCode = "401", description = "인증 실패 - 토큰 없음 또는 유효하지 않음"),
+      @ApiResponse(responseCode = "404", description = "조회 결과 없음", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+      @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+  public ResponseEntity<?> deleteNotification(@PathVariable Long notificationId) {
+    Long userId = identityService.getCurrentUserId();
+
+    alarmService.deleteNotificationById(userId, notificationId);
+
+    return ResponseEntity.ok().build();
   }
 }
