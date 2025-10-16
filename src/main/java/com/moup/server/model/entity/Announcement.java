@@ -7,6 +7,7 @@ import lombok.Getter;
 @Getter
 @Builder
 public class Announcement {
+  Long id;
   String title;
   String content;
   LocalDateTime sentAt;

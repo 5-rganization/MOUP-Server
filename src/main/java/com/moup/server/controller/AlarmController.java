@@ -51,7 +51,7 @@ public class AlarmController {
   }
 
   @GetMapping("/notifications")
-  @Operation(summary = "일반 알림 일괄 조회", description = "일반 알림을 일괄 조회하여 반환합니다. (읽음 처리된 알림은 조회에서 제외)")
+  @Operation(summary = "일반 알림 일괄 조회", description = "일반 알림을 일괄 조회하여 반환합니다.(읽음 처리된 알림 포함)")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "조회 성공", content = @Content(mediaType = "application/json", array = @ArraySchema(schema =  @Schema(implementation = Notification.class)))),
       @ApiResponse(responseCode = "401", description = "인증 실패 - 토큰 없음 또는 유효하지 않음"),

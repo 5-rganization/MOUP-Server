@@ -30,8 +30,9 @@ public class AlarmService {
 
     List<Announcement> announcements = new ArrayList<>();
     for (AdminAlarm adminAlarm : adminAlarms) {
-      announcements.add(Announcement.builder().title(adminAlarm.getTitle()).content(
-          adminAlarm.getContent()).sentAt(adminAlarm.getSentAt()).build());
+      announcements.add(
+          Announcement.builder().id(adminAlarm.getId()).title(adminAlarm.getTitle()).content(
+              adminAlarm.getContent()).sentAt(adminAlarm.getSentAt()).build());
     }
 
     return announcements;
@@ -47,6 +48,7 @@ public class AlarmService {
     List<Notification> notifications = new ArrayList<>();
     for (NormalAlarm normalAlarm : normalAlarms) {
       notifications.add(Notification.builder()
+          .id(normalAlarm.getId())
           .senderId(normalAlarm.getSenderId())
           .receiverId(normalAlarm.getReceiverId())
           .title(normalAlarm.getTitle())
@@ -71,6 +73,7 @@ public class AlarmService {
         .orElseThrow(AlarmNotFoundException::new);
 
     return Notification.builder()
+        .id(normalAlarm.getId())
         .senderId(normalAlarm.getSenderId())
         .receiverId(normalAlarm.getReceiverId())
         .title(normalAlarm.getTitle())
@@ -95,6 +98,7 @@ public class AlarmService {
     alarmRepository.updateReadAtById(userId, notificationId, readTime);
 
     return Notification.builder()
+        .id(normalAlarm.getId())
         .senderId(normalAlarm.getSenderId())
         .receiverId(normalAlarm.getReceiverId())
         .title(normalAlarm.getTitle())

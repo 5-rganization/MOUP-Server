@@ -7,6 +7,7 @@ import lombok.Getter;
 @Getter
 @Builder
 public class Notification {
+  Long id;
   Long senderId;
   Long receiverId;
   String title;

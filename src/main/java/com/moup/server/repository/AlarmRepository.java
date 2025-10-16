@@ -27,7 +27,7 @@ public interface AlarmRepository {
   @Select("SELECT * FROM admin_alarms")
   List<AdminAlarm> findAllAdminAlarms();
 
-  @Select("SELECT * FROM normal_alarms WHERE receiver_id = #{userId} AND read_at IS NULL")
+  @Select("SELECT * FROM normal_alarms WHERE receiver_id = #{userId}")
   List<NormalAlarm> findAllNormalAlarmsByUserId(Long userId);
 
   @Select("SELECT * FROM normal_alarms WHERE id = #{notificationId} AND receiver_id = #{userId}")
