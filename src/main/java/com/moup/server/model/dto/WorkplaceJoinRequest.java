@@ -14,6 +14,6 @@ public class WorkplaceJoinRequest {
     @Schema(description = "라벨 색상 (알바생 기준)", example = "RED", requiredMode = Schema.RequiredMode.REQUIRED)
     private String workerBasedLabelColor;
     @NotNull(message = "필수 입력값입니다.")
-    @Schema(description = "알바생 급여 생성 요청 DTO", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "급여 생성 요청 DTO", requiredMode = Schema.RequiredMode.REQUIRED)
     private SalaryCreateRequest salaryCreateRequest;
 }

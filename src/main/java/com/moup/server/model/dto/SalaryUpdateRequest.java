@@ -12,7 +12,7 @@ import java.time.DayOfWeek;
 
 @Getter
 @Builder
-@Schema(description = "알바생 급여 업데이트 요청 DTO")
+@Schema(description = "급여 업데이트 요청 DTO")
 public class SalaryUpdateRequest {
     @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "급여 유형 (매월: SALARY_MONTHLY, 매주: SALARY_WEEKLY, 매일: SALARY_DAILY)", example = "SALARY_MONTHLY", requiredMode = Schema.RequiredMode.REQUIRED)
