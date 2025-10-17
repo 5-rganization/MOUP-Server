@@ -62,6 +62,29 @@ public interface WorkRepository {
     @Select("SELECT * FROM works WHERE worker_id = #{workerId} AND work_date BETWEEN #{startDate} AND #{endDate} ORDER BY work_date")
     List<Work> findAllByWorkerIdAndDateRange(Long workerId, LocalDate startDate, LocalDate endDate);
 
+    /// 여러 근무자 ID와 기간에 해당하는 모든 근무를 조회하는 메서드
+    ///
+    /// @param workerIdList 조회할 근무자 ID 리스트
+    /// @param startDate 조회할 시작일
+    /// @param endDate 조회할 마지막일
+    /// @return 조회된 Work 객체 리스트
+    @Select("""
+            <script>
+                SELECT * FROM works
+                WHERE work_date BETWEEN #{startDate} AND #{endDate}
+                AND worker_id IN
+                    <foreach item="workerId" collection="workerIdList" open="(" separator="," close=")">
+                      #{workerId}
+                    </foreach>
+                ORDER BY work_date
+            </script>
+            """)
+    List<Work> findAllByWorkerIdInAndDateRange(
+            @Param("workerIdList") List<Long> workerIdList,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
     /// 근무 ID와 근무자 ID에 해당하는 근무를 업데이트하는 메서드
     ///
     /// @param work 업데이트할 Work 객체

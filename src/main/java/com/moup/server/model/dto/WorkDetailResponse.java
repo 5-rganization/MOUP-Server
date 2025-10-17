@@ -48,6 +48,6 @@ public class WorkDetailResponse {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     @Schema(description = "반복 종료 날짜 (yyyy-MM-dd)", example = "2025-11-11", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private LocalDate repeatEndDate;
-    @Schema(description = "현재 사용자의 수정 가능 여부", example = "true", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @Schema(description = "현재 사용자의 수정 가능 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean isEditable;
 }
