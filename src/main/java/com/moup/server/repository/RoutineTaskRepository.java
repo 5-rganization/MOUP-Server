@@ -17,27 +17,12 @@ public interface RoutineTaskRepository {
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
     Long create(RoutineTask routineTask);
 
-    /// 할 일 ID와 루틴 ID를 통해 해당 할 일의 객체를 반환하는 메서드
-    ///
-    /// @param id 조회할 할 일의 ID
-    /// @param routineId 조회할 할 일의 루틴 ID
-    /// @return 조회된 RoutineTask 객체, 없으면 Optional.empty
-    @Select("SELECT * FROM routine_tasks WHERE id = #{id} AND routine_id = #{routineId}")
-    Optional<RoutineTask> findByIdAndRoutineId(Long id, Long routineId);
-
     /// 루틴 ID를 통해 해당 루틴의 모든 할 일 객체를 리스트로 반환하는 메서드
     ///
     /// @param routineId 조회할 할 일의 루틴 ID
     /// @return 조회된 RoutineTask 객체 리스트, 없으면 빈 배열
     @Select("SELECT * FROM routine_tasks WHERE routine_id = #{routineId} ORDER BY order_index ASC")
     List<RoutineTask> findAllByRoutineId(Long routineId);
-
-    /// 할 일의 ID와 루틴 ID에 해당하는 할 일을 삭제하는 메서드
-    ///
-    /// @param id 삭제할 할 일 ID
-    /// @param routineId 삭제할 할 일의 루틴 ID
-    @Delete("DELETE FROM routine_tasks WHERE id = #{id} AND routine_id = #{routineId}")
-    void delete(Long id, Long routineId);
 
     /// 루틴 ID에 해당하는 할 일들을 모두 삭제하는 메서드
     ///
