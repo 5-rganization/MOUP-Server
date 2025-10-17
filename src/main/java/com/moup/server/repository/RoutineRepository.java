@@ -48,6 +48,26 @@ public interface RoutineRepository {
     @Select("SELECT * FROM routines WHERE user_id = #{userId} ORDER BY alarm_time IS NULL, alarm_time")
     List<Routine> findAllByUserId(Long userId);
 
+    /// 여러 루틴 ID와 사용자 ID에 해당하는 모든 루틴을 조회하는 메서드
+    ///
+    /// @param idList 조회할 루틴 ID 리스트
+    /// @param userId 조회할 사용자 ID
+    /// @return 조회된 Routine 객체 리스트
+    @Select("""
+            <script>
+                SELECT * FROM routines
+                WHERE user_id = #{userId}
+                AND id IN
+                <foreach item="id" collection="idList" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            </script>
+            """)
+    List<Routine> findAllByIdInAndUserId(
+            @Param("idList") List<Long> idList,
+            @Param("userId") Long userId
+    );
+
     /// 사용자 ID를 통해 해당 사용자의 모든 루틴 개수를 반환하는 메서드
     ///
     /// @param userId 조회할 루틴의 사용자 ID

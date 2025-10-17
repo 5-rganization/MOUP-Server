@@ -92,7 +92,7 @@ public class WorkController implements WorkSpecification {
     }
 
     @Override
-    @GetMapping("/workplaces/{workplaceId}/works/")
+    @GetMapping("/workplaces/{workplaceId}/works")
     public ResponseEntity<?> getSummarizedWorkByWorkplace(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
             @RequestParam(name = "baseYearMonth", required = false) YearMonth baseYearMonth,

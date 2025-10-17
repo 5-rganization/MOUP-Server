@@ -16,11 +16,23 @@ public interface UserRepository {
     @Options(useGeneratedKeys = true, keyProperty = "userId", keyColumn = "id")
     Long create(UserCreateRequest userCreateRequest);
 
-    @Select("SELECT EXISTS(SELECT 1 FROM users WHERE id = #{id})")
-    boolean existById(Long id);
-
     @Select("SELECT * FROM users WHERE id = #{id}")
     Optional<User> findById(Long id);
+
+    /// 여러 사용자 ID에 해당하는 모든 사용자를 조회하는 메서드
+    ///
+    /// @param idList 조회할 근무지 ID 리스트
+    /// @return 조회된 Workplace 객체 리스트
+    @Select("""
+            <script>
+                SELECT * FROM users
+                WHERE id IN
+                <foreach item="id" collection="idList" open="(" separator="," close=")">
+                      #{id}
+                </foreach>
+            </script>
+            """)
+    List<User> findAllByIdIn(@Param("idList") List<Long> idList);
 
     @Select("SELECT * FROM users WHERE provider = #{provider} AND provider_id = #{providerId}")
     Optional<User> findByProviderAndId(Login provider, String providerId);

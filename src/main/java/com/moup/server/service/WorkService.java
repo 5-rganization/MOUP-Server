@@ -9,10 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -21,10 +19,10 @@ public class WorkService {
     private final SalaryRepository salaryRepository;
     private final WorkerRepository workerRepository;
     private final WorkplaceRepository workplaceRepository;
+    private final UserRepository userRepository;
 
     private final RoutineService routineService;
     private final SalaryCalculationService salaryCalculationService;
-    private final UserRepository userRepository;
 
     private record VerifiedWorkContext(
             Work work,
@@ -120,14 +118,52 @@ public class WorkService {
         LocalDate startDate = baseYearMonth.minusMonths(6).atDay(1);
         LocalDate endDate = baseYearMonth.plusMonths(6).atEndOfMonth();
 
-        List<WorkSummaryResponse> userWorkSummaryList = new ArrayList<>();
-
+        // 1. 사용자의 모든 Worker 정보 조회 (쿼리 1)
         List<Worker> userWorkerList = workerRepository.findAllByUserId(userId);
+        if (userWorkerList.isEmpty()) {
+            return WorkCalendarListResponse.builder()
+                    .workSummaryInfoList(Collections.emptyList())
+                    .build();
+        }
+
+        // 2. 사용자 정보 조회 (쿼리 2)
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
+
+        // 3. ID 리스트 추출
+        List<Long> workplaceIdList = userWorkerList.stream()
+                .map(Worker::getWorkplaceId)
+                .distinct()
+                .toList();
+        List<Long> workerIdList = userWorkerList.stream()
+                .map(Worker::getId)
+                .toList();
+
+        // 4. Workplace 정보 한 번에 조회 (쿼리 3) 및 Map으로 변환
+        Map<Long, Workplace> workplaceMap = workplaceRepository.findAllByIdIn(workplaceIdList).stream()
+                .collect(Collectors.toMap(Workplace::getId, workplace -> workplace));
+
+        // 5. Work 정보 한 번에 조회 (쿼리 4) 및 Map으로 변환 (workerId를 key로)
+        List<Work> allWorks = workRepository.findAllByWorkerIdInAndDateRange(workerIdList, startDate, endDate);
+        Map<Long, List<Work>> workMapByWorker = allWorks.stream()
+                .collect(Collectors.groupingBy(Work::getWorkerId));
+
+        // 6. DTO 조립 (추가 쿼리 없음)
+        List<WorkSummaryResponse> userWorkSummaryList = new ArrayList<>();
         for (Worker userWorker : userWorkerList) {
-            Workplace workplace = workplaceRepository.findById(userWorker.getWorkplaceId()).orElseThrow(WorkplaceNotFoundException::new);
+            Workplace workplace = workplaceMap.get(userWorker.getWorkplaceId());
+            // workplace가 null인 경우 방어 코드 (데이터 정합성이 깨졌을 경우)
+            if (workplace == null) continue;
+
             verifyPermission(userId, userWorker.getUserId(), workplace.getOwnerId());
 
-            WorkerSummaryResponse workerSummaryInfo = createWorkerSummary(userWorker);
+            WorkerSummaryResponse workerSummaryInfo = WorkerSummaryResponse.builder()
+                    .workerId(userWorker.getId())
+                    .workerBasedLabelColor(userWorker.getWorkerBasedLabelColor())
+                    .ownerBasedLabelColor(userWorker.getOwnerBasedLabelColor())
+                    .nickname(user.getNickname())
+                    .profileImg(user.getProfileImg())
+                    .build();
 
             WorkplaceSummaryResponse workplaceSummaryInfo = WorkplaceSummaryResponse.builder()
                     .workplaceId(workplace.getId())
@@ -135,19 +171,13 @@ public class WorkService {
                     .isShared(workplace.isShared())
                     .build();
 
-            List<Work> userWorkList = workRepository.findAllByWorkerIdAndDateRange(userWorker.getId(), startDate, endDate);
-            List<WorkSummaryResponse> workSummaryList = userWorkList.stream()
+            List<Work> workerWorkList = workMapByWorker.getOrDefault(userWorker.getId(), Collections.emptyList());
+
+            List<WorkSummaryResponse> workSummaryList = workerWorkList.stream()
                     .map(work -> {
                         long workMinutes = Duration.between(work.getStartTime(), work.getEndTime()).toMinutes();
                         boolean isEditable = checkEditable(userId, userWorker.getUserId(), workplace.getOwnerId());
-
-                        return convertWorkToSummaryResponse(
-                                work,
-                                workerSummaryInfo,
-                                workplaceSummaryInfo,
-                                workMinutes,
-                                isEditable
-                        );
+                        return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummaryInfo, workMinutes, isEditable);
                     })
                     .toList();
             userWorkSummaryList.addAll(workSummaryList);
@@ -178,20 +208,51 @@ public class WorkService {
         List<WorkSummaryResponse> workSummaryInfoList = new ArrayList<>();
         if (Boolean.TRUE.equals(isShared)) {
             // 근무지의 모든 근무자 근무 반환
+            // 1. 사업장의 모든 Worker 정보 조회 (쿼리 1)
             List<Worker> workplaceWorkerList = workerRepository.findAllByWorkplaceId(workplaceId);
-            for (Worker workplaceWorker : workplaceWorkerList) {
-                List<Work> workerWorkList = workRepository.findAllByWorkerIdAndDateRange(workplaceWorker.getId(), startDate, endDate);
 
-                WorkerSummaryResponse workerSummaryInfo = createWorkerSummary(workplaceWorker);
-                List<WorkSummaryResponse> workerWorkSummaryList = workerWorkList.stream()
-                        .map(work -> {
-                            long workMinutes = Duration.between(work.getStartTime(), work.getEndTime()).toMinutes();
-                            boolean isEditable = checkEditable(user.getId(), workplaceWorker.getUserId(), workplace.getOwnerId());
-
-                            return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummary, workMinutes, isEditable);
-                        })
+            if (!workplaceWorkerList.isEmpty()) {
+                // 2. ID 리스트 추출
+                List<Long> workerIdList = workplaceWorkerList.stream()
+                        .map(Worker::getId)
                         .toList();
-                workSummaryInfoList.addAll(workerWorkSummaryList);
+                List<Long> userIdList = workplaceWorkerList.stream()
+                        .map(Worker::getUserId).distinct()
+                        .toList();
+
+                // 3. User 정보 한 번에 조회 (쿼리 2) 및 Map 변환
+                Map<Long, User> userMap = userRepository.findAllByIdIn(userIdList).stream()
+                        .collect(Collectors.toMap(User::getId, u -> u));
+
+                // 4. Work 정보 한 번에 조회 (쿼리 3) 및 Map 변환
+                List<Work> allWorkList = workRepository.findAllByWorkerIdInAndDateRange(workerIdList, startDate, endDate);
+                Map<Long, List<Work>> workMapByWorker = allWorkList.stream()
+                        .collect(Collectors.groupingBy(Work::getWorkerId));
+
+                // 5. DTO 조립 (추가 쿼리 없음)
+                for (Worker workplaceWorker : workplaceWorkerList) {
+                    User workerUser = userMap.get(workplaceWorker.getUserId());
+                    if (workerUser == null) continue;
+
+                    WorkerSummaryResponse workerSummaryInfo = WorkerSummaryResponse.builder()
+                            .workerId(workplaceWorker.getId())
+                            .workerBasedLabelColor(workplaceWorker.getWorkerBasedLabelColor())
+                            .ownerBasedLabelColor(workplaceWorker.getOwnerBasedLabelColor())
+                            .nickname(workerUser.getNickname())
+                            .profileImg(workerUser.getProfileImg())
+                            .build();
+
+                    List<Work> workerWorkList = workMapByWorker.getOrDefault(workplaceWorker.getId(), Collections.emptyList());
+
+                    List<WorkSummaryResponse> workerWorkSummaryList = workerWorkList.stream()
+                            .map(work -> {
+                                long workMinutes = Duration.between(work.getStartTime(), work.getEndTime()).toMinutes();
+                                boolean isEditable = checkEditable(user.getId(), workplaceWorker.getUserId(), workplace.getOwnerId());
+                                return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummary, workMinutes, isEditable);
+                            })
+                            .toList();
+                    workSummaryInfoList.addAll(workerWorkSummaryList);
+                }
             }
         } else {
             // 사용자의 근무만 반환

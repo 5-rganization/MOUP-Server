@@ -152,7 +152,7 @@ public interface WorkSpecification {
             @RequestParam(name = "baseYearMonth", required = false) YearMonth baseYearMonth
     );
 
-    @GetMapping("/workplaces/{workplaceId}/works/")
+    @GetMapping("/workplaces/{workplaceId}/works")
     @Operation(summary = "특정 근무지(매장)의 근무 범위 조회", description = "근무지(매장) ID를 경로로, 연-월과 전체 근무자 스케줄 조회 여부를 매개변수로 전달받아 해당 날짜를 중간값으로 1년간 해당 근무지(매장)의 근무를 조회")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "근무 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkCalendarListResponse.class))),
