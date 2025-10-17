@@ -169,6 +169,16 @@ public interface WorkSpecification {
             @RequestParam(name = "isShared", required = false) Boolean isShared
     );
 
+    @GetMapping("/works/{workId}/routines")
+    @Operation(summary = "근무에 해당하는 루틴 요약 조회", description = "근무에 해당하는 루틴 조회 및 요약")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "근무에 해당하는 루틴 조회 및 요약 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineSummaryListResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    ResponseEntity<?> getWorkAllRoutine(
+            @Parameter(name = "workId", description = "조회할 근무 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId
+    );
+
     @PutMapping("/workplaces/{workplaceId}/workers/me/works/{workId}")
     @Operation(summary = "근무지에 존재하는 내 근무 업데이트", description = "근무지(매장) ID와 근무 ID를 경로로 전달받아 해당하는 내 근무를 업데이트")
     @ApiResponses({

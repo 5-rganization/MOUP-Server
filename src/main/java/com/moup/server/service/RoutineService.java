@@ -10,10 +10,13 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -21,12 +24,13 @@ public class RoutineService {
     private final RoutineRepository routineRepository;
     private final RoutineTaskRepository routineTaskRepository;
     private final WorkRoutineMappingRepository workRoutineMappingRepository;
+    private final WorkRepository workRepository;
+    private final WorkerRepository workerRepository;
+    private final WorkplaceRepository workplaceRepository;
 
     private static final int MAX_ROUTINE_COUNT_PER_USER = 20; // 사용자당 루틴 연결 최대 개수
     private static final int MAX_TASK_COUNT_PER_ROUTINE = 50; // 루틴당 할 일 연결 최대 개수
     private static final int MAX_ROUTINE_COUNT_PER_WORK = 10; // 근무당 루틴 연결 최대 개수
-    private final WorkRepository workRepository;
-    private final WorkerRepository workerRepository;
 
     @Transactional
     public RoutineCreateResponse createRoutine(Long userId, RoutineCreateRequest request) {
@@ -82,51 +86,99 @@ public class RoutineService {
     }
 
     @Transactional(readOnly = true)
-    public RoutineSummaryListResponse getAllTodayRoutine(Long userId) {
-        // 1. (쿼리 1) 사용자 Worker ID 조회
-        List<Long> userWorkerIdList = workerRepository.findAllByUserId(userId).stream()
+    public TodayRoutineResponse getAllTodayWorkplaceRoutineCount(Long userId) {
+        // 1. (쿼리 1) 사용자의 모든 Worker 정보 조회
+        List<Worker> userWorkerList = workerRepository.findAllByUserId(userId);
+        if (userWorkerList.isEmpty()) {
+            return TodayRoutineResponse.builder()
+                    .todayWorkRoutineCountList(Collections.emptyList())
+                    .build();
+        }
+
+        // 2. (In-Memory) Worker ID 리스트 및 WorkerId -> WorkplaceId Map 생성 (N+1 방지용)
+        List<Long> userWorkerIdList = userWorkerList.stream()
                 .map(Worker::getId)
                 .toList();
 
-        if (userWorkerIdList.isEmpty()) {
-            return RoutineSummaryListResponse.builder().routineSummaryInfoList(Collections.emptyList()).build();
-        }
+        Map<Long, Long> workerIdToWorkplaceIdMap = userWorkerList.stream()
+                .collect(Collectors.toMap(Worker::getId, Worker::getWorkplaceId));
 
-        // 2. (쿼리 2) 오늘의 모든 Work 조회
+        // 3. (쿼리 2) 오늘의 모든 Work 조회
         List<Work> todayWorkList = workRepository.findAllByWorkerIdListInAndDateRange(userWorkerIdList, LocalDate.now(), LocalDate.now());
-
         if (todayWorkList.isEmpty()) {
-            return RoutineSummaryListResponse.builder().routineSummaryInfoList(Collections.emptyList()).build();
+            return TodayRoutineResponse.builder()
+                    .todayWorkRoutineCountList(Collections.emptyList())
+                    .build();
         }
 
-        // 3. (쿼리 3) 오늘 근무에 매핑된 *모든* WorkRoutineMapping을 한 번에 조회
-        // 3-1. Work ID 리스트 추출
-        List<Long> todayWorkIdList = todayWorkList.stream().map(Work::getId).toList();
+        List<Long> todayWorkIdList = todayWorkList.stream()
+                .map(Work::getId)
+                .toList();
 
-        // 3-2. WorkRoutineMappingRepository의 IN 절 쿼리 사용 (위에서 추가한 메서드)
-        List<WorkRoutineMapping> allMappings = workRoutineMappingRepository.findAllByWorkIdListIn(todayWorkIdList);
+        // 4. (쿼리 3) Work ID별 루틴 카운트 Map 조회
+        Map<Long, Long> routineCountMap = workRoutineMappingRepository.findCountsByWorkIdListIn(todayWorkIdList).stream()
+                .collect(Collectors.toMap(WorkRoutineMappingRepository.WorkRoutineCount::workId,
+                        WorkRoutineMappingRepository.WorkRoutineCount::count));
 
-        if (allMappings.isEmpty()) {
-            return RoutineSummaryListResponse.builder().routineSummaryInfoList(Collections.emptyList()).build();
-        }
-
-        // 4. (쿼리 4) 매핑된 모든 루틴 ID를 한 번에 조회
-        // 4-1. Routine ID 리스트 추출 (중복 제거)
-        List<Long> allRoutineIds = allMappings.stream()
-                .map(WorkRoutineMapping::getRoutineId)
+        // 5. (쿼리 4) Workplace 정보 Map 조회
+        // 5-1. Worker Map에서 Workplace ID 리스트 추출
+        List<Long> workplaceIdList = workerIdToWorkplaceIdMap.values().stream()
                 .distinct()
                 .toList();
 
-        // 4-2. 모든 루틴 정보를 한 번에 조회
-        List<RoutineSummaryResponse> routineSummaryInfoList = routineRepository.findAllByIdListInAndUserId(allRoutineIds, userId).stream() // 👈 N+1 해결 (2)
+        Map<Long, Workplace> workplaceMap = workplaceRepository.findAllByIdListIn(workplaceIdList).stream()
+                .collect(Collectors.toMap(Workplace::getId, workplace -> workplace));
+
+        // 6. (In-Memory) DTO 조립
+        List<TodayWorkRoutineCountResponse> todayWorkRoutineCountList = todayWorkList.stream()
+                .map(work -> {
+                    // work -> workerId -> workplaceId -> workplace 순서로 조회
+                    Long workplaceId = workerIdToWorkplaceIdMap.get(work.getWorkerId());
+                    Workplace workplace = (workplaceId != null) ? workplaceMap.get(workplaceId) : null;
+
+                    if (workplace == null) return null; // 방어 코드
+
+                    WorkplaceSummaryResponse workplaceSummary = WorkplaceSummaryResponse.builder()
+                            .workplaceId(workplace.getId())
+                            .workplaceName(workplace.getWorkplaceName())
+                            .isShared(workplace.isShared())
+                            .build();
+
+                    return TodayWorkRoutineCountResponse.builder()
+                            .workId(work.getId())
+                            .workplaceSummaryInfo(workplaceSummary)
+                            .startTime(work.getStartTime())
+                            .endTime(work.getEndTime())
+                            .workMinutes(Duration.between(work.getStartTime(), work.getEndTime()).toMinutes())
+                            .routineCount(routineCountMap.getOrDefault(work.getId(), 0L).intValue())
+                            .build();
+                })
+                .filter(Objects::nonNull)
+                .toList();
+
+        // 7. 결과 반환
+        return TodayRoutineResponse.builder()
+                .todayWorkRoutineCountList(todayWorkRoutineCountList)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public RoutineSummaryListResponse getAllRoutineByWork(Long userId, Long workId) {
+        List<WorkRoutineMapping> workRoutineMappingList = workRoutineMappingRepository.findAllByWorkId(workId);
+        List<Long> routineIdList = workRoutineMappingList.stream()
+                .map(WorkRoutineMapping::getRoutineId)
+                .toList();
+
+        List<Routine> routineList = routineRepository.findAllByIdListInAndUserId(routineIdList, userId);
+        List<RoutineSummaryResponse> routineSummaryInfoList = routineList.stream()
                 .map(routine -> RoutineSummaryResponse.builder()
                         .routineId(routine.getId())
                         .routineName(routine.getRoutineName())
                         .alarmTime(routine.getAlarmTime())
-                        .build())
+                        .build()
+                )
                 .toList();
 
-        // 5. 결과 반환
         return RoutineSummaryListResponse.builder()
                 .routineSummaryInfoList(routineSummaryInfoList)
                 .build();

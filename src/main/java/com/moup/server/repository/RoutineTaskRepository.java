@@ -9,7 +9,7 @@ import java.util.Optional;
 @Mapper
 public interface RoutineTaskRepository {
 
-    /// 여러 개의 할 일(Task)을 한 번에 생성하는 메서드 (배치 삽입)
+    /// 여러 개의 할 일을 한 번에 생성하는 메서드 (배치 삽입)
     ///
     /// @param taskList 생성할 RoutineTask 객체 리스트
     @Insert("""

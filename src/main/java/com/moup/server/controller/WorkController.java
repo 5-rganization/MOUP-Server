@@ -3,6 +3,7 @@ package com.moup.server.controller;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.User;
 import com.moup.server.service.IdentityService;
+import com.moup.server.service.RoutineService;
 import com.moup.server.service.UserService;
 import com.moup.server.service.WorkService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,6 +27,7 @@ public class WorkController implements WorkSpecification {
     private final UserService userService;
     private final IdentityService identityService;
     private final WorkService workService;
+    private final RoutineService routineService;
 
     @Override
     @PostMapping("/workplaces/{workplaceId}/workers/me/works")
@@ -102,6 +104,17 @@ public class WorkController implements WorkSpecification {
         User user = userService.findUserById(userId);
 
         WorkCalendarListResponse response = workService.getAllSummarizedWorkByWorkplace(user, workplaceId, baseYearMonth, isShared);
+        return ResponseEntity.ok().body(response);
+    }
+
+    @Override
+    @GetMapping("/works/{workId}/routines")
+    public ResponseEntity<?> getWorkAllRoutine(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId
+    ) {
+        Long userId = identityService.getCurrentUserId();
+
+        RoutineSummaryListResponse response = routineService.getAllRoutineByWork(userId, workId);
         return ResponseEntity.ok().body(response);
     }
 
