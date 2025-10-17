@@ -30,5 +30,11 @@ public interface WorkRoutineMappingRepository {
     ///
     /// @param workId 삭제할 근무-루틴 매핑의 근무 ID
     @Delete("DELETE FROM work_routine_mappings WHERE work_id = #{workId}")
-    void delete(Long workId);
+    void deleteByWorkId(Long workId);
+
+    /// 루틴 ID에 해당하는 근무-루틴 매핑을 모두 삭제하는 메서드
+    ///
+    /// @param routineId 삭제할 근무-루틴 매핑의 루틴 ID
+    @Delete("DELETE FROM work_routine_mappings WHERE routine_id = #{routineId}")
+    void deleteByRoutineId(Long routineId);
 }

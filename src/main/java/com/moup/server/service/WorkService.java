@@ -35,13 +35,15 @@ public class WorkService {
     ) {}
 
     @Transactional
-    public WorkCreateResponse createWork(Long userId, Long workplaceId, WorkCreateRequest request) {
+    public WorkCreateResponse createMyWork(Long userId, Long workplaceId, WorkCreateRequest request) {
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         verifyPermission(userId, userWorker.getUserId(), workplaceOwnerId);
 
-        Work work = createWorkHelper(userId, userWorker, request);
+        Work work = createWorkHelper(userWorker, request);
+
+        routineService.saveWorkRoutineMapping(userId, request.getRoutineIdList(), work.getId());
 
         return WorkCreateResponse.builder()
                 .workId(work.getId())
@@ -49,13 +51,17 @@ public class WorkService {
     }
 
     @Transactional
-    public WorkCreateResponse createWorkForWorkerId(Long requesterId, Long workplaceId, Long workerId, WorkCreateRequest request) {
+    public WorkCreateResponse createWorkForWorkerId(Long requesterUserId, Long workplaceId, Long workerId, WorkCreateRequest request) {
         Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        verifyPermission(requesterId, worker.getUserId(), workplaceOwnerId);
+        verifyPermission(requesterUserId, worker.getUserId(), workplaceOwnerId);
 
-        Work work = createWorkHelper(requesterId, worker, request);
+        Work work = createWorkHelper(worker, request);
+
+        Long workerUserId = userRepository.findById(worker.getUserId()).orElseThrow(UserNotFoundException::new).getId();
+
+        routineService.saveWorkRoutineMapping(workerUserId, request.getRoutineIdList(), work.getId());
 
         return WorkCreateResponse.builder()
                 .workId(work.getId())
@@ -209,43 +215,60 @@ public class WorkService {
     }
 
     @Transactional
-    public void updateWork(Long userId, Long workplaceId, Long workId, WorkUpdateRequest request) {
-        Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
+    public void updateMyWork(Long userId, Long workplaceId, Long workId, WorkUpdateRequest request) {
+        Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
-        verifyPermission(userId, worker.getUserId(), workplaceId);
-        if (!workRepository.existsByIdAndWorkerId(workId, worker.getUserId())) { throw new WorkNotFoundException(); }
+        verifyPermission(userId, userWorker.getUserId(), workplaceId);
+        if (!workRepository.existsByIdAndWorkerId(workId, userWorker.getId())) { throw new WorkNotFoundException(); }
 
-        int hourlyRate = salaryRepository.findByWorkerId(worker.getId())
-                .map(Salary::getHourlyRate)
-                .orElse(0);
+        updateWorkHelper(userWorker, workId, request);
 
-        verifyStartEndTime(request.getStartTime(), request.getEndTime());
-
-        Work work = request.toEntity(workId, worker.getUserId(), hourlyRate);
-        workRepository.update(work);
-
-        salaryCalculationService.recalculateWorkWeek(worker.getUserId(), work.getWorkDate());
-
-        routineService.saveWorkRoutineMapping(userId, request.getRoutineIdList(), work.getId());
+        routineService.saveWorkRoutineMapping(userId, request.getRoutineIdList(), workId);
     }
 
     @Transactional
-    public void deleteWork(Long userId, Long workplaceId, Long workId) {
-        Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
+    public void updateWorkForWorkerId(Long requesterUserId, Long workplaceId, Long workerId, Long workId, WorkUpdateRequest request) {
+        Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
-        if (!workRepository.existsByIdAndWorkerId(workId, worker.getUserId())) { throw new WorkNotFoundException(); }
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        verifyPermission(userId, worker.getUserId(), workplaceOwnerId);
+        verifyPermission(requesterUserId, worker.getUserId(), workplaceOwnerId);
+        if (!workRepository.existsByIdAndWorkerId(workId, worker.getId())) { throw new WorkNotFoundException(); }
 
-        routineService.deleteWorkRoutineMapping(workId);
+        updateWorkHelper(worker, workId, request);
 
-        Work work = workRepository.findByIdAndWorkerId(workId, worker.getId()).orElseThrow(WorkNotFoundException::new);
-        workRepository.delete(workId, worker.getUserId());
-
-        salaryCalculationService.recalculateWorkWeek(worker.getUserId(), work.getWorkDate());
+        Long workerUserId = userRepository.findById(worker.getUserId()).orElseThrow(UserNotFoundException::new).getId();
+        routineService.saveWorkRoutineMapping(workerUserId, request.getRoutineIdList(), workId);
     }
 
-    private Work createWorkHelper(Long userId, Worker worker, WorkCreateRequest request) {
+    @Transactional
+    public void deleteMyWork(Long userId, Long workplaceId, Long workId) {
+        Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
+                .orElseThrow(WorkerWorkplaceNotFoundException::new);
+        if (!workRepository.existsByIdAndWorkerId(workId, userWorker.getId())) { throw new WorkNotFoundException(); }
+        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
+        verifyPermission(userId, userWorker.getUserId(), workplaceOwnerId);
+
+        routineService.deleteWorkRoutineMappingByWorkId(workId);
+
+        Work work = workRepository.findByIdAndWorkerId(workId, userWorker.getId()).orElseThrow(WorkNotFoundException::new);
+        deleteWorkHelper(userWorker, work);
+    }
+
+    @Transactional
+    public void deleteWorkForWorker(Long requesterUserId, Long workplaceId, Long workerId, Long workId) {
+        Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)
+                .orElseThrow(WorkerWorkplaceNotFoundException::new);
+        if (!workRepository.existsByIdAndWorkerId(workId, worker.getId())) { throw new WorkNotFoundException(); }
+        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
+        verifyPermission(requesterUserId, worker.getUserId(), workplaceOwnerId);
+
+        routineService.deleteWorkRoutineMappingByWorkId(workId);
+
+        Work work = workRepository.findByIdAndWorkerId(workId, worker.getId()).orElseThrow(WorkNotFoundException::new);
+        deleteWorkHelper(worker, work);
+    }
+
+    private Work createWorkHelper(Worker worker, WorkCreateRequest request) {
         int hourlyRate = salaryRepository.findByWorkerId(worker.getId())
                 .map(Salary::getHourlyRate)
                 .orElse(0);
@@ -257,9 +280,26 @@ public class WorkService {
 
         salaryCalculationService.recalculateWorkWeek(worker.getId(), work.getWorkDate());
 
-        routineService.saveWorkRoutineMapping(userId, request.getRoutineIdList(), work.getId());
-
         return work;
+    }
+
+    private void updateWorkHelper(Worker worker, Long workId, WorkUpdateRequest request) {
+        int hourlyRate = salaryRepository.findByWorkerId(worker.getId())
+                .map(Salary::getHourlyRate)
+                .orElse(0);
+
+        verifyStartEndTime(request.getStartTime(), request.getEndTime());
+
+        Work work = request.toEntity(workId, worker.getId(), hourlyRate);
+        workRepository.update(work);
+
+        salaryCalculationService.recalculateWorkWeek(worker.getId(), work.getWorkDate());
+    }
+
+    private void deleteWorkHelper(Worker worker, Work work) {
+        workRepository.delete(work.getId(), worker.getId());
+
+        salaryCalculationService.recalculateWorkWeek(worker.getId(), work.getWorkDate());
     }
 
     private VerifiedWorkContext getVerifiedWorkContext(Long userId, Long workplaceId, Long workerId, Long workId) {
@@ -312,9 +352,9 @@ public class WorkService {
                 .build();
     }
 
-    private void verifyPermission(Long userId, Long workerUserId, Long workplaceOwnerId) {
+    private void verifyPermission(Long requesterUserId, Long workerUserId, Long workplaceOwnerId) {
         // 요청자가 해당 근무지의 근무자도 아니고 사장님도 아니면 예외 발생
-        if (!workerUserId.equals(userId) && !workplaceOwnerId.equals(userId)) {
+        if (!workerUserId.equals(requesterUserId) && !workplaceOwnerId.equals(requesterUserId)) {
             throw new InvalidPermissionAccessException();
         }
     }

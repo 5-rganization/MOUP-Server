@@ -127,6 +127,7 @@ public class RoutineService {
     @Transactional
     public void deleteRoutine(Long userId, Long routineId) {
         if (routineRepository.existByIdAndUserId(routineId, userId)) {
+            workRoutineMappingRepository.deleteByRoutineId(routineId);
             routineTaskRepository.delete(userId, routineId);
             routineRepository.delete(routineId, userId);
         } else {
@@ -140,7 +141,7 @@ public class RoutineService {
             throw new DataLimitExceedException("루틴은 한 근무당 최대 " + MAX_ROUTINE_COUNT_PER_WORK + "개까지 연결할 수 있습니다.");
         }
 
-        workRoutineMappingRepository.delete(workId);
+        workRoutineMappingRepository.deleteByWorkId(workId);
 
         for (Long routineId : routineIdList) {
             if (!routineRepository.existByIdAndUserId(routineId, userId)) { throw new RoutineNotFoundException(); }
@@ -167,7 +168,7 @@ public class RoutineService {
     }
 
     @Transactional
-    public void deleteWorkRoutineMapping(Long workId) {
-        workRoutineMappingRepository.delete(workId);
+    public void deleteWorkRoutineMappingByWorkId(Long workId) {
+        workRoutineMappingRepository.deleteByWorkId(workId);
     }
 }
