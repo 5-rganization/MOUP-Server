@@ -16,10 +16,11 @@ import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@RequestMapping("/workplaces/{workplaceId}/workers")
 public interface WorkerSpecification {
     @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
     @PostMapping("/{workerId}/works")
-    @Operation(summary = "근무자에게 근무 생성 (사장님 전용)", description = "매장 ID와 근무자 ID를 경로로 전달받아 매장에 특정 근무자의 근무를 생성")
+    @Operation(summary = "근무자에게 근무 생성 (사장님 전용)", description = "매장 ID와 근무자 ID를 경로로 전달받아 해당 매장에 특정 근무자의 근무를 생성")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "근무 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkCreateResponse.class))),
             @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),

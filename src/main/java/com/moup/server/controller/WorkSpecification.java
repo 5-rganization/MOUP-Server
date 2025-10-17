@@ -17,10 +17,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.YearMonth;
 
+@RequestMapping("/works")
 public interface WorkSpecification {
     @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
     @GetMapping("/{workId}")
-    @Operation(summary = "근무 조회", description = "조회할 근무지(매장) ID와 근무 ID, 근무자 ID를 경로로 전달받아 조회 (기본적으로 상세 정보 반환, `?view=summary` 파라미터 사용 시 요약 정보 반환)")
+    @Operation(summary = "근무 조회", description = "조회할 근무 ID를 경로로 전달받아 조회 (기본적으로 상세 정보 반환, `?view=summary` 파라미터 사용 시 요약 정보 반환)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "근무 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(oneOf = { WorkDetailResponse.class, WorkSummaryResponse.class }),
                     examples = {
@@ -105,7 +106,7 @@ public interface WorkSpecification {
 
     @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
     @GetMapping
-    @Operation(summary = "모든 근무지(매장)의 사용자 근무 범위 조회", description = "연-월을 매개변수로 전달받아 해당 날짜를 중간값으로 1년간 모든 근무지(매장)의 근무를 조회")
+    @Operation(summary = "사용자의 모든 근무 범위 조회", description = "연-월을 매개변수로 전달받아 해당 날짜를 중간값으로 1년간 사용자의 모든 근무를 조회")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "근무 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkCalendarListResponse.class))),
             @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
@@ -130,7 +131,7 @@ public interface WorkSpecification {
 
     @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
     @PatchMapping("/{workId}")
-    @Operation(summary = "근무지(매장)에 존재하는 근무 업데이트", description = "근무 ID를 경로로 전달받아 해당하는 근무를 업데이트")
+    @Operation(summary = "근무 업데이트", description = "근무 ID를 경로로 전달받아 해당하는 근무를 업데이트")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "근무 업데이트 성공"),
             @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
@@ -147,7 +148,7 @@ public interface WorkSpecification {
 
     @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
     @DeleteMapping("/{workId}")
-    @Operation(summary = "근무지에 존재하는 근무 삭제", description = "근무 ID를 경로로 전달받아 해당하는 근무를 삭제")
+    @Operation(summary = "근무 삭제", description = "근무 ID를 경로로 전달받아 해당하는 근무를 삭제")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "근무 삭제 성공"),
             @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),

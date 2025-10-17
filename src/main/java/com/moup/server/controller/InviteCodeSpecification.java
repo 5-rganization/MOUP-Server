@@ -15,6 +15,7 @@ import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@RequestMapping("/workplaces")
 public interface InviteCodeSpecification {
     @Tag(name = "Invite Code", description = "초대 코드 관리 API 엔드포인트")
     @GetMapping("/invite-codes/{inviteCode}")

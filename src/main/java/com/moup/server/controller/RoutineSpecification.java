@@ -14,6 +14,7 @@ import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@RequestMapping("/routines")
 public interface RoutineSpecification {
     @PostMapping
     @Operation(summary = "루틴 생성", description = "사용자가 루틴 정보를 입력하여 생성")
