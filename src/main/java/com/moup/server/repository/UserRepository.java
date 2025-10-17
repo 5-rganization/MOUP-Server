@@ -27,9 +27,9 @@ public interface UserRepository {
             <script>
                 SELECT * FROM users
                 WHERE id IN
-                    <foreach item="id" collection="idList" open="(" separator="," close=")">
+                <foreach item="id" collection="idList" open="(" separator="," close=")">
                       #{id}
-                    </foreach>
+                </foreach>
             </script>
             """)
     List<User> findAllByIdIn(@Param("idList") List<Long> idList);

@@ -50,9 +50,9 @@ public interface WorkplaceRepository {
             <script>
                 SELECT * FROM workplaces
                 WHERE id IN
-                    <foreach item="id" collection="idList" open="(" separator="," close=")">
+                <foreach item="id" collection="idList" open="(" separator="," close=")">
                       #{id}
-                    </foreach>
+                </foreach>
             </script>
             """)
     List<Workplace> findAllByIdIn(@Param("idList") List<Long> idList);

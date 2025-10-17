@@ -2,7 +2,7 @@
 USE moup;
 
 -- 깨끗하게 초기화
-SET FOREIGN_key_CHECKS = 0;
+SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE TABLE work_routine_mappings;
 TRUNCATE TABLE monthly_salaries;
 TRUNCATE TABLE works;
@@ -16,7 +16,7 @@ TRUNCATE TABLE admin_alarms;
 TRUNCATE TABLE social_tokens;
 TRUNCATE TABLE user_tokens;
 TRUNCATE TABLE users;
-SET FOREIGN_key_CHECKS = 1;
+SET FOREIGN_KEY_CHECKS = 1;
 
 -- =====================================
 -- 1) USERS

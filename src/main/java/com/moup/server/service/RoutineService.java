@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -141,24 +142,50 @@ public class RoutineService {
             throw new DataLimitExceedException("루틴은 한 근무당 최대 " + MAX_ROUTINE_COUNT_PER_WORK + "개까지 연결할 수 있습니다.");
         }
 
+        // 1. 기존 매핑 모두 삭제 (쿼리 1)
         workRoutineMappingRepository.deleteByWorkId(workId);
 
-        for (Long routineId : routineIdList) {
-            if (!routineRepository.existByIdAndUserId(routineId, userId)) { throw new RoutineNotFoundException(); }
-            WorkRoutineMapping workRoutineMapping = WorkRoutineMapping.builder()
-                    .workId(workId)
-                    .routineId(routineId)
-                    .build();
-            workRoutineMappingRepository.create(workRoutineMapping);
+        // 1-1. 만약 연결할 루틴이 없다면 여기서 종료
+        if (routineIdList.isEmpty()) { return; }
+
+        // 2. 루틴 유효성 검증 (쿼리 2)
+        List<Routine> validRoutines = routineRepository.findAllByIdInAndUserId(routineIdList, userId);
+
+        // 요청한 루틴 ID 개수와 실제 DB에서 찾은 (해당 사용자의) 루틴 개수가 다른 경우
+        if (validRoutines.size() != routineIdList.size()) {
+            // -> 유효하지 않거나 권한이 없는 ID가 포함된 것이므로 예외 처리
+            throw new RoutineNotFoundException("유효하지 않거나 권한이 없는 루틴 ID가 포함되어 있습니다.");
         }
+
+        // 3. 매핑 객체 리스트 생성 (In-Memory 작업)
+        List<WorkRoutineMapping> mappingsToCreate = routineIdList.stream()
+                .map(routineId -> WorkRoutineMapping.builder()
+                        .workId(workId)
+                        .routineId(routineId)
+                        .build())
+                .toList();
+
+        // 4. 배치 삽입 (쿼리 3)
+        workRoutineMappingRepository.createBatch(mappingsToCreate);
     }
 
     @Transactional(readOnly = true)
     public List<RoutineSummaryResponse> getAllSummarizedRoutineByWorkRoutineMapping(Long userId, Long workId) {
+        // 1. 첫 번째 쿼리 (1번 실행)
         List<WorkRoutineMapping> workRoutineMappingList = workRoutineMappingRepository.findAllByWorkId(workId);
-        return workRoutineMappingList.stream()
-                .map(mapping -> routineRepository.findByIdAndUserId(mapping.getRoutineId(), userId)
-                        .orElseThrow(RoutineNotFoundException::new))
+
+        if (workRoutineMappingList.isEmpty()) { return Collections.emptyList(); }
+
+        // 2. 루틴 ID 리스트 추출
+        List<Long> routineIdList = workRoutineMappingList.stream()
+                .map(WorkRoutineMapping::getRoutineId)
+                .toList();
+
+        // 3. 두 번째 쿼리 (1번 실행) - IN 절을 사용해 한 번에 모든 루틴 조회
+        List<Routine> routineList = routineRepository.findAllByIdInAndUserId(routineIdList, userId);
+
+        // 4. (쿼리 없음) 가져온 데이터를 메모리에서 매핑
+        return routineList.stream()
                 .map(routine -> RoutineSummaryResponse.builder()
                         .routineId(routine.getId())
                         .routineName(routine.getRoutineName())

@@ -73,9 +73,9 @@ public interface WorkRepository {
                 SELECT * FROM works
                 WHERE work_date BETWEEN #{startDate} AND #{endDate}
                 AND worker_id IN
-                    <foreach item="workerId" collection="workerIdList" open="(" separator="," close=")">
+                <foreach item="workerId" collection="workerIdList" open="(" separator="," close=")">
                       #{workerId}
-                    </foreach>
+                </foreach>
                 ORDER BY work_date
             </script>
             """)
