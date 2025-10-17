@@ -24,13 +24,15 @@ public class WorkService {
     private final RoutineService routineService;
     private final SalaryCalculationService salaryCalculationService;
 
-    private record VerifiedWorkContext(
+    private record VerifiedWorkContextForCreate(
             Work work,
             long workMinutes,
             WorkerSummaryResponse workerSummaryInfo,
             WorkplaceSummaryResponse workplaceSummaryInfo,
             boolean isEditable
     ) {}
+
+    private record VerifiedWorkContextForUpdate(Work work, Worker worker) {}
 
     @Transactional
     public WorkCreateResponse createMyWork(Long userId, Long workplaceId, WorkCreateRequest request) {
@@ -66,8 +68,8 @@ public class WorkService {
     }
 
     @Transactional(readOnly = true)
-    public WorkDetailResponse getWorkDetail(Long userId, Long workplaceId, Long workerId, Long workId) {
-        VerifiedWorkContext context = getVerifiedWorkContext(userId, workplaceId, workerId, workId);
+    public WorkDetailResponse getWorkDetail(Long userId, Long workId) {
+        VerifiedWorkContextForCreate context = getVerifiedWorkContext(userId, workId);
 
         List<RoutineSummaryResponse> routineSummaryList = routineService.getAllSummarizedRoutineByWorkRoutineMapping(userId, workId);
 
@@ -93,8 +95,8 @@ public class WorkService {
     }
 
     @Transactional(readOnly = true)
-    public WorkSummaryResponse getSummarizedWork(Long userId, Long workplaceId, Long workerId, Long workId) {
-        VerifiedWorkContext context = getVerifiedWorkContext(userId, workplaceId, workerId, workId);
+    public WorkSummaryResponse getSummarizedWork(Long userId, Long workId) {
+        VerifiedWorkContextForCreate context = getVerifiedWorkContext(userId, workId);
 
         List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(context.work().getRepeatDays());
 
@@ -114,7 +116,7 @@ public class WorkService {
     }
 
     @Transactional(readOnly = true)
-    public WorkCalendarListResponse getAllSummarizedMyWorkForAllWorkplaces(Long userId, YearMonth baseYearMonth) {
+    public WorkCalendarListResponse getAllSummarizedWork(Long userId, YearMonth baseYearMonth) {
         LocalDate startDate = baseYearMonth.minusMonths(6).atDay(1);
         LocalDate endDate = baseYearMonth.plusMonths(6).atEndOfMonth();
 
@@ -275,57 +277,21 @@ public class WorkService {
     }
 
     @Transactional
-    public void updateMyWork(Long userId, Long workplaceId, Long workId, WorkUpdateRequest request) {
-        Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
-                .orElseThrow(WorkerWorkplaceNotFoundException::new);
-        verifyPermission(userId, userWorker.getUserId(), workplaceId);
-        if (!workRepository.existsByIdAndWorkerId(workId, userWorker.getId())) { throw new WorkNotFoundException(); }
+    public void updateWork(Long requesterUserId, Long workId, WorkUpdateRequest request) {
+        VerifiedWorkContextForUpdate context = findAndVerifyWorkPermission(requesterUserId, workId);
 
-        updateWorkHelper(userWorker, workId, request);
+        updateWorkHelper(context.worker(), workId, request);
 
-        routineService.saveWorkRoutineMapping(userId, request.getRoutineIdList(), workId);
+        routineService.saveWorkRoutineMapping(context.worker().getUserId(), request.getRoutineIdList(), workId);
     }
 
     @Transactional
-    public void updateWorkForWorkerId(Long requesterUserId, Long workplaceId, Long workerId, Long workId, WorkUpdateRequest request) {
-        Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)
-                .orElseThrow(WorkerWorkplaceNotFoundException::new);
-        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        verifyPermission(requesterUserId, worker.getUserId(), workplaceOwnerId);
-        if (!workRepository.existsByIdAndWorkerId(workId, worker.getId())) { throw new WorkNotFoundException(); }
-
-        updateWorkHelper(worker, workId, request);
-
-        Long workerUserId = userRepository.findById(worker.getUserId()).orElseThrow(UserNotFoundException::new).getId();
-        routineService.saveWorkRoutineMapping(workerUserId, request.getRoutineIdList(), workId);
-    }
-
-    @Transactional
-    public void deleteMyWork(Long userId, Long workplaceId, Long workId) {
-        Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
-                .orElseThrow(WorkerWorkplaceNotFoundException::new);
-        if (!workRepository.existsByIdAndWorkerId(workId, userWorker.getId())) { throw new WorkNotFoundException(); }
-        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        verifyPermission(userId, userWorker.getUserId(), workplaceOwnerId);
+    public void deleteWork(Long requesterUserId, Long workId) {
+        VerifiedWorkContextForUpdate context = findAndVerifyWorkPermission(requesterUserId, workId);
 
         routineService.deleteWorkRoutineMappingByWorkId(workId);
 
-        Work work = workRepository.findByIdAndWorkerId(workId, userWorker.getId()).orElseThrow(WorkNotFoundException::new);
-        deleteWorkHelper(userWorker, work);
-    }
-
-    @Transactional
-    public void deleteWorkForWorker(Long requesterUserId, Long workplaceId, Long workerId, Long workId) {
-        Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)
-                .orElseThrow(WorkerWorkplaceNotFoundException::new);
-        if (!workRepository.existsByIdAndWorkerId(workId, worker.getId())) { throw new WorkNotFoundException(); }
-        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        verifyPermission(requesterUserId, worker.getUserId(), workplaceOwnerId);
-
-        routineService.deleteWorkRoutineMappingByWorkId(workId);
-
-        Work work = workRepository.findByIdAndWorkerId(workId, worker.getId()).orElseThrow(WorkNotFoundException::new);
-        deleteWorkHelper(worker, work);
+        deleteWorkHelper(context.worker(), context.work());
     }
 
     private Work createWorkHelper(Worker worker, WorkCreateRequest request) {
@@ -362,41 +328,60 @@ public class WorkService {
         salaryCalculationService.recalculateWorkWeek(worker.getId(), work.getWorkDate());
     }
 
-    private VerifiedWorkContext getVerifiedWorkContext(Long userId, Long workplaceId, Long workerId, Long workId) {
-        // 1. 요청자(현재 사용자)의 Worker 정보와 Workplace 정보 조회
-        Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
-                .orElseThrow(WorkerWorkplaceNotFoundException::new);
-        Workplace workplace = workplaceRepository.findById(workplaceId)
-                .orElseThrow(WorkplaceNotFoundException::new);
-
-        // 2. 현재 사용자가 이 근무 기록에 접근할 권한이 있는지 검증
-        verifyPermission(userId, userWorker.getUserId(), workplace.getOwnerId());
-
-        // 3. 실제 요청된 근무(Work) 정보 조회
-        Work work = workRepository.findByIdAndWorkerId(workId, workerId)
+    private VerifiedWorkContextForCreate getVerifiedWorkContext(Long requesterUserId, Long workId) {
+        // 1. (쿼리 1) workId로 Work 정보 조회
+        Work work = workRepository.findById(workId)
                 .orElseThrow(WorkNotFoundException::new);
 
-        long workMinutes = Duration.between(work.getStartTime(), work.getEndTime()).toMinutes();
-
-        // 4. 근무를 수행한 근무자(Worker)와 사용자(User) 정보 조회
-        Worker requestedWorker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)
+        // 2. (쿼리 2) Work에서 workerId를 가져와 Worker 정보 조회
+        Worker requestedWorker = workerRepository.findById(work.getWorkerId())
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
 
-        // 5. 근무자 요약 DTO 생성
+        // 3. (쿼리 3) Worker에서 workplaceId를 가져와 Workplace 정보 조회
+        Workplace workplace = workplaceRepository.findById(requestedWorker.getWorkplaceId())
+                .orElseThrow(WorkplaceNotFoundException::new);
+
+        // 4. 실제 리소스(Work)를 기준으로 권한 검사
+        // 요청자(requesterUserId)가 근무자 본인(requestedWorker.getUserId())이거나 근무지 사장님(workplace.getOwnerId())인지 확인
+        verifyPermission(requesterUserId, requestedWorker.getUserId(), workplace.getOwnerId());
+
+        // 5. 근무 시간 계산
+        long workMinutes = Duration.between(work.getStartTime(), work.getEndTime()).toMinutes();
+
+        // 6. 근무자 요약 DTO 생성
         WorkerSummaryResponse workerSummaryInfo = createWorkerSummary(requestedWorker);
 
-        // 6. 근무지 요약 DTO 생성
+        // 7. 근무지 요약 DTO 생성
         WorkplaceSummaryResponse workplaceSummary = WorkplaceSummaryResponse.builder()
                 .workplaceId(workplace.getId())
                 .workplaceName(workplace.getWorkplaceName())
                 .isShared(workplace.isShared())
                 .build();
 
-        // 7. 수정 가능 여부 계산
-        boolean isEditable = checkEditable(userId, userWorker.getUserId(), workplace.getOwnerId());
+        // 8. 수정 가능 여부 계산
+        boolean isEditable = checkEditable(requesterUserId, requestedWorker.getUserId(), workplace.getOwnerId());
 
-        // 8. 모든 데이터를 컨테이너에 담아 반환
-        return new VerifiedWorkContext(work, workMinutes, workerSummaryInfo, workplaceSummary, isEditable);
+        // 9. 모든 데이터를 컨테이너에 담아 반환
+        return new VerifiedWorkContextForCreate(work, workMinutes, workerSummaryInfo, workplaceSummary, isEditable);
+    }
+
+    private VerifiedWorkContextForUpdate findAndVerifyWorkPermission(Long requesterUserId, Long workId) {
+        // 1. (쿼리 1) workId로 Work 정보 조회
+        Work work = workRepository.findById(workId)
+                .orElseThrow(WorkNotFoundException::new);
+
+        // 2. (쿼리 2) Work에서 workerId를 가져와 Worker 정보 조회
+        Worker worker = workerRepository.findById(work.getWorkerId())
+                .orElseThrow(WorkerWorkplaceNotFoundException::new);
+
+        // 3. (쿼리 3) Worker에서 workplaceId를 가져와 Workplace 정보 조회
+        Workplace workplace = workplaceRepository.findById(worker.getWorkplaceId())
+                .orElseThrow(WorkplaceNotFoundException::new);
+
+        // 4. 권한 검사: 요청자가 근무자 본인이거나 근무지 사장님인지 확인
+        verifyPermission(requesterUserId, worker.getUserId(), workplace.getOwnerId());
+
+        return new VerifiedWorkContextForUpdate(work, worker);
     }
 
     private WorkerSummaryResponse createWorkerSummary(Worker worker) {

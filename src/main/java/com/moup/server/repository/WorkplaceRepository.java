@@ -51,7 +51,7 @@ public interface WorkplaceRepository {
                 SELECT * FROM workplaces
                 WHERE id IN
                 <foreach item="id" collection="idList" open="(" separator="," close=")">
-                      #{id}
+                    #{id}
                 </foreach>
             </script>
             """)

@@ -50,7 +50,7 @@ public class RoutineController implements RoutineSpecification {
     public ResponseEntity<?> getAllTodayRoutine() {
         Long userId = identityService.getCurrentUserId();
 
-        RoutineSummaryListResponse response = routineService.getAllTodayRoutine(userId);
+        TodayRoutineResponse response = routineService.getAllTodayWorkplaceRoutineCount(userId);
         return ResponseEntity.ok().body(response);
     }
 

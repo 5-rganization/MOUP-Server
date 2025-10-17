@@ -37,6 +37,13 @@ public interface WorkRepository {
     @Select("SELECT EXISTS(SELECT 1 FROM works WHERE id = #{id} AND worker_id = #{workerId})")
     boolean existsByIdAndWorkerId(Long id, Long workerId);
 
+    /// 근무 ID를 통해 해당 근무를 찾고, 그 근무의 객체를 반환하는 메서드
+    ///
+    /// @param id 조회할 근무 ID
+    /// @return 조회된 Work 객체, 없으면 Optional.empty
+    @Select("SELECT * FROM works WHERE id = #{id}")
+    Optional<Work> findById(Long id);
+
     /// 근무 ID와 근무자 ID를 통해 해당 근무를 찾고, 그 근무의 객체를 반환하는 메서드
     ///
     /// @param id 조회할 근무 ID
