@@ -287,6 +287,7 @@ public class RoutineService {
         // 2. 루틴 ID 리스트 추출
         List<Long> routineIdList = workRoutineMappingList.stream()
                 .map(WorkRoutineMapping::getRoutineId)
+                .distinct()
                 .toList();
 
         if (routineIdList.isEmpty()) { return Collections.emptyList(); }
