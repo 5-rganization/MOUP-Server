@@ -47,7 +47,7 @@ public class RoutineService {
                 .map(taskCreateRequest -> taskCreateRequest.toEntity(routineToCreate.getId()))
                 .toList();
 
-        for (RoutineTask task : taskListToCreate) { routineTaskRepository.create(task); }
+        if (!taskListToCreate.isEmpty()) { routineTaskRepository.createBatch(taskListToCreate); }
 
         return RoutineCreateResponse.builder()
                 .routineId(routineToCreate.getId())
@@ -122,7 +122,7 @@ public class RoutineService {
                 .map(routineTaskUpdateRequest -> routineTaskUpdateRequest.toEntity(routineId))
                 .toList();
 
-        for (RoutineTask task : taskListToCreate) { routineTaskRepository.create(task); }
+        if (!taskListToCreate.isEmpty()) { routineTaskRepository.createBatch(taskListToCreate); }
     }
 
     @Transactional

@@ -59,7 +59,7 @@ public interface RoutineRepository {
                 WHERE user_id = #{userId}
                 AND id IN
                 <foreach item="id" collection="idList" open="(" separator="," close=")">
-                      #{id}
+                    #{id}
                 </foreach>
             </script>
             """)

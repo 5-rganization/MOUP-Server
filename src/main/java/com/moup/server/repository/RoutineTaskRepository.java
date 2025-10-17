@@ -9,13 +9,19 @@ import java.util.Optional;
 @Mapper
 public interface RoutineTaskRepository {
 
-    /// 할 일을 생성하는 메서드
+    /// 여러 개의 할 일(Task)을 한 번에 생성하는 메서드 (배치 삽입)
     ///
-    /// @param routineTask 생성할 RoutineTask 객체
-    /// @return 생성된 행의 수
-    @Insert("INSERT INTO routine_tasks (routine_id, content, order_index) VALUES (#{routineId}, #{content}, #{orderIndex})")
-    @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
-    Long create(RoutineTask routineTask);
+    /// @param taskList 생성할 RoutineTask 객체 리스트
+    @Insert("""
+            <script>
+                INSERT INTO routine_tasks (routine_id, content, order_index)
+                VALUES
+                <foreach item="task" collection="taskList" separator=",">
+                    (#{task.routineId}, #{task.content}, #{task.orderIndex})
+                </foreach>
+            </script>
+            """)
+    void createBatch(@Param("taskList") List<RoutineTask> taskList);
 
     /// 루틴 ID를 통해 해당 루틴의 모든 할 일 객체를 리스트로 반환하는 메서드
     ///

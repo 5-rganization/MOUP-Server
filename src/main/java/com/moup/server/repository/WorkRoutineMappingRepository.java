@@ -10,17 +10,17 @@ public interface WorkRoutineMappingRepository {
 
     /// 여러 개의 Work-Routine 매핑을 한 번에 생성하는 메서드 (배치 삽입)
     ///
-    /// @param mappings 생성할 매핑 객체 리스트
+    /// @param mappingList 생성할 매핑 객체 리스트
     @Insert("""
             <script>
                 INSERT INTO work_routine_mappings (work_id, routine_id)
                 VALUES
-                <foreach item="mapping" collection="mappings" separator=",">
+                <foreach item="mapping" collection="mappingList" separator=",">
                     (#{mapping.workId}, #{mapping.routineId})
                 </foreach>
             </script>
             """)
-    void createBatch(@Param("mappings") List<WorkRoutineMapping> mappings);
+    void createBatch(@Param("mappingList") List<WorkRoutineMapping> mappingList);
 
     /// 근무 ID를 통해 해당 근무-루틴 매핑을 모두 찾고, 그 배열을 반환하는 메서드
     ///
