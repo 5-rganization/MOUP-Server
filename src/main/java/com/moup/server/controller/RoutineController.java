@@ -46,6 +46,15 @@ public class RoutineController implements RoutineSpecification {
     }
 
     @Override
+    @GetMapping("/today")
+    public ResponseEntity<?> getAllTodayRoutine() {
+        Long userId = identityService.getCurrentUserId();
+
+        RoutineSummaryListResponse response = routineService.getAllTodayRoutine(userId);
+        return ResponseEntity.ok().body(response);
+    }
+
+    @Override
     @GetMapping("/{routineId}")
     public ResponseEntity<?> getRoutine(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long routineId,

@@ -32,6 +32,13 @@ public interface RoutineSpecification {
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     ResponseEntity<?> getAllSummarizedRoutine();
 
+    @GetMapping("/today")
+    @Operation(summary = "오늘 루틴 요약 조회", description = "사용자의 모든 루틴 조회 및 요약")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "모든 루틴 조회 및 요약 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineSummaryListResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    ResponseEntity<?> getAllTodayRoutine();
+
     @GetMapping("/{routineId}")
     @Operation(summary = "루틴 조회", description = "조회할 루틴 ID를 경로로 전달받아 조회 (기본적으로 상세 정보 반환, `?view=summary` 파라미터 사용 시 요약 정보 반환)")
     @ApiResponses({

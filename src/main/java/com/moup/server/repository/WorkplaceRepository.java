@@ -55,7 +55,7 @@ public interface WorkplaceRepository {
                 </foreach>
             </script>
             """)
-    List<Workplace> findAllByIdIn(@Param("idList") List<Long> idList);
+    List<Workplace> findAllByIdListIn(@Param("idList") List<Long> idList);
 
     /// 근무지의 ID와 등록자 ID에 해당하는 근무지를 업데이트하는 메서드
     ///

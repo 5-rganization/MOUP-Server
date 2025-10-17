@@ -63,7 +63,7 @@ public interface RoutineRepository {
                 </foreach>
             </script>
             """)
-    List<Routine> findAllByIdInAndUserId(
+    List<Routine> findAllByIdListInAndUserId(
             @Param("idList") List<Long> idList,
             @Param("userId") Long userId
     );
