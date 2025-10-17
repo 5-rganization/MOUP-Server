@@ -64,7 +64,7 @@ public interface RoutineRepository {
             </script>
             """)
     List<Routine> findAllByIdInAndUserId(
-            @Param("idList") List<Long> ididLists,
+            @Param("idList") List<Long> idList,
             @Param("userId") Long userId
     );
 
