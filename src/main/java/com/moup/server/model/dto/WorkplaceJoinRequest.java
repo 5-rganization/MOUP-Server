@@ -10,10 +10,10 @@ import lombok.Getter;
 @Builder
 @Schema(description = "근무지 참여 요청 DTO")
 public class WorkplaceJoinRequest {
-    @NotBlank(message = "빈 값이나 공백 문자는 받을 수 없어요")
+    @NotBlank(message = "빈 값이나 공백 문자는 받을 수 없습니다.")
     @Schema(description = "라벨 색상 (알바생 기준)", example = "RED", requiredMode = Schema.RequiredMode.REQUIRED)
     private String workerBasedLabelColor;
     @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "알바생 급여 생성 요청 DTO", requiredMode = Schema.RequiredMode.REQUIRED)
-    private WorkerSalaryCreateRequest salaryInfo;
+    private SalaryCreateRequest salaryCreateRequest;
 }

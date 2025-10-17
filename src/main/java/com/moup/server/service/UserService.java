@@ -82,7 +82,7 @@ public class UserService {
         if (userToUpdate.getNickname() != null) { throw new UserAlreadyExistsException(); }
 
         String nickname = userRegisterRequest.getNickname();
-        nameVerifyUtil.validateNickname(nickname);
+        nameVerifyUtil.verifyNickname(nickname);
 
         userRepository.updateById(userId, userRegisterRequest.getNickname(), userRegisterRequest.getRole());
         return RegisterResponse.builder()
@@ -159,7 +159,7 @@ public class UserService {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
         if (user.isDeleted()) { throw new AlreadyDeletedException(); }
 
-        nameVerifyUtil.validateNickname(nickname);
+        nameVerifyUtil.verifyNickname(nickname);
         userRepository.updateNicknameById(userId, nickname);
 
         return UserUpdateNicknameResponse.builder()

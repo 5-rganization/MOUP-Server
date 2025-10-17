@@ -33,6 +33,14 @@ public interface WorkerRepository {
     @Select("SELECT * FROM workers WHERE id = #{id} AND user_id = #{userId}")
     Optional<Worker> findByIdAndUserId(Long id, Long userId);
 
+    /// 근무자 ID와 근무지 ID를 통해 해당 사용자의 근무자 객체를 반환하는 메서드
+    ///
+    /// @param id 조회할 근무자 ID
+    /// @param workplaceId 조회할 근무지 ID
+    /// @return 조회된 Worker 객체, 없으면 Optional.empty
+    @Select("SELECT * FROM workers WHERE id = #{id} AND workplace_id = #{workplaceId}")
+    Optional<Worker> findByIdAndWorkplaceId(Long id, Long workplaceId);
+
     /// 근무지 ID와 사용자 ID를 통해 해당 근무지 사용자의 근무자 객체를 반환하는 메서드
     ///
     /// @param userId 조회할 사용자 ID
@@ -47,6 +55,13 @@ public interface WorkerRepository {
     /// @return 조회된 Worker 객체 리스트, 없으면 빈 배열
     @Select("SELECT * FROM workers WHERE user_id = #{userId}")
     List<Worker> findAllByUserId(Long userId);
+
+    /// 근무지 ID를 통해 해당 근무지의 모든 근무자 객체를 리스트로 반환하는 메서드
+    ///
+    /// @param workplaceId 조회할 근무지 ID
+    /// @return 조회된 Worker 객체 리스트, 없으면 빈 배열
+    @Select("SELECT * FROM workers WHERE workplace_id = #{workplaceId}")
+    List<Worker> findAllByWorkplaceId(Long workplaceId);
 
     /// 근무자 ID, 사용자 ID, 근무지 ID에 해당하는 근무자의 근무자 기준 라벨 색상을 업데이트하는 메서드.
     ///
@@ -80,4 +95,11 @@ public interface WorkerRepository {
     /// @param workplaceId 삭제할 근무자의 근무지 ID
     @Delete("DELETE FROM workers WHERE id = #{id} AND user_id = #{userId} AND workplace_id = #{workplaceId}")
     void delete(Long id, Long userId, Long workplaceId);
+
+    /// 근무자 ID, 근무지 ID에 해당하는 모든 근무자를 삭제하는 메서드.
+    ///
+    /// @param id 삭제할 근무자의 ID
+    /// @param workplaceId 삭제할 근무자의 근무지 ID
+    @Delete("DELETE FROM workers WHERE id = #{id} AND workplace_id = #{workplaceId}")
+    void deleteByIdAndWorkplaceId(Long id, Long workplaceId);
 }

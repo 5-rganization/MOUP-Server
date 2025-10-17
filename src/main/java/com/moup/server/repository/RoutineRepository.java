@@ -9,7 +9,7 @@ import java.util.Optional;
 @Mapper
 public interface RoutineRepository {
 
-    /// 루틴을 생성하는 메서드.
+    /// 루틴을 생성하는 메서드
     ///
     /// @param routine 생성할 루틴 엔티티
     /// @return 생성된 행의 수
@@ -45,19 +45,26 @@ public interface RoutineRepository {
     ///
     /// @param userId 조회할 루틴의 사용자 ID
     /// @return 조회된 Routine 객체 리스트, 없으면 빈 배열
-    @Select("SELECT * FROM routines WHERE user_id = #{userId} ORDER BY alarm_time IS NULL ASC, alarm_time ASC")
+    @Select("SELECT * FROM routines WHERE user_id = #{userId} ORDER BY alarm_time IS NULL, alarm_time")
     List<Routine> findAllByUserId(Long userId);
 
-    /// 루틴의 ID와 사용자 ID에 해당하는 루틴을 업데이트하는 메서드.
+    /// 사용자 ID를 통해 해당 사용자의 모든 루틴 개수를 반환하는 메서드
+    ///
+    /// @param userId 조회할 루틴의 사용자 ID
+    /// @return 조회된 루틴의 총 개수
+    @Select("SELECT COUNT(*) FROM routines WHERE user_id = #{userId}")
+    long countByUserId(Long userId);
+
+    /// 루틴의 ID와 사용자 ID에 해당하는 루틴을 업데이트하는 메서드
     ///
     /// @param routine 업데이트할 루틴 엔티티
     @Update("UPDATE routines SET routine_name = #{routineName}, alarm_time = #{alarmTime} WHERE id = #{id} AND user_id = #{userId}")
     void update(Routine routine);
 
-    /// 루틴의 ID와 사용자 ID에 해당하는 루틴을 삭제하는 메서드.
+    /// 루틴의 ID와 사용자 ID에 해당하는 루틴을 삭제하는 메서드
     ///
     /// @param id 삭제할 루틴의 ID
     /// @param userId 삭제할 루틴의 사용자 ID
     @Delete("DELETE FROM routines WHERE id = #{id} AND user_id = #{userId}")
-    void deleteByIdAndUserId(Long id, Long userId);
+    void delete(Long id, Long userId);
 }

@@ -13,5 +13,5 @@ public class WorkerWorkplaceDetailResponse extends BaseWorkplaceDetailResponse {
     @Schema(description = "라벨 색상 (알바생 기준)", example = "RED", requiredMode = Schema.RequiredMode.REQUIRED)
     private String workerBasedLabelColor;
     @Schema(description = "급여 정보", requiredMode = Schema.RequiredMode.REQUIRED)
-    private WorkerSalaryDetailResponse salaryInfo;
+    private SalaryDetailResponse salaryDetailInfo;
 }

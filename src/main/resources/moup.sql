@@ -107,20 +107,39 @@ CREATE TABLE `workers`
 
 CREATE TABLE `works`
 (
-    `id`                BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
-    `worker_id`         BIGINT                NOT NULL,
-    `work_date`         DATE                  NOT NULL,
-    `start_time`        DATETIME              NOT NULL,
-    `actual_start_time` DATETIME              NOT NULL,
-    `end_time`          DATETIME              NOT NULL,
-    `actual_end_time`   DATETIME              NOT NULL,
-    `rest_time`         INT                   NULL,
-    `memo`              VARCHAR(200)          NULL,
-    `daily_income`      INT                   NULL,
-    `hourly_rate`       INT                   NULL,
-    `repeat_days`       VARCHAR(100)          NULL,
-    `repeat_end_date`   DATETIME              NULL,
+    `id`                      BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+    `worker_id`               BIGINT                NOT NULL,
+    `work_date`               DATE                  NOT NULL,
+    `start_time`              DATETIME              NOT NULL,
+    `actual_start_time`       DATETIME              NOT NULL,
+    `end_time`                DATETIME              NOT NULL,
+    `actual_end_time`         DATETIME              NOT NULL,
+    `rest_time_minutes`       INT                   DEFAULT 0,
+    `memo`                    VARCHAR(200)          NULL,
+    `hourly_rate`             INT                   NULL,
+    `base_pay`                INT                   DEFAULT 0,  -- 기본급 (휴게시간 제외)
+    `night_allowance`         INT                   DEFAULT 0,  -- 야간수당
+    `holiday_allowance`       INT                   DEFAULT 0,  -- 주휴수당 (해당 주에 발생한 수당을 N등분하여 일별로 저장)
+    `gross_income`            INT                   DEFAULT 0,  -- 세전 일급 (위 4가지의 합)
+    `estimated_net_income`    INT                   DEFAULT 0,  -- 추정 세후 일급 (캘린더 표시용)
+    `repeat_days`             VARCHAR(100)          NULL,
+    `repeat_end_date`         DATETIME              NULL,
     FOREIGN KEY (`worker_id`) REFERENCES workers (`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `monthly_salaries`
+(
+    `id`                      BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+    `worker_id`               BIGINT                NOT NULL,
+    `salary_month`            VARCHAR(10)           NOT NULL,  -- "yyyy-MM" 형식
+    `gross_income`            INT                   NOT NULL,  -- 세전 총소득
+    `national_pension`        INT                   NOT NULL,  -- 국민연금
+    `health_insurance`        INT                   NOT NULL,  -- 건강보험
+    `employment_insurance`    INT                   NOT NULL,  -- 고용보험
+    `income_tax`              INT                   NOT NULL,  -- 소득세
+    `local_income_tax`        INT                   NOT NULL,  -- 지방소득세
+    `net_income`              INT                   NOT NULL,  -- 세후 실지급액
+    UNIQUE KEY `unique_worker_month` (`worker_id`, `salary_month`)
 );
 
 CREATE TABLE `work_routine_mappings`

@@ -60,41 +60,41 @@ public class NameVerifyUtil {
     /// @param nickname 검사할 닉네임 문자열
     /// @throws IllegalArgumentException 닉네임이 유효성 규칙에 맞지 않을 경우
     ///
-    public void validateNickname(String nickname) {
+    public void verifyNickname(String nickname) {
         if (nickname == null || nickname.isBlank()) {
-            throw new InvalidFieldFormatException("한글, 영문 또는 숫자만 사용하여 8자 이하로 입력해주세요");
+            throw new InvalidFieldFormatException("닉네임에 빈 값이 들어올 수 없습니다.");
         }
 
         String trimmed = nickname.trim();
 
         if (!nickname.equals(trimmed) || nickname.contains(" ")) {
-            throw new InvalidFieldFormatException("닉네임 앞뒤 또는 중간에 공백을 사용할 수 없어요");
+            throw new InvalidFieldFormatException("닉네임 앞뒤 또는 중간에 공백을 사용할 수 없습니다.");
         }
 
         if (CONSONANTS_ONLY_PATTERN.matcher(trimmed).matches()) {
-            throw new InvalidFieldFormatException("자음만 사용할 수 없어요");
+            throw new InvalidFieldFormatException("자음만 사용할 수 없습니다.");
         }
 
         if (VOWELS_ONLY_PATTERN.matcher(trimmed).matches()) {
-            throw new InvalidFieldFormatException("모음만 사용할 수 없어요");
+            throw new InvalidFieldFormatException("모음만 사용할 수 없습니다.");
         }
 
         if (INCOMPLETE_HANGUL_PATTERN.matcher(trimmed).find()) {
-            throw new InvalidFieldFormatException("정확한 글자를 입력해주세요");
+            throw new InvalidFieldFormatException("정확한 글자를 입력해야 합니다.");
         }
 
         boolean containsHangul = HANGUL_PATTERN.matcher(trimmed).find();
         boolean containsAlphabet = ALPHABET_PATTERN.matcher(trimmed).find();
         if (containsHangul && containsAlphabet) {
-            throw new InvalidFieldFormatException("한글 또는 영문만 사용할 수 있어요");
+            throw new InvalidFieldFormatException("한글 또는 영문만 사용할 수 있습니다.");
         }
 
         if (SPECIAL_CHAR_PATTERN.matcher(trimmed).find()) {
-            throw new InvalidFieldFormatException("특수문자는 사용할 수 없어요");
+            throw new InvalidFieldFormatException("특수문자는 사용할 수 없습니다.");
         }
 
         if (trimmed.length() > 8) {
-            throw new InvalidFieldFormatException("8자 이하로 입력해주세요");
+            throw new InvalidFieldFormatException("8자 이하로 입력해야 합니다.");
         }
     }
 }

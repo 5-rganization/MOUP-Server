@@ -10,6 +10,8 @@ import lombok.Getter;
 public class InviteCodeInquiryResponse {
     @Schema(description = "조회된 근무지 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long workplaceId;
+    @Schema(description = "조회된 근무지 이름", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.REQUIRED)
+    private String workplaceName;
     @Schema(description = "근무지 카테고리 이름", example = "편의점", requiredMode = Schema.RequiredMode.REQUIRED)
     private String categoryName;
     @Schema(description = "주소", example = "경기 화성시 동탄중심상가1길 8 1층", requiredMode = Schema.RequiredMode.NOT_REQUIRED)

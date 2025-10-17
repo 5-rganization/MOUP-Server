@@ -45,8 +45,15 @@ public class SwaggerConfig {
 
     @Bean
     GroupedOpenApi workplaceOpenApi() {
-        String[] paths = {"/workplaces/**"};
-        return GroupedOpenApi.builder().group("근무지 관련 API").pathsToMatch(paths).build();
+        String[] pathsToMatch = {"/workplaces/**"};
+        String[] pathsToExclude = {"/workplaces/**/works/**"};
+        return GroupedOpenApi.builder().group("근무지 관련 API").pathsToMatch(pathsToMatch).pathsToExclude(pathsToExclude).build();
+    }
+
+    @Bean
+    GroupedOpenApi workOpenApi() {
+        String[] pathsToMatch = {"/**/works/**"};
+        return GroupedOpenApi.builder().group("근무 관련 API").pathsToMatch(pathsToMatch).build();
     }
 
     @Bean
