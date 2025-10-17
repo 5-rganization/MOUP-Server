@@ -13,6 +13,7 @@ import lombok.Getter;
 public class WorkplaceJoinRequest {
     @NotBlank(message = "빈 값이나 공백 문자는 받을 수 없습니다.")
     @Pattern(regexp = "^[a-zA-Z0-9]{6}$", message = "초대 코드는 영문 또는 숫자로 이루어진 6자리여야 합니다.")
+    @Schema(description = "참여할 근무지의 초대 코드", example = "MUP234", requiredMode = Schema.RequiredMode.REQUIRED)
     private String inviteCode;
     @NotBlank(message = "빈 값이나 공백 문자는 받을 수 없습니다.")
     @Schema(description = "라벨 색상 (알바생 기준)", example = "RED", requiredMode = Schema.RequiredMode.REQUIRED)
