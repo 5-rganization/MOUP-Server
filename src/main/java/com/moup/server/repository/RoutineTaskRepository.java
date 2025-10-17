@@ -21,7 +21,7 @@ public interface RoutineTaskRepository {
     ///
     /// @param routineId 조회할 할 일의 루틴 ID
     /// @return 조회된 RoutineTask 객체 리스트, 없으면 빈 배열
-    @Select("SELECT * FROM routine_tasks WHERE routine_id = #{routineId} ORDER BY order_index ASC")
+    @Select("SELECT * FROM routine_tasks WHERE routine_id = #{routineId} ORDER BY order_index")
     List<RoutineTask> findAllByRoutineId(Long routineId);
 
     /// 루틴 ID에 해당하는 할 일들을 모두 삭제하는 메서드

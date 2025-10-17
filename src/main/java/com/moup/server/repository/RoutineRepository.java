@@ -48,6 +48,13 @@ public interface RoutineRepository {
     @Select("SELECT * FROM routines WHERE user_id = #{userId} ORDER BY alarm_time IS NULL, alarm_time")
     List<Routine> findAllByUserId(Long userId);
 
+    /// 사용자 ID를 통해 해당 사용자의 모든 루틴 개수를 반환하는 메서드
+    ///
+    /// @param userId 조회할 루틴의 사용자 ID
+    /// @return 조회된 루틴의 총 개수
+    @Select("SELECT COUNT(*) FROM routines WHERE user_id = #{userId}")
+    long countByUserId(Long userId);
+
     /// 루틴의 ID와 사용자 ID에 해당하는 루틴을 업데이트하는 메서드
     ///
     /// @param routine 업데이트할 루틴 엔티티

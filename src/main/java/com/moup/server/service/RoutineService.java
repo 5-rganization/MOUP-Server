@@ -29,13 +29,13 @@ public class RoutineService {
 
     @Transactional
     public RoutineCreateResponse createRoutine(Long userId, RoutineCreateRequest request) {
-        if (routineRepository.findAllByUserId(userId).size() > MAX_ROUTINE_COUNT_PER_USER) {
+        if (routineRepository.countByUserId(userId) >= MAX_ROUTINE_COUNT_PER_USER) {
             throw new DataLimitExceedException("루틴은 사용자당 최대 " + MAX_ROUTINE_COUNT_PER_USER + "개까지 생성할 수 있습니다.");
         }
         if (routineRepository.existByUserIdAndRoutineName(userId, request.getRoutineName())) { throw new RoutineNameAlreadyUsedException(); }
 
         List<RoutineTaskCreateRequest> routineTaskCreateRequestList = request.getRoutineTaskList();
-        if (routineTaskCreateRequestList.size() > MAX_TASK_COUNT_PER_ROUTINE) {
+        if (routineTaskCreateRequestList.size() >= MAX_TASK_COUNT_PER_ROUTINE) {
             throw new DataLimitExceedException("할 일은 루틴당 최대 " + MAX_TASK_COUNT_PER_ROUTINE + "개까지 생성할 수 있습니다.");
         }
 
@@ -108,7 +108,7 @@ public class RoutineService {
                 && routineRepository.existByUserIdAndRoutineName(userId, request.getRoutineName())) { throw new RoutineNameAlreadyUsedException(); }
 
         List<RoutineTaskUpdateRequest> routineTaskUpdateRequestList = request.getRoutineTaskList();
-        if (routineTaskUpdateRequestList.size() > MAX_TASK_COUNT_PER_ROUTINE) {
+        if (routineTaskUpdateRequestList.size() >= MAX_TASK_COUNT_PER_ROUTINE) {
             throw new DataLimitExceedException("할 일은 루틴당 최대 " + MAX_TASK_COUNT_PER_ROUTINE + "개까지 생성할 수 있습니다.");
         }
 
@@ -137,7 +137,7 @@ public class RoutineService {
 
     @Transactional
     public void saveWorkRoutineMapping(Long userId, List<Long> routineIdList, Long workId) {
-        if (routineIdList.size() > MAX_ROUTINE_COUNT_PER_WORK) {
+        if (routineIdList.size() >= MAX_ROUTINE_COUNT_PER_WORK) {
             throw new DataLimitExceedException("루틴은 한 근무당 최대 " + MAX_ROUTINE_COUNT_PER_WORK + "개까지 연결할 수 있습니다.");
         }
 
