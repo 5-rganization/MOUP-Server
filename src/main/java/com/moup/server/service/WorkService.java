@@ -126,7 +126,11 @@ public class WorkService {
                     .build();
         }
 
-        // 2. ID 리스트 추출
+        // 2. 사용자 정보 조회 (쿼리 2)
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
+
+        // 3. ID 리스트 추출
         List<Long> workplaceIdList = userWorkerList.stream()
                 .map(Worker::getWorkplaceId)
                 .distinct()
@@ -135,16 +139,16 @@ public class WorkService {
                 .map(Worker::getId)
                 .toList();
 
-        // 3. Workplace 정보 한 번에 조회 (쿼리 2) 및 Map으로 변환
+        // 4. Workplace 정보 한 번에 조회 (쿼리 3) 및 Map으로 변환
         Map<Long, Workplace> workplaceMap = workplaceRepository.findAllByIdIn(workplaceIdList).stream()
                 .collect(Collectors.toMap(Workplace::getId, workplace -> workplace));
 
-        // 4. Work 정보 한 번에 조회 (쿼리 3) 및 Map으로 변환 (workerId를 key로)
+        // 5. Work 정보 한 번에 조회 (쿼리 4) 및 Map으로 변환 (workerId를 key로)
         List<Work> allWorks = workRepository.findAllByWorkerIdInAndDateRange(workerIdList, startDate, endDate);
         Map<Long, List<Work>> workMapByWorker = allWorks.stream()
                 .collect(Collectors.groupingBy(Work::getWorkerId));
 
-        // 5. DTO 조립 (추가 쿼리 없음)
+        // 6. DTO 조립 (추가 쿼리 없음)
         List<WorkSummaryResponse> userWorkSummaryList = new ArrayList<>();
         for (Worker userWorker : userWorkerList) {
             Workplace workplace = workplaceMap.get(userWorker.getWorkplaceId());
@@ -153,16 +157,23 @@ public class WorkService {
 
             verifyPermission(userId, userWorker.getUserId(), workplace.getOwnerId());
 
-            WorkerSummaryResponse workerSummaryInfo = createWorkerSummary(userWorker);
+            WorkerSummaryResponse workerSummaryInfo = WorkerSummaryResponse.builder()
+                    .workerId(userWorker.getId())
+                    .workerBasedLabelColor(userWorker.getWorkerBasedLabelColor())
+                    .ownerBasedLabelColor(userWorker.getOwnerBasedLabelColor())
+                    .nickname(user.getNickname())
+                    .profileImg(user.getProfileImg())
+                    .build();
+
             WorkplaceSummaryResponse workplaceSummaryInfo = WorkplaceSummaryResponse.builder()
                     .workplaceId(workplace.getId())
                     .workplaceName(workplace.getWorkplaceName())
                     .isShared(workplace.isShared())
                     .build();
 
-            List<Work> workerWorks = workMapByWorker.getOrDefault(userWorker.getId(), Collections.emptyList());
+            List<Work> workerWorkList = workMapByWorker.getOrDefault(userWorker.getId(), Collections.emptyList());
 
-            List<WorkSummaryResponse> workSummaryList = workerWorks.stream()
+            List<WorkSummaryResponse> workSummaryList = workerWorkList.stream()
                     .map(work -> {
                         long workMinutes = Duration.between(work.getStartTime(), work.getEndTime()).toMinutes();
                         boolean isEditable = checkEditable(userId, userWorker.getUserId(), workplace.getOwnerId());
@@ -214,8 +225,8 @@ public class WorkService {
                         .collect(Collectors.toMap(User::getId, u -> u));
 
                 // 4. Work 정보 한 번에 조회 (쿼리 3) 및 Map 변환
-                List<Work> allWorks = workRepository.findAllByWorkerIdInAndDateRange(workerIdList, startDate, endDate);
-                Map<Long, List<Work>> workMapByWorker = allWorks.stream()
+                List<Work> allWorkList = workRepository.findAllByWorkerIdInAndDateRange(workerIdList, startDate, endDate);
+                Map<Long, List<Work>> workMapByWorker = allWorkList.stream()
                         .collect(Collectors.groupingBy(Work::getWorkerId));
 
                 // 5. DTO 조립 (추가 쿼리 없음)
