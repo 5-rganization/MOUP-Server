@@ -140,11 +140,11 @@ public class WorkService {
                 .toList();
 
         // 4. Workplace 정보 한 번에 조회 (쿼리 3) 및 Map으로 변환
-        Map<Long, Workplace> workplaceMap = workplaceRepository.findAllByIdIn(workplaceIdList).stream()
+        Map<Long, Workplace> workplaceMap = workplaceRepository.findAllByIdListIn(workplaceIdList).stream()
                 .collect(Collectors.toMap(Workplace::getId, workplace -> workplace));
 
         // 5. Work 정보 한 번에 조회 (쿼리 4) 및 Map으로 변환 (workerId를 key로)
-        List<Work> allWorks = workRepository.findAllByWorkerIdInAndDateRange(workerIdList, startDate, endDate);
+        List<Work> allWorks = workRepository.findAllByWorkerIdListInAndDateRange(workerIdList, startDate, endDate);
         Map<Long, List<Work>> workMapByWorker = allWorks.stream()
                 .collect(Collectors.groupingBy(Work::getWorkerId));
 
@@ -221,11 +221,11 @@ public class WorkService {
                         .toList();
 
                 // 3. User 정보 한 번에 조회 (쿼리 2) 및 Map 변환
-                Map<Long, User> userMap = userRepository.findAllByIdIn(userIdList).stream()
+                Map<Long, User> userMap = userRepository.findAllByIdListIn(userIdList).stream()
                         .collect(Collectors.toMap(User::getId, u -> u));
 
                 // 4. Work 정보 한 번에 조회 (쿼리 3) 및 Map 변환
-                List<Work> allWorkList = workRepository.findAllByWorkerIdInAndDateRange(workerIdList, startDate, endDate);
+                List<Work> allWorkList = workRepository.findAllByWorkerIdListInAndDateRange(workerIdList, startDate, endDate);
                 Map<Long, List<Work>> workMapByWorker = allWorkList.stream()
                         .collect(Collectors.groupingBy(Work::getWorkerId));
 

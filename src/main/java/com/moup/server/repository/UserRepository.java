@@ -32,7 +32,7 @@ public interface UserRepository {
                 </foreach>
             </script>
             """)
-    List<User> findAllByIdIn(@Param("idList") List<Long> idList);
+    List<User> findAllByIdListIn(@Param("idList") List<Long> idList);
 
     @Select("SELECT * FROM users WHERE provider = #{provider} AND provider_id = #{providerId}")
     Optional<User> findByProviderAndId(Login provider, String providerId);

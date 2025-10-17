@@ -4,16 +4,14 @@ import com.moup.server.exception.DataLimitExceedException;
 import com.moup.server.exception.RoutineNameAlreadyUsedException;
 import com.moup.server.exception.RoutineNotFoundException;
 import com.moup.server.model.dto.*;
-import com.moup.server.model.entity.Routine;
-import com.moup.server.model.entity.RoutineTask;
-import com.moup.server.model.entity.WorkRoutineMapping;
-import com.moup.server.repository.RoutineRepository;
-import com.moup.server.repository.RoutineTaskRepository;
-import com.moup.server.repository.WorkRoutineMappingRepository;
+import com.moup.server.model.entity.*;
+import com.moup.server.repository.*;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -27,6 +25,8 @@ public class RoutineService {
     private static final int MAX_ROUTINE_COUNT_PER_USER = 20; // 사용자당 루틴 연결 최대 개수
     private static final int MAX_TASK_COUNT_PER_ROUTINE = 50; // 루틴당 할 일 연결 최대 개수
     private static final int MAX_ROUTINE_COUNT_PER_WORK = 10; // 근무당 루틴 연결 최대 개수
+    private final WorkRepository workRepository;
+    private final WorkerRepository workerRepository;
 
     @Transactional
     public RoutineCreateResponse createRoutine(Long userId, RoutineCreateRequest request) {
@@ -78,6 +78,57 @@ public class RoutineService {
 
         return RoutineSummaryListResponse.builder()
                 .routineSummaryInfoList(routineSummaryResponseList)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public RoutineSummaryListResponse getAllTodayRoutine(Long userId) {
+        // 1. (쿼리 1) 사용자 Worker ID 조회
+        List<Long> userWorkerIdList = workerRepository.findAllByUserId(userId).stream()
+                .map(Worker::getId)
+                .toList();
+
+        if (userWorkerIdList.isEmpty()) {
+            return RoutineSummaryListResponse.builder().routineSummaryInfoList(Collections.emptyList()).build();
+        }
+
+        // 2. (쿼리 2) 오늘의 모든 Work 조회
+        List<Work> todayWorkList = workRepository.findAllByWorkerIdListInAndDateRange(userWorkerIdList, LocalDate.now(), LocalDate.now());
+
+        if (todayWorkList.isEmpty()) {
+            return RoutineSummaryListResponse.builder().routineSummaryInfoList(Collections.emptyList()).build();
+        }
+
+        // 3. (쿼리 3) 오늘 근무에 매핑된 *모든* WorkRoutineMapping을 한 번에 조회
+        // 3-1. Work ID 리스트 추출
+        List<Long> todayWorkIdList = todayWorkList.stream().map(Work::getId).toList();
+
+        // 3-2. WorkRoutineMappingRepository의 IN 절 쿼리 사용 (위에서 추가한 메서드)
+        List<WorkRoutineMapping> allMappings = workRoutineMappingRepository.findAllByWorkIdListIn(todayWorkIdList);
+
+        if (allMappings.isEmpty()) {
+            return RoutineSummaryListResponse.builder().routineSummaryInfoList(Collections.emptyList()).build();
+        }
+
+        // 4. (쿼리 4) 매핑된 모든 루틴 ID를 한 번에 조회
+        // 4-1. Routine ID 리스트 추출 (중복 제거)
+        List<Long> allRoutineIds = allMappings.stream()
+                .map(WorkRoutineMapping::getRoutineId)
+                .distinct()
+                .toList();
+
+        // 4-2. 모든 루틴 정보를 한 번에 조회
+        List<RoutineSummaryResponse> routineSummaryInfoList = routineRepository.findAllByIdListInAndUserId(allRoutineIds, userId).stream() // 👈 N+1 해결 (2)
+                .map(routine -> RoutineSummaryResponse.builder()
+                        .routineId(routine.getId())
+                        .routineName(routine.getRoutineName())
+                        .alarmTime(routine.getAlarmTime())
+                        .build())
+                .toList();
+
+        // 5. 결과 반환
+        return RoutineSummaryListResponse.builder()
+                .routineSummaryInfoList(routineSummaryInfoList)
                 .build();
     }
 
@@ -149,7 +200,7 @@ public class RoutineService {
         if (routineIdList.isEmpty()) { return; }
 
         // 2. 루틴 유효성 검증 (쿼리 2)
-        List<Routine> validRoutines = routineRepository.findAllByIdInAndUserId(routineIdList, userId);
+        List<Routine> validRoutines = routineRepository.findAllByIdListInAndUserId(routineIdList, userId);
 
         // 요청한 루틴 ID 개수와 실제 DB에서 찾은 (해당 사용자의) 루틴 개수가 다른 경우
         if (validRoutines.size() != routineIdList.size()) {
@@ -182,7 +233,7 @@ public class RoutineService {
                 .toList();
 
         // 3. 두 번째 쿼리 (1번 실행) - IN 절을 사용해 한 번에 모든 루틴 조회
-        List<Routine> routineList = routineRepository.findAllByIdInAndUserId(routineIdList, userId);
+        List<Routine> routineList = routineRepository.findAllByIdListInAndUserId(routineIdList, userId);
 
         // 4. (쿼리 없음) 가져온 데이터를 메모리에서 매핑
         return routineList.stream()

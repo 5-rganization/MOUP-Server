@@ -79,7 +79,7 @@ public interface WorkRepository {
                 ORDER BY work_date
             </script>
             """)
-    List<Work> findAllByWorkerIdInAndDateRange(
+    List<Work> findAllByWorkerIdListInAndDateRange(
             @Param("workerIdList") List<Long> workerIdList,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
