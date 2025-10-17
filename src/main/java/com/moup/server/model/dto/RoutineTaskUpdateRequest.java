@@ -11,8 +11,6 @@ import lombok.Getter;
 @Builder
 @Schema(description = "할 일 업데이트 요청 DTO")
 public class RoutineTaskUpdateRequest {
-    @Schema(description = "할 일 ID", example = "1", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    private Long taskId;
     @NotBlank(message = "빈 값이나 공백 문자는 받을 수 없습니다.")
     @Schema(description = "내용", example = "바닥 청소", requiredMode = Schema.RequiredMode.REQUIRED)
     private String content;
@@ -22,7 +20,7 @@ public class RoutineTaskUpdateRequest {
 
     public RoutineTask toEntity(Long routineId) {
         return RoutineTask.builder()
-                .id(taskId)
+                .id(null)
                 .routineId(routineId)
                 .content(content)
                 .orderIndex(orderIndex)
