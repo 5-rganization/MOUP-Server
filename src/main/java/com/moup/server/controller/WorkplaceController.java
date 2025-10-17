@@ -29,7 +29,7 @@ import java.util.List;
 @Validated
 @RequiredArgsConstructor
 @RequestMapping("/workplaces")
-public class WorkplaceController implements WorkplaceSpecification {
+public class WorkplaceController implements WorkplaceSpecification, InviteCodeSpecification {
     private final UserService userService;
     private final IdentityService identityService;
     private final WorkplaceService workplaceService;
