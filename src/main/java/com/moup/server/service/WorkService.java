@@ -60,7 +60,6 @@ public class WorkService {
         Work work = createWorkHelper(worker, request);
 
         Long workerUserId = userRepository.findById(worker.getUserId()).orElseThrow(UserNotFoundException::new).getId();
-
         routineService.saveWorkRoutineMapping(workerUserId, request.getRoutineIdList(), work.getId());
 
         return WorkCreateResponse.builder()
