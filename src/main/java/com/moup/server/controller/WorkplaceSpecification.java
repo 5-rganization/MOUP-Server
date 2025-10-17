@@ -15,6 +15,8 @@ import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.YearMonth;
+
 public interface WorkplaceSpecification {
     @Tag(name = "Workplace", description = "근무지(매장) 정보 관리 API 엔드포인트")
     @PostMapping
@@ -134,7 +136,7 @@ public interface WorkplaceSpecification {
     );
 
     @Tag(name = "Workplace", description = "근무지(매장) 정보 관리 API 엔드포인트")
-    @GetMapping("/summary")
+    @GetMapping
     @Operation(summary = "모든 근무지(매장) 요약 조회", description = "사용자의 모든 근무지(매장) 조회 및 요약")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "모든 근무지(매장) 조회 및 요약 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceSummaryListResponse.class))),
@@ -213,5 +215,40 @@ public interface WorkplaceSpecification {
     ResponseEntity<?> deleteWorkplace(
             @Parameter(name = "workplaceId", description = "삭제할 근무지(매장) ID", example = "1", required = true, in = ParameterIn.PATH)
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId
+    );
+
+    @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
+    @PostMapping("/{workplaceId}/works")
+    @Operation(summary = "근무지에 내 근무 생성", description = "근무지(매장) ID를 경로로 전달받아 해당 근무지(매장)에 내 근무를 생성")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "근무 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkCreateResponse.class))),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "422", description = "유효하지 않은 필드값 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "근무 생성을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkCreateRequest.class)))
+    ResponseEntity<?> createMyWork(
+            @Parameter(name = "workplaceId", description = "근무를 생성할 근무지(매장) ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
+            @RequestBody @Valid WorkCreateRequest request
+    );
+
+    @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
+    @GetMapping("/{workplaceId}/works")
+    @Operation(summary = "특정 근무지(매장)의 근무 범위 조회", description = "근무지(매장) ID를 경로로, 연-월과 전체 근무자 스케줄 조회 여부를 매개변수로 전달받아 해당 날짜를 중간값으로 1년간 해당 근무지(매장)의 근무를 조회")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "근무 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkCalendarListResponse.class))),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    ResponseEntity<?> getSummarizedWorkByWorkplace(
+            @Parameter(name = "workplaceId", description = "조회할 근무지(매장) ID", example = "1", in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
+            @Parameter(name = "baseYearMonth", description = "조회할 연-월 (yyyy-MM)", in = ParameterIn.QUERY, required = true)
+            @RequestParam(name = "baseYearMonth") YearMonth baseYearMonth,
+            @Parameter(name = "isShared", description = "근무지(매장)의 전체 근무자 스케줄 조회 여부", in = ParameterIn.QUERY)
+            @RequestParam(name = "isShared", required = false) Boolean isShared
     );
 }

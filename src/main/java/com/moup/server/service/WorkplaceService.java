@@ -214,10 +214,10 @@ public class WorkplaceService {
     }
 
     @Transactional
-    public WorkplaceJoinResponse joinWorkplace(User user, String inviteCode, WorkplaceJoinRequest request) {
+    public WorkplaceJoinResponse joinWorkplace(User user, WorkplaceJoinRequest request) {
         if (user.getRole() != Role.ROLE_WORKER) { throw new InvalidPermissionAccessException(); }
 
-        Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCode(inviteCode.toUpperCase());
+        Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCode(request.getInviteCode().toUpperCase());
         if (!workplaceRepository.existsById(workplaceId)) { throw new WorkplaceNotFoundException(); }
         if (workerRepository.existsByUserIdAndWorkplaceId(user.getId(), workplaceId)) { throw new WorkerAlreadyExistsException(); }
 

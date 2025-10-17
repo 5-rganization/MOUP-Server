@@ -1,8 +1,6 @@
 package com.moup.server.service;
 
-import com.moup.server.exception.DataLimitExceedException;
-import com.moup.server.exception.RoutineNameAlreadyUsedException;
-import com.moup.server.exception.RoutineNotFoundException;
+import com.moup.server.exception.*;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.*;
 import com.moup.server.repository.*;
@@ -169,20 +167,7 @@ public class RoutineService {
 
     @Transactional(readOnly = true)
     public RoutineSummaryListResponse getAllRoutineByWork(Long userId, Long workId) {
-        List<WorkRoutineMapping> workRoutineMappingList = workRoutineMappingRepository.findAllByWorkId(workId);
-        List<Long> routineIdList = workRoutineMappingList.stream()
-                .map(WorkRoutineMapping::getRoutineId)
-                .toList();
-
-        List<Routine> routineList = routineRepository.findAllByIdListInAndUserId(routineIdList, userId);
-        List<RoutineSummaryResponse> routineSummaryInfoList = routineList.stream()
-                .map(routine -> RoutineSummaryResponse.builder()
-                        .routineId(routine.getId())
-                        .routineName(routine.getRoutineName())
-                        .alarmTime(routine.getAlarmTime())
-                        .build()
-                )
-                .toList();
+        List<RoutineSummaryResponse> routineSummaryInfoList = getAllSummarizedRoutineByWorkRoutineMapping(userId, workId);
 
         return RoutineSummaryListResponse.builder()
                 .routineSummaryInfoList(routineSummaryInfoList)
@@ -279,6 +264,21 @@ public class RoutineService {
 
     @Transactional(readOnly = true)
     public List<RoutineSummaryResponse> getAllSummarizedRoutineByWorkRoutineMapping(Long userId, Long workId) {
+        // --- START: 권한 확인 ---
+        Work work = workRepository.findById(workId)
+                .orElseThrow(WorkNotFoundException::new);
+
+        Worker worker = workerRepository.findByIdAndUserId(work.getWorkerId(), userId)
+                .orElseThrow(WorkerUserNotFoundException::new);
+
+        Workplace workplace = workplaceRepository.findById(worker.getWorkplaceId())
+                .orElseThrow(WorkplaceNotFoundException::new);
+
+        if (!userId.equals(worker.getUserId()) && !userId.equals(workplace.getOwnerId())) {
+            throw new InvalidPermissionAccessException();
+        }
+        // --- END: 권한 확인 ---
+
         // 1. 첫 번째 쿼리 (1번 실행)
         List<WorkRoutineMapping> workRoutineMappingList = workRoutineMappingRepository.findAllByWorkId(workId);
 
@@ -288,6 +288,8 @@ public class RoutineService {
         List<Long> routineIdList = workRoutineMappingList.stream()
                 .map(WorkRoutineMapping::getRoutineId)
                 .toList();
+
+        if (routineIdList.isEmpty()) { return Collections.emptyList(); }
 
         // 3. 두 번째 쿼리 (1번 실행) - IN 절을 사용해 한 번에 모든 루틴 조회
         List<Routine> routineList = routineRepository.findAllByIdListInAndUserId(routineIdList, userId);

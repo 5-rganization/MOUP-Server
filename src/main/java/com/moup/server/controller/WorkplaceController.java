@@ -2,9 +2,7 @@ package com.moup.server.controller;
 
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.User;
-import com.moup.server.service.IdentityService;
-import com.moup.server.service.UserService;
-import com.moup.server.service.WorkplaceService;
+import com.moup.server.service.*;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import jakarta.validation.Valid;
@@ -18,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.time.YearMonth;
 import java.util.List;
 
 /**
@@ -33,6 +32,7 @@ public class WorkplaceController implements WorkplaceSpecification, InviteCodeSp
     private final UserService userService;
     private final IdentityService identityService;
     private final WorkplaceService workplaceService;
+    private final WorkService workService;
 
     @Override
     @PostMapping
@@ -67,7 +67,7 @@ public class WorkplaceController implements WorkplaceSpecification, InviteCodeSp
     }
 
     @Override
-    @GetMapping("/summary")
+    @GetMapping
     public ResponseEntity<?> getAllSummarizedWorkplace(
             @Parameter(name = "isShared", description = "공유 근무지(매장) 조회 여부", in = ParameterIn.QUERY)
             @RequestParam(name = "isShared", required = false) Boolean isShared
@@ -109,7 +109,7 @@ public class WorkplaceController implements WorkplaceSpecification, InviteCodeSp
     }
 
     @Override
-    @PutMapping("/invite-code/{workplaceId}")
+    @PutMapping("{workplaceId}/invite-code")
     @PreAuthorize("hasRole('ROLE_OWNER')")
     public ResponseEntity<?> generateInviteCode(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
@@ -131,7 +131,7 @@ public class WorkplaceController implements WorkplaceSpecification, InviteCodeSp
     }
 
     @Override
-    @GetMapping("/invite-code/{inviteCode}")
+    @GetMapping("/invite-codes/{inviteCode}")
     @PreAuthorize("hasRole('ROLE_WORKER')")
     public ResponseEntity<?> inquireInviteCode(
             @PathVariable @Pattern(regexp = "^[a-zA-Z0-9]{6}$", message = "초대 코드는 영문 또는 숫자로 이루어진 6자리여야 합니다.") String inviteCode
@@ -144,20 +144,47 @@ public class WorkplaceController implements WorkplaceSpecification, InviteCodeSp
     }
 
     @Override
-    @PostMapping("/invite-code/{inviteCode}")
+    @PostMapping("/join")
     @PreAuthorize("hasRole('ROLE_WORKER')")
-    public ResponseEntity<?> joinWorkplace(
-            @PathVariable @Pattern(regexp = "^[a-zA-Z0-9]{6}$", message = "초대 코드는 영문 또는 숫자로 이루어진 6자리여야 합니다.") String inviteCode,
-            @RequestBody @Valid WorkplaceJoinRequest request
-    ) {
+    public ResponseEntity<?> joinWorkplace(@RequestBody @Valid WorkplaceJoinRequest request) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
-        WorkplaceJoinResponse response = workplaceService.joinWorkplace(user, inviteCode, request);
+        WorkplaceJoinResponse response = workplaceService.joinWorkplace(user, request);
         URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path("/workplaces/{id}/workers/{workerId}")
                 .buildAndExpand(response.getWorkplaceId(), response.getWorkerId())
                 .toUri();
         return ResponseEntity.created(location).body(response);
+    }
+
+    @Override
+    @PostMapping("/{workplaceId}/works")
+    public ResponseEntity<?> createMyWork(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
+            @RequestBody @Valid WorkCreateRequest request
+    ) {
+        Long userId = identityService.getCurrentUserId();
+
+        WorkCreateResponse response = workService.createMyWork(userId, workplaceId, request);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(response.getWorkId())
+                .toUri();
+        return ResponseEntity.created(location).body(response);
+    }
+
+    @Override
+    @GetMapping("/{workplaceId}/works")
+    public ResponseEntity<?> getSummarizedWorkByWorkplace(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
+            @RequestParam(name = "baseYearMonth") YearMonth baseYearMonth,
+            @RequestParam(name = "isShared", required = false) Boolean isShared
+    ) {
+        Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
+
+        WorkCalendarListResponse response = workService.getAllSummarizedWorkByWorkplace(user, workplaceId, baseYearMonth, isShared);
+        return ResponseEntity.ok().body(response);
     }
 }
