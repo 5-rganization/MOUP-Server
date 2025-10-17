@@ -136,7 +136,12 @@ public class RoutineService {
                     Long workplaceId = workerIdToWorkplaceIdMap.get(work.getWorkerId());
                     Workplace workplace = (workplaceId != null) ? workplaceMap.get(workplaceId) : null;
 
-                    if (workplace == null) return null; // 방어 코드
+                    // 1. 방어 코드 (Workplace가 없으면 null 반환)
+                    if (workplace == null) return null;
+
+                    // 2. 루틴 개수를 먼저 계산하고 0이면 null 반환
+                    int routineCount = routineCountMap.getOrDefault(work.getId(), 0L).intValue();
+                    if (routineCount == 0) { return null; }
 
                     WorkplaceSummaryResponse workplaceSummary = WorkplaceSummaryResponse.builder()
                             .workplaceId(workplace.getId())
@@ -150,7 +155,7 @@ public class RoutineService {
                             .startTime(work.getStartTime())
                             .endTime(work.getEndTime())
                             .workMinutes(Duration.between(work.getStartTime(), work.getEndTime()).toMinutes())
-                            .routineCount(routineCountMap.getOrDefault(work.getId(), 0L).intValue())
+                            .routineCount(routineCount)
                             .build();
                 })
                 .filter(Objects::nonNull)
