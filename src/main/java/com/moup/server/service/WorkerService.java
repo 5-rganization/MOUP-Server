@@ -1,5 +1,6 @@
 package com.moup.server.service;
 
+import com.moup.server.exception.CannotDeleteDataException;
 import com.moup.server.exception.SalaryWorkerNotFoundException;
 import com.moup.server.exception.WorkerWorkplaceNotFoundException;
 import com.moup.server.exception.WorkplaceNotFoundException;
@@ -90,7 +91,8 @@ public class WorkerService {
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyOwnerPermission(userId, workplaceOwnerId);
 
-        Long workerUserId = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
+        Long workerUserId = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getUserId();
+        if (workerUserId.equals(userId)) { throw new CannotDeleteDataException(); }
 
         workRepository.deleteAllByWorkerId(workerId);
         salaryRepository.delete(workerId);
