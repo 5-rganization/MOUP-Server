@@ -91,7 +91,7 @@ public class WorkerService {
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyOwnerPermission(userId, workplaceOwnerId);
 
-        Long workerUserId = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getUserId();
+        Long workerUserId = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getUserId();
         if (workerUserId.equals(userId)) { throw new CannotDeleteDataException(); }
 
         workRepository.deleteAllByWorkerId(workerId);

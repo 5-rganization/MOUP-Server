@@ -10,6 +10,7 @@ import lombok.experimental.SuperBuilder;
 
 @Getter
 @SuperBuilder
+@NoArgsConstructor
 @Schema(description = "사장님 매장 생성 요청 DTO")
 public class OwnerWorkplaceCreateRequest extends BaseWorkplaceCreateRequest {
     @NotBlank(message = "빈 값이나 공백 문자는 받을 수 없습니다.")

@@ -4,9 +4,11 @@ import com.moup.server.model.entity.Worker;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 @Getter
+@NoArgsConstructor
 @SuperBuilder
 @Schema(description = "사장님 근무자 업데이트 요청 DTO")
 public class OwnerWorkerUpdateRequest extends BaseWorkerUpdateRequest {

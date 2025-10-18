@@ -4,11 +4,13 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)
 @JsonSubTypes({@JsonSubTypes.Type(WorkerWorkplaceDetailResponse.class), @JsonSubTypes.Type(OwnerWorkplaceDetailResponse.class)})
 @Getter
+@NoArgsConstructor
 @SuperBuilder
 public abstract class BaseWorkplaceDetailResponse {
     @Schema(description = "근무지(매장) ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)

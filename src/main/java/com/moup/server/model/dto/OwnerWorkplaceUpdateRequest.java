@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 @Getter
+@NoArgsConstructor
 @SuperBuilder
 @Schema(description = "사장님 매장 업데이트 요청 DTO")
 public class OwnerWorkplaceUpdateRequest extends BaseWorkplaceUpdateRequest {

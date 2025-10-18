@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 @Getter
+@NoArgsConstructor
 @SuperBuilder
 @Schema(description = "알바생 근무지 상세 조회 응답 DTO")
 public class WorkerWorkplaceDetailResponse extends BaseWorkplaceDetailResponse {
