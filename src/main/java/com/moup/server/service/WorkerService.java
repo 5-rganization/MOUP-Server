@@ -1,7 +1,5 @@
 package com.moup.server.service;
 
-import com.moup.server.common.Role;
-import com.moup.server.exception.InvalidPermissionAccessException;
 import com.moup.server.exception.SalaryWorkerNotFoundException;
 import com.moup.server.exception.WorkerWorkplaceNotFoundException;
 import com.moup.server.exception.WorkplaceNotFoundException;
@@ -35,7 +33,7 @@ public class WorkerService {
         Workplace userWorkplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
         permissionVerifyUtil.verifyOwnerPermission(userId, userWorkplace.getOwnerId());
 
-        List<Worker> workerList = workerRepository.findAllByWorkplaceId(workplaceId);
+        List<Worker> workerList = workerRepository.findAllByWorkplaceIdAndUserIdNot(workplaceId, userId);
 
         Map<Long, User> userMap = userRepository.findAllByIdListIn(workerList.stream().map(Worker::getUserId).toList()).stream()
                 .collect(Collectors.toMap(User::getId, user -> user));
@@ -56,18 +54,21 @@ public class WorkerService {
                 .build();
     }
 
-    public void updateWorker(User user, Long workplaceId, Long workerId, BaseWorkerUpdateRequest request) {
-        if (user.getRole() == Role.ROLE_OWNER && request instanceof OwnerWorkerUpdateRequest ownerRequest) {
-            Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-            permissionVerifyUtil.verifyOwnerPermission(user.getId(), workplaceOwnerId);
-            workerRepository.updateOwnerBasedLabelColor(workerId, user.getId(), workplaceId, ownerRequest.getOwnerBasedLabelColor());
-        } else if (user.getRole() == Role.ROLE_WORKER && request instanceof WorkerWorkerUpdateRequest workerRequest) {
-            Long workerUserId = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
-            permissionVerifyUtil.verifyWorkerPermission(user.getId(), workerUserId);
-            workerRepository.updateWorkerBasedLabelColor(workerId, user.getId(), workplaceId, workerRequest.getWorkerBasedLabelColor());
-        } else {
-            throw new InvalidPermissionAccessException();
-        }
+    public void updateMyWorker(User user, Long workplaceId, WorkerWorkerUpdateRequest request) {
+        Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new);
+        permissionVerifyUtil.verifyWorkerPermission(user.getId(), userWorker.getUserId());
+        workerRepository.updateWorkerBasedLabelColor(userWorker.getId(), user.getId(), workplaceId, request.getWorkerBasedLabelColor());
+
+        Long salaryId = salaryRepository.findByWorkerId(userWorker.getId()).orElseThrow(SalaryWorkerNotFoundException::new).getId();
+        Salary newSalary = request.getSalaryUpdateRequest().toEntity(salaryId, userWorker.getId());
+
+        salaryRepository.update(newSalary);
+    }
+
+    public void updateWorkerForOwner(User user, Long workplaceId, Long workerId, OwnerWorkerUpdateRequest request) {
+        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
+        permissionVerifyUtil.verifyOwnerPermission(user.getId(), workplaceOwnerId);
+        workerRepository.updateOwnerBasedLabelColor(workerId, user.getId(), workplaceId, request.getOwnerBasedLabelColor());
 
         Long salaryId = salaryRepository.findByWorkerId(workerId).orElseThrow(SalaryWorkerNotFoundException::new).getId();
         Salary newSalary = request.getSalaryUpdateRequest().toEntity(salaryId, workerId);
@@ -75,10 +76,21 @@ public class WorkerService {
         salaryRepository.update(newSalary);
     }
 
-    public void deleteWorker(Long userId, Long workplaceId, Long workerId) {
+    public void deleteMyWorker(Long userId, Long workplaceId) {
+        Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new);
+        permissionVerifyUtil.verifyWorkerPermission(userId, worker.getUserId());
+
+        workRepository.deleteAllByWorkerId(worker.getId());
+        salaryRepository.delete(worker.getId());
+        monthlySalaryRepository.deleteByWorkerId(worker.getId());
+        workerRepository.delete(worker.getId(), worker.getUserId(), workplaceId);
+    }
+
+    public void deleteWorkerForOwner(Long userId, Long workplaceId, Long workerId) {
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
+        permissionVerifyUtil.verifyOwnerPermission(userId, workplaceOwnerId);
+
         Long workerUserId = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
-        permissionVerifyUtil.verifyWorkerOrOwnerPermission(userId, workerUserId, workplaceOwnerId);
 
         workRepository.deleteAllByWorkerId(workerId);
         salaryRepository.delete(workerId);

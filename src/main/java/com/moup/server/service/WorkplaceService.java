@@ -95,7 +95,7 @@ public class WorkplaceService {
     }
 
     @Transactional(readOnly = true)
-    public WorkplaceSummaryResponse getSummarizedWorkplace(Long userId, Long workplaceId) {
+    public WorkplaceSummaryResponse getWorkplace(Long userId, Long workplaceId) {
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
         if (!workerRepository.existsByUserIdAndWorkplaceId(userId, workplaceId)) { throw new WorkerWorkplaceNotFoundException(); }
 
@@ -107,7 +107,7 @@ public class WorkplaceService {
     }
 
     @Transactional(readOnly = true)
-    public List<WorkplaceSummaryResponse> getAllSummarizedWorkplace(Long userId, Boolean isShared) {
+    public List<WorkplaceSummaryResponse> getAllWorkplace(Long userId, Boolean isShared) {
         List<Worker> userAllWorkers = workerRepository.findAllByUserId(userId);
 
         return userAllWorkers.stream()

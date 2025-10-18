@@ -44,7 +44,7 @@ public class WorkController implements WorkSpecification {
     public ResponseEntity<?> getAllSummarizedWork(@RequestParam(name = "baseYearMonth") YearMonth baseYearMonth) {
         Long userId = identityService.getCurrentUserId();
 
-        WorkCalendarListResponse response = workService.getAllSummarizedWork(userId, baseYearMonth);
+        WorkCalendarListResponse response = workService.getAllWork(userId, baseYearMonth);
         return ResponseEntity.ok().body(response);
     }
 

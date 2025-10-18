@@ -58,7 +58,7 @@ public class WorkplaceController implements WorkplaceSpecification, InviteCodeSp
         User user = userService.findUserById(userId);
 
         if (view == ViewType.SUMMARY) {
-            WorkplaceSummaryResponse response = workplaceService.getSummarizedWorkplace(userId, workplaceId);
+            WorkplaceSummaryResponse response = workplaceService.getWorkplace(userId, workplaceId);
             return ResponseEntity.ok().body(response);
         }
 
@@ -75,7 +75,7 @@ public class WorkplaceController implements WorkplaceSpecification, InviteCodeSp
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
-        List<WorkplaceSummaryResponse> summaryResponseList = workplaceService.getAllSummarizedWorkplace(user.getId(), isShared);
+        List<WorkplaceSummaryResponse> summaryResponseList = workplaceService.getAllWorkplace(user.getId(), isShared);
 
         WorkplaceSummaryListResponse response = WorkplaceSummaryListResponse.builder()
                 .workplaceSummaryInfoList(summaryResponseList)
@@ -98,9 +98,7 @@ public class WorkplaceController implements WorkplaceSpecification, InviteCodeSp
 
     @Override
     @DeleteMapping("/{workplaceId}")
-    public ResponseEntity<?> deleteWorkplace(
-            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId
-    ) {
+    public ResponseEntity<?> deleteWorkplace(@PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
@@ -159,32 +157,15 @@ public class WorkplaceController implements WorkplaceSpecification, InviteCodeSp
     }
 
     @Override
-    @PostMapping("/{workplaceId}/works")
-    public ResponseEntity<?> createMyWork(
-            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
-            @RequestBody @Valid WorkCreateRequest request
-    ) {
-        Long userId = identityService.getCurrentUserId();
-
-        WorkCreateResponse response = workService.createMyWork(userId, workplaceId, request);
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}")
-                .buildAndExpand(response.getWorkId())
-                .toUri();
-        return ResponseEntity.created(location).body(response);
-    }
-
-    @Override
     @GetMapping("/{workplaceId}/works")
-    public ResponseEntity<?> getSummarizedWorkByWorkplace(
+    public ResponseEntity<?> getAllWorkByWorkplace(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
-            @RequestParam(name = "baseYearMonth") YearMonth baseYearMonth,
-            @RequestParam(name = "isShared", required = false) Boolean isShared
+            @RequestParam(name = "baseYearMonth") YearMonth baseYearMonth
     ) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
-        WorkCalendarListResponse response = workService.getAllSummarizedWorkByWorkplace(user, workplaceId, baseYearMonth, isShared);
+        WorkCalendarListResponse response = workService.getAllWorkByWorkplace(user, workplaceId, baseYearMonth);
         return ResponseEntity.ok().body(response);
     }
 }
