@@ -31,21 +31,6 @@ public interface WorkRoutineMappingRepository {
     @Select("SELECT * FROM work_routine_mappings WHERE work_id = #{workId}")
     List<WorkRoutineMapping> findAllByWorkId(Long workId);
 
-    /// 여러 근무 ID에 해당하는 모든 근무-루틴 매핑을 조회하는 메서드
-    ///
-    /// @param workIdList 조회할 근무 ID 리스트
-    /// @return 조회된 `WorkRoutineMapping` 객체 리스트
-    @Select("""
-            <script>
-                SELECT * FROM work_routine_mappings
-                WHERE work_id IN
-                <foreach item="workId" collection="workIdList" open="(" separator="," close=")">
-                    #{workId}
-                </foreach>
-            </script>
-            """)
-    List<WorkRoutineMapping> findAllByWorkIdListIn(@Param("workIdList") List<Long> workIdList);
-
     /// 여러 근무 ID별 근무-루틴 매핑 개수를 조회하는 메서드
     ///
     /// @param workIdList 조회할 근무 ID 리스트

@@ -139,6 +139,7 @@ CREATE TABLE `monthly_salaries`
     `income_tax`              INT                   NOT NULL,  -- 소득세
     `local_income_tax`        INT                   NOT NULL,  -- 지방소득세
     `net_income`              INT                   NOT NULL,  -- 세후 실지급액
+    FOREIGN KEY (`worker_id`) REFERENCES workers (`id`) ON DELETE CASCADE,
     UNIQUE KEY `unique_worker_month` (`worker_id`, `salary_month`)
 );
 

@@ -7,9 +7,7 @@ import com.moup.server.model.entity.Salary;
 import com.moup.server.model.entity.User;
 import com.moup.server.model.entity.Workplace;
 import com.moup.server.model.entity.Worker;
-import com.moup.server.repository.SalaryRepository;
-import com.moup.server.repository.WorkerRepository;
-import com.moup.server.repository.WorkplaceRepository;
+import com.moup.server.repository.*;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +21,9 @@ public class WorkplaceService {
     private final WorkplaceRepository workplaceRepository;
     private final WorkerRepository workerRepository;
     private final SalaryRepository salaryRepository;
+    private final WorkRepository workRepository;
+    private final MonthlySalaryRepository monthlySalaryRepository;
+
     private final InviteCodeService inviteCodeService;
 
     // ========== 근무지 메서드 ==========
@@ -142,16 +143,20 @@ public class WorkplaceService {
     public void deleteWorkplace(Long userId, Long workplaceId) {
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
         if (workplace.getOwnerId().equals(userId)) {
-            List<Worker> workerList = workerRepository.findAllByWorkplaceId(workplaceId);
-            for (Worker worker : workerList) {
-                salaryRepository.delete(worker.getId());
-                workerRepository.deleteByIdAndWorkplaceId(worker.getId(), workplaceId);
+            List<Long> workerIdList = workerRepository.findAllByWorkplaceId(workplaceId).stream().map(Worker::getId).toList();
+            for (Long workerId : workerIdList) {
+                workRepository.deleteAllByWorkerId(workerId);
+                salaryRepository.delete(workerId);
+                monthlySalaryRepository.deleteByWorkerId(workerId);
+                workerRepository.deleteByIdAndWorkplaceId(workerId, workplaceId);
             }
             workplaceRepository.delete(workplaceId, userId);
         } else {
-            Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new);
-            salaryRepository.delete(worker.getId());
-            workerRepository.delete(worker.getId(), userId, workplaceId);
+            Long workerId = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
+            workRepository.deleteAllByWorkerId(workerId);
+            salaryRepository.delete(workerId);
+            monthlySalaryRepository.deleteByWorkerId(workerId);
+            workerRepository.delete(workerId, userId, workplaceId);
         }
     }
 

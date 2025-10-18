@@ -113,4 +113,10 @@ public interface WorkRepository {
     /// @param workerId 삭제할 근무의 근무자 ID
     @Delete("DELETE FROM works WHERE id = #{id} AND worker_id = #{workerId}")
     void delete(Long id, Long workerId);
+
+    /// 근무자 ID에 해당하는 근무를 모두 삭제하는 메서드
+    ///
+    /// @param workerId 삭제할 근무의 근무자 ID
+    @Delete("DELETE FROM works WHERE worker_id = #{workerId}")
+    void deleteAllByWorkerId(Long workerId);
 }

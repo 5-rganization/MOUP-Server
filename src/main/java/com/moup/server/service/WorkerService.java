@@ -10,10 +10,7 @@ import com.moup.server.model.entity.Salary;
 import com.moup.server.model.entity.User;
 import com.moup.server.model.entity.Worker;
 import com.moup.server.model.entity.Workplace;
-import com.moup.server.repository.SalaryRepository;
-import com.moup.server.repository.UserRepository;
-import com.moup.server.repository.WorkerRepository;
-import com.moup.server.repository.WorkplaceRepository;
+import com.moup.server.repository.*;
 import com.moup.server.util.PermissionVerifyUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,9 +25,11 @@ public class WorkerService {
     private final WorkplaceRepository workplaceRepository;
     private final WorkerRepository workerRepository;
     private final SalaryRepository salaryRepository;
+    private final UserRepository userRepository;
+    private final WorkRepository workRepository;
+    private final MonthlySalaryRepository monthlySalaryRepository;
 
     private final PermissionVerifyUtil permissionVerifyUtil;
-    private final UserRepository userRepository;
 
     public WorkerSummaryListResponse getWorkerList(Long userId, Long workplaceId) {
         Workplace userWorkplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
@@ -81,6 +80,9 @@ public class WorkerService {
         Long workerUserId = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
         permissionVerifyUtil.verifyWorkerOrOwnerPermission(userId, workerUserId, workplaceOwnerId);
 
+        workRepository.deleteAllByWorkerId(workerId);
+        salaryRepository.delete(workerId);
+        monthlySalaryRepository.deleteByWorkerId(workerId);
         workerRepository.delete(workerId, workerUserId, workplaceId);
     }
 }
