@@ -6,12 +6,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 @Getter
 @SuperBuilder
-@NoArgsConstructor
 @Schema(description = "알바생 근무지 생성 요청 DTO")
 public class WorkerWorkplaceCreateRequest extends BaseWorkplaceCreateRequest {
     @NotBlank(message = "빈 값이나 공백 문자는 받을 수 없습니다.")

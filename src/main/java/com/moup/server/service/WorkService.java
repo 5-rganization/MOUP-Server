@@ -42,7 +42,7 @@ public class WorkService {
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        permissionVerifyUtil.verifyWorkServicePermission(userId, userWorker.getUserId(), workplaceOwnerId);
+        permissionVerifyUtil.verifyWorkerOrOwnerPermission(userId, userWorker.getUserId(), workplaceOwnerId);
 
         Work work = createWorkHelper(userWorker, request);
 
@@ -58,7 +58,7 @@ public class WorkService {
         Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        permissionVerifyUtil.verifyWorkServicePermission(requesterUserId, worker.getUserId(), workplaceOwnerId);
+        permissionVerifyUtil.verifyWorkerOrOwnerPermission(requesterUserId, worker.getUserId(), workplaceOwnerId);
 
         Work work = createWorkHelper(worker, request);
 
@@ -160,7 +160,7 @@ public class WorkService {
             // workplace가 null인 경우 방어 코드 (데이터 정합성이 깨졌을 경우)
             if (workplace == null) continue;
 
-            permissionVerifyUtil.verifyWorkServicePermission(userId, userWorker.getUserId(), workplace.getOwnerId());
+            permissionVerifyUtil.verifyWorkerOrOwnerPermission(userId, userWorker.getUserId(), workplace.getOwnerId());
 
             WorkerSummaryResponse workerSummaryInfo = WorkerSummaryResponse.builder()
                     .workerId(userWorker.getId())
@@ -201,7 +201,7 @@ public class WorkService {
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
-        permissionVerifyUtil.verifyWorkServicePermission(user.getId(), userWorker.getUserId(), workplace.getOwnerId());
+        permissionVerifyUtil.verifyWorkerOrOwnerPermission(user.getId(), userWorker.getUserId(), workplace.getOwnerId());
         if (Boolean.TRUE.equals(isShared) && !workplace.isShared()) { throw new InvalidPermissionAccessException(); }
 
         WorkplaceSummaryResponse workplaceSummary = WorkplaceSummaryResponse.builder()
@@ -346,7 +346,7 @@ public class WorkService {
 
         // 4. 실제 리소스(Work)를 기준으로 권한 검사
         // 요청자(requesterUserId)가 근무자 본인(requestedWorker.getUserId())이거나 근무지 사장님(workplace.getOwnerId())인지 확인
-        permissionVerifyUtil.verifyWorkServicePermission(requesterUserId, requestedWorker.getUserId(), workplace.getOwnerId());
+        permissionVerifyUtil.verifyWorkerOrOwnerPermission(requesterUserId, requestedWorker.getUserId(), workplace.getOwnerId());
 
         // 5. 근무 시간 계산
         long workMinutes = Duration.between(work.getStartTime(), work.getEndTime()).toMinutes();
@@ -382,7 +382,7 @@ public class WorkService {
                 .orElseThrow(WorkplaceNotFoundException::new);
 
         // 4. 권한 검사: 요청자가 근무자 본인이거나 근무지 사장님인지 확인
-        permissionVerifyUtil.verifyWorkServicePermission(requesterUserId, worker.getUserId(), workplace.getOwnerId());
+        permissionVerifyUtil.verifyWorkerOrOwnerPermission(requesterUserId, worker.getUserId(), workplace.getOwnerId());
 
         return new VerifiedWorkContextForUpdate(work, worker);
     }

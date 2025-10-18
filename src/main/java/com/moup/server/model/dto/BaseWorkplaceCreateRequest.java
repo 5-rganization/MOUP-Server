@@ -13,7 +13,6 @@ import lombok.experimental.SuperBuilder;
 @JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)
 @JsonSubTypes({@JsonSubTypes.Type(WorkerWorkplaceCreateRequest.class), @JsonSubTypes.Type(OwnerWorkplaceCreateRequest.class)})
 @Getter
-@NoArgsConstructor
 @SuperBuilder
 public abstract class BaseWorkplaceCreateRequest {
     @NotBlank(message = "빈 값 혹은 공백 문자는 받을 수 없습니다.")

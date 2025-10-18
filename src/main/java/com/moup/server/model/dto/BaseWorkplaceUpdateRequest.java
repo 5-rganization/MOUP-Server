@@ -11,7 +11,6 @@ import lombok.experimental.SuperBuilder;
 @JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)
 @JsonSubTypes({@JsonSubTypes.Type(OwnerWorkplaceUpdateRequest.class), @JsonSubTypes.Type(value = WorkerWorkplaceUpdateRequest.class)})
 @Getter
-@NoArgsConstructor
 @SuperBuilder
 public abstract class BaseWorkplaceUpdateRequest {
     @Schema(description = "근무지(매장) 이름", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.REQUIRED)

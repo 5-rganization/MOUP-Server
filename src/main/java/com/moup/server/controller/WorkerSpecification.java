@@ -1,9 +1,6 @@
 package com.moup.server.controller;
 
-import com.moup.server.model.dto.ErrorResponse;
-import com.moup.server.model.dto.WorkCreateRequest;
-import com.moup.server.model.dto.WorkCreateResponse;
-import com.moup.server.model.dto.WorkerSummaryListResponse;
+import com.moup.server.model.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -51,5 +48,41 @@ public interface WorkerSpecification {
     ResponseEntity<?> getWorkerList(
             @Parameter(name = "workplaceId", description = "조회할 매장 ID", example = "1", required = true, in = ParameterIn.PATH)
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId
+    );
+
+    @Tag(name = "Worker", description = "근무자 정보 관리 API 엔드포인트")
+    @PatchMapping("/{workerId}")
+    @Operation(summary = "매장의 근무자 업데이트 (사장님 전용)", description = "매장 ID와 근무자 ID를 경로로 전달받아 해당 매장의 근무자를 업데이트")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "근무자 업데이트 성공"),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "422", description = "유효하지 않은 필드값 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "근무자 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkerWorkerUpdateRequest.class)))
+    ResponseEntity<?> updateWorker(
+            @Parameter(name = "workplaceId", description = "조회할 매장 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
+            @Parameter(name = "workerId", description = "업데이트할 근무자 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workerId,
+            @RequestBody @Valid WorkerWorkerUpdateRequest request
+    );
+
+    @Tag(name = "Worker", description = "근무자 정보 관리 API 엔드포인트")
+    @DeleteMapping("/{workerId}")
+    @Operation(summary = "매장의 근무자 조회 (사장님 전용)", description = "매장 ID와 근무자 ID를 경로로 전달받아 해당 매장의 근무자를 삭제")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "근무자 삭제 성공"),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "422", description = "유효하지 않은 필드값 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    ResponseEntity<?> deleteWorker(
+            @Parameter(name = "workplaceId", description = "조회할 매장 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
+            @Parameter(name = "workerId", description = "삭제할 근무자 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workerId
     );
 }
