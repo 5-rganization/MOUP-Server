@@ -4,6 +4,7 @@ import com.moup.server.exception.*;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.*;
 import com.moup.server.repository.*;
+import com.moup.server.util.PermissionVerifyUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,8 @@ public class WorkService {
     private final RoutineService routineService;
     private final SalaryCalculationService salaryCalculationService;
 
+    private final PermissionVerifyUtil permissionVerifyUtil;
+
     private record VerifiedWorkContextForCreate(
             Work work,
             long workMinutes,
@@ -39,7 +42,7 @@ public class WorkService {
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        verifyPermission(userId, userWorker.getUserId(), workplaceOwnerId);
+        permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplaceOwnerId);
 
         Work work = createWorkHelper(userWorker, request);
 
@@ -55,7 +58,7 @@ public class WorkService {
         Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        verifyPermission(requesterUserId, worker.getUserId(), workplaceOwnerId);
+        permissionVerifyUtil.verifyOwnerPermission(requesterUserId, workplaceOwnerId);
 
         Work work = createWorkHelper(worker, request);
 
@@ -69,7 +72,7 @@ public class WorkService {
 
     @Transactional(readOnly = true)
     public WorkDetailResponse getWorkDetail(Long userId, Long workId) {
-        VerifiedWorkContextForCreate context = getVerifiedWorkContext(userId, workId);
+        VerifiedWorkContextForCreate context = getVerifiedWorkContextForCreate(userId, workId);
 
         List<RoutineSummaryResponse> routineSummaryList = routineService.getAllSummarizedRoutineByWorkRoutineMapping(userId, workId);
 
@@ -96,7 +99,7 @@ public class WorkService {
 
     @Transactional(readOnly = true)
     public WorkSummaryResponse getSummarizedWork(Long userId, Long workId) {
-        VerifiedWorkContextForCreate context = getVerifiedWorkContext(userId, workId);
+        VerifiedWorkContextForCreate context = getVerifiedWorkContextForCreate(userId, workId);
 
         List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(context.work().getRepeatDays());
 
@@ -116,7 +119,7 @@ public class WorkService {
     }
 
     @Transactional(readOnly = true)
-    public WorkCalendarListResponse getAllSummarizedWork(Long userId, YearMonth baseYearMonth) {
+    public WorkCalendarListResponse getAllWork(Long userId, YearMonth baseYearMonth) {
         LocalDate startDate = baseYearMonth.minusMonths(6).atDay(1);
         LocalDate endDate = baseYearMonth.plusMonths(6).atEndOfMonth();
 
@@ -157,7 +160,7 @@ public class WorkService {
             // workplace가 null인 경우 방어 코드 (데이터 정합성이 깨졌을 경우)
             if (workplace == null) continue;
 
-            verifyPermission(userId, userWorker.getUserId(), workplace.getOwnerId());
+            permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplace.getOwnerId());
 
             WorkerSummaryResponse workerSummaryInfo = WorkerSummaryResponse.builder()
                     .workerId(userWorker.getId())
@@ -191,15 +194,15 @@ public class WorkService {
     }
 
     @Transactional(readOnly = true)
-    public WorkCalendarListResponse getAllSummarizedWorkByWorkplace(User user, Long workplaceId, YearMonth baseYearMonth, Boolean isShared) {
+    public WorkCalendarListResponse getAllWorkByWorkplace(User user, Long workplaceId, YearMonth baseYearMonth) {
         LocalDate startDate = baseYearMonth.minusMonths(6).atDay(1);
         LocalDate endDate = baseYearMonth.plusMonths(6).atEndOfMonth();
 
-        Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId)
-                .orElseThrow(WorkerWorkplaceNotFoundException::new);
-        Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
-        verifyPermission(user.getId(), userWorker.getUserId(), workplace.getOwnerId());
-        if (Boolean.TRUE.equals(isShared) && !workplace.isShared()) { throw new InvalidPermissionAccessException(); }
+        // 1. 매장 정보를 조회하고, 사용자가 사장님인지 확인합니다.
+        Workplace workplace = workplaceRepository.findById(workplaceId)
+                .orElseThrow(WorkplaceNotFoundException::new);
+
+        permissionVerifyUtil.verifyOwnerPermission(user.getId(), workplace.getOwnerId());
 
         WorkplaceSummaryResponse workplaceSummary = WorkplaceSummaryResponse.builder()
                 .workplaceId(workplace.getId())
@@ -208,68 +211,102 @@ public class WorkService {
                 .build();
 
         List<WorkSummaryResponse> workSummaryInfoList = new ArrayList<>();
-        if (Boolean.TRUE.equals(isShared)) {
-            // 근무지의 모든 근무자 근무 반환
-            // 1. 사업장의 모든 Worker 정보 조회 (쿼리 1)
-            List<Worker> workplaceWorkerList = workerRepository.findAllByWorkplaceId(workplaceId);
 
-            if (!workplaceWorkerList.isEmpty()) {
-                // 2. ID 리스트 추출
-                List<Long> workerIdList = workplaceWorkerList.stream()
-                        .map(Worker::getId)
-                        .toList();
-                List<Long> userIdList = workplaceWorkerList.stream()
-                        .map(Worker::getUserId).distinct()
-                        .toList();
+        // 2. 사업장의 모든 Worker 정보 조회 (쿼리 1)
+        List<Worker> workplaceWorkerList = workerRepository.findAllByWorkplaceId(workplaceId);
 
-                // 3. User 정보 한 번에 조회 (쿼리 2) 및 Map 변환
-                Map<Long, User> userMap = userRepository.findAllByIdListIn(userIdList).stream()
-                        .collect(Collectors.toMap(User::getId, u -> u));
+        if (workplaceWorkerList.isEmpty()) {
+            return WorkCalendarListResponse.builder()
+                    .workSummaryInfoList(Collections.emptyList())
+                    .build();
+        }
 
-                // 4. Work 정보 한 번에 조회 (쿼리 3) 및 Map 변환
-                List<Work> allWorkList = workRepository.findAllByWorkerIdListInAndDateRange(workerIdList, startDate, endDate);
-                Map<Long, List<Work>> workMapByWorker = allWorkList.stream()
-                        .collect(Collectors.groupingBy(Work::getWorkerId));
+        // 3. ID 리스트 추출
+        List<Long> workerIdList = workplaceWorkerList.stream()
+                .map(Worker::getId)
+                .toList();
+        List<Long> userIdList = workplaceWorkerList.stream()
+                .map(Worker::getUserId).distinct()
+                .toList();
 
-                // 5. DTO 조립 (추가 쿼리 없음)
-                for (Worker workplaceWorker : workplaceWorkerList) {
-                    User workerUser = userMap.get(workplaceWorker.getUserId());
-                    if (workerUser == null) continue;
+        // 4. User 정보 한 번에 조회 (쿼리 2) 및 Map 변환
+        Map<Long, User> userMap = userRepository.findAllByIdListIn(userIdList).stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
 
-                    WorkerSummaryResponse workerSummaryInfo = WorkerSummaryResponse.builder()
-                            .workerId(workplaceWorker.getId())
-                            .workerBasedLabelColor(workplaceWorker.getWorkerBasedLabelColor())
-                            .ownerBasedLabelColor(workplaceWorker.getOwnerBasedLabelColor())
-                            .nickname(workerUser.getNickname())
-                            .profileImg(workerUser.getProfileImg())
-                            .build();
+        // 5. Work 정보 한 번에 조회 (쿼리 3) 및 Map 변환
+        List<Work> allWorkList = workRepository.findAllByWorkerIdListInAndDateRange(workerIdList, startDate, endDate);
+        Map<Long, List<Work>> workMapByWorker = allWorkList.stream()
+                .collect(Collectors.groupingBy(Work::getWorkerId));
 
-                    List<Work> workerWorkList = workMapByWorker.getOrDefault(workplaceWorker.getId(), Collections.emptyList());
+        // 6. DTO 조립 (추가 쿼리 없음)
+        for (Worker workplaceWorker : workplaceWorkerList) {
+            User workerUser = userMap.get(workplaceWorker.getUserId());
+            if (workerUser == null) continue;
 
-                    List<WorkSummaryResponse> workerWorkSummaryList = workerWorkList.stream()
-                            .map(work -> {
-                                long workMinutes = Duration.between(work.getStartTime(), work.getEndTime()).toMinutes();
-                                boolean isEditable = checkEditable(user.getId(), workplaceWorker.getUserId(), workplace.getOwnerId());
-                                return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummary, workMinutes, isEditable);
-                            })
-                            .toList();
-                    workSummaryInfoList.addAll(workerWorkSummaryList);
-                }
-            }
-        } else {
-            // 사용자의 근무만 반환
-            WorkerSummaryResponse userWorkerSummaryInfo = createWorkerSummary(userWorker);
+            WorkerSummaryResponse workerSummaryInfo = WorkerSummaryResponse.builder()
+                    .workerId(workplaceWorker.getId())
+                    .workerBasedLabelColor(workplaceWorker.getWorkerBasedLabelColor())
+                    .ownerBasedLabelColor(workplaceWorker.getOwnerBasedLabelColor())
+                    .nickname(workerUser.getNickname())
+                    .profileImg(workerUser.getProfileImg())
+                    .build();
 
-            List<Work> userWorkList = workRepository.findAllByWorkerIdAndDateRange(userWorker.getId(), startDate, endDate);
-            workSummaryInfoList = userWorkList.stream()
-                    .map(userWork -> {
-                        long workMinutes = Duration.between(userWork.getStartTime(), userWork.getEndTime()).toMinutes();
-                        boolean isEditable = checkEditable(user.getId(), userWorker.getUserId(), workplace.getOwnerId());
+            List<Work> workerWorkList = workMapByWorker.getOrDefault(workplaceWorker.getId(), Collections.emptyList());
 
-                        return convertWorkToSummaryResponse(userWork, userWorkerSummaryInfo, workplaceSummary, workMinutes, isEditable);
+            List<WorkSummaryResponse> workerWorkSummaryList = workerWorkList.stream()
+                    .map(work -> {
+                        long workMinutes = Duration.between(work.getStartTime(), work.getEndTime()).toMinutes();
+                        // 현재 사용자가 사장님이므로 모든 근무를 수정 가능
+                        boolean isEditable = checkEditable(user.getId(), workplaceWorker.getUserId(), workplace.getOwnerId());
+                        return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummary, workMinutes, isEditable);
                     })
                     .toList();
+            workSummaryInfoList.addAll(workerWorkSummaryList);
         }
+
+        return WorkCalendarListResponse.builder()
+                .workSummaryInfoList(workSummaryInfoList)
+                .build();
+    }
+
+    public WorkCalendarListResponse getAllMyWorkByWorkplace(User user, Long workplaceId, YearMonth baseYearMonth) {
+        LocalDate startDate = baseYearMonth.minusMonths(6).atDay(1);
+        LocalDate endDate = baseYearMonth.plusMonths(6).atEndOfMonth();
+
+        // 1. 사용자의 Worker 정보 조회
+        Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId)
+                .orElseThrow(WorkerWorkplaceNotFoundException::new);
+        Workplace workplace = workplaceRepository.findById(workplaceId)
+                .orElseThrow(WorkplaceNotFoundException::new);
+
+        // 2. Workplace 요약 정보 생성
+        WorkplaceSummaryResponse workplaceSummary = WorkplaceSummaryResponse.builder()
+                .workplaceId(workplace.getId())
+                .workplaceName(workplace.getWorkplaceName())
+                .isShared(workplace.isShared())
+                .build();
+
+        // 3. 사용자 Worker 요약 정보 생성
+        WorkerSummaryResponse userWorkerSummaryInfo = WorkerSummaryResponse.builder()
+                .workerId(userWorker.getId())
+                .workerBasedLabelColor(userWorker.getWorkerBasedLabelColor())
+                .ownerBasedLabelColor(userWorker.getOwnerBasedLabelColor())
+                .nickname(user.getNickname())
+                .profileImg(user.getProfileImg())
+                .build();
+
+        // 4. 사용자의 근무 기록만 조회
+        List<Work> userWorkList = workRepository.findAllByWorkerIdAndDateRange(userWorker.getId(), startDate, endDate);
+
+        // 5. DTO로 변환
+        List<WorkSummaryResponse> workSummaryInfoList = userWorkList.stream()
+                .map(userWork -> {
+                    long workMinutes = Duration.between(userWork.getStartTime(), userWork.getEndTime()).toMinutes();
+                    // 사용자가 자신의 근무이거나, 또는 사용자가 사장님일 경우 수정 가능
+                    boolean isEditable = checkEditable(user.getId(), userWorker.getUserId(), workplace.getOwnerId());
+                    return convertWorkToSummaryResponse(userWork, userWorkerSummaryInfo, workplaceSummary, workMinutes, isEditable);
+                })
+                .toList();
 
         return WorkCalendarListResponse.builder()
                 .workSummaryInfoList(workSummaryInfoList)
@@ -278,7 +315,7 @@ public class WorkService {
 
     @Transactional
     public void updateWork(Long requesterUserId, Long workId, WorkUpdateRequest request) {
-        VerifiedWorkContextForUpdate context = findAndVerifyWorkPermission(requesterUserId, workId);
+        VerifiedWorkContextForUpdate context = getVerifiedWorkContextForUpdate(requesterUserId, workId);
 
         updateWorkHelper(context.worker(), workId, request);
 
@@ -287,9 +324,7 @@ public class WorkService {
 
     @Transactional
     public void deleteWork(Long requesterUserId, Long workId) {
-        VerifiedWorkContextForUpdate context = findAndVerifyWorkPermission(requesterUserId, workId);
-
-        routineService.deleteWorkRoutineMappingByWorkId(workId);
+        VerifiedWorkContextForUpdate context = getVerifiedWorkContextForUpdate(requesterUserId, workId);
 
         deleteWorkHelper(context.worker(), context.work());
     }
@@ -328,7 +363,7 @@ public class WorkService {
         salaryCalculationService.recalculateWorkWeek(worker.getId(), work.getWorkDate());
     }
 
-    private VerifiedWorkContextForCreate getVerifiedWorkContext(Long requesterUserId, Long workId) {
+    private VerifiedWorkContextForCreate getVerifiedWorkContextForCreate(Long requesterUserId, Long workId) {
         // 1. (쿼리 1) workId로 Work 정보 조회
         Work work = workRepository.findById(workId)
                 .orElseThrow(WorkNotFoundException::new);
@@ -341,9 +376,8 @@ public class WorkService {
         Workplace workplace = workplaceRepository.findById(requestedWorker.getWorkplaceId())
                 .orElseThrow(WorkplaceNotFoundException::new);
 
-        // 4. 실제 리소스(Work)를 기준으로 권한 검사
-        // 요청자(requesterUserId)가 근무자 본인(requestedWorker.getUserId())이거나 근무지 사장님(workplace.getOwnerId())인지 확인
-        verifyPermission(requesterUserId, requestedWorker.getUserId(), workplace.getOwnerId());
+        // 4. 권한 검사: 요청자가 근무자 본인이거나 근무지 사장님인지 확인
+        permissionVerifyUtil.verifyWorkerPermission(requesterUserId, requestedWorker.getUserId(), workplace.getOwnerId());
 
         // 5. 근무 시간 계산
         long workMinutes = Duration.between(work.getStartTime(), work.getEndTime()).toMinutes();
@@ -365,7 +399,7 @@ public class WorkService {
         return new VerifiedWorkContextForCreate(work, workMinutes, workerSummaryInfo, workplaceSummary, isEditable);
     }
 
-    private VerifiedWorkContextForUpdate findAndVerifyWorkPermission(Long requesterUserId, Long workId) {
+    private VerifiedWorkContextForUpdate getVerifiedWorkContextForUpdate(Long requesterUserId, Long workId) {
         // 1. (쿼리 1) workId로 Work 정보 조회
         Work work = workRepository.findById(workId)
                 .orElseThrow(WorkNotFoundException::new);
@@ -379,7 +413,7 @@ public class WorkService {
                 .orElseThrow(WorkplaceNotFoundException::new);
 
         // 4. 권한 검사: 요청자가 근무자 본인이거나 근무지 사장님인지 확인
-        verifyPermission(requesterUserId, worker.getUserId(), workplace.getOwnerId());
+        permissionVerifyUtil.verifyWorkerPermission(requesterUserId, worker.getUserId(), workplace.getOwnerId());
 
         return new VerifiedWorkContextForUpdate(work, worker);
     }
@@ -395,13 +429,6 @@ public class WorkService {
                 .nickname(user.getNickname())
                 .profileImg(user.getProfileImg())
                 .build();
-    }
-
-    private void verifyPermission(Long requesterUserId, Long workerUserId, Long workplaceOwnerId) {
-        // 요청자가 해당 근무지의 근무자도 아니고 사장님도 아니면 예외 발생
-        if (!workerUserId.equals(requesterUserId) && !workplaceOwnerId.equals(requesterUserId)) {
-            throw new InvalidPermissionAccessException();
-        }
     }
 
     private void verifyStartEndTime(LocalDateTime startTime, LocalDateTime endTime) {

@@ -20,6 +20,7 @@ import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -188,15 +189,19 @@ public class SalaryCalculationService {
     /// 한 달의 모든 근무 기록을 합산하여 정확한 공제액과 실지급액을 계산하고 DB에 저장합니다.
     @Transactional
     public MonthlySalary calculateAndSaveMonthlySalary(Long workerId, int year, int month) {
+        Optional<Salary> salaryOptional = salaryRepository.findByWorkerId(workerId);
+        if (salaryOptional.isEmpty()) {
+            // Salary 정보가 없는 근무자(사장님)는 월급 계산 대상이 아님
+            return null;
+        }
+        Salary salaryInfo = salaryOptional.get();
+
         YearMonth targetMonth = YearMonth.of(year, month);
         LocalDate startDate = targetMonth.atDay(1);
         LocalDate endDate = targetMonth.atEndOfMonth();
 
         List<Work> works = workRepository.findAllByWorkerIdAndDateRange(workerId, startDate, endDate);
         if (works.isEmpty()) return null;
-
-        Salary salaryInfo = salaryRepository.findByWorkerId(workerId)
-                .orElseThrow(SalaryWorkerNotFoundException::new);
 
         // 월 총 세전 소득과 월 총 근무 시간을 정확하게 계산합니다.
         int grossMonthlyIncome = works.stream().mapToInt(Work::getGrossIncome).sum();

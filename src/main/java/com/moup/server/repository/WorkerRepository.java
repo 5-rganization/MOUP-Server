@@ -70,6 +70,15 @@ public interface WorkerRepository {
     @Select("SELECT * FROM workers WHERE workplace_id = #{workplaceId}")
     List<Worker> findAllByWorkplaceId(Long workplaceId);
 
+    /// 근무지 ID와 제외할 사용자 ID를 통해 해당 근무지의 근무자 리스트를 반환하는 메서드 (특정 사용자 제외)
+    ///
+    /// @param workplaceId 조회할 근무지 ID
+    /// @param excludeUserId 제외할 사용자 ID
+    /// @return 조회된 Worker 객체 리스트, 없으면 빈 배열
+    @Select("SELECT * FROM workers WHERE workplace_id = #{workplaceId} AND user_id != #{excludeUserId}")
+    List<Worker> findAllByWorkplaceIdAndUserIdNot(Long workplaceId, Long excludeUserId);
+
+
     /// 근무자 ID, 사용자 ID, 근무지 ID에 해당하는 근무자의 근무자 기준 라벨 색상을 업데이트하는 메서드.
     ///
     /// @param id 업데이트할 근무자의 ID
@@ -102,11 +111,4 @@ public interface WorkerRepository {
     /// @param workplaceId 삭제할 근무자의 근무지 ID
     @Delete("DELETE FROM workers WHERE id = #{id} AND user_id = #{userId} AND workplace_id = #{workplaceId}")
     void delete(Long id, Long userId, Long workplaceId);
-
-    /// 근무자 ID, 근무지 ID에 해당하는 모든 근무자를 삭제하는 메서드.
-    ///
-    /// @param id 삭제할 근무자의 ID
-    /// @param workplaceId 삭제할 근무자의 근무지 ID
-    @Delete("DELETE FROM workers WHERE id = #{id} AND workplace_id = #{workplaceId}")
-    void deleteByIdAndWorkplaceId(Long id, Long workplaceId);
 }

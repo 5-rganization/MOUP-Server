@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.DEDUCTION)
-@JsonSubTypes({@JsonSubTypes.Type(OwnerWorkplaceUpdateRequest.class), @JsonSubTypes.Type(value = WorkerWorkplaceUpdateRequest.class)})
+@JsonSubTypes({@JsonSubTypes.Type(OwnerWorkplaceUpdateRequest.class), @JsonSubTypes.Type(WorkerWorkplaceUpdateRequest.class)})
 @Getter
 @NoArgsConstructor
 @SuperBuilder

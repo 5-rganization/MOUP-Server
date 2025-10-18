@@ -9,8 +9,8 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 @Getter
-@SuperBuilder
 @NoArgsConstructor
+@SuperBuilder
 @Schema(description = "알바생 근무지 업데이트 요청 DTO")
 public class WorkerWorkplaceUpdateRequest extends BaseWorkplaceUpdateRequest {
     @NotBlank(message = "빈 값이나 공백문자는 받을 수 없습니다.")

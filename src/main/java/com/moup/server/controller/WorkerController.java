@@ -1,9 +1,10 @@
 package com.moup.server.controller;
 
-import com.moup.server.model.dto.WorkCreateRequest;
-import com.moup.server.model.dto.WorkCreateResponse;
+import com.moup.server.model.dto.*;
+import com.moup.server.model.entity.User;
 import com.moup.server.service.IdentityService;
-import com.moup.server.service.WorkService;
+import com.moup.server.service.UserService;
+import com.moup.server.service.WorkerService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
@@ -11,33 +12,75 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-
-import java.net.URI;
 
 @RestController
 @Validated
 @RequiredArgsConstructor
 @RequestMapping("/workplaces/{workplaceId}/workers")
 public class WorkerController implements WorkerSpecification {
+    private final UserService userService;
     private final IdentityService identityService;
-    private final WorkService workService;
+    private final WorkerService workerService;
 
     @Override
-    @PostMapping("/{workerId}/works")
+    @GetMapping
     @PreAuthorize("hasRole('ROLE_OWNER')")
-    public ResponseEntity<?> createWorkForWorker(
+    public ResponseEntity<?> getWorkerList(@PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId) {
+        Long userId = identityService.getCurrentUserId();
+
+        WorkerSummaryListResponse response = workerService.getWorkerList(userId, workplaceId);
+        return ResponseEntity.ok().body(response);
+    }
+
+    @Override
+    @PatchMapping("/me")
+    @PreAuthorize("hasRole('ROLE_WORKER')")
+    public ResponseEntity<?> updateMyWorker(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
+            @RequestBody @Valid WorkerWorkerUpdateRequest request
+    ) {
+        Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
+
+        workerService.updateMyWorker(user, workplaceId, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @PatchMapping("/{workerId}")
+    @PreAuthorize("hasRole('ROLE_OWNER')")
+    public ResponseEntity<?> updateWorkerForOwner(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workerId,
-            @RequestBody @Valid WorkCreateRequest request
+            @RequestBody @Valid OwnerWorkerUpdateRequest request
     ) {
-        Long requesterId = identityService.getCurrentUserId();
+        Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
 
-        WorkCreateResponse response = workService.createWorkForWorkerId(requesterId, workplaceId, workerId, request);
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}")
-                .buildAndExpand(response.getWorkId())
-                .toUri();
-        return ResponseEntity.created(location).body(response);
+        workerService.updateWorkerForOwner(user, workplaceId, workerId, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @DeleteMapping("/me")
+    @PreAuthorize("hasRole('ROLE_WORKER')")
+    public ResponseEntity<?> deleteMyWorker(@PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId) {
+        Long userId = identityService.getCurrentUserId();
+
+        workerService.deleteMyWorker(userId, workplaceId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @DeleteMapping("/{workerId}")
+    @PreAuthorize("hasRole('ROLE_OWNER')")
+    public ResponseEntity<?> deleteWorkerForOwner(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workerId
+    ) {
+        Long userId = identityService.getCurrentUserId();
+
+        workerService.deleteWorkerForOwner(userId, workplaceId, workerId);
+        return ResponseEntity.noContent().build();
     }
 }

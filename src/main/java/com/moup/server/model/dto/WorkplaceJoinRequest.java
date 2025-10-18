@@ -1,6 +1,7 @@
 package com.moup.server.model.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -18,6 +19,7 @@ public class WorkplaceJoinRequest {
     @NotBlank(message = "빈 값이나 공백 문자는 받을 수 없습니다.")
     @Schema(description = "라벨 색상 (알바생 기준)", example = "RED", requiredMode = Schema.RequiredMode.REQUIRED)
     private String workerBasedLabelColor;
+    @Valid
     @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "급여 생성 요청 DTO", requiredMode = Schema.RequiredMode.REQUIRED)
     private SalaryCreateRequest salaryCreateRequest;
