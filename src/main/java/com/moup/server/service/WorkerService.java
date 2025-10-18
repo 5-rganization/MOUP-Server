@@ -81,9 +81,6 @@ public class WorkerService {
         Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new);
         permissionVerifyUtil.verifyWorkerPermission(userId, worker.getUserId());
 
-        workRepository.deleteAllByWorkerId(worker.getId());
-        salaryRepository.delete(worker.getId());
-        monthlySalaryRepository.deleteByWorkerId(worker.getId());
         workerRepository.delete(worker.getId(), worker.getUserId(), workplaceId);
     }
 
@@ -94,9 +91,6 @@ public class WorkerService {
         Long workerUserId = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getUserId();
         if (workerUserId.equals(userId)) { throw new CannotDeleteDataException(); }
 
-        workRepository.deleteAllByWorkerId(workerId);
-        salaryRepository.delete(workerId);
-        monthlySalaryRepository.deleteByWorkerId(workerId);
         workerRepository.delete(workerId, workerUserId, workplaceId);
     }
 }

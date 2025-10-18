@@ -21,10 +21,4 @@ public interface MonthlySalaryRepository {
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
     Long create(MonthlySalary monthlySalary);
-
-    /// 근무자 ID에 해당하는 월별 급여를 삭제하는 메서드
-    ///
-    /// @param workerId 삭제할 월별 급여의 근무자 ID
-    @Delete("DELETE FROM monthly_salaries WHERE worker_id = #{workerId}")
-    void deleteByWorkerId(Long workerId);
 }

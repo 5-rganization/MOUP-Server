@@ -111,11 +111,4 @@ public interface WorkerRepository {
     /// @param workplaceId 삭제할 근무자의 근무지 ID
     @Delete("DELETE FROM workers WHERE id = #{id} AND user_id = #{userId} AND workplace_id = #{workplaceId}")
     void delete(Long id, Long userId, Long workplaceId);
-
-    /// 근무자 ID, 근무지 ID에 해당하는 모든 근무자를 삭제하는 메서드.
-    ///
-    /// @param id 삭제할 근무자의 ID
-    /// @param workplaceId 삭제할 근무자의 근무지 ID
-    @Delete("DELETE FROM workers WHERE id = #{id} AND workplace_id = #{workplaceId}")
-    void deleteByIdAndWorkplaceId(Long id, Long workplaceId);
 }

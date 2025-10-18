@@ -143,19 +143,9 @@ public class WorkplaceService {
     public void deleteWorkplace(Long userId, Long workplaceId) {
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
         if (workplace.getOwnerId().equals(userId)) {
-            List<Long> workerIdList = workerRepository.findAllByWorkplaceId(workplaceId).stream().map(Worker::getId).toList();
-            for (Long workerId : workerIdList) {
-                workRepository.deleteAllByWorkerId(workerId);
-                salaryRepository.delete(workerId);
-                monthlySalaryRepository.deleteByWorkerId(workerId);
-                workerRepository.deleteByIdAndWorkplaceId(workerId, workplaceId);
-            }
             workplaceRepository.delete(workplaceId, userId);
         } else {
             Long workerId = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
-            workRepository.deleteAllByWorkerId(workerId);
-            salaryRepository.delete(workerId);
-            monthlySalaryRepository.deleteByWorkerId(workerId);
             workerRepository.delete(workerId, userId, workplaceId);
         }
     }

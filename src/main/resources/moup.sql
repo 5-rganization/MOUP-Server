@@ -90,7 +90,7 @@ CREATE TABLE `workplaces`
     `address`        VARCHAR(100)          NULL,
     `latitude`       DECIMAL(9, 6)         NULL,
     `longitude`      DECIMAL(9, 6)         NULL,
-    FOREIGN KEY (`owner_id`) REFERENCES users (`id`) ON DELETE SET NULL
+    FOREIGN KEY (`owner_id`) REFERENCES users (`id`) ON DELETE CASCADE
 );
 
 CREATE TABLE `workers`

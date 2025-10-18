@@ -325,8 +325,6 @@ public class WorkService {
     public void deleteWork(Long requesterUserId, Long workId) {
         VerifiedWorkContextForUpdate context = getVerifiedWorkContextForUpdate(requesterUserId, workId);
 
-        routineService.deleteWorkRoutineMappingByWorkId(workId);
-
         deleteWorkHelper(context.worker(), context.work());
     }
 
