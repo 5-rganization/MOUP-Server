@@ -3,6 +3,7 @@ package com.moup.server.controller;
 import com.moup.server.model.dto.ErrorResponse;
 import com.moup.server.model.dto.WorkCreateRequest;
 import com.moup.server.model.dto.WorkCreateResponse;
+import com.moup.server.model.dto.WorkerSummaryListResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -35,5 +36,20 @@ public interface WorkerSpecification {
             @Parameter(name = "workerId", description = "근무를 생성할 근무자 ID", example = "1", required = true, in = ParameterIn.PATH)
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workerId,
             @RequestBody @Valid WorkCreateRequest request
+    );
+
+    @Tag(name = "Worker", description = "근무자 정보 관리 API 엔드포인트")
+    @GetMapping
+    @Operation(summary = "매장의 근무자 조회 (사장님 전용)", description = "매장 ID를 경로로 전달받아 해당 매장의 모든 근무자를 조회")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "근무자 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkerSummaryListResponse.class))),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "422", description = "유효하지 않은 필드값 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    ResponseEntity<?> getWorkerList(
+            @Parameter(name = "workplaceId", description = "조회할 매장 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId
     );
 }

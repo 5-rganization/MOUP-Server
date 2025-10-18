@@ -4,6 +4,7 @@ import com.moup.server.exception.*;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.*;
 import com.moup.server.repository.*;
+import com.moup.server.util.PermissionVerifyUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,8 @@ public class WorkService {
     private final RoutineService routineService;
     private final SalaryCalculationService salaryCalculationService;
 
+    private final PermissionVerifyUtil permissionVerifyUtil;
+
     private record VerifiedWorkContextForCreate(
             Work work,
             long workMinutes,
@@ -39,7 +42,7 @@ public class WorkService {
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        verifyPermission(userId, userWorker.getUserId(), workplaceOwnerId);
+        permissionVerifyUtil.verifyWorkServicePermission(userId, userWorker.getUserId(), workplaceOwnerId);
 
         Work work = createWorkHelper(userWorker, request);
 
@@ -55,7 +58,7 @@ public class WorkService {
         Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        verifyPermission(requesterUserId, worker.getUserId(), workplaceOwnerId);
+        permissionVerifyUtil.verifyWorkServicePermission(requesterUserId, worker.getUserId(), workplaceOwnerId);
 
         Work work = createWorkHelper(worker, request);
 
@@ -69,7 +72,7 @@ public class WorkService {
 
     @Transactional(readOnly = true)
     public WorkDetailResponse getWorkDetail(Long userId, Long workId) {
-        VerifiedWorkContextForCreate context = getVerifiedWorkContext(userId, workId);
+        VerifiedWorkContextForCreate context = getVerifiedWorkContextForCreate(userId, workId);
 
         List<RoutineSummaryResponse> routineSummaryList = routineService.getAllSummarizedRoutineByWorkRoutineMapping(userId, workId);
 
@@ -96,7 +99,7 @@ public class WorkService {
 
     @Transactional(readOnly = true)
     public WorkSummaryResponse getSummarizedWork(Long userId, Long workId) {
-        VerifiedWorkContextForCreate context = getVerifiedWorkContext(userId, workId);
+        VerifiedWorkContextForCreate context = getVerifiedWorkContextForCreate(userId, workId);
 
         List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(context.work().getRepeatDays());
 
@@ -157,7 +160,7 @@ public class WorkService {
             // workplace가 null인 경우 방어 코드 (데이터 정합성이 깨졌을 경우)
             if (workplace == null) continue;
 
-            verifyPermission(userId, userWorker.getUserId(), workplace.getOwnerId());
+            permissionVerifyUtil.verifyWorkServicePermission(userId, userWorker.getUserId(), workplace.getOwnerId());
 
             WorkerSummaryResponse workerSummaryInfo = WorkerSummaryResponse.builder()
                     .workerId(userWorker.getId())
@@ -198,7 +201,7 @@ public class WorkService {
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId)
                 .orElseThrow(WorkerWorkplaceNotFoundException::new);
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
-        verifyPermission(user.getId(), userWorker.getUserId(), workplace.getOwnerId());
+        permissionVerifyUtil.verifyWorkServicePermission(user.getId(), userWorker.getUserId(), workplace.getOwnerId());
         if (Boolean.TRUE.equals(isShared) && !workplace.isShared()) { throw new InvalidPermissionAccessException(); }
 
         WorkplaceSummaryResponse workplaceSummary = WorkplaceSummaryResponse.builder()
@@ -278,7 +281,7 @@ public class WorkService {
 
     @Transactional
     public void updateWork(Long requesterUserId, Long workId, WorkUpdateRequest request) {
-        VerifiedWorkContextForUpdate context = findAndVerifyWorkPermission(requesterUserId, workId);
+        VerifiedWorkContextForUpdate context = getVerifiedWorkContextForUpdate(requesterUserId, workId);
 
         updateWorkHelper(context.worker(), workId, request);
 
@@ -287,7 +290,7 @@ public class WorkService {
 
     @Transactional
     public void deleteWork(Long requesterUserId, Long workId) {
-        VerifiedWorkContextForUpdate context = findAndVerifyWorkPermission(requesterUserId, workId);
+        VerifiedWorkContextForUpdate context = getVerifiedWorkContextForUpdate(requesterUserId, workId);
 
         routineService.deleteWorkRoutineMappingByWorkId(workId);
 
@@ -328,7 +331,7 @@ public class WorkService {
         salaryCalculationService.recalculateWorkWeek(worker.getId(), work.getWorkDate());
     }
 
-    private VerifiedWorkContextForCreate getVerifiedWorkContext(Long requesterUserId, Long workId) {
+    private VerifiedWorkContextForCreate getVerifiedWorkContextForCreate(Long requesterUserId, Long workId) {
         // 1. (쿼리 1) workId로 Work 정보 조회
         Work work = workRepository.findById(workId)
                 .orElseThrow(WorkNotFoundException::new);
@@ -343,7 +346,7 @@ public class WorkService {
 
         // 4. 실제 리소스(Work)를 기준으로 권한 검사
         // 요청자(requesterUserId)가 근무자 본인(requestedWorker.getUserId())이거나 근무지 사장님(workplace.getOwnerId())인지 확인
-        verifyPermission(requesterUserId, requestedWorker.getUserId(), workplace.getOwnerId());
+        permissionVerifyUtil.verifyWorkServicePermission(requesterUserId, requestedWorker.getUserId(), workplace.getOwnerId());
 
         // 5. 근무 시간 계산
         long workMinutes = Duration.between(work.getStartTime(), work.getEndTime()).toMinutes();
@@ -365,7 +368,7 @@ public class WorkService {
         return new VerifiedWorkContextForCreate(work, workMinutes, workerSummaryInfo, workplaceSummary, isEditable);
     }
 
-    private VerifiedWorkContextForUpdate findAndVerifyWorkPermission(Long requesterUserId, Long workId) {
+    private VerifiedWorkContextForUpdate getVerifiedWorkContextForUpdate(Long requesterUserId, Long workId) {
         // 1. (쿼리 1) workId로 Work 정보 조회
         Work work = workRepository.findById(workId)
                 .orElseThrow(WorkNotFoundException::new);
@@ -379,7 +382,7 @@ public class WorkService {
                 .orElseThrow(WorkplaceNotFoundException::new);
 
         // 4. 권한 검사: 요청자가 근무자 본인이거나 근무지 사장님인지 확인
-        verifyPermission(requesterUserId, worker.getUserId(), workplace.getOwnerId());
+        permissionVerifyUtil.verifyWorkServicePermission(requesterUserId, worker.getUserId(), workplace.getOwnerId());
 
         return new VerifiedWorkContextForUpdate(work, worker);
     }
@@ -395,13 +398,6 @@ public class WorkService {
                 .nickname(user.getNickname())
                 .profileImg(user.getProfileImg())
                 .build();
-    }
-
-    private void verifyPermission(Long requesterUserId, Long workerUserId, Long workplaceOwnerId) {
-        // 요청자가 해당 근무지의 근무자도 아니고 사장님도 아니면 예외 발생
-        if (!workerUserId.equals(requesterUserId) && !workplaceOwnerId.equals(requesterUserId)) {
-            throw new InvalidPermissionAccessException();
-        }
     }
 
     private void verifyStartEndTime(LocalDateTime startTime, LocalDateTime endTime) {
