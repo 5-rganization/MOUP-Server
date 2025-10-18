@@ -5,9 +5,9 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class PermissionVerifyUtil {
-    public void verifyWorkerPermission(Long requesterUserId, Long workerUserId) {
+    public void verifyWorkerPermission(Long requesterUserId, Long workerUserId, Long workplaceOwnerId) {
         // 요청자가 해당 근무지의 근무자(사장님 포함)가 아니면 예외 발생
-        if (!workerUserId.equals(requesterUserId)) {
+        if (!workerUserId.equals(requesterUserId) && !workplaceOwnerId.equals(requesterUserId)) {
             throw new InvalidPermissionAccessException();
         }
     }

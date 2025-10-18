@@ -57,7 +57,8 @@ public class WorkerService {
 
     public void updateMyWorker(User user, Long workplaceId, WorkerWorkerUpdateRequest request) {
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new);
-        permissionVerifyUtil.verifyWorkerPermission(user.getId(), userWorker.getUserId());
+        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
+        permissionVerifyUtil.verifyWorkerPermission(user.getId(), userWorker.getUserId(), workplaceOwnerId);
         workerRepository.updateWorkerBasedLabelColor(userWorker.getId(), user.getId(), workplaceId, request.getWorkerBasedLabelColor());
 
         Long salaryId = salaryRepository.findByWorkerId(userWorker.getId()).orElseThrow(SalaryWorkerNotFoundException::new).getId();
@@ -78,8 +79,9 @@ public class WorkerService {
     }
 
     public void deleteMyWorker(Long userId, Long workplaceId) {
+        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new);
-        permissionVerifyUtil.verifyWorkerPermission(userId, worker.getUserId());
+        permissionVerifyUtil.verifyWorkerPermission(userId, worker.getUserId(), workplaceOwnerId);
 
         workerRepository.delete(worker.getId(), worker.getUserId(), workplaceId);
     }
