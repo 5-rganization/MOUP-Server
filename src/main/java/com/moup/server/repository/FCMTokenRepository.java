@@ -1,6 +1,8 @@
 package com.moup.server.repository;
 
+import java.util.Optional;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 import org.springframework.stereotype.Repository;
 
@@ -10,4 +12,6 @@ public interface FCMTokenRepository {
   @Update("UPDATE users SET fcm_token = #{fcmToken} WHERE id = #{userId}")
   void updateUserFCMToken(Long userId, String fcmToken);
 
+  @Update("UPDATE users SET fcm_token = null WHERE id = #{userId}")
+  void deleteFCMToken(Long userId);
 }
