@@ -13,10 +13,10 @@ public interface SalaryRepository {
     /// @return 생성된 행의 수
     @Insert("""
             INSERT INTO salaries (
-                                    worker_id, salary_type, salary_calculation, hourly_rate, fixed_rate, salary_date, salary_day,
-                                    has_national_pension, has_health_insurance, has_employment_insurance, has_industrial_accident,
-                                    has_income_tax, has_night_allowance
-                                    ) 
+                                  worker_id, salary_type, salary_calculation, hourly_rate, fixed_rate, salary_date, salary_day,
+                                  has_national_pension, has_health_insurance, has_employment_insurance, has_industrial_accident,
+                                  has_income_tax, has_night_allowance
+                                  )
             VALUES (
                     #{workerId}, #{salaryType}, #{salaryCalculation}, #{hourlyRate}, #{fixedRate}, #{salaryDate}, #{salaryDay},
                     #{hasNationalPension}, #{hasHealthInsurance}, #{hasEmploymentInsurance}, #{hasIndustrialAccident}, #{hasIncomeTax}, #{hasNightAllowance}
@@ -44,11 +44,4 @@ public interface SalaryRepository {
             WHERE id = #{id} AND worker_id = #{workerId}
             """)
     void update(Salary salary);
-
-    /// 급여 ID와 근무자 ID에 해당하는 급여를 삭제하는 메서드.
-    ///
-    /// @param id 삭제할 급여의 ID
-    /// @param workerId 삭제할 급여의 근무자 ID
-    @Delete("DELETE FROM salaries WHERE id = #{id} AND worker_id = #{workerId}")
-    void deleteByIdAndWorkerId(Long id, Long workerId);
 }

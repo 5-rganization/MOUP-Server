@@ -7,9 +7,7 @@ import com.moup.server.model.entity.Salary;
 import com.moup.server.model.entity.User;
 import com.moup.server.model.entity.Workplace;
 import com.moup.server.model.entity.Worker;
-import com.moup.server.repository.SalaryRepository;
-import com.moup.server.repository.WorkerRepository;
-import com.moup.server.repository.WorkplaceRepository;
+import com.moup.server.repository.*;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,20 +21,12 @@ public class WorkplaceService {
     private final WorkplaceRepository workplaceRepository;
     private final WorkerRepository workerRepository;
     private final SalaryRepository salaryRepository;
+    private final WorkRepository workRepository;
+    private final MonthlySalaryRepository monthlySalaryRepository;
+
     private final InviteCodeService inviteCodeService;
 
-    @Transactional
-    protected Worker createWorkplaceAndWorkerHelper(Long userId, BaseWorkplaceCreateRequest request) {
-        if (workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, request.getWorkplaceName())) { throw new WorkplaceNameAlreadyUsedException(); }
-
-        Workplace workplaceToCreate = request.toWorkplaceEntity(userId);
-        workplaceRepository.create(workplaceToCreate);
-
-        Worker workerToCreate = request.toWorkerEntity(userId, workplaceToCreate.getId());
-        workerRepository.create(workerToCreate);
-
-        return workerToCreate;
-    }
+    // ========== 근무지 메서드 ==========
 
     @Transactional
     public WorkplaceCreateResponse createWorkplace(User user, BaseWorkplaceCreateRequest request) {
@@ -48,7 +38,7 @@ public class WorkplaceService {
         } else if (user.getRole() == Role.ROLE_WORKER && request instanceof WorkerWorkplaceCreateRequest workerWorkplaceCreateRequest) {
             Worker createdWorker = createWorkplaceAndWorkerHelper(user.getId(), workerWorkplaceCreateRequest);
 
-            Salary salaryToCreate = workerWorkplaceCreateRequest.getSalaryInfo().toEntity(createdWorker.getId());
+            Salary salaryToCreate = workerWorkplaceCreateRequest.getSalaryCreateRequest().toEntity(createdWorker.getId());
             salaryRepository.create(salaryToCreate);
 
             return WorkplaceCreateResponse.builder()
@@ -66,7 +56,7 @@ public class WorkplaceService {
 
         if (user.getRole() == Role.ROLE_WORKER) {
             Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElseThrow(SalaryWorkerNotFoundException::new);
-            WorkerSalaryDetailResponse salaryInfo = WorkerSalaryDetailResponse.builder()
+            SalaryDetailResponse salaryInfo = SalaryDetailResponse.builder()
                     .salaryType(salary.getSalaryType())
                     .salaryCalculation(salary.getSalaryCalculation())
                     .hourlyRate(salary.getHourlyRate())
@@ -87,7 +77,7 @@ public class WorkplaceService {
                     .latitude(workplace.getLatitude())
                     .longitude(workplace.getLongitude())
                     .workerBasedLabelColor(worker.getWorkerBasedLabelColor())
-                    .salaryInfo(salaryInfo)
+                    .salaryDetailInfo(salaryInfo)
                     .build();
         } else if (user.getRole() == Role.ROLE_OWNER) {
             return OwnerWorkplaceDetailResponse.builder()
@@ -105,7 +95,7 @@ public class WorkplaceService {
     }
 
     @Transactional(readOnly = true)
-    public WorkplaceSummaryResponse getSummarizedWorkplace(Long userId, Long workplaceId) {
+    public WorkplaceSummaryResponse getWorkplace(Long userId, Long workplaceId) {
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
         if (!workerRepository.existsByUserIdAndWorkplaceId(userId, workplaceId)) { throw new WorkerWorkplaceNotFoundException(); }
 
@@ -117,11 +107,12 @@ public class WorkplaceService {
     }
 
     @Transactional(readOnly = true)
-    public List<WorkplaceSummaryResponse> getAllSummarizedWorkplace(Long userId) {
+    public List<WorkplaceSummaryResponse> getAllWorkplace(Long userId, Boolean isShared) {
         List<Worker> userAllWorkers = workerRepository.findAllByUserId(userId);
 
         return userAllWorkers.stream()
                 .map(worker -> workplaceRepository.findById(worker.getWorkplaceId()).orElseThrow(WorkplaceNotFoundException::new))
+                .filter(workplace -> isShared == null || workplace.isShared() == isShared)
                 .map(workplace -> WorkplaceSummaryResponse.builder()
                         .workplaceId(workplace.getId())
                         .workplaceName(workplace.getWorkplaceName())
@@ -129,18 +120,6 @@ public class WorkplaceService {
                         .build())
                 .sorted(Comparator.comparing(WorkplaceSummaryResponse::getWorkplaceName))
                 .toList();
-    }
-
-    @Transactional
-    protected Long updateWorkplaceAndWorkerHelper(Long userId, Long workplaceId, BaseWorkplaceUpdateRequest request) {
-        Workplace oldWorkplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
-        if (!oldWorkplace.getWorkplaceName().equals(request.getWorkplaceName())
-                && workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, request.getWorkplaceName())) { throw new WorkplaceNameAlreadyUsedException(); }
-
-        Workplace newWorkplace = request.toWorkplaceEntity(workplaceId, userId);
-        workplaceRepository.update(newWorkplace);
-
-        return workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
     }
 
     @Transactional
@@ -153,7 +132,7 @@ public class WorkplaceService {
             workerRepository.updateWorkerBasedLabelColor(workerId, user.getId(), workplaceId, workerRequest.getWorkerBasedLabelColor());
 
             Long salaryId = salaryRepository.findByWorkerId(workerId).orElseThrow(SalaryWorkerNotFoundException::new).getId();
-            Salary newSalary = workerRequest.getSalaryInfo().toEntity(salaryId, workerId);
+            Salary newSalary = workerRequest.getSalaryUpdateRequest().toEntity(salaryId, workerId);
             salaryRepository.update(newSalary);
         } else {
             throw new InvalidPermissionAccessException();
@@ -164,12 +143,37 @@ public class WorkplaceService {
     public void deleteWorkplace(Long userId, Long workplaceId) {
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
         if (workplace.getOwnerId().equals(userId)) {
-            workplaceRepository.deleteByIdAndOwnerId(workplaceId, userId);
+            workplaceRepository.delete(workplaceId, userId);
         } else {
-            Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new);
-            workerRepository.delete(worker.getId(), userId, workplaceId);
+            Long workerId = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
+            workerRepository.delete(workerId, userId, workplaceId);
         }
     }
+
+    private Worker createWorkplaceAndWorkerHelper(Long userId, BaseWorkplaceCreateRequest request) {
+        if (workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, request.getWorkplaceName())) { throw new WorkplaceNameAlreadyUsedException(); }
+
+        Workplace workplaceToCreate = request.toWorkplaceEntity(userId);
+        workplaceRepository.create(workplaceToCreate);
+
+        Worker workerToCreate = request.toWorkerEntity(userId, workplaceToCreate.getId());
+        workerRepository.create(workerToCreate);
+
+        return workerToCreate;
+    }
+
+    private Long updateWorkplaceAndWorkerHelper(Long userId, Long workplaceId, BaseWorkplaceUpdateRequest request) {
+        Workplace oldWorkplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+        if (!oldWorkplace.getWorkplaceName().equals(request.getWorkplaceName())
+                && workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, request.getWorkplaceName())) { throw new WorkplaceNameAlreadyUsedException(); }
+
+        Workplace newWorkplace = request.toWorkplaceEntity(workplaceId, userId);
+        workplaceRepository.update(newWorkplace);
+
+        return workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
+    }
+
+    // ========== 초대 코드 메서드 ==========
 
     @Transactional
     public InviteCodeGenerateResponse generateInviteCode(User user, Long workplaceId, InviteCodeGenerateRequest request) {
@@ -196,6 +200,7 @@ public class WorkplaceService {
 
         return InviteCodeInquiryResponse.builder()
                 .workplaceId(workplaceId)
+                .workplaceName(workplace.getWorkplaceName())
                 .categoryName(workplace.getCategoryName())
                 .address(workplace.getAddress())
                 .latitude(workplace.getLatitude())
@@ -204,10 +209,10 @@ public class WorkplaceService {
     }
 
     @Transactional
-    public WorkplaceJoinResponse joinWorkplace(User user, String inviteCode, WorkplaceJoinRequest request) {
+    public WorkplaceJoinResponse joinWorkplace(User user, WorkplaceJoinRequest request) {
         if (user.getRole() != Role.ROLE_WORKER) { throw new InvalidPermissionAccessException(); }
 
-        Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCode(inviteCode.toUpperCase());
+        Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCode(request.getInviteCode().toUpperCase());
         if (!workplaceRepository.existsById(workplaceId)) { throw new WorkplaceNotFoundException(); }
         if (workerRepository.existsByUserIdAndWorkplaceId(user.getId(), workplaceId)) { throw new WorkerAlreadyExistsException(); }
 
@@ -219,7 +224,7 @@ public class WorkplaceService {
                 .build();
         workerRepository.create(worker);
 
-        WorkerSalaryCreateRequest salaryInfo = request.getSalaryInfo();
+        SalaryCreateRequest salaryInfo = request.getSalaryCreateRequest();
         Salary salary = Salary.builder()
                 .workerId(worker.getId())
                 .salaryType(salaryInfo.getSalaryType())

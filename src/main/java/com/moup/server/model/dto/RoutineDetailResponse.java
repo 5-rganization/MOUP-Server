@@ -19,19 +19,6 @@ public class RoutineDetailResponse {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm")
     @Schema(description = "알람 시간 (HH:mm)", example = "14:30", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private LocalTime alarmTime;
-    @Schema(description = "할 일 리스트 (없으면 빈 배열)",
-            example = """
-            [
-                {
-                    "content": "바닥 청소",
-                    "orderIndex": 0
-                },
-                {
-                    "content": "전자레인지 청소",
-                    "orderIndex": 1
-                }
-            ]
-            """,
-            requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "할 일 리스트 (없으면 빈 배열)", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<RoutineTaskDetailResponse> routineTaskList;
 }

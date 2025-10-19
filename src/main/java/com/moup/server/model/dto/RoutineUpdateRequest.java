@@ -16,30 +16,15 @@ import java.util.List;
 @Builder
 @Schema(description = "루틴 업데이트 요청 DTO")
 public class RoutineUpdateRequest {
-    @NotBlank(message = "빈 값이나 공백 문자는 받을 수 없어요")
+    @NotBlank(message = "빈 값이나 공백 문자는 받을 수 없습니다.")
     @Schema(description = "루틴 이름", example = "오픈", requiredMode = Schema.RequiredMode.REQUIRED)
     private String routineName;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm")
     @Schema(description = "알림 시간 (HH:mm)", example = "14:30", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private LocalTime alarmTime;
-    @NotNull(message = "값이 없을 경우 빈 배열을 전달해야 합니다.")
     @Valid
-    @Schema(description = "할 일 리스트",
-            example = """
-            [
-                {
-                    "taskId": 1,
-                    "content": "바닥 청소",
-                    "orderIndex": 0
-                },
-                {
-                    "taskId": 2,
-                    "content": "전자레인지 청소",
-                    "orderIndex": 1
-                }
-            ]
-            """,
-            requiredMode = Schema.RequiredMode.REQUIRED)
+    @NotNull(message = "값이 없을 경우 빈 배열을 전달해야 합니다.")
+    @Schema(description = "할 일 리스트", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<RoutineTaskUpdateRequest> routineTaskList;
 
     public Routine toEntity(Long routineId, Long userId) {

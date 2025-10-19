@@ -90,8 +90,8 @@ public class UserService {
       throw new UserAlreadyExistsException();
     }
 
-    String nickname = userRegisterRequest.getNickname();
-    nameVerifyUtil.validateNickname(nickname);
+        String nickname = userRegisterRequest.getNickname();
+        nameVerifyUtil.verifyNickname(nickname);
 
     userRepository.updateById(userId, userRegisterRequest.getNickname(),
         userRegisterRequest.getRole());
@@ -178,8 +178,8 @@ public class UserService {
       throw new AlreadyDeletedException();
     }
 
-    nameVerifyUtil.validateNickname(nickname);
-    userRepository.updateNicknameById(userId, nickname);
+        nameVerifyUtil.verifyNickname(nickname);
+        userRepository.updateNicknameById(userId, nickname);
 
     return UserUpdateNicknameResponse.builder()
         .userId(userId)

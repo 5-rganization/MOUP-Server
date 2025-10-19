@@ -10,8 +10,8 @@ import java.time.DayOfWeek;
 
 @Getter
 @Builder
-@Schema(description = "알바생 급여 상세 조회 응답 DTO")
-public class WorkerSalaryDetailResponse {
+@Schema(description = "급여 상세 조회 응답 DTO")
+public class SalaryDetailResponse {
     @Schema(description = "급여 유형 (매월: SALARY_MONTHLY, 매주: SALARY_WEEKLY, 매일: SALARY_DAILY)", example = "SALARY_MONTHLY", requiredMode = Schema.RequiredMode.REQUIRED)
     private SalaryType salaryType;
     @Schema(description = "급여 계산 (시급: SALARY_CALCULATION_HOURLY, 고정: SALARY_CALCULATION_FIXED)", example = "SALARY_CALCULATION_HOURLY", requiredMode = Schema.RequiredMode.REQUIRED)

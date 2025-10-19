@@ -7,7 +7,7 @@ import lombok.Getter;
 @Getter
 @Builder
 @Schema(description = "급여 생성 응답 DTO")
-public class WorkerSalaryCreateResponse {
+public class SalaryCreateResponse {
     @Schema(description = "생성된 급여의 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long salaryId;
 }

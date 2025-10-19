@@ -16,7 +16,7 @@ import java.util.List;
 @Builder
 @Schema(description = "루틴 생성 요청 DTO")
 public class RoutineCreateRequest {
-    @NotBlank(message = "빈 값이나 공백 문자는 받을 수 없어요")
+    @NotBlank(message = "빈 값이나 공백 문자는 받을 수 없습니다.")
     @Schema(description = "루틴 이름", example = "오픈 루틴", requiredMode = Schema.RequiredMode.REQUIRED)
     private String routineName;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm")
@@ -24,20 +24,7 @@ public class RoutineCreateRequest {
     private LocalTime alarmTime;
     @NotNull(message = "값이 없을 경우 빈 배열을 전달해야 합니다.")
     @Valid
-    @Schema(description = "할 일 리스트 (없으면 빈 배열)",
-            example = """
-            [
-                {
-                    "content": "바닥 청소",
-                    "orderIndex": 0
-                },
-                {
-                    "content": "전자레인지 청소",
-                    "orderIndex": 1
-                }
-            ]
-            """,
-            requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "할 일 리스트 (없으면 빈 배열)", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<RoutineTaskCreateRequest> routineTaskList;
 
     public Routine toEntity(Long userId) {
