@@ -75,6 +75,16 @@ CREATE TABLE `admin_alarms`
     `content`    TEXT                        NULL,
     `sent_at`    DATETIME                    NOT NULL DEFAULT CURRENT_TIMESTAMP()
 );
+
+CREATE TABLE `admin_alarm_user_mappings` (
+    `id` BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+    `alarm_id` BIGINT NOT NULL,
+    `user_id` BIGINT NOT NULL,
+    `read_at` DATETIME NULL,
+    `deleted_at` DATETIME NULL,
+    FOREIGN KEY (`alarm_id`) REFERENCES admin_alarms(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES users(`id`) ON DELETE CASCADE
+);
 --
 
 -- 근무지 DB --
