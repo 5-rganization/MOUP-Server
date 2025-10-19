@@ -19,144 +19,169 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AlarmService {
 
-    private final AlarmRepository alarmRepository;
-    private static final int BATCH_SIZE = 1000;
-    private final UserRepository userRepository;
+  private static final int BATCH_SIZE = 1000;
+  private final AlarmRepository alarmRepository;
+  private final UserRepository userRepository;
 
-    public List<Notification> findAllNotifications(Long userId) {
-        List<NormalAlarm> normalAlarms = alarmRepository.findAllNormalAlarmsByUserId(userId);
+  public List<Notification> findAllNotifications(Long userId) {
+    List<NormalAlarm> normalAlarms = alarmRepository.findAllNormalAlarmsByUserId(userId);
 
-        if (normalAlarms.isEmpty()) {
-            throw new AlarmNotFoundException();
-        }
-
-        List<Notification> notifications = new ArrayList<>();
-        for (NormalAlarm normalAlarm : normalAlarms) {
-            notifications.add(Notification.builder()
-                    .id(normalAlarm.getId())
-                    .senderId(normalAlarm.getSenderId())
-                    .receiverId(normalAlarm.getReceiverId())
-                    .title(normalAlarm.getTitle())
-                    .content(normalAlarm.getContent())
-                    .sentAt(normalAlarm.getSentAt())
-                    .readAt(normalAlarm.getReadAt())
-                    .build());
-        }
-
-        return notifications;
+    if (normalAlarms.isEmpty()) {
+      throw new AlarmNotFoundException();
     }
 
-    /**
-     * id 기준으로 normalAlarm 반환, receiverId가 userId에 해당해야 조회 가능.
-     *
-     * @param userId
-     * @param notificationId
-     * @return
-     */
-    public Notification findNotificationById(Long userId, Long notificationId) {
-        NormalAlarm normalAlarm = alarmRepository.findNormalAlarmById(userId, notificationId)
-                .orElseThrow(AlarmNotFoundException::new);
-
-        return Notification.builder()
-                .id(normalAlarm.getId())
-                .senderId(normalAlarm.getSenderId())
-                .receiverId(normalAlarm.getReceiverId())
-                .title(normalAlarm.getTitle())
-                .content(normalAlarm.getContent())
-                .sentAt(normalAlarm.getSentAt())
-                .readAt(normalAlarm.getReadAt())
-                .build();
+    List<Notification> notifications = new ArrayList<>();
+    for (NormalAlarm normalAlarm : normalAlarms) {
+      notifications.add(Notification.builder()
+          .id(normalAlarm.getId())
+          .senderId(normalAlarm.getSenderId())
+          .receiverId(normalAlarm.getReceiverId())
+          .title(normalAlarm.getTitle())
+          .content(normalAlarm.getContent())
+          .sentAt(normalAlarm.getSentAt())
+          .readAt(normalAlarm.getReadAt())
+          .build());
     }
 
-    @Transactional
-    public Notification readNotificationById(Long userId, Long notificationId) {
-        // 읽음 여부 확인
-        NormalAlarm normalAlarm = alarmRepository.findNormalAlarmById(userId, notificationId)
-                .orElseThrow(AlarmNotFoundException::new);
+    return notifications;
+  }
 
-        if (normalAlarm.getReadAt() != null) {
-            throw new AlarmAlreadyReadException();
-        }
+  /**
+   * id 기준으로 normalAlarm 반환, receiverId가 userId에 해당해야 조회 가능.
+   *
+   * @param userId
+   * @param notificationId
+   * @return
+   */
+  public Notification findNotificationById(Long userId, Long notificationId) {
+    NormalAlarm normalAlarm = alarmRepository.findNormalAlarmById(userId, notificationId)
+        .orElseThrow(AlarmNotFoundException::new);
 
-        LocalDateTime readTime = LocalDateTime.now();
+    return Notification.builder()
+        .id(normalAlarm.getId())
+        .senderId(normalAlarm.getSenderId())
+        .receiverId(normalAlarm.getReceiverId())
+        .title(normalAlarm.getTitle())
+        .content(normalAlarm.getContent())
+        .sentAt(normalAlarm.getSentAt())
+        .readAt(normalAlarm.getReadAt())
+        .build();
+  }
 
-        alarmRepository.updateReadAtById(userId, notificationId, readTime);
+  @Transactional
+  public Notification readNotificationById(Long userId, Long notificationId) {
+    // 읽음 여부 확인
+    NormalAlarm normalAlarm = alarmRepository.findNormalAlarmById(userId, notificationId)
+        .orElseThrow(AlarmNotFoundException::new);
 
-        return Notification.builder()
-                .id(normalAlarm.getId())
-                .senderId(normalAlarm.getSenderId())
-                .receiverId(normalAlarm.getReceiverId())
-                .title(normalAlarm.getTitle())
-                .content(normalAlarm.getContent())
-                .sentAt(normalAlarm.getSentAt())
-                .readAt(readTime)
-                .build();
+    if (normalAlarm.getReadAt() != null) {
+      throw new AlarmAlreadyReadException();
     }
 
-    /**
-     * 일반 알림을 삭제. receiver_id가 본인일 떄 삭제.
-     *
-     * @param userId
-     * @param notificationId
-     */
-    public void deleteNotificationById(Long userId, Long notificationId) {
+    LocalDateTime readTime = LocalDateTime.now();
 
-        alarmRepository.findNormalAlarmById(userId, notificationId)
-                .orElseThrow(AlarmNotFoundException::new);
+    alarmRepository.updateReadAtById(userId, notificationId, readTime);
 
-        alarmRepository.deleteNormalAlarmById(notificationId);
+    return Notification.builder()
+        .id(normalAlarm.getId())
+        .senderId(normalAlarm.getSenderId())
+        .receiverId(normalAlarm.getReceiverId())
+        .title(normalAlarm.getTitle())
+        .content(normalAlarm.getContent())
+        .sentAt(normalAlarm.getSentAt())
+        .readAt(readTime)
+        .build();
+  }
+
+  /**
+   * 일반 알림을 삭제. receiver_id가 본인일 떄 삭제.
+   *
+   * @param userId
+   * @param notificationId
+   */
+  public void deleteNotificationById(Long userId, Long notificationId) {
+
+    alarmRepository.findNormalAlarmById(userId, notificationId)
+        .orElseThrow(AlarmNotFoundException::new);
+
+    alarmRepository.deleteNormalAlarmById(notificationId);
+  }
+
+  @Transactional
+  public void readAllNotification(Long userId) {
+    alarmRepository.updateAllReadAtByUserId(userId);
+  }
+
+  @Transactional
+  public void deleteAllNotifications(Long userId) {
+    alarmRepository.deleteAllNormalAlarmByUserId(userId);
+  }
+
+  @Async
+  @Transactional
+  public void createAnnouncementMappingForAllUsers(Long announcementId) {
+    System.out.println(Thread.currentThread().getName()
+        + ": Start creating announcement statuses for announcementId: " + announcementId);
+
+    int page = 0;
+    List<User> users;
+    do {
+      int offset = page * BATCH_SIZE;
+
+      users = userRepository.findUsersWithPaging(offset, BATCH_SIZE);
+
+      if (!users.isEmpty()) {
+        alarmRepository.saveAnnouncementMappingForAllUsers(announcementId, users);
+        page++;
+      }
+    } while (!users.isEmpty());
+
+    System.out.println(Thread.currentThread().getName() + ": Finished creating statuses.");
+  }
+
+  @Transactional
+  public List<Announcement> findAllAnnouncements(Long userId) {
+    List<AdminAlarm> adminAlarms = alarmRepository.findAllAdminAlarmsByUserId(userId);
+
+    if (adminAlarms.isEmpty()) {
+      throw new AlarmNotFoundException();
     }
 
-    @Transactional
-    public void readAllNotification(Long userId) {
-        alarmRepository.updateAllReadAtByUserId(userId);
+    List<Announcement> announcements = new ArrayList<>();
+    for (AdminAlarm adminAlarm : adminAlarms) {
+      announcements.add(
+          Announcement.builder().id(adminAlarm.getId()).title(adminAlarm.getTitle()).content(
+              adminAlarm.getContent()).sentAt(adminAlarm.getSentAt()).build());
     }
 
-    @Transactional
-    public void deleteAllNotifications(Long userId) {
-        alarmRepository.deleteAllNormalAlarmByUserId(userId);
-    }
+    return announcements;
+  }
 
-    @Async
-    @Transactional
-    public void createAnnouncementMappingForAllUsers(Long announcementId) {
-        System.out.println(Thread.currentThread().getName() + ": Start creating announcement statuses for announcementId: " + announcementId);
+  public Announcement findAnnouncementById(Long userId, Long announcementId) {
+    AdminAlarm adminAlarm = alarmRepository.findAdminAlarmById(userId, announcementId)
+        .orElseThrow(AlarmNotFoundException::new);
 
-        int page = 0;
-        List<User> users;
-        do {
-            int offset = page * BATCH_SIZE;
+    return Announcement.builder()
+        .id(adminAlarm.getId())
+        .title(adminAlarm.getTitle())
+        .content(adminAlarm.getContent())
+        .sentAt(adminAlarm.getSentAt())
+        .build();
+  }
 
-            users = userRepository.findUsersWithPaging(offset, BATCH_SIZE);
+  public void readAnnouncementById(Long userId, Long announcementId) {
+    alarmRepository.updateAnnouncementReadAtById(userId, announcementId);
+  }
 
-            if (!users.isEmpty()) {
-                alarmRepository.saveAnnouncementMappingForAllUsers(announcementId, users);
-                page++;
-            }
-        } while (!users.isEmpty());
+  public void readAllAnnouncements(Long userId) {
+    alarmRepository.updateAllAnnouncementReadAtByUserId(userId);
+  }
 
-        System.out.println(Thread.currentThread().getName() + ": Finished creating statuses.");
-    }
+  public void deleteAnnouncementById(Long userId, Long announcementId) {
+    alarmRepository.updateAnnouncementDeletedAtById(userId, announcementId);
+  }
 
-    @Transactional
-    public List<Announcement> findAllAnnouncements(Long userId) {
-        List<AdminAlarm> adminAlarms = alarmRepository.findAllAdminAlarms();
-
-        if (adminAlarms.isEmpty()) {
-            throw new AlarmNotFoundException();
-        }
-
-        List<Announcement> announcements = new ArrayList<>();
-        for (AdminAlarm adminAlarm : adminAlarms) {
-            announcements.add(
-                    Announcement.builder().id(adminAlarm.getId()).title(adminAlarm.getTitle()).content(
-                            adminAlarm.getContent()).sentAt(adminAlarm.getSentAt()).build());
-        }
-
-        return announcements;
-    }
-
-//    public Announcement findAnnouncementById(Long userId, String announcementId) {
-//
-//    }
+  public void deleteAllAnnouncements(Long userId) {
+    alarmRepository.updateAllAnnouncementDeletedAtByUserId(userId);
+  }
 }

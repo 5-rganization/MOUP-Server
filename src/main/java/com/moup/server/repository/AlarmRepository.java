@@ -24,9 +24,6 @@ public interface AlarmRepository {
     @Options(useGeneratedKeys = true, keyProperty = "id")
     void saveAdminAlarm(Announcement announcement);
 
-    @Select("SELECT * FROM admin_alarms")
-    List<AdminAlarm> findAllAdminAlarms();
-
     @Select("SELECT * FROM normal_alarms WHERE receiver_id = #{userId}")
     List<NormalAlarm> findAllNormalAlarmsByUserId(Long userId);
 
@@ -50,4 +47,22 @@ public interface AlarmRepository {
     void saveAnnouncement(Announcement announcement);
 
     void saveAnnouncementMappingForAllUsers(@Param("announcementId") Long announcementId, @Param("users") List<User> users);
+
+    @Select("SELECT * FROM admin_alarms JOIN admin_alarm_user_mappings ON admin_alarms.id = admin_alarm_user_mappings.alarm_id WHERE user_id = #{userId} AND alarm_id = #{announcementId} AND deleted_at IS NULL")
+    Optional<AdminAlarm> findAdminAlarmById(Long userId, Long announcementId);
+
+    @Select("SELECT * FROM admin_alarms JOIN admin_alarm_user_mappings ON admin_alarms.id = admin_alarm_user_mappings.alarm_id WHERE user_id = #{userId} AND deleted_at IS NULL")
+    List<AdminAlarm> findAllAdminAlarmsByUserId(Long userId);
+
+    @Update("UPDATE admin_alarm_user_mappings SET read_at = CURRENT_TIMESTAMP() WHERE user_id = #{userId} AND alarm_id = #{announcementId} AND read_at IS NULL AND deleted_at IS NULL")
+    void updateAnnouncementReadAtById(Long userId, Long announcementId);
+
+    @Update("UPDATE admin_alarm_user_mappings SET read_at = CURRENT_TIMESTAMP() WHERE user_id = #{userId} AND read_at IS NULL AND deleted_at IS NULL")
+    void updateAllAnnouncementReadAtByUserId(Long userId);
+
+    @Update("UPDATE admin_alarm_user_mappings SET deleted_at = CURRENT_TIMESTAMP() WHERE user_id = #{userId} AND alarm_id = #{announcementId} AND deleted_at IS NULL")
+    void updateAnnouncementDeletedAtById(Long userId, Long announcementId);
+
+    @Update("UPDATE admin_alarm_user_mappings SET deleted_at = CURRENT_TIMESTAMP() WHERE user_id = #{userId} AND deleted_at IS NULL")
+    void updateAllAnnouncementDeletedAtByUserId(Long userId);
 }

@@ -52,7 +52,6 @@ public class AlarmController {
         return ResponseEntity.ok().body(announcementList);
     }
 
-    /*
     @GetMapping("/announcements/{announcementId}")
     @Operation(summary = "전체 공지 조회", description = "전체 공지 id를 기준으로 공지를 조회하여 반환합니다.")
     @ApiResponses({
@@ -60,13 +59,69 @@ public class AlarmController {
             @ApiResponse(responseCode = "401", description = "인증 실패 - 토큰 없음 또는 유효하지 않음"),
             @ApiResponse(responseCode = "404", description = "조회 결과 없음", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    public ResponseEntity<?> findAnnouncement(@PathVariable String announcementId) {
+    public ResponseEntity<?> findAnnouncement(@PathVariable Long announcementId) {
         Long userId = identityService.getCurrentUserId();
 
         Announcement announcementList = alarmService.findAnnouncementById(userId, announcementId);
 
         return ResponseEntity.ok().body(announcementList);
-    }*/
+    }
+
+    @PatchMapping("/announcements/{announcementId}/read")
+    @Operation(summary = "전체 공지 읽음 처리", description = "전체 공지 id를 기준으로 공지를 읽음 처리합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "읽음 처리 성공", content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "401", description = "인증 실패 - 토큰 없음 또는 유효하지 않음"),
+        @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    public ResponseEntity<?> readAnnouncement(@PathVariable Long announcementId) {
+        Long userId = identityService.getCurrentUserId();
+
+        alarmService.readAnnouncementById(userId, announcementId);
+
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/announcements/read")
+    @Operation(summary = "전체 공지 일괄 읽음 처리", description = "전체 공지를 일괄 읽음 처리합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "읽음 처리 성공", content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "401", description = "인증 실패 - 토큰 없음 또는 유효하지 않음"),
+        @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    public ResponseEntity<?> readAllAnnouncements() {
+        Long userId = identityService.getCurrentUserId();
+
+        alarmService.readAllAnnouncements(userId);
+
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/announcements/{announcementId}")
+    @Operation(summary = "전체 공지 삭제", description = "전체 공지 id를 기준으로 공지를 삭제합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "삭제 성공", content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "401", description = "인증 실패 - 토큰 없음 또는 유효하지 않음"),
+        @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    public ResponseEntity<?> deleteAnnouncement(@PathVariable Long announcementId) {
+        Long userId = identityService.getCurrentUserId();
+
+        alarmService.deleteAnnouncementById(userId, announcementId);
+
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/announcements")
+    @Operation(summary = "전체 공지 일괄 삭제", description = "전체 공지들을 일괄 삭제합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "삭제 성공", content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "401", description = "인증 실패 - 토큰 없음 또는 유효하지 않음"),
+        @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    public ResponseEntity<?> deleteAllAnnouncements() {
+        Long userId = identityService.getCurrentUserId();
+
+        alarmService.deleteAllAnnouncements(userId);
+
+        return ResponseEntity.ok().build();
+    }
 
     @GetMapping("/notifications")
     @Operation(summary = "일반 알림 일괄 조회", description = "일반 알림을 일괄 조회하여 반환합니다.(읽음 처리된 알림 포함)")
