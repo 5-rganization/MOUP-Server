@@ -23,7 +23,7 @@ SET FOREIGN_key_CHECKS = 1;
 -- 1) USERS
 -- =====================================
 INSERT INTO users (provider, provider_id, username, nickname, role, profile_img, is_deleted, deleted_at, fcm_token) VALUES
-                                                                                                                        ('LOGIN_GOOGLE', '100000000000000000001', '김사장', '역삼점사장님', 'ROLE_OWNER', 'https://example.com/profile1.jpg', 0, NULL, 'fcm_token_owner_kim'),
+                                                                                                                        ('LOGIN_GOOGLE', '100000000000000000001', '김사장', '역삼점사장님', 'ROLE_ADMIN', 'https://example.com/profile1.jpg', 0, NULL, 'fcm_token_owner_kim'),
                                                                                                                         ('LOGIN_APPLE', '000001.a1b2c3d4e5f6.0001', '박사장', '홍대점주', 'ROLE_OWNER', 'https://example.com/profile2.jpg', 0, NULL, 'fcm_token_owner_park'),
                                                                                                                         ('LOGIN_GOOGLE', '100000000000000000002', '최알바', '성실알바최씨', 'ROLE_WORKER', 'https://example.com/profile3.jpg', 0, NULL, 'fcm_token_worker_choi'),
                                                                                                                         ('LOGIN_GOOGLE', '100000000000000000003', '이알바', '주말알바이씨', 'ROLE_WORKER', 'https://example.com/profile4.jpg', 0, NULL, NULL),
