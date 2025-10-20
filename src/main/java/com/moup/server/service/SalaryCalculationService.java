@@ -1,12 +1,15 @@
 package com.moup.server.service;
 
-import com.moup.server.exception.SalaryWorkerNotFoundException;
+import com.moup.server.exception.WorkerUserNotFoundException;
+import com.moup.server.exception.WorkerWorkplaceNotFoundException;
 import com.moup.server.model.entity.MonthlySalary;
 import com.moup.server.model.entity.Salary;
 import com.moup.server.model.entity.Work;
+import com.moup.server.model.entity.Worker;
 import com.moup.server.repository.MonthlySalaryRepository;
 import com.moup.server.repository.SalaryRepository;
 import com.moup.server.repository.WorkRepository;
+import com.moup.server.repository.WorkerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -26,6 +29,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class SalaryCalculationService {
 
+    private final WorkerRepository workerRepository;
     private final WorkRepository workRepository;
     private final SalaryRepository salaryRepository;
     private final MonthlySalaryRepository monthlySalaryRepository;
@@ -189,11 +193,14 @@ public class SalaryCalculationService {
     /// 한 달의 모든 근무 기록을 합산하여 정확한 공제액과 실지급액을 계산하고 DB에 저장합니다.
     @Transactional
     public MonthlySalary calculateAndSaveMonthlySalary(Long workerId, int year, int month) {
+        Worker worker = workerRepository.findById(workerId).orElseThrow(WorkerWorkplaceNotFoundException::new);
+
+        // 탈퇴했거나 존재하지 않는 근무자는 월급을 계산/저장/업데이트하지 않음
+        if (worker.getUserId() == null) { return null; }
+
+        // Salary 정보가 있는지 확인 (사장님 필터링)
         Optional<Salary> salaryOptional = salaryRepository.findByWorkerId(workerId);
-        if (salaryOptional.isEmpty()) {
-            // Salary 정보가 없는 근무자(사장님)는 월급 계산 대상이 아님
-            return null;
-        }
+        if (salaryOptional.isEmpty()) { return null; }
         Salary salaryInfo = salaryOptional.get();
 
         YearMonth targetMonth = YearMonth.of(year, month);

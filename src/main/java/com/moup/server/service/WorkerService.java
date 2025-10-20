@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,8 +26,6 @@ public class WorkerService {
     private final WorkerRepository workerRepository;
     private final SalaryRepository salaryRepository;
     private final UserRepository userRepository;
-    private final WorkRepository workRepository;
-    private final MonthlySalaryRepository monthlySalaryRepository;
 
     private final PermissionVerifyUtil permissionVerifyUtil;
 
@@ -34,20 +33,76 @@ public class WorkerService {
         Workplace userWorkplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
         permissionVerifyUtil.verifyOwnerPermission(userId, userWorkplace.getOwnerId());
 
+        // 1. 사장님을 제외한 모든 근무자 조회
         List<Worker> workerList = workerRepository.findAllByWorkplaceIdAndUserIdNot(workplaceId, userId);
 
-        Map<Long, User> userMap = userRepository.findAllByIdListIn(workerList.stream().map(Worker::getUserId).toList()).stream()
+        // 2. User 맵을 만들기 위한 유효한 ID 목록
+        List<Long> validUserIds = workerList.stream()
+                .map(Worker::getUserId)
+                .filter(Objects::nonNull)
+                .toList();
+
+        // 3. User 맵 생성
+        Map<Long, User> userMap = userRepository.findAllByIdListIn(validUserIds).stream()
                 .collect(Collectors.toMap(User::getId, user -> user));
 
+        // 4. 근무자를 필터링하지 않고, map 내부에서 NULL 체크
         List<WorkerSummaryResponse> workerSummaryInfoList = workerList.stream()
-                .map(worker -> WorkerSummaryResponse.builder()
-                        .workerId(worker.getId())
-                        .workerBasedLabelColor(worker.getWorkerBasedLabelColor())
-                        .ownerBasedLabelColor(worker.getOwnerBasedLabelColor())
-                        .nickname(userMap.get(worker.getUserId()).getNickname())
-                        .profileImg(userMap.get(worker.getUserId()).getProfileImg())
-                        .build()
-                )
+                .map(worker -> {
+                    // user_id가 NULL이 아니면 userMap에서 찾고, NULL이면 user도 null
+                    User user = (worker.getUserId() != null)
+                            ? userMap.get(worker.getUserId())
+                            : null;
+
+                    // User 객체가 null이면 (탈퇴했거나, DB 불일치) 기본값 사용
+                    String nickname = (user != null) ? user.getNickname() : "탈퇴한 사용자";
+                    String profileImg = (user != null) ? user.getProfileImg() : null; // 또는 기본 이미지 URL
+
+                    return WorkerSummaryResponse.builder()
+                            .workerId(worker.getId())
+                            .workerBasedLabelColor(worker.getWorkerBasedLabelColor())
+                            .ownerBasedLabelColor(worker.getOwnerBasedLabelColor())
+                            .nickname(nickname)
+                            .profileImg(profileImg)
+                            .build();
+                })
+                .toList();
+
+        return WorkerSummaryListResponse.builder()
+                .workerSummaryInfoList(workerSummaryInfoList)
+                .build();
+    }
+
+    public WorkerSummaryListResponse getActiveWorkerList(Long userId, Long workplaceId) {
+        Workplace userWorkplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+        permissionVerifyUtil.verifyOwnerPermission(userId, userWorkplace.getOwnerId());
+
+        // 1. 사장님을 제외한 모든 근무자 조회
+        List<Worker> workerList = workerRepository.findAllByWorkplaceIdAndUserIdNot(workplaceId, userId);
+
+        // 2. user_id가 NULL이 아닌 ID 목록만 추출
+        List<Long> validUserIds = workerList.stream()
+                .map(Worker::getUserId)
+                .filter(Objects::nonNull) // user_id가 NULL인 worker 제외
+                .toList();
+
+        // 3. 유효한 ID로만 User 맵 생성
+        Map<Long, User> userMap = userRepository.findAllByIdListIn(validUserIds).stream()
+                .collect(Collectors.toMap(User::getId, user -> user));
+
+        // 4. user_id가 NULL이 아니며, userMap에도 존재하는 근무자만 필터링
+        List<WorkerSummaryResponse> workerSummaryInfoList = workerList.stream()
+                .filter(worker -> worker.getUserId() != null && userMap.containsKey(worker.getUserId()))
+                .map(worker -> {
+                    User user = userMap.get(worker.getUserId());
+                    return WorkerSummaryResponse.builder()
+                            .workerId(worker.getId())
+                            .workerBasedLabelColor(worker.getWorkerBasedLabelColor())
+                            .ownerBasedLabelColor(worker.getOwnerBasedLabelColor())
+                            .nickname(user.getNickname())
+                            .profileImg(user.getProfileImg())
+                            .build();
+                })
                 .toList();
 
         return WorkerSummaryListResponse.builder()
