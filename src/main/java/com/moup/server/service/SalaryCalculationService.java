@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -59,6 +60,10 @@ public class SalaryCalculationService {
     /// 근무가 생성/업데이트 될 때마다 호출되어 주 전체에 영향을 미치는 값을 업데이트합니다.
     @Transactional
     public void recalculateWorkWeek(Long workerId, LocalDate date) {
+        boolean hasNightAllowance = salaryRepository.findByWorkerId(workerId)
+                .map(Salary::getHasNightAllowance)
+                .orElse(false);
+
         LocalDate startOfWeek = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         LocalDate endOfWeek = date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
 
@@ -81,7 +86,7 @@ public class SalaryCalculationService {
         int dailyHolidayAllowance = weekWorks.isEmpty() ? 0 : weeklyHolidayAllowance / weekWorks.size();
 
         List<Work> updatedWorks = weekWorks.stream()
-                .map(work -> calculateDailyIncome(work, dailyHolidayAllowance))
+                .map(work -> calculateDailyIncome(work, dailyHolidayAllowance, hasNightAllowance))
                 .toList();
 
         // 해당 주의 모든 근무일에 대해 일급을 재계산합니다.
@@ -92,7 +97,7 @@ public class SalaryCalculationService {
     }
 
     /// 하루 근무에 대한 세전 일급(각종 수당 포함)을 상세하게 계산합니다.
-    private Work calculateDailyIncome(Work work, int dailyHolidayAllowance) {
+    private Work calculateDailyIncome(Work work, int dailyHolidayAllowance, boolean hasNightAllowance) {
         LocalDateTime start = work.getStartTime();
         LocalDateTime end = work.getEndTime();
         int restMinutes = work.getRestTimeMinutes() != null ? work.getRestTimeMinutes() : 0;
@@ -103,13 +108,19 @@ public class SalaryCalculationService {
 
         // 근무 시간을 1분 단위로 순회하며 야간/연장 시간을 카운트합니다.
         LocalDateTime cursor = start;
-        while (cursor.isBefore(end)) {
-            regularWorkMinutes++;
-            LocalTime cursorTime = cursor.toLocalTime();
-            if (cursorTime.isAfter(NIGHT_START_TIME) || cursorTime.equals(NIGHT_START_TIME) || cursorTime.isBefore(NIGHT_END_TIME)) {
-                nightWorkMinutes++;
+
+        if (hasNightAllowance) {
+            while (cursor.isBefore(end)) {
+                regularWorkMinutes++;
+                LocalTime cursorTime = cursor.toLocalTime();
+                if (cursorTime.isAfter(NIGHT_START_TIME) || cursorTime.equals(NIGHT_START_TIME) || cursorTime.isBefore(NIGHT_END_TIME)) {
+                    nightWorkMinutes++;
+                }
+                cursor = cursor.plusMinutes(1);
             }
-            cursor = cursor.plusMinutes(1);
+        } else {
+            // 야간수당이 없으면, 총 근무시간만 계산합니다. (1분 단위 순회 불필요)
+            regularWorkMinutes = Duration.between(start, end).toMinutes();
         }
 
         regularWorkMinutes -= restMinutes;
@@ -188,26 +199,51 @@ public class SalaryCalculationService {
         return monthlyIncome >= 2_200_000 || monthlyHours >= insuranceMinHours;
     }
 
-    /// 월급 명세서 등에서 호출하는 '최종 월급 정산' 메서드입니다.
-    /// 한 달의 모든 근무 기록을 합산하여 정확한 공제액과 실지급액을 계산하고 DB에 저장합니다.
+    /// 특정 사업장의 모든 근무자에 대한 월급을 계산하고 저장합니다. (사장님용)
+    /// @param workplaceId 사업장 ID
+    /// @param year 정산 연도
+    /// @param month 정산 월
+    /// @return 성공적으로 정산된 월급 내역 리스트
     @Transactional
-    public MonthlySalary calculateAndSaveMonthlySalary(Long workerId, int year, int month) {
-        Worker worker = workerRepository.findById(workerId).orElseThrow(WorkerNotFoundException::new);
+    public List<MonthlySalary> calculateAndSaveAllSalariesForWorkplace(Long workplaceId, int year, int month) {
+        // 1. 해당 사업장의 모든 Worker를 조회합니다.
+        List<Worker> workersInWorkplace = workerRepository.findAllByWorkplaceId(workplaceId);
 
-        // 탈퇴했거나 존재하지 않는 근무자는 월급을 계산/저장/업데이트하지 않음
-        if (worker.getUserId() == null) { return null; }
+        List<MonthlySalary> results = new ArrayList<>();
 
-        // Salary 정보가 있는지 확인 (사장님 필터링)
-        Optional<Salary> salaryOptional = salaryRepository.findByWorkerId(workerId);
-        if (salaryOptional.isEmpty()) { return null; }
-        Salary salaryInfo = salaryOptional.get();
+        // 2. 각 Worker에 대해 개별 계산 메서드를 호출합니다.
+        for (Worker worker : workersInWorkplace) {
+            // 3. 개별 계산 (private 메서드) 호출
+            MonthlySalary calculatedSalary = calculateAndSaveMonthlySalaryForWorker(worker.getId(), year, month);
 
+            // 4. 계산 결과가 있는 경우 (사장님이 아니거나 탈퇴 회원이 아닌 경우) 리스트에 추가
+            if (calculatedSalary != null) {
+                results.add(calculatedSalary);
+            }
+        }
+
+        return results;
+    }
+
+    /// 특정 근무자 한 명에 대한 최종 월급을 정산합니다.
+    /// - 탈퇴한 사용자, Salary가 없는 사장님은 자동으로 필터링됩니다.
+    private MonthlySalary calculateAndSaveMonthlySalaryForWorker(Long workerId, int year, int month) {
+        // 1. 근무 기록이 있는지 가장 먼저 확인
         YearMonth targetMonth = YearMonth.of(year, month);
         LocalDate startDate = targetMonth.atDay(1);
         LocalDate endDate = targetMonth.atEndOfMonth();
 
         List<Work> works = workRepository.findAllByWorkerIdAndDateRange(workerId, startDate, endDate);
+
+        // 해당 월에 근무 기록이 없으면 월급 정산 내역을 만들지 않고 즉시 종료합니다.
         if (works.isEmpty()) return null;
+
+        // 2. 근무 기록이 있다면, Salary가 있는지 확인 (사장님 필터링)
+        Optional<Salary> salaryOptional = salaryRepository.findByWorkerId(workerId);
+        if (salaryOptional.isEmpty()) {
+            return null;
+        }
+        Salary salaryInfo = salaryOptional.get();
 
         // 월 총 세전 소득과 월 총 근무 시간을 정확하게 계산합니다.
         int grossMonthlyIncome = works.stream().mapToInt(Work::getGrossIncome).sum();
