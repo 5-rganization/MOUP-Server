@@ -1,6 +1,5 @@
 package com.moup.server.service;
 
-import com.moup.server.exception.WorkerNotFoundException;
 import com.moup.server.model.entity.MonthlySalary;
 import com.moup.server.model.entity.Salary;
 import com.moup.server.model.entity.Work;
@@ -21,8 +20,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.temporal.TemporalAdjusters;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -59,6 +58,10 @@ public class SalaryCalculationService {
     /// 근무가 생성/업데이트 될 때마다 호출되어 주 전체에 영향을 미치는 값을 업데이트합니다.
     @Transactional
     public void recalculateWorkWeek(Long workerId, LocalDate date) {
+        boolean hasNightAllowance = salaryRepository.findByWorkerId(workerId)
+                .map(Salary::getHasNightAllowance)
+                .orElse(false);
+
         LocalDate startOfWeek = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         LocalDate endOfWeek = date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
 
@@ -81,7 +84,7 @@ public class SalaryCalculationService {
         int dailyHolidayAllowance = weekWorks.isEmpty() ? 0 : weeklyHolidayAllowance / weekWorks.size();
 
         List<Work> updatedWorks = weekWorks.stream()
-                .map(work -> calculateDailyIncome(work, dailyHolidayAllowance))
+                .map(work -> calculateDailyIncome(work, dailyHolidayAllowance, hasNightAllowance))
                 .toList();
 
         // 해당 주의 모든 근무일에 대해 일급을 재계산합니다.
@@ -92,7 +95,7 @@ public class SalaryCalculationService {
     }
 
     /// 하루 근무에 대한 세전 일급(각종 수당 포함)을 상세하게 계산합니다.
-    private Work calculateDailyIncome(Work work, int dailyHolidayAllowance) {
+    private Work calculateDailyIncome(Work work, int dailyHolidayAllowance, boolean hasNightAllowance) {
         LocalDateTime start = work.getStartTime();
         LocalDateTime end = work.getEndTime();
         int restMinutes = work.getRestTimeMinutes() != null ? work.getRestTimeMinutes() : 0;
@@ -103,13 +106,19 @@ public class SalaryCalculationService {
 
         // 근무 시간을 1분 단위로 순회하며 야간/연장 시간을 카운트합니다.
         LocalDateTime cursor = start;
-        while (cursor.isBefore(end)) {
-            regularWorkMinutes++;
-            LocalTime cursorTime = cursor.toLocalTime();
-            if (cursorTime.isAfter(NIGHT_START_TIME) || cursorTime.equals(NIGHT_START_TIME) || cursorTime.isBefore(NIGHT_END_TIME)) {
-                nightWorkMinutes++;
+
+        if (hasNightAllowance) {
+            while (cursor.isBefore(end)) {
+                regularWorkMinutes++;
+                LocalTime cursorTime = cursor.toLocalTime();
+                if (cursorTime.isAfter(NIGHT_START_TIME) || cursorTime.equals(NIGHT_START_TIME) || cursorTime.isBefore(NIGHT_END_TIME)) {
+                    nightWorkMinutes++;
+                }
+                cursor = cursor.plusMinutes(1);
             }
-            cursor = cursor.plusMinutes(1);
+        } else {
+            // 야간수당이 없으면, 총 근무시간만 계산합니다. (1분 단위 순회 불필요)
+            regularWorkMinutes = Duration.between(start, end).toMinutes();
         }
 
         regularWorkMinutes -= restMinutes;
@@ -188,78 +197,109 @@ public class SalaryCalculationService {
         return monthlyIncome >= 2_200_000 || monthlyHours >= insuranceMinHours;
     }
 
-    /// 월급 명세서 등에서 호출하는 '최종 월급 정산' 메서드입니다.
-    /// 한 달의 모든 근무 기록을 합산하여 정확한 공제액과 실지급액을 계산하고 DB에 저장합니다.
+    /// 특정 사업장의 모든 근무자에 대한 월급을 계산하고 저장합니다. (사장님용)
+    /// @param workplaceId 사업장 ID
+    /// @param year 정산 연도
+    /// @param month 정산 월
+    /// @return 성공적으로 정산된 월급 내역 리스트
     @Transactional
-    public MonthlySalary calculateAndSaveMonthlySalary(Long workerId, int year, int month) {
-        Worker worker = workerRepository.findById(workerId).orElseThrow(WorkerNotFoundException::new);
+    public List<MonthlySalary> calculateAndSaveAllSalariesForWorkplace(Long workplaceId, int year, int month) {
 
-        // 탈퇴했거나 존재하지 않는 근무자는 월급을 계산/저장/업데이트하지 않음
-        if (worker.getUserId() == null) { return null; }
+        // 1. [쿼리 1] 해당 사업장의 모든 Worker를 조회합니다.
+        List<Worker> workersInWorkplace = workerRepository.findAllByWorkplaceId(workplaceId);
+        if (workersInWorkplace.isEmpty()) {
+            return Collections.emptyList();
+        }
 
-        // Salary 정보가 있는지 확인 (사장님 필터링)
-        Optional<Salary> salaryOptional = salaryRepository.findByWorkerId(workerId);
-        if (salaryOptional.isEmpty()) { return null; }
-        Salary salaryInfo = salaryOptional.get();
+        // 처리에 필요한 ID 리스트 추출
+        List<Long> allWorkerIds = workersInWorkplace.stream().map(Worker::getId).toList();
 
+        // 2. [쿼리 2] 모든 근무자의 급여 정보를 한 번에 조회
+        Map<Long, Salary> salaryMap = salaryRepository.findAllByWorkerIdIn(allWorkerIds)
+                .stream()
+                .collect(Collectors.toMap(Salary::getWorkerId, salary -> salary));
+
+        // 3. [쿼리 3] 해당 월의 모든 근무 기록을 한 번에 조회
         YearMonth targetMonth = YearMonth.of(year, month);
         LocalDate startDate = targetMonth.atDay(1);
         LocalDate endDate = targetMonth.atEndOfMonth();
 
-        List<Work> works = workRepository.findAllByWorkerIdAndDateRange(workerId, startDate, endDate);
-        if (works.isEmpty()) return null;
+        Map<Long, List<Work>> worksByWorkerId = workRepository.findAllByWorkerIdListInAndDateRange(allWorkerIds, startDate, endDate)
+                .stream()
+                .collect(Collectors.groupingBy(Work::getWorkerId));
 
-        // 월 총 세전 소득과 월 총 근무 시간을 정확하게 계산합니다.
-        int grossMonthlyIncome = works.stream().mapToInt(Work::getGrossIncome).sum();
-        long totalWorkMinutes = works.stream().mapToLong(work -> Duration.between(work.getStartTime(), work.getEndTime()).toMinutes() - (work.getRestTimeMinutes() != null ? work.getRestTimeMinutes() : 0)).sum();
-        long totalWorkHours = totalWorkMinutes / 60;
+        // --- 4. [In-Memory] 메모리에 로드된 데이터로 급여 계산 ---
+        List<MonthlySalary> results = new ArrayList<>();
 
-        int nationalPension = 0;
-        int healthInsurance = 0;
-        int employmentInsurance = 0;
-        int incomeTax = 0;
-        int localIncomeTax = 0;
+        for (Worker worker : workersInWorkplace) {
+            Long workerId = worker.getId();
 
-        // 월 총 근무시간 기준으로 보험 가입 대상 여부를 판단하고, 정확한 보험료를 계산합니다.
-        if (totalWorkHours >= insuranceMinHours) {
-            if (salaryInfo.getHasNationalPension()) {
-                nationalPension = (int) (grossMonthlyIncome * nationalPensionRate);
+            // [필터 1] 근무 기록이 없으면 계산 중단
+            List<Work> workerWorks = worksByWorkerId.getOrDefault(workerId, Collections.emptyList());
+            if (workerWorks.isEmpty()) {
+                continue;
             }
-            if (salaryInfo.getHasHealthInsurance()) {
-                int baseHealthInsurance = (int) (grossMonthlyIncome * healthInsuranceRate);
-                int longTermCareInsurance = (int) (baseHealthInsurance * longTermCareInsuranceRate);
-                healthInsurance = baseHealthInsurance + longTermCareInsurance;
+
+            // [필터 2] Salary 정보가 없으면(사장님) 계산 중단
+            Salary salaryInfo = salaryMap.get(workerId);
+            if (salaryInfo == null) {
+                continue;
             }
-            if (salaryInfo.getHasEmploymentInsurance()) {
-                employmentInsurance = (int) (grossMonthlyIncome * employmentInsuranceRate);
+
+            // --- 여기부터는 기존 calculateAndSaveMonthlySalaryForWorker의 로직 ---
+            int grossMonthlyIncome = workerWorks.stream().mapToInt(Work::getGrossIncome).sum();
+            long totalWorkMinutes = workerWorks.stream()
+                    .mapToLong(work -> Duration.between(work.getStartTime(), work.getEndTime()).toMinutes() - (work.getRestTimeMinutes() != null ? work.getRestTimeMinutes() : 0))
+                    .sum();
+            long totalWorkHours = totalWorkMinutes / 60;
+
+            int nationalPension = 0;
+            int healthInsurance = 0;
+            int employmentInsurance = 0;
+            int incomeTax = 0;
+            int localIncomeTax = 0;
+
+            if (totalWorkHours >= insuranceMinHours) {
+                if (salaryInfo.getHasNationalPension()) {
+                    nationalPension = (int) (grossMonthlyIncome * nationalPensionRate);
+                }
+                if (salaryInfo.getHasHealthInsurance()) {
+                    int baseHealthInsurance = (int) (grossMonthlyIncome * healthInsuranceRate);
+                    int longTermCareInsurance = (int) (baseHealthInsurance * longTermCareInsuranceRate);
+                    healthInsurance = baseHealthInsurance + longTermCareInsurance;
+                }
+                if (salaryInfo.getHasEmploymentInsurance()) {
+                    employmentInsurance = (int) (grossMonthlyIncome * employmentInsuranceRate);
+                }
             }
+
+            if (salaryInfo.getHasIncomeTax()) {
+                incomeTax = (int) (grossMonthlyIncome * incomeTaxRate);
+                localIncomeTax = (int) (incomeTax * 0.1);
+            }
+
+            int totalDeductions = nationalPension + healthInsurance + employmentInsurance + incomeTax + localIncomeTax;
+            int netIncome = grossMonthlyIncome - totalDeductions;
+
+            MonthlySalary monthlySalary = MonthlySalary.builder()
+                    .workerId(workerId)
+                    .salaryMonth(targetMonth)
+                    .grossIncome(grossMonthlyIncome)
+                    .nationalPension(nationalPension)
+                    .healthInsurance(healthInsurance)
+                    .employmentInsurance(employmentInsurance)
+                    .incomeTax(incomeTax)
+                    .localIncomeTax(localIncomeTax)
+                    .netIncome(netIncome)
+                    .build();
+
+            // TODO: 이미 해당 월의 정산 내역이 있다면 UPDATE, 없다면 INSERT 하는 로직(UPSERT) 구현 필요
+            // N+1 쓰기 문제가 발생할 수 있으므로, Mybatis의 <foreach> 등을 사용한 bulk UPSERT로 최적화가 필요합니다.
+            monthlySalaryRepository.create(monthlySalary);
+
+            results.add(monthlySalary);
         }
 
-        // 정확한 소득세를 계산합니다.
-        if (salaryInfo.getHasIncomeTax()) {
-            incomeTax = (int) (grossMonthlyIncome * incomeTaxRate);
-            localIncomeTax = (int) (incomeTax * 0.1);
-        }
-
-        int totalDeductions = nationalPension + healthInsurance + employmentInsurance + incomeTax + localIncomeTax;
-        int netIncome = grossMonthlyIncome - totalDeductions;
-
-        // 최종 정산 내역을 MonthlySalary 객체로 만들어 저장합니다.
-        MonthlySalary monthlySalary = MonthlySalary.builder()
-                .workerId(workerId)
-                .salaryMonth(targetMonth) // MonthlySalary 엔티티 필드 타입에 맞게 수정 필요
-                .grossIncome(grossMonthlyIncome)
-                .nationalPension(nationalPension)
-                .healthInsurance(healthInsurance)
-                .employmentInsurance(employmentInsurance)
-                .incomeTax(incomeTax)
-                .localIncomeTax(localIncomeTax)
-                .netIncome(netIncome)
-                .build();
-
-        // TODO: 이미 해당 월의 정산 내역이 있다면 UPDATE, 없다면 INSERT 하는 로직(UPSERT) 구현 필요
-        monthlySalaryRepository.create(monthlySalary);
-
-        return monthlySalary;
+        return results;
     }
 }

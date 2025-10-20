@@ -113,6 +113,7 @@ public class WorkService {
                 .endTime(context.work().getEndTime())
                 .workMinutes(context.workMinutes())
                 .restTimeMinutes(context.work().getRestTimeMinutes())
+                .estimatedNetIncome(context.work().getEstimatedNetIncome())
                 .repeatDays(repeatDays)
                 .repeatEndDate(context.work().getRepeatEndDate())
                 .isEditable(context.isEditable())
@@ -428,7 +429,7 @@ public class WorkService {
         if (worker.getUserId() != null) {
             user = userRepository.findById(worker.getUserId()).orElseThrow(WorkerNotFoundException::new);
         }
-        
+
         return WorkerSummaryResponse.builder()
                 .workerId(worker.getId())
                 .workerBasedLabelColor(worker.getWorkerBasedLabelColor())
@@ -471,6 +472,7 @@ public class WorkService {
                 .endTime(work.getEndTime())
                 .workMinutes(workMinutes)
                 .restTimeMinutes(work.getRestTimeMinutes())
+                .estimatedNetIncome(work.getEstimatedNetIncome())
                 .repeatDays(repeatDays)
                 .repeatEndDate(work.getRepeatEndDate())
                 .isEditable(isEditable)
