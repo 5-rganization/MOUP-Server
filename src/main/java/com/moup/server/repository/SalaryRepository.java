@@ -3,6 +3,7 @@ package com.moup.server.repository;
 import com.moup.server.model.entity.Salary;
 import org.apache.ibatis.annotations.*;
 
+import java.util.List;
 import java.util.Optional;
 
 @Mapper
@@ -31,6 +32,19 @@ public interface SalaryRepository {
     /// @return 조회된 Salary 객체, 없으면 Optional.empty
     @Select("SELECT * FROM salaries WHERE worker_id = #{workerId}")
     Optional<Salary> findByWorkerId(Long workerId);
+
+    /// 여러 근무자 ID에 해당하는 모든 Salary 정보를 한 번에 조회하는 메서드
+    ///
+    /// @param workerIdList 조회할 급여의 근무자 ID 배열
+    /// @return 조회된 Salary 객체 배열, 없으면 빈 배열
+    @Select("""
+            SELECT * FROM salaries
+            WHERE worker_id IN
+            <foreach item='id' collection='workerIdList' open='(' separator=',' close=')'>
+                #{id}
+            </foreach>
+            """)
+    List<Salary> findAllByWorkerIdIn(@Param("workerIdList") List<Long> workerIdList);
 
     /// 급여 ID와 근무자 ID에 해당하는 급여 정보를 업데이트하는 메서드.
     ///
