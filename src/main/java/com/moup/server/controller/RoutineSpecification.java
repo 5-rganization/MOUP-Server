@@ -27,16 +27,16 @@ public interface RoutineSpecification {
     ResponseEntity<?> createRoutine(@RequestBody @Valid RoutineCreateRequest request);
 
     @GetMapping
-    @Operation(summary = "모든 루틴 요약 조회", description = "사용자의 모든 루틴 조회 및 요약")
+    @Operation(summary = "모든 루틴 조회", description = "사용자의 모든 루틴 조회")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "모든 루틴 조회 및 요약 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineSummaryListResponse.class))),
+            @ApiResponse(responseCode = "200", description = "모든 루틴 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineSummaryListResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    ResponseEntity<?> getAllSummarizedRoutine();
+    ResponseEntity<?> getAllRoutine();
 
     @GetMapping("/today")
-    @Operation(summary = "오늘 루틴 요약 조회", description = "사용자의 오늘 근무에 해당하는 루틴 조회 및 요약")
+    @Operation(summary = "오늘 루틴 조회", description = "사용자의 오늘 근무에 해당하는 루틴 조회")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "오늘 근무에 해당하는 루틴 조회 및 요약 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = TodayRoutineResponse.class))),
+            @ApiResponse(responseCode = "200", description = "오늘 근무에 해당하는 루틴 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = TodayRoutineResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     ResponseEntity<?> getAllTodayRoutine();
 

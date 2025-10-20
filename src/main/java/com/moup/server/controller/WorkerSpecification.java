@@ -28,7 +28,9 @@ public interface WorkerSpecification {
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     ResponseEntity<?> getWorkerList(
             @Parameter(name = "workplaceId", description = "조회할 매장 ID", example = "1", required = true, in = ParameterIn.PATH)
-            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
+            @Parameter(name = "isActiveOnly", description = "탈퇴하지 않은 근무자만 불러오기", in = ParameterIn.QUERY)
+            @RequestParam(name = "isActiveOnly", required = false) Boolean isActiveOnly
     );
 
     @Tag(name = "Worker", description = "근무자 정보 관리 API 엔드포인트")

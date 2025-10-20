@@ -52,7 +52,7 @@ public class WorkplaceService {
     @Transactional(readOnly = true)
     public BaseWorkplaceDetailResponse getWorkplaceDetail(User user, Long workplaceId) {
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
-        Worker worker = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new);
+        Worker worker = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId).orElseThrow(WorkerNotFoundException::new);
 
         if (user.getRole() == Role.ROLE_WORKER) {
             Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElseThrow(SalaryWorkerNotFoundException::new);
@@ -97,7 +97,7 @@ public class WorkplaceService {
     @Transactional(readOnly = true)
     public WorkplaceSummaryResponse getWorkplace(Long userId, Long workplaceId) {
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
-        if (!workerRepository.existsByUserIdAndWorkplaceId(userId, workplaceId)) { throw new WorkerWorkplaceNotFoundException(); }
+        if (!workerRepository.existsByUserIdAndWorkplaceId(userId, workplaceId)) { throw new WorkerNotFoundException(); }
 
         return WorkplaceSummaryResponse.builder()
                 .workplaceId(workplaceId)
@@ -145,7 +145,7 @@ public class WorkplaceService {
         if (workplace.getOwnerId().equals(userId)) {
             workplaceRepository.delete(workplaceId, userId);
         } else {
-            Long workerId = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
+            Long workerId = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new).getId();
             workerRepository.delete(workerId, userId, workplaceId);
         }
     }
@@ -170,7 +170,7 @@ public class WorkplaceService {
         Workplace newWorkplace = request.toWorkplaceEntity(workplaceId, userId);
         workplaceRepository.update(newWorkplace);
 
-        return workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getId();
+        return workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new).getId();
     }
 
     // ========== 초대 코드 메서드 ==========

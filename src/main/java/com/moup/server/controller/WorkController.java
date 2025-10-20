@@ -83,7 +83,7 @@ public class WorkController implements WorkSpecification {
         Long userId = identityService.getCurrentUserId();
 
         if (view == ViewType.SUMMARY) {
-            WorkSummaryResponse response = workService.getSummarizedWork(userId, workId);
+            WorkSummaryResponse response = workService.getWork(userId, workId);
             return ResponseEntity.ok().body(response);
         }
 
@@ -93,10 +93,10 @@ public class WorkController implements WorkSpecification {
 
     @Override
     @GetMapping("/works")
-    public ResponseEntity<?> getAllSummarizedWork(@RequestParam(name = "baseYearMonth") YearMonth baseYearMonth) {
+    public ResponseEntity<?> getAllMyWork(@RequestParam(name = "baseYearMonth") YearMonth baseYearMonth) {
         Long userId = identityService.getCurrentUserId();
 
-        WorkCalendarListResponse response = workService.getAllWork(userId, baseYearMonth);
+        WorkCalendarListResponse response = workService.getAllMyWork(userId, baseYearMonth);
         return ResponseEntity.ok().body(response);
     }
 

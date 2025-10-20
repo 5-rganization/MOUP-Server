@@ -104,12 +104,12 @@ CREATE TABLE `workplaces`
 CREATE TABLE `workers`
 (
     `id`                       BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
-    `user_id`                  BIGINT                NOT NULL,
+    `user_id`                  BIGINT                NULL,
     `workplace_id`             BIGINT                NOT NULL,
     `worker_based_label_color` VARCHAR(10)           NULL,
     `owner_based_label_color`  VARCHAR(10)           NULL,
     `is_accepted`              TINYINT(1)            NULL,
-    FOREIGN KEY (`user_id`) REFERENCES users (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES users (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`workplace_id`) REFERENCES workplaces (`id`) ON DELETE CASCADE
 );
 

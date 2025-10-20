@@ -27,7 +27,7 @@ public class WorkService {
 
     private final PermissionVerifyUtil permissionVerifyUtil;
 
-    private record VerifiedWorkContextForCreate(
+    private record VerifiedWorkContextForCR(
             Work work,
             long workMinutes,
             WorkerSummaryResponse workerSummaryInfo,
@@ -35,12 +35,12 @@ public class WorkService {
             boolean isEditable
     ) {}
 
-    private record VerifiedWorkContextForUpdate(Work work, Worker worker) {}
+    private record VerifiedWorkContextForUD(Work work, Worker worker) {}
 
     @Transactional
     public WorkCreateResponse createMyWork(Long userId, Long workplaceId, WorkCreateRequest request) {
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
-                .orElseThrow(WorkerWorkplaceNotFoundException::new);
+                .orElseThrow(WorkerNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplaceOwnerId);
 
@@ -56,7 +56,8 @@ public class WorkService {
     @Transactional
     public WorkCreateResponse createWorkForWorkerId(Long requesterUserId, Long workplaceId, Long workerId, WorkCreateRequest request) {
         Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)
-                .orElseThrow(WorkerWorkplaceNotFoundException::new);
+                .orElseThrow(WorkerNotFoundException::new);
+        if (worker.getUserId() == null) { throw new WorkerNotFoundException("이미 탈퇴한 근무자입니다."); }
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyOwnerPermission(requesterUserId, workplaceOwnerId);
 
@@ -72,9 +73,9 @@ public class WorkService {
 
     @Transactional(readOnly = true)
     public WorkDetailResponse getWorkDetail(Long userId, Long workId) {
-        VerifiedWorkContextForCreate context = getVerifiedWorkContextForCreate(userId, workId);
+        VerifiedWorkContextForCR context = getVerifiedWorkContextForCR(userId, workId);
 
-        List<RoutineSummaryResponse> routineSummaryList = routineService.getAllSummarizedRoutineByWorkRoutineMapping(userId, workId);
+        List<RoutineSummaryResponse> routineSummaryList = routineService.getAllRoutineByWorkRoutineMapping(userId, workId);
 
         List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(context.work().getRepeatDays());
 
@@ -98,8 +99,8 @@ public class WorkService {
     }
 
     @Transactional(readOnly = true)
-    public WorkSummaryResponse getSummarizedWork(Long userId, Long workId) {
-        VerifiedWorkContextForCreate context = getVerifiedWorkContextForCreate(userId, workId);
+    public WorkSummaryResponse getWork(Long userId, Long workId) {
+        VerifiedWorkContextForCR context = getVerifiedWorkContextForCR(userId, workId);
 
         List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(context.work().getRepeatDays());
 
@@ -119,7 +120,7 @@ public class WorkService {
     }
 
     @Transactional(readOnly = true)
-    public WorkCalendarListResponse getAllWork(Long userId, YearMonth baseYearMonth) {
+    public WorkCalendarListResponse getAllMyWork(Long userId, YearMonth baseYearMonth) {
         LocalDate startDate = baseYearMonth.minusMonths(6).atDay(1);
         LocalDate endDate = baseYearMonth.plusMonths(6).atEndOfMonth();
 
@@ -198,11 +199,13 @@ public class WorkService {
         LocalDate startDate = baseYearMonth.minusMonths(6).atDay(1);
         LocalDate endDate = baseYearMonth.plusMonths(6).atEndOfMonth();
 
-        // 1. 매장 정보를 조회하고, 사용자가 사장님인지 확인합니다.
+        // 1. 근무지(매장) 정보를 조회하고, 사용자가 근무자인지 확인합니다.
         Workplace workplace = workplaceRepository.findById(workplaceId)
                 .orElseThrow(WorkplaceNotFoundException::new);
 
-        permissionVerifyUtil.verifyOwnerPermission(user.getId(), workplace.getOwnerId());
+        Long workerUserId = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId).orElseThrow(WorkerNotFoundException::new).getUserId();
+
+        permissionVerifyUtil.verifyWorkerPermission(user.getId(), workerUserId, workplace.getOwnerId());
 
         WorkplaceSummaryResponse workplaceSummary = WorkplaceSummaryResponse.builder()
                 .workplaceId(workplace.getId())
@@ -240,15 +243,19 @@ public class WorkService {
 
         // 6. DTO 조립 (추가 쿼리 없음)
         for (Worker workplaceWorker : workplaceWorkerList) {
-            User workerUser = userMap.get(workplaceWorker.getUserId());
-            if (workerUser == null) continue;
+            User workerUser;
+            if (workplaceWorker.getUserId() != null) {
+                workerUser = userMap.get(workplaceWorker.getUserId());
+            } else {
+                workerUser = null;
+            }
 
             WorkerSummaryResponse workerSummaryInfo = WorkerSummaryResponse.builder()
                     .workerId(workplaceWorker.getId())
                     .workerBasedLabelColor(workplaceWorker.getWorkerBasedLabelColor())
                     .ownerBasedLabelColor(workplaceWorker.getOwnerBasedLabelColor())
-                    .nickname(workerUser.getNickname())
-                    .profileImg(workerUser.getProfileImg())
+                    .nickname(workerUser != null ? workerUser.getNickname() : "탈퇴한 근무자")
+                    .profileImg(workerUser != null ? workerUser.getProfileImg() : null)
                     .build();
 
             List<Work> workerWorkList = workMapByWorker.getOrDefault(workplaceWorker.getId(), Collections.emptyList());
@@ -275,7 +282,7 @@ public class WorkService {
 
         // 1. 사용자의 Worker 정보 조회
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId)
-                .orElseThrow(WorkerWorkplaceNotFoundException::new);
+                .orElseThrow(WorkerNotFoundException::new);
         Workplace workplace = workplaceRepository.findById(workplaceId)
                 .orElseThrow(WorkplaceNotFoundException::new);
 
@@ -302,9 +309,7 @@ public class WorkService {
         List<WorkSummaryResponse> workSummaryInfoList = userWorkList.stream()
                 .map(userWork -> {
                     long workMinutes = Duration.between(userWork.getStartTime(), userWork.getEndTime()).toMinutes();
-                    // 사용자가 자신의 근무이거나, 또는 사용자가 사장님일 경우 수정 가능
-                    boolean isEditable = checkEditable(user.getId(), userWorker.getUserId(), workplace.getOwnerId());
-                    return convertWorkToSummaryResponse(userWork, userWorkerSummaryInfo, workplaceSummary, workMinutes, isEditable);
+                    return convertWorkToSummaryResponse(userWork, userWorkerSummaryInfo, workplaceSummary, workMinutes, true);
                 })
                 .toList();
 
@@ -315,7 +320,7 @@ public class WorkService {
 
     @Transactional
     public void updateWork(Long requesterUserId, Long workId, WorkUpdateRequest request) {
-        VerifiedWorkContextForUpdate context = getVerifiedWorkContextForUpdate(requesterUserId, workId);
+        VerifiedWorkContextForUD context = getVerifiedWorkContextForUD(requesterUserId, workId);
 
         updateWorkHelper(context.worker(), workId, request);
 
@@ -324,7 +329,7 @@ public class WorkService {
 
     @Transactional
     public void deleteWork(Long requesterUserId, Long workId) {
-        VerifiedWorkContextForUpdate context = getVerifiedWorkContextForUpdate(requesterUserId, workId);
+        VerifiedWorkContextForUD context = getVerifiedWorkContextForUD(requesterUserId, workId);
 
         deleteWorkHelper(context.worker(), context.work());
     }
@@ -363,14 +368,14 @@ public class WorkService {
         salaryCalculationService.recalculateWorkWeek(worker.getId(), work.getWorkDate());
     }
 
-    private VerifiedWorkContextForCreate getVerifiedWorkContextForCreate(Long requesterUserId, Long workId) {
+    private VerifiedWorkContextForCR getVerifiedWorkContextForCR(Long requesterUserId, Long workId) {
         // 1. (쿼리 1) workId로 Work 정보 조회
         Work work = workRepository.findById(workId)
                 .orElseThrow(WorkNotFoundException::new);
 
         // 2. (쿼리 2) Work에서 workerId를 가져와 Worker 정보 조회
         Worker requestedWorker = workerRepository.findById(work.getWorkerId())
-                .orElseThrow(WorkerWorkplaceNotFoundException::new);
+                .orElseThrow(WorkerNotFoundException::new);
 
         // 3. (쿼리 3) Worker에서 workplaceId를 가져와 Workplace 정보 조회
         Workplace workplace = workplaceRepository.findById(requestedWorker.getWorkplaceId())
@@ -396,17 +401,17 @@ public class WorkService {
         boolean isEditable = checkEditable(requesterUserId, requestedWorker.getUserId(), workplace.getOwnerId());
 
         // 9. 모든 데이터를 컨테이너에 담아 반환
-        return new VerifiedWorkContextForCreate(work, workMinutes, workerSummaryInfo, workplaceSummary, isEditable);
+        return new VerifiedWorkContextForCR(work, workMinutes, workerSummaryInfo, workplaceSummary, isEditable);
     }
 
-    private VerifiedWorkContextForUpdate getVerifiedWorkContextForUpdate(Long requesterUserId, Long workId) {
+    private VerifiedWorkContextForUD getVerifiedWorkContextForUD(Long requesterUserId, Long workId) {
         // 1. (쿼리 1) workId로 Work 정보 조회
         Work work = workRepository.findById(workId)
                 .orElseThrow(WorkNotFoundException::new);
 
         // 2. (쿼리 2) Work에서 workerId를 가져와 Worker 정보 조회
         Worker worker = workerRepository.findById(work.getWorkerId())
-                .orElseThrow(WorkerWorkplaceNotFoundException::new);
+                .orElseThrow(WorkerNotFoundException::new);
 
         // 3. (쿼리 3) Worker에서 workplaceId를 가져와 Workplace 정보 조회
         Workplace workplace = workplaceRepository.findById(worker.getWorkplaceId())
@@ -415,19 +420,21 @@ public class WorkService {
         // 4. 권한 검사: 요청자가 근무자 본인이거나 근무지 사장님인지 확인
         permissionVerifyUtil.verifyWorkerPermission(requesterUserId, worker.getUserId(), workplace.getOwnerId());
 
-        return new VerifiedWorkContextForUpdate(work, worker);
+        return new VerifiedWorkContextForUD(work, worker);
     }
 
     private WorkerSummaryResponse createWorkerSummary(Worker worker) {
-        User user = userRepository.findById(worker.getUserId())
-                .orElseThrow(UserNotFoundException::new);
-
+        User user = null;
+        if (worker.getUserId() != null) {
+            user = userRepository.findById(worker.getUserId()).orElseThrow(WorkerNotFoundException::new);
+        }
+        
         return WorkerSummaryResponse.builder()
                 .workerId(worker.getId())
                 .workerBasedLabelColor(worker.getWorkerBasedLabelColor())
                 .ownerBasedLabelColor(worker.getOwnerBasedLabelColor())
-                .nickname(user.getNickname())
-                .profileImg(user.getProfileImg())
+                .nickname(user != null ? user.getNickname() : "탈퇴한 근무자")
+                .profileImg(user != null ? user.getProfileImg() : null)
                 .build();
     }
 
