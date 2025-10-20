@@ -424,14 +424,17 @@ public class WorkService {
     }
 
     private WorkerSummaryResponse createWorkerSummary(Worker worker) {
-        Optional<User> user = userRepository.findById(worker.getUserId());
-
+        User user = null;
+        if (worker.getUserId() != null) {
+            user = userRepository.findById(worker.getUserId()).orElseThrow(WorkerNotFoundException::new);
+        }
+        
         return WorkerSummaryResponse.builder()
                 .workerId(worker.getId())
                 .workerBasedLabelColor(worker.getWorkerBasedLabelColor())
                 .ownerBasedLabelColor(worker.getOwnerBasedLabelColor())
-                .nickname(user.isPresent() ? user.get().getNickname() : "탈퇴한 근무자")
-                .profileImg(user.map(User::getProfileImg).orElse(null))
+                .nickname(user != null ? user.getNickname() : "탈퇴한 근무자")
+                .profileImg(user != null ? user.getProfileImg() : null)
                 .build();
     }
 
