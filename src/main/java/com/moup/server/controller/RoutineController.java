@@ -38,10 +38,10 @@ public class RoutineController implements RoutineSpecification {
 
     @Override
     @GetMapping
-    public ResponseEntity<?> getAllSummarizedRoutine() {
+    public ResponseEntity<?> getAllRoutine() {
         Long userId = identityService.getCurrentUserId();
 
-        RoutineSummaryListResponse routineSummaryListResponse = routineService.getAllSummarizedRoutine(userId);
+        RoutineSummaryListResponse routineSummaryListResponse = routineService.getAllRoutine(userId);
         return ResponseEntity.ok().body(routineSummaryListResponse);
     }
 
@@ -63,7 +63,7 @@ public class RoutineController implements RoutineSpecification {
         Long userId = identityService.getCurrentUserId();
 
         if (view == ViewType.SUMMARY) {
-            RoutineSummaryResponse response = routineService.getSummarizedRoutine(userId, routineId);
+            RoutineSummaryResponse response = routineService.getRoutine(userId, routineId);
             return ResponseEntity.ok().body(response);
         }
 

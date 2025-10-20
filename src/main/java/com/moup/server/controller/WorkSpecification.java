@@ -164,7 +164,7 @@ public interface WorkSpecification {
             @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    ResponseEntity<?> getAllSummarizedWork(
+    ResponseEntity<?> getAllMyWork(
             @Parameter(name = "baseYearMonth", description = "조회할 연-월 (yyyy-MM)", in = ParameterIn.QUERY, required = true)
             @RequestParam(name = "baseYearMonth") YearMonth baseYearMonth
     );
@@ -203,9 +203,9 @@ public interface WorkSpecification {
 
     @Tag(name = "Routine", description = "루틴 정보 관리 API 엔드포인트")
     @GetMapping("/works/{workId}/routines")
-    @Operation(summary = "근무에 해당하는 루틴 요약 조회", description = "근무에 해당하는 루틴 조회 및 요약")
+    @Operation(summary = "근무에 해당하는 루틴 조회", description = "근무에 해당하는 루틴 조회")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "근무에 해당하는 루틴 조회 및 요약 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineSummaryListResponse.class))),
+            @ApiResponse(responseCode = "200", description = "근무에 해당하는 루틴 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineSummaryListResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     ResponseEntity<?> getWorkAllRoutine(
             @Parameter(name = "workId", description = "루틴을 조회할 근무 ID", example = "1", required = true, in = ParameterIn.PATH)

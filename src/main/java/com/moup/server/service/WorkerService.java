@@ -2,7 +2,7 @@ package com.moup.server.service;
 
 import com.moup.server.exception.CannotDeleteDataException;
 import com.moup.server.exception.SalaryWorkerNotFoundException;
-import com.moup.server.exception.WorkerWorkplaceNotFoundException;
+import com.moup.server.exception.WorkerNotFoundException;
 import com.moup.server.exception.WorkplaceNotFoundException;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.Salary;
@@ -55,7 +55,7 @@ public class WorkerService {
                             : null;
 
                     // User 객체가 null이면 (탈퇴했거나, DB 불일치) 기본값 사용
-                    String nickname = (user != null) ? user.getNickname() : "탈퇴한 사용자";
+                    String nickname = (user != null) ? user.getNickname() : "탈퇴한 근무자";
                     String profileImg = (user != null) ? user.getProfileImg() : null; // 또는 기본 이미지 URL
 
                     return WorkerSummaryResponse.builder()
@@ -111,7 +111,7 @@ public class WorkerService {
     }
 
     public void updateMyWorker(User user, Long workplaceId, WorkerWorkerUpdateRequest request) {
-        Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new);
+        Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId).orElseThrow(WorkerNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyWorkerPermission(user.getId(), userWorker.getUserId(), workplaceOwnerId);
         workerRepository.updateWorkerBasedLabelColor(userWorker.getId(), user.getId(), workplaceId, request.getWorkerBasedLabelColor());
@@ -135,7 +135,7 @@ public class WorkerService {
 
     public void deleteMyWorker(Long userId, Long workplaceId) {
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new);
+        Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
         permissionVerifyUtil.verifyWorkerPermission(userId, worker.getUserId(), workplaceOwnerId);
 
         workerRepository.delete(worker.getId(), worker.getUserId(), workplaceId);
@@ -145,7 +145,7 @@ public class WorkerService {
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyOwnerPermission(userId, workplaceOwnerId);
 
-        Long workerUserId = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId).orElseThrow(WorkerWorkplaceNotFoundException::new).getUserId();
+        Long workerUserId = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId).orElseThrow(WorkerNotFoundException::new).getUserId();
         if (workerUserId.equals(userId)) { throw new CannotDeleteDataException(); }
 
         workerRepository.delete(workerId, workerUserId, workplaceId);

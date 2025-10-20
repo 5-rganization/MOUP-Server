@@ -1,7 +1,6 @@
 package com.moup.server.service;
 
-import com.moup.server.exception.WorkerUserNotFoundException;
-import com.moup.server.exception.WorkerWorkplaceNotFoundException;
+import com.moup.server.exception.WorkerNotFoundException;
 import com.moup.server.model.entity.MonthlySalary;
 import com.moup.server.model.entity.Salary;
 import com.moup.server.model.entity.Work;
@@ -193,7 +192,7 @@ public class SalaryCalculationService {
     /// 한 달의 모든 근무 기록을 합산하여 정확한 공제액과 실지급액을 계산하고 DB에 저장합니다.
     @Transactional
     public MonthlySalary calculateAndSaveMonthlySalary(Long workerId, int year, int month) {
-        Worker worker = workerRepository.findById(workerId).orElseThrow(WorkerWorkplaceNotFoundException::new);
+        Worker worker = workerRepository.findById(workerId).orElseThrow(WorkerNotFoundException::new);
 
         // 탈퇴했거나 존재하지 않는 근무자는 월급을 계산/저장/업데이트하지 않음
         if (worker.getUserId() == null) { return null; }

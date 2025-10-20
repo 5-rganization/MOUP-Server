@@ -68,7 +68,7 @@ public class WorkplaceController implements WorkplaceSpecification, InviteCodeSp
 
     @Override
     @GetMapping
-    public ResponseEntity<?> getAllSummarizedWorkplace(
+    public ResponseEntity<?> getAllWorkplace(
             @Parameter(name = "isShared", description = "공유 근무지(매장) 조회 여부", in = ParameterIn.QUERY)
             @RequestParam(name = "isShared", required = false) Boolean isShared
     ) {

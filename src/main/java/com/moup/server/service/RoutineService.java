@@ -57,7 +57,7 @@ public class RoutineService {
     }
 
     @Transactional(readOnly = true)
-    public RoutineSummaryResponse getSummarizedRoutine(Long userId, Long routineId) {
+    public RoutineSummaryResponse getRoutine(Long userId, Long routineId) {
         Routine routine = routineRepository.findByIdAndUserId(routineId, userId).orElseThrow(RoutineNotFoundException::new);
 
         return RoutineSummaryResponse.builder()
@@ -68,7 +68,7 @@ public class RoutineService {
     }
 
     @Transactional(readOnly = true)
-    public RoutineSummaryListResponse getAllSummarizedRoutine(Long userId) {
+    public RoutineSummaryListResponse getAllRoutine(Long userId) {
         List<Routine> routineList = routineRepository.findAllByUserId(userId);
         List<RoutineSummaryResponse> routineSummaryResponseList = routineList.stream()
                 .map(routine -> RoutineSummaryResponse.builder()
@@ -167,7 +167,7 @@ public class RoutineService {
 
     @Transactional(readOnly = true)
     public RoutineSummaryListResponse getAllRoutineByWork(Long userId, Long workId) {
-        List<RoutineSummaryResponse> routineSummaryInfoList = getAllSummarizedRoutineByWorkRoutineMapping(userId, workId);
+        List<RoutineSummaryResponse> routineSummaryInfoList = getAllRoutineByWorkRoutineMapping(userId, workId);
 
         return RoutineSummaryListResponse.builder()
                 .routineSummaryInfoList(routineSummaryInfoList)
@@ -263,13 +263,13 @@ public class RoutineService {
     }
 
     @Transactional(readOnly = true)
-    public List<RoutineSummaryResponse> getAllSummarizedRoutineByWorkRoutineMapping(Long userId, Long workId) {
+    public List<RoutineSummaryResponse> getAllRoutineByWorkRoutineMapping(Long userId, Long workId) {
         // --- START: 권한 확인 ---
         Work work = workRepository.findById(workId)
                 .orElseThrow(WorkNotFoundException::new);
 
         Worker worker = workerRepository.findByIdAndUserId(work.getWorkerId(), userId)
-                .orElseThrow(WorkerUserNotFoundException::new);
+                .orElseThrow(WorkerNotFoundException::new);
 
         Workplace workplace = workplaceRepository.findById(worker.getWorkplaceId())
                 .orElseThrow(WorkplaceNotFoundException::new);
