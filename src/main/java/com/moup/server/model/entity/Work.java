@@ -17,6 +17,8 @@ public class Work {
     private LocalDateTime endTime;
     private LocalDateTime actualEndTime;
     private Integer restTimeMinutes;
+    private Integer grossWorkMinutes;
+    private Integer netWorkMinutes;
     private String memo;
     private Integer hourlyRate;
     private Integer basePay;

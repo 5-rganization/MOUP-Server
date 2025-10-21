@@ -21,8 +21,6 @@ public class WorkplaceService {
     private final WorkplaceRepository workplaceRepository;
     private final WorkerRepository workerRepository;
     private final SalaryRepository salaryRepository;
-    private final WorkRepository workRepository;
-    private final MonthlySalaryRepository monthlySalaryRepository;
 
     private final InviteCodeService inviteCodeService;
 

@@ -27,7 +27,7 @@ public class WorkService {
 
     private final PermissionVerifyUtil permissionVerifyUtil;
 
-    private record VerifiedWorkContextForCR(
+    private record VerifiedWorkContextForRead(
             Work work,
             long workMinutes,
             WorkerSummaryResponse workerSummaryInfo,
@@ -73,7 +73,7 @@ public class WorkService {
 
     @Transactional(readOnly = true)
     public WorkDetailResponse getWorkDetail(Long userId, Long workId) {
-        VerifiedWorkContextForCR context = getVerifiedWorkContextForCR(userId, workId);
+        VerifiedWorkContextForRead context = getVerifiedWorkContextForRead(userId, workId);
 
         List<RoutineSummaryResponse> routineSummaryList = routineService.getAllRoutineByWorkRoutineMapping(userId, workId);
 
@@ -100,7 +100,7 @@ public class WorkService {
 
     @Transactional(readOnly = true)
     public WorkSummaryResponse getWork(Long userId, Long workId) {
-        VerifiedWorkContextForCR context = getVerifiedWorkContextForCR(userId, workId);
+        VerifiedWorkContextForRead context = getVerifiedWorkContextForRead(userId, workId);
 
         List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(context.work().getRepeatDays());
 
@@ -182,7 +182,7 @@ public class WorkService {
 
             List<WorkSummaryResponse> workSummaryList = workerWorkList.stream()
                     .map(work -> {
-                        long workMinutes = Duration.between(work.getStartTime(), work.getEndTime()).toMinutes();
+                        long workMinutes = work.getGrossWorkMinutes();
                         boolean isEditable = checkEditable(userId, userWorker.getUserId(), workplace.getOwnerId());
                         return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummaryInfo, workMinutes, isEditable);
                     })
@@ -208,7 +208,7 @@ public class WorkService {
 
         permissionVerifyUtil.verifyWorkerPermission(user.getId(), workerUserId, workplace.getOwnerId());
 
-        WorkplaceSummaryResponse workplaceSummary = WorkplaceSummaryResponse.builder()
+        WorkplaceSummaryResponse workplaceSummaryInfo = WorkplaceSummaryResponse.builder()
                 .workplaceId(workplace.getId())
                 .workplaceName(workplace.getWorkplaceName())
                 .isShared(workplace.isShared())
@@ -263,10 +263,9 @@ public class WorkService {
 
             List<WorkSummaryResponse> workerWorkSummaryList = workerWorkList.stream()
                     .map(work -> {
-                        long workMinutes = Duration.between(work.getStartTime(), work.getEndTime()).toMinutes();
-                        // 현재 사용자가 사장님이므로 모든 근무를 수정 가능
+                        long workMinutes = work.getGrossWorkMinutes();
                         boolean isEditable = checkEditable(user.getId(), workplaceWorker.getUserId(), workplace.getOwnerId());
-                        return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummary, workMinutes, isEditable);
+                        return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummaryInfo, workMinutes, isEditable);
                     })
                     .toList();
             workSummaryInfoList.addAll(workerWorkSummaryList);
@@ -309,7 +308,7 @@ public class WorkService {
         // 5. DTO로 변환
         List<WorkSummaryResponse> workSummaryInfoList = userWorkList.stream()
                 .map(userWork -> {
-                    long workMinutes = Duration.between(userWork.getStartTime(), userWork.getEndTime()).toMinutes();
+                    long workMinutes = userWork.getGrossWorkMinutes();
                     return convertWorkToSummaryResponse(userWork, userWorkerSummaryInfo, workplaceSummary, workMinutes, true);
                 })
                 .toList();
@@ -369,7 +368,7 @@ public class WorkService {
         salaryCalculationService.recalculateWorkWeek(worker.getId(), work.getWorkDate());
     }
 
-    private VerifiedWorkContextForCR getVerifiedWorkContextForCR(Long requesterUserId, Long workId) {
+    private VerifiedWorkContextForRead getVerifiedWorkContextForRead(Long requesterUserId, Long workId) {
         // 1. (쿼리 1) workId로 Work 정보 조회
         Work work = workRepository.findById(workId)
                 .orElseThrow(WorkNotFoundException::new);
@@ -386,7 +385,7 @@ public class WorkService {
         permissionVerifyUtil.verifyWorkerPermission(requesterUserId, requestedWorker.getUserId(), workplace.getOwnerId());
 
         // 5. 근무 시간 계산
-        long workMinutes = Duration.between(work.getStartTime(), work.getEndTime()).toMinutes();
+        long workMinutes = work.getGrossWorkMinutes();
 
         // 6. 근무자 요약 DTO 생성
         WorkerSummaryResponse workerSummaryInfo = createWorkerSummary(requestedWorker);
@@ -402,7 +401,7 @@ public class WorkService {
         boolean isEditable = checkEditable(requesterUserId, requestedWorker.getUserId(), workplace.getOwnerId());
 
         // 9. 모든 데이터를 컨테이너에 담아 반환
-        return new VerifiedWorkContextForCR(work, workMinutes, workerSummaryInfo, workplaceSummary, isEditable);
+        return new VerifiedWorkContextForRead(work, workMinutes, workerSummaryInfo, workplaceSummary, isEditable);
     }
 
     private VerifiedWorkContextForUD getVerifiedWorkContextForUD(Long requesterUserId, Long workId) {
@@ -440,6 +439,8 @@ public class WorkService {
     }
 
     private void verifyStartEndTime(LocalDateTime startTime, LocalDateTime endTime) {
+        // endTime이 null인 경우는 '진행 중'이므로 유효성 검사 통과
+        if (endTime == null) { return; }
         if (endTime.isBefore(startTime)) { throw new InvalidFieldFormatException("퇴근 시간은 출근 시간보다 미래여야 합니다."); }
     }
 
