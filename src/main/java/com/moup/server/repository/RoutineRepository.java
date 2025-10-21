@@ -3,6 +3,7 @@ package com.moup.server.repository;
 import com.moup.server.model.entity.Routine;
 import org.apache.ibatis.annotations.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -40,6 +41,21 @@ public interface RoutineRepository {
     /// @return 조회된 Routine 객체, 없으면 Optional.empty
     @Select("SELECT * FROM routines WHERE id = #{id} AND user_id = #{userId}")
     Optional<Routine> findByIdAndUserId(Long id, Long userId);
+
+    /// 사용자가 특정 날짜의 모든 근무에 연결된 루틴 개수를 조회
+    ///
+    /// @param userId 조회할 사용자 ID
+    /// @param date 조회할 날짜
+    /// @return 연결된 루틴 개수
+    @Select("""
+            SELECT COUNT(work_routine_mappings.id)
+            FROM work_routine_mappings
+            JOIN works ON work_routine_mappings.work_id = work_routine_mappings.id
+            JOIN workers ON works.worker_id = workers.id
+            WHERE workers.user_id = #{userId}
+            AND works.work_date = #{today}
+            """)
+    Integer countTotalRoutinesByUserIdAndDate(@Param("userId") Long userId, @Param("date") LocalDate date);
 
     /// 사용자 ID를 통해 해당 사용자의 모든 루틴 객체를 리스트로 반환하는 메서드
     ///
