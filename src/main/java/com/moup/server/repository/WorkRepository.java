@@ -17,12 +17,14 @@ public interface WorkRepository {
     @Insert("""
             INSERT INTO works (
                 worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time,
-                rest_time_minutes, gross_work_minutes, net_work_minutes, memo, hourly_rate, base_pay, night_allowance, holiday_allowance,
+                rest_time_minutes, gross_work_minutes, net_work_minutes, night_work_minutes,
+                memo, hourly_rate, base_pay, night_allowance, holiday_allowance,
                 gross_income, estimated_net_income, repeat_days, repeat_end_date
             )
             VALUES (
                 #{workerId}, #{workDate}, #{startTime}, #{actualStartTime}, #{endTime}, #{actualEndTime},
-                #{restTimeMinutes}, #{grossWorkMinutes}, #{netWorkMinutes}, #{memo}, #{hourlyRate}, #{basePay}, #{nightAllowance}, #{holidayAllowance},
+                #{restTimeMinutes}, #{grossWorkMinutes}, #{netWorkMinutes}, #{nightWorkMinutes},
+                #{memo}, #{hourlyRate}, #{basePay}, #{nightAllowance}, #{holidayAllowance},
                 #{grossIncome}, #{estimatedNetIncome}, #{repeatDays}, #{repeatEndDate}
             )
             """)
@@ -101,6 +103,7 @@ public interface WorkRepository {
                 work_date = #{workDate}, start_time = #{startTime}, actual_start_time = #{actualStartTime},
                 end_time = #{endTime}, actual_end_time = #{actualEndTime}, rest_time_minutes = #{restTimeMinutes},
                 gross_work_minutes = #{grossWorkMinutes}, net_work_minutes = #{netWorkMinutes},
+                night_work_minutes = #{nightWorkMinutes},
                 memo = #{memo}, hourly_rate = #{hourlyRate}, base_pay = #{basePay},
                 night_allowance = #{nightAllowance}, holiday_allowance = #{holidayAllowance},
                 gross_income = #{grossIncome}, estimated_net_income = #{estimatedNetIncome}, repeat_days = #{repeatDays}, repeat_end_date = #{repeatEndDate}

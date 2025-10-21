@@ -19,6 +19,7 @@ public class Work {
     private Integer restTimeMinutes;
     private Integer grossWorkMinutes;
     private Integer netWorkMinutes;
+    private Integer nightWorkMinutes;
     private String memo;
     private Integer hourlyRate;
     private Integer basePay;

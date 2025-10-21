@@ -107,6 +107,7 @@ public class SalaryCalculationService {
             return work.toBuilder()
                     .grossWorkMinutes(0)
                     .netWorkMinutes(0)
+                    .nightWorkMinutes(0)
                     .basePay(0)
                     .nightAllowance(0)
                     .holidayAllowance(0)
@@ -153,6 +154,7 @@ public class SalaryCalculationService {
         return work.toBuilder()
                 .grossWorkMinutes((int) grossWorkMinutes)
                 .netWorkMinutes((int) netWorkMinutes)
+                .nightWorkMinutes((int) nightWorkMinutes)
                 .basePay(basePay)
                 .nightAllowance(nightAllowance)
                 .holidayAllowance(dailyHolidayAllowance)
@@ -286,43 +288,26 @@ public class SalaryCalculationService {
 
 
             // 4. 시간 및 수당 계산 (DB에 저장된 값을 합산)
-            long totalWorkMinutes = 0;
-            long totalNightMinutes = 0;
-            long totalRestTimeMinutes = 0;
-            int totalHolidayAllowance = 0;
-            boolean hasNightAllowance = salaryInfo.getHasNightAllowance();
+            long totalWorkMinutes = workList.stream()
+                    .mapToLong(work -> work.getNetWorkMinutes() != null ? work.getNetWorkMinutes() : 0)
+                    .sum();
 
-            for (Work work : workList) {
-                if (work.getEndTime() == null) { continue; }
-                long regularWorkMinutes = 0;
-                long nightWorkMinutes = 0;
-                LocalDateTime cursor = work.getStartTime();
-                LocalDateTime end = work.getEndTime();
+            long totalNightMinutes = workList.stream()
+                    .mapToLong(work -> work.getNightWorkMinutes() != null ? work.getNightWorkMinutes() : 0)
+                    .sum();
 
-                if (hasNightAllowance) {
-                    while (cursor.isBefore(end)) {
-                        regularWorkMinutes++;
-                        LocalTime cursorTime = cursor.toLocalTime();
-                        if (cursorTime.isAfter(NIGHT_START_TIME) || cursorTime.equals(NIGHT_START_TIME) || cursorTime.isBefore(NIGHT_END_TIME)) {
-                            nightWorkMinutes++;
-                        }
-                        cursor = cursor.plusMinutes(1);
-                    }
-                } else {
-                    regularWorkMinutes = Duration.between(cursor, end).toMinutes();
-                }
+            long totalRestTimeMinutes = workList.stream()
+                    .mapToLong(work -> work.getRestTimeMinutes() != null ? work.getRestTimeMinutes() : 0)
+                    .sum();
 
-                int rest = work.getRestTimeMinutes() != null ? work.getRestTimeMinutes() : 0;
-                regularWorkMinutes -= rest;
-                if (regularWorkMinutes < 0) regularWorkMinutes = 0;
+            int totalHolidayAllowance = workList.stream()
+                    .mapToInt(work -> work.getHolidayAllowance() != null ? work.getHolidayAllowance() : 0)
+                    .sum();
 
-                totalWorkMinutes += regularWorkMinutes;
-                totalNightMinutes += nightWorkMinutes;
-                totalHolidayAllowance += (work.getHolidayAllowance() != null ? work.getHolidayAllowance() : 0);
-                totalRestTimeMinutes += rest;
-            }
+            int grossIncome = workList.stream()
+                    .mapToInt(work -> work.getGrossIncome() != null ? work.getGrossIncome() : 0)
+                    .sum();
 
-            int grossIncome = workList.stream().mapToInt(work -> work.getGrossIncome() != null ? work.getGrossIncome() : 0).sum();
             long totalWorkHours = totalWorkMinutes / 60;
 
             // --- 5. 공제액 계산 ---
@@ -333,7 +318,7 @@ public class SalaryCalculationService {
                     .workplaceSummaryInfo(workplaceSummaryInfo)
                     .salarySummaryInfo(salarySummaryInfo)
                     .totalWorkMinutes(totalWorkMinutes)
-                    .dayTimeMinutes(totalWorkMinutes - totalNightMinutes)
+                    .dayTimeMinutes(totalWorkMinutes - totalNightMinutes) // netWorkMinutes - nightWorkMinutes = dayTimeMinutes
                     .nightTimeMinutes(totalNightMinutes)
                     .restTimeMinutes(totalRestTimeMinutes)
                     .totalHolidayAllowance(totalHolidayAllowance)

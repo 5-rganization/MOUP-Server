@@ -52,6 +52,7 @@ public class WorkUpdateRequest {
             Integer hourlyRate,
             int grossWorkMinutes,
             int netWorkMinutes,
+            int nightWorkMinutes,
             int basePay,
             int nightAllowance,
             int holidayAllowance
@@ -73,6 +74,7 @@ public class WorkUpdateRequest {
                 .restTimeMinutes(restTimeMinutes)
                 .grossWorkMinutes(grossWorkMinutes)
                 .netWorkMinutes(netWorkMinutes)
+                .nightWorkMinutes(nightWorkMinutes)
                 .memo(memo)
                 .hourlyRate(hourlyRate)
                 .basePay(basePay)

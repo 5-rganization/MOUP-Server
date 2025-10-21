@@ -351,6 +351,7 @@ public class WorkService {
                 0,
                 0,
                 0,
+                0,
                 0
         );
 
@@ -387,6 +388,7 @@ public class WorkService {
                 workId,
                 worker.getId(),
                 hourlyRate,
+                0,
                 0,
                 0,
                 0,

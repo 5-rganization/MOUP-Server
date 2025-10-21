@@ -125,6 +125,7 @@ CREATE TABLE `works`
     `rest_time_minutes`       INT                   DEFAULT 0,
     `gross_work_minutes`      INT                   DEFAULT 0,  -- 총 근무시간(분)
     `net_work_minutes`        INT                   DEFAULT 0,  -- 순 근무시간(분, 휴게시간 제외)
+    `night_work_minutes`      INT                   DEFAULT 0,  -- 야간 근무시간(분, 휴게시간 제외)
     `memo`                    VARCHAR(200)          NULL,
     `hourly_rate`             INT                   NULL,
     `base_pay`                INT                   DEFAULT 0,  -- 기본급 (휴게시간 제외)
