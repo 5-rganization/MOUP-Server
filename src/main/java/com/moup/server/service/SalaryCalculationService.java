@@ -223,7 +223,7 @@ public class SalaryCalculationService {
 
     /// 알바생이 특정 월에 근무지별로 받은 급여 상세 내역(시간, 수당, 공제액)을 조회합니다.
     @Transactional(readOnly = true)
-    public List<WorkerMonthlyWorkplaceSummaryResponse> getMySalarySummaryByWorkplace(Long userId, int year, int month) {
+    public List<WorkerMonthlyWorkplaceSummaryResponse> getWorkerMonthlyWorkplaceSummaries(Long userId, int year, int month) {
 
         // 1. 사용자가 속한 모든 'Worker' 목록을 가져옵니다 (근무지 목록)
         List<Worker> userWorkerList = workerRepository.findAllByUserId(userId);
@@ -395,7 +395,7 @@ public class SalaryCalculationService {
                     .isShared(workplace.isShared())
                     .build();
 
-            List<WorkerMonthlyWorkSummaryResponse> workerSummaryList = new ArrayList<>();
+            List<OwnerMonthlyWorkerSummaryResponse> workerSummaryList = new ArrayList<>();
 
             List<Worker> workersInThisWorkplace = allWorkersInWorkplaces.stream()
                     .filter(w -> w.getWorkplaceId().equals(workplace.getId()))
@@ -427,8 +427,8 @@ public class SalaryCalculationService {
                 User user = userMap.get(worker.getUserId());
                 String nickname = (user != null) ? user.getNickname() : "탈퇴한 근무자";
 
-                // --- 근무자 요약 DTO (WorkerMonthlyWorkSummaryResponse) 생성 ---
-                WorkerMonthlyWorkSummaryResponse workerSummary = WorkerMonthlyWorkSummaryResponse.builder()
+                // --- 근무자 요약 DTO (OwnerMonthlyWorkerSummaryResponse) 생성 ---
+                OwnerMonthlyWorkerSummaryResponse workerSummary = OwnerMonthlyWorkerSummaryResponse.builder()
                         .nickname(nickname)
                         .totalWorkMinutes(totalNetWorkMinutes)
                         .netIncome(deductions.netIncome())
@@ -440,7 +440,7 @@ public class SalaryCalculationService {
 
             OwnerMonthlyWorkplaceSummaryResponse workplaceSummaryResponse = OwnerMonthlyWorkplaceSummaryResponse.builder()
                     .workplaceSummaryInfo(workplaceSummary)
-                    .WorkerMonthlyWorkSummaryInfoList(workerSummaryList)
+                    .monthlyWorkerSummaryInfoList(workerSummaryList)
                     .build();
 
             responseList.add(workplaceSummaryResponse);

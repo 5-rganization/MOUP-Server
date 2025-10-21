@@ -1,11 +1,8 @@
 package com.moup.server.config;
 
-import com.moup.server.common.Login;
 import com.moup.server.common.Role;
 import com.moup.server.model.dto.TokenCreateRequest;
-import com.moup.server.model.entity.User;
 import com.moup.server.util.JwtUtil;
-import java.time.LocalDateTime;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
