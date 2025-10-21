@@ -50,7 +50,7 @@ public interface RoutineRepository {
     @Select("""
             SELECT COUNT(work_routine_mappings.id)
             FROM work_routine_mappings
-            JOIN works ON work_routine_mappings.work_id = work_routine_mappings.id
+            JOIN works ON work_routine_mappings.work_id = works.id
             JOIN workers ON works.worker_id = workers.id
             WHERE workers.user_id = #{userId}
             AND works.work_date = #{date}
