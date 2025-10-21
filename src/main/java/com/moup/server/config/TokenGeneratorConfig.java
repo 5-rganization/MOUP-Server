@@ -15,9 +15,7 @@ public class TokenGeneratorConfig {
     private final JwtUtil jwtUtil;
 
     // 생성자 주입
-    public TokenGeneratorConfig(JwtUtil jwtUtil) {
-    this.jwtUtil = jwtUtil;
-  }
+    public TokenGeneratorConfig(JwtUtil jwtUtil) { this.jwtUtil = jwtUtil; }
 
     @Bean
     public CommandLineRunner generateStaticToken() {
