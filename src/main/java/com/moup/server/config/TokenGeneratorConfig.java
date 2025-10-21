@@ -29,7 +29,7 @@ public class TokenGeneratorConfig {
       TokenCreateRequest testToken = TokenCreateRequest.builder()
           .role(Role.ROLE_ADMIN)
           .userId(1L)
-          .username("김사장").build();
+          .username("관리자").build();
 
       // createToken 메서드를 사용하여 토큰 생성
       String staticToken = jwtUtil.createTestToken(testToken);
