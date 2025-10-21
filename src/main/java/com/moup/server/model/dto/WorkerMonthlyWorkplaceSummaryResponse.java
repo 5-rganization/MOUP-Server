@@ -18,6 +18,8 @@ public class WorkerMonthlyWorkplaceSummaryResponse {
     private Long dayTimeMinutes;
     @Schema(description = "총 야간시간 (분)", example = "60", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long nightTimeMinutes;
+    @Schema(description = "총 휴게시간 (분)", example = "15", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Long restTimeMinutes;
     @Schema(description = "총 주휴수당 (원)", example = "10000", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Integer totalHolidayAllowance;
     @Schema(description = "세전 총소득 (원)", example = "70210", requiredMode = Schema.RequiredMode.REQUIRED)

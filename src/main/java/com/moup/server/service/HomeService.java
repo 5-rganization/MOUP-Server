@@ -24,7 +24,7 @@ public class HomeService {
         return switch (user.getRole()) {
             case ROLE_WORKER -> {
                 List<WorkerMonthlyWorkplaceSummaryResponse> summaries =
-                        salaryCalculationService.getWorkerMonthlyWorkplaceSummaries(user.getId(), nowYear, nowMonth);
+                        salaryCalculationService.getWorkerMonthlyWorkplaceSummaryList(user.getId(), nowYear, nowMonth);
                 Integer totalSalary = summaries.stream()
                         .mapToInt(WorkerMonthlyWorkplaceSummaryResponse::getNetIncome)
                         .sum();
@@ -38,7 +38,7 @@ public class HomeService {
             }
             case ROLE_OWNER -> {
                 List<OwnerMonthlyWorkplaceSummaryResponse> summaries =
-                        salaryCalculationService.getOwnerMonthlyWorkplaceSummaries(user.getId(), nowYear, nowMonth);
+                        salaryCalculationService.getOwnerMonthlyWorkplaceSummaryList(user.getId(), nowYear, nowMonth);
                 Integer totalSalary = summaries.stream()
                         .mapToInt(monthlySummary ->
                                 monthlySummary.getMonthlyWorkerSummaryInfoList().stream()

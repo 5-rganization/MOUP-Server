@@ -10,6 +10,7 @@ import lombok.Getter;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -46,7 +47,15 @@ public class WorkCreateRequest {
     @Schema(description = "반복 종료 날짜 (yyyy-MM-dd)", example = "2025-11-11", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private LocalDate repeatEndDate;
 
-    public Work toEntity(Long workerId, Integer hourlyRate) {
+    public Work toEntity(
+            Long workerId,
+            Integer hourlyRate,
+            int grossWorkMinutes,
+            int netWorkMinutes,
+            int basePay,
+            int nightAllowance,
+            int holidayAllowance
+    ) {
         LocalDate workDate = startTime.toLocalDate();
 
         String repeatDaysStr = repeatDays.stream()
@@ -62,8 +71,14 @@ public class WorkCreateRequest {
                 .endTime(endTime)
                 .actualEndTime(actualEndTime)
                 .restTimeMinutes(restTimeMinutes)
+                .grossWorkMinutes(grossWorkMinutes)
+                .netWorkMinutes(netWorkMinutes)
                 .memo(memo)
                 .hourlyRate(hourlyRate)
+                .basePay(basePay)
+                .nightAllowance(nightAllowance)
+                .holidayAllowance(holidayAllowance)
+                .grossIncome(basePay + nightAllowance + holidayAllowance)
                 .repeatDays(repeatDaysStr)
                 .repeatEndDate(repeatEndDate)
                 .build();

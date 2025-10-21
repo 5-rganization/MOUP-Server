@@ -335,31 +335,77 @@ public class WorkService {
     }
 
     private Work createWorkHelper(Worker worker, WorkCreateRequest request) {
-        int hourlyRate = salaryRepository.findByWorkerId(worker.getId())
-                .map(Salary::getHourlyRate)
-                .orElse(0);
+        Salary salary = salaryRepository.findByWorkerId(worker.getId())
+                .orElseThrow(SalaryWorkerNotFoundException::new);
+
+        int hourlyRate = (salary != null) ? salary.getHourlyRate() : 0;
+        boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
 
         verifyStartEndTime(request.getStartTime(), request.getEndTime());
 
-        Work work = request.toEntity(worker.getId(), hourlyRate);
-        workRepository.create(work);
+        // 1. DTO -> Entity 변환 (급여 필드는 모두 0으로 초기화)
+        Work work = request.toEntity(
+                worker.getId(),
+                hourlyRate,
+                0,
+                0,
+                0,
+                0,
+                0
+        );
 
-        salaryCalculationService.recalculateWorkWeek(worker.getId(), work.getWorkDate());
+        // 2. SalaryCalculationService를 호출하여 '일급' 계산
+        //    (주휴수당은 아직 모르므로 0을 전달)
+        Work workWithDailyIncome = salaryCalculationService.calculateDailyIncome(
+                work,
+                0,
+                hasNightAllowance
+        );
 
-        return work;
+        // 3. '일급'이 계산된 Work 객체를 DB에 생성 (이때 ID가 할당됨)
+        workRepository.create(workWithDailyIncome);
+
+        // 4. '주휴수당'을 포함한 '주급' 재계산
+        //    (방금 생성된 workWithDailyIncome 객체는 ID가 있으므로 사용 가능)
+        salaryCalculationService.recalculateWorkWeek(worker.getId(), workWithDailyIncome.getWorkDate());
+
+        // 5. ID와 일급이 포함된 객체 반환
+        return workWithDailyIncome;
     }
 
     private void updateWorkHelper(Worker worker, Long workId, WorkUpdateRequest request) {
-        int hourlyRate = salaryRepository.findByWorkerId(worker.getId())
-                .map(Salary::getHourlyRate)
-                .orElse(0);
+        Salary salary = salaryRepository.findByWorkerId(worker.getId())
+                .orElseThrow(SalaryWorkerNotFoundException::new);
+
+        int hourlyRate = (salary != null) ? salary.getHourlyRate() : 0;
+        boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
 
         verifyStartEndTime(request.getStartTime(), request.getEndTime());
 
-        Work work = request.toEntity(workId, worker.getId(), hourlyRate);
-        workRepository.update(work);
+        // 1. DTO -> Entity 변환 (급여 필드는 모두 0으로 초기화)
+        Work work = request.toEntity(
+                workId,
+                worker.getId(),
+                hourlyRate,
+                0,
+                0,
+                0,
+                0,
+                0
+        );
 
-        salaryCalculationService.recalculateWorkWeek(worker.getId(), work.getWorkDate());
+        // 2. SalaryCalculationService를 호출하여 '일급' 계산
+        Work workWithDailyIncome = salaryCalculationService.calculateDailyIncome(
+                work,
+                0,
+                hasNightAllowance
+        );
+
+        // 3. '일급'이 계산된 Work 객체를 DB에 업데이트
+        workRepository.update(workWithDailyIncome);
+
+        // 4. '주휴수당'을 포함한 '주급' 재계산
+        salaryCalculationService.recalculateWorkWeek(worker.getId(), workWithDailyIncome.getWorkDate());
     }
 
     private void deleteWorkHelper(Worker worker, Work work) {

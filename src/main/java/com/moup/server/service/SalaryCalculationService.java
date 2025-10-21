@@ -101,7 +101,7 @@ public class SalaryCalculationService {
     }
 
     /// 하루 근무에 대한 세전 일급(각종 수당 포함)을 상세하게 계산합니다.
-    private Work calculateDailyIncome(Work work, int dailyHolidayAllowance, boolean hasNightAllowance) {
+    public Work calculateDailyIncome(Work work, int dailyHolidayAllowance, boolean hasNightAllowance) {
         // end_time이 없으면 (아직 근무 중) 급여를 0으로 계산하고 반환
         if (work.getEndTime() == null) {
             return work.toBuilder()
@@ -221,9 +221,9 @@ public class SalaryCalculationService {
         return monthlyIncome >= 2_200_000 || monthlyHours >= insuranceMinHours;
     }
 
-    /// 알바생이 특정 월에 근무지별로 받은 급여 상세 내역(시간, 수당, 공제액)을 조회합니다.
+    /// 알바생이 특정 월에 근무지별로 받은 급여 상세 내역(시간, 수당, 공제액)을 조회합니다. (알바생 전용)
     @Transactional(readOnly = true)
-    public List<WorkerMonthlyWorkplaceSummaryResponse> getWorkerMonthlyWorkplaceSummaries(Long userId, int year, int month) {
+    public List<WorkerMonthlyWorkplaceSummaryResponse> getWorkerMonthlyWorkplaceSummaryList(Long userId, int year, int month) {
 
         // 1. 사용자가 속한 모든 'Worker' 목록을 가져옵니다 (근무지 목록)
         List<Worker> userWorkerList = workerRepository.findAllByUserId(userId);
@@ -288,6 +288,7 @@ public class SalaryCalculationService {
             // 4. 시간 및 수당 계산 (DB에 저장된 값을 합산)
             long totalWorkMinutes = 0;
             long totalNightMinutes = 0;
+            long totalRestTimeMinutes = 0;
             int totalHolidayAllowance = 0;
             boolean hasNightAllowance = salaryInfo.getHasNightAllowance();
 
@@ -318,6 +319,7 @@ public class SalaryCalculationService {
                 totalWorkMinutes += regularWorkMinutes;
                 totalNightMinutes += nightWorkMinutes;
                 totalHolidayAllowance += (work.getHolidayAllowance() != null ? work.getHolidayAllowance() : 0);
+                totalRestTimeMinutes += rest;
             }
 
             int grossIncome = workList.stream().mapToInt(work -> work.getGrossIncome() != null ? work.getGrossIncome() : 0).sum();
@@ -333,6 +335,7 @@ public class SalaryCalculationService {
                     .totalWorkMinutes(totalWorkMinutes)
                     .dayTimeMinutes(totalWorkMinutes - totalNightMinutes)
                     .nightTimeMinutes(totalNightMinutes)
+                    .restTimeMinutes(totalRestTimeMinutes)
                     .totalHolidayAllowance(totalHolidayAllowance)
                     .grossIncome(grossIncome)
                     .fourMajorInsurances(deductions.nationalPension() + deductions.healthInsurance() + deductions.employmentInsurance())
@@ -346,9 +349,9 @@ public class SalaryCalculationService {
         return summaryList;
     }
 
-    /// 사장님이 소유한 모든 사업장의 근무자 급여를 계산하고 저장합니다.
+    /// 사장님이 소유한 모든 사업장의 근무자 급여를 계산하고 저장합니다. (사장님 전용)
     @Transactional(readOnly = true)
-    public List<OwnerMonthlyWorkplaceSummaryResponse> getOwnerMonthlyWorkplaceSummaries(Long userId, int year, int month) { // 👈 [수정됨] 메서드 이름 변경
+    public List<OwnerMonthlyWorkplaceSummaryResponse> getOwnerMonthlyWorkplaceSummaryList(Long userId, int year, int month) {
 
         // 1. [쿼리 1] 해당 사용자가 소유한 모든 근무지를 조회합니다. (WorkplaceRepository 사용)
         List<Workplace> ownedWorkplaceList = workplaceRepository.findAllByOwnerId(userId);
