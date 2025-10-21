@@ -162,8 +162,10 @@ public class WorkplaceService {
     public void deleteWorkplace(Long userId, Long workplaceId) {
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
         if (workplace.getOwnerId().equals(userId)) {
+            // 근무지(매장)을 만든 사용자가 삭제하는 경우
             workplaceRepository.delete(workplaceId, userId);
         } else {
+            // 근무자가 근무지에서 탈퇴하는 경우
             Long workerId = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new).getId();
             workerRepository.delete(workerId, userId, workplaceId);
         }
