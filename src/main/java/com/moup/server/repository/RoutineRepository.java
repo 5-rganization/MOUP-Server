@@ -53,7 +53,7 @@ public interface RoutineRepository {
             JOIN works ON work_routine_mappings.work_id = work_routine_mappings.id
             JOIN workers ON works.worker_id = workers.id
             WHERE workers.user_id = #{userId}
-            AND works.work_date = #{today}
+            AND works.work_date = #{date}
             """)
     Integer countTotalRoutinesByUserIdAndDate(@Param("userId") Long userId, @Param("date") LocalDate date);
 

@@ -354,15 +354,15 @@ public class SalaryCalculationService {
         List<Workplace> ownedWorkplaceList = workplaceRepository.findAllByOwnerId(userId);
         if (ownedWorkplaceList.isEmpty()) { return Collections.emptyList(); }
 
-        List<Long> ownedWorkplaceIds = ownedWorkplaceList.stream().map(Workplace::getId).toList();
+        List<Long> ownedWorkplaceIdList = ownedWorkplaceList.stream().map(Workplace::getId).toList();
 
         // 2. [쿼리 2] 모든 근무지에 속한 모든 Worker를 한 번에 조회합니다. (WorkerRepository 사용)
-        List<Worker> allWorkersInWorkplaces = workerRepository.findAllByWorkplaceIdListIn(ownedWorkplaceIds);
-        if (allWorkersInWorkplaces.isEmpty()) { return Collections.emptyList(); }
+        List<Worker> allWorkerListInWorkplaces = workerRepository.findAllByWorkplaceIdListIn(ownedWorkplaceIdList);
+        if (allWorkerListInWorkplaces.isEmpty()) { return Collections.emptyList(); }
 
         // 처리에 필요한 ID 리스트 추출
-        List<Long> allWorkerIdList = allWorkersInWorkplaces.stream().map(Worker::getId).toList();
-        List<Long> allUserIdList = allWorkersInWorkplaces.stream().map(Worker::getUserId).distinct().toList();
+        List<Long> allWorkerIdList = allWorkerListInWorkplaces.stream().map(Worker::getId).toList();
+        List<Long> allUserIdList = allWorkerListInWorkplaces.stream().map(Worker::getUserId).distinct().toList();
 
         // 3. [쿼리 3] DTO에 필요한 nickname을 위해 User를 조회합니다. (UserRepository 사용)
         Map<Long, User> userMap = userRepository.findAllByIdListIn(allUserIdList)
@@ -397,7 +397,7 @@ public class SalaryCalculationService {
 
             List<OwnerMonthlyWorkerSummaryResponse> workerSummaryList = new ArrayList<>();
 
-            List<Worker> workersInThisWorkplace = allWorkersInWorkplaces.stream()
+            List<Worker> workersInThisWorkplace = allWorkerListInWorkplaces.stream()
                     .filter(w -> w.getWorkplaceId().equals(workplace.getId()))
                     .toList();
 
@@ -434,8 +434,6 @@ public class SalaryCalculationService {
                         .netIncome(deductions.netIncome())
                         .build();
                 workerSummaryList.add(workerSummary);
-
-                // 👈 [수정됨!] monthlySalaryRepository.create() 저장 로직 삭제
             }
 
             OwnerMonthlyWorkplaceSummaryResponse workplaceSummaryResponse = OwnerMonthlyWorkplaceSummaryResponse.builder()

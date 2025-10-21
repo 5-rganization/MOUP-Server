@@ -38,11 +38,13 @@ public interface SalaryRepository {
     /// @param workerIdList 조회할 급여의 근무자 ID 배열
     /// @return 조회된 Salary 객체 배열, 없으면 빈 배열
     @Select("""
-            SELECT * FROM salaries
-            WHERE worker_id IN
-            <foreach item='id' collection='workerIdList' open='(' separator=',' close=')'>
-                #{id}
-            </foreach>
+            <script>
+                SELECT * FROM salaries
+                WHERE worker_id IN
+                <foreach item='id' collection='workerIdList' open='(' separator=',' close=')'>
+                    #{id}
+                </foreach>
+            </script>
             """)
     List<Salary> findAllByWorkerIdIn(@Param("workerIdList") List<Long> workerIdList);
 

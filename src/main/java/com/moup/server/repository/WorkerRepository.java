@@ -71,11 +71,13 @@ public interface WorkerRepository {
     List<Worker> findAllByWorkplaceId(Long workplaceId);
 
     @Select("""
-            SELECT * FROM workers
-            WHERE workplace_id IN
-            <foreach item='id' collection='workplaceIdList' open='(' separator=',' close=')'>
-                #{id}
-            </foreach>
+            <script>
+                SELECT * FROM workers
+                WHERE workplace_id IN
+                <foreach item='id' collection='workplaceIdList' open='(' separator=',' close=')'>
+                    #{id}
+                </foreach>
+            </script>
             """)
     List<Worker> findAllByWorkplaceIdListIn(@Param("workplaceIdList") List<Long> workplaceIdList);
 
