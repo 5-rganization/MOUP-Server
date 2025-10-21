@@ -15,17 +15,19 @@ public interface WorkRepository {
     /// @param work 생성할 근무 Worker 객체
     /// @return 생성된 행의 수
     @Insert("""
-        INSERT INTO works (
-            worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time,
-            rest_time_minutes, memo, hourly_rate, base_pay, night_allowance, holiday_allowance,
-            gross_income, estimated_net_income, repeat_days, repeat_end_date
-        )
-        VALUES (
-            #{workerId}, #{workDate}, #{startTime}, #{actualStartTime}, #{endTime}, #{actualEndTime},
-            #{restTimeMinutes}, #{memo}, #{hourlyRate}, #{basePay}, #{nightAllowance}, #{holidayAllowance},
-            #{grossIncome}, #{estimatedNetIncome}, #{repeatDays}, #{repeatEndDate}
-        )
-        """)
+            INSERT INTO works (
+                worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time,
+                rest_time_minutes, gross_work_minutes, net_work_minutes, night_work_minutes,
+                memo, hourly_rate, base_pay, night_allowance, holiday_allowance,
+                gross_income, estimated_net_income, repeat_days, repeat_end_date
+            )
+            VALUES (
+                #{workerId}, #{workDate}, #{startTime}, #{actualStartTime}, #{endTime}, #{actualEndTime},
+                #{restTimeMinutes}, #{grossWorkMinutes}, #{netWorkMinutes}, #{nightWorkMinutes},
+                #{memo}, #{hourlyRate}, #{basePay}, #{nightAllowance}, #{holidayAllowance},
+                #{grossIncome}, #{estimatedNetIncome}, #{repeatDays}, #{repeatEndDate}
+            )
+            """)
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
     Long create(Work work);
 
@@ -96,15 +98,17 @@ public interface WorkRepository {
     ///
     /// @param work 업데이트할 Work 객체
     @Update("""
-        UPDATE works
-        SET
-            work_date = #{workDate}, start_time = #{startTime}, actual_start_time = #{actualStartTime},
-            end_time = #{endTime}, actual_end_time = #{actualEndTime}, rest_time_minutes = #{restTimeMinutes},
-            memo = #{memo}, hourly_rate = #{hourlyRate}, base_pay = #{basePay},
-            night_allowance = #{nightAllowance}, holiday_allowance = #{holidayAllowance},
-            gross_income = #{grossIncome}, estimated_net_income = #{estimatedNetIncome}, repeat_days = #{repeatDays}, repeat_end_date = #{repeatEndDate}
-        WHERE id = #{id} AND worker_id = #{workerId}
-        """)
+            UPDATE works
+            SET
+                work_date = #{workDate}, start_time = #{startTime}, actual_start_time = #{actualStartTime},
+                end_time = #{endTime}, actual_end_time = #{actualEndTime}, rest_time_minutes = #{restTimeMinutes},
+                gross_work_minutes = #{grossWorkMinutes}, net_work_minutes = #{netWorkMinutes},
+                night_work_minutes = #{nightWorkMinutes},
+                memo = #{memo}, hourly_rate = #{hourlyRate}, base_pay = #{basePay},
+                night_allowance = #{nightAllowance}, holiday_allowance = #{holidayAllowance},
+                gross_income = #{grossIncome}, estimated_net_income = #{estimatedNetIncome}, repeat_days = #{repeatDays}, repeat_end_date = #{repeatEndDate}
+            WHERE id = #{id} AND worker_id = #{workerId}
+            """)
     void update(Work work);
 
     /// 근무 ID와 근무자 ID에 해당하는 근무를 삭제하는 메서드

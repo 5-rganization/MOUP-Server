@@ -70,6 +70,17 @@ public interface WorkerRepository {
     @Select("SELECT * FROM workers WHERE workplace_id = #{workplaceId}")
     List<Worker> findAllByWorkplaceId(Long workplaceId);
 
+    @Select("""
+            <script>
+                SELECT * FROM workers
+                WHERE workplace_id IN
+                <foreach item='id' collection='workplaceIdList' open='(' separator=',' close=')'>
+                    #{id}
+                </foreach>
+            </script>
+            """)
+    List<Worker> findAllByWorkplaceIdListIn(@Param("workplaceIdList") List<Long> workplaceIdList);
+
     /// 근무지 ID와 제외할 사용자 ID를 통해 해당 근무지의 근무자 리스트를 반환하는 메서드 (특정 사용자 제외)
     ///
     /// @param workplaceId 조회할 근무지 ID
