@@ -31,7 +31,7 @@ jobs:
             # Execute SQL DB Schema
             echo "Executing SQL script..."
             cd /home/${{ secrets.RPI_USER }}/MOUP-Server
-            mysql --defaults-file=~/.my.cnf moup < src/main/resources/moup.sql 2> /tmp/mysql_error.log || true
+            mysql --defaults-file=~/.my.cnf moup < src/main/resources/moup.sql 2> /tmp/mysql_error.log
             
             echo "--- MySQL Error Log (moup.sql) ---"
             cat /tmp/mysql_error.log
@@ -40,7 +40,7 @@ jobs:
             # (Optional) Execute SQL Dummy Data
             if [[ "${{ github.event.inputs.insert_dummy_data }}" == "true" ]]; then
               echo "Checkbox is checked. Inserting dummy data..."
-              mysql --defaults-file=~/.my.cnf moup < src/main/resources/moup_dummy_data.sql 2> /tmp/mysql_dummy_error.log || true
+              mysql --defaults-file=~/.my.cnf moup < src/main/resources/moup_dummy_data.sql 2> /tmp/mysql_dummy_error.log
               
               echo "--- MySQL Error Log (moup_dummy_data.sql) ---"
               cat /tmp/mysql_dummy_error.log
