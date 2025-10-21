@@ -55,49 +55,65 @@ INSERT INTO user_tokens (user_id, refresh_token, expiry_date, created_at) VALUES
 -- =====================================
 -- 3) WORKPLACES
 -- =====================================
--- (수정) 관리자(@u_admin)가 소유한 근무지를 박사장(@u_owner_park)이 소유하도록 변경
 INSERT INTO workplaces (owner_id, workplace_name, category_name, is_shared, address, latitude, longitude) VALUES
                                                                                                               (@u_owner_park, 'GS25 역삼점', '편의점', 1, '서울 강남구 역삼동 123-45', 37.5009, 127.0374),
                                                                                                               (@u_owner_park, '메가커피 선릉점', '카페', 1, '서울 강남구 대치동 678-90', 37.5042, 127.0488),
                                                                                                               (@u_owner_park, '홍콩반점 홍대입구역점', '음식점', 1, '서울 마포구 서교동 345-67', 37.5567, 126.9237),
                                                                                                               (@u_owner_park, '올리브영 신촌점', '판매점', 1, '서울 서대문구 창천동 543-21', 37.5598, 126.9423),
-                                                                                                              (@u_owner_park, '개인 스터디 카페', '카페', 1, '서울 관악구 신림동 111-22', 37.4844, 126.9294);
+                                                                                                              (@u_owner_park, '개인 스터디 카페', '카페', 1, '서울 관악구 신림동 111-22', 37.4844, 126.9294),
+                                                                                                              -- 알바생이 소유한 개인 근무지 (is_shared = 0)
+                                                                                                              (@u_choi_worker, '최알바 개인 근무지', '기타', 0, '서울 서대문구 (개인)', 37.5599, 126.9424);
 
 SET @wp_gs25 = 1;
 SET @wp_mega = 2;
 SET @wp_hongkong = 3;
 SET @wp_olive = 4;
 SET @wp_studycafe = 5;
+SET @wp_personal_choi = 6;
 
 -- =====================================
 -- 4) WORKERS (user↔workplace)
 -- =====================================
--- (수정) 관리자(@u_admin)가 근무자로 등록된 레코드 삭제
+-- [수정] "사장/소유자"들이 본인 근무지를 생성하며 자동 등록되는 것을 먼저 INSERT
 INSERT INTO workers (user_id, workplace_id, worker_based_label_color, owner_based_label_color, is_accepted) VALUES
-                                                                                                                (@u_choi_worker, @wp_gs25, '#FF4136', '#FF4136', 1),  -- 최알바 -> GS25 역삼점
-                                                                                                                (@u_lee_worker, @wp_hongkong, '#2ECC40', '#2ECC40', 1), -- 이알바 -> 홍콩반점
-                                                                                                                (@u_kang_worker, @wp_mega, '#0074D9', '#0074D9', 1),    -- 강알바 -> 메가커피
-                                                                                                                (@u_choi_worker, @wp_mega, '#B10DC9', '#B10DC9', 1),    -- 최알바 -> 메가커피 (중복 근무)
-                                                                                                                (@u_lee_worker, @wp_olive, '#FF851B', '#FF851B', 1),  -- 이알바 -> 올리브영 (중복 근무)
-                                                                                                                (@u_owner_park, @wp_hongkong, '#FFDC00', '#FFDC00', 1);-- 박사장 -> 홍콩반점 (사장도 근무자로 등록)
+                                                                                                                -- 박사장의 사업장 5개
+                                                                                                                (@u_owner_park, @wp_gs25, '#FFDC00', '#FFDC00', 1),        -- (ID: 1)
+                                                                                                                (@u_owner_park, @wp_mega, '#FFDC00', '#FFDC00', 1),        -- (ID: 2)
+                                                                                                                (@u_owner_park, @wp_hongkong, '#FFDC00', '#FFDC00', 1),    -- (ID: 3)
+                                                                                                                (@u_owner_park, @wp_olive, '#FFDC00', '#FFDC00', 1),       -- (ID: 4)
+                                                                                                                (@u_owner_park, @wp_studycafe, '#FFDC00', '#FFDC00', 1), -- (ID: 5)
 
-SET @wk_choi_gs25 = 1;
-SET @wk_lee_hongkong = 2;
-SET @wk_kang_mega = 3;
-SET @wk_choi_mega = 4;
-SET @wk_lee_olive = 5;
--- SET @wk_kim_gs25 = 6; (삭제)
-SET @wk_park_hongkong = 6; -- (ID 수정 7 -> 6)
+                                                                                                                -- 최알바가 "개인 근무지"의 소유자로서 자동 등록
+                                                                                                                (@u_choi_worker, @wp_personal_choi, '#E6E6FA', '#E6E6FA', 1), -- (ID: 6)
+
+                                                                                                                -- 이후 알바생 근무자 등록 (ID가 7부터 시작)
+                                                                                                                (@u_choi_worker, @wp_gs25, '#FF4136', '#FF4136', 1),      -- (ID: 7)
+                                                                                                                (@u_lee_worker, @wp_hongkong, '#2ECC40', '#2ECC40', 1),     -- (ID: 8)
+                                                                                                                (@u_kang_worker, @wp_mega, '#0074D9', '#0074D9', 1),        -- (ID: 9)
+                                                                                                                (@u_choi_worker, @wp_mega, '#B10DC9', '#B10DC9', 1),        -- (ID: 10)
+                                                                                                                (@u_lee_worker, @wp_olive, '#FF851B', '#FF851B', 1);      -- (ID: 11)
+
+SET @wk_park_gs25 = 1;
+SET @wk_park_mega = 2;
+SET @wk_park_hongkong = 3;
+SET @wk_park_olive = 4;
+SET @wk_park_studycafe = 5;
+SET @wk_choi_personal = 6;
+
+SET @wk_choi_gs25 = 7;
+SET @wk_lee_hongkong = 8;
+SET @wk_kang_mega = 9;
+SET @wk_choi_mega = 10;
+SET @wk_lee_olive = 11;
 
 -- =====================================
 -- 5) ROUTINES & TASKS
 -- =====================================
--- (수정) 관리자(@u_admin)의 루틴을 박사장(@u_owner_park)에게 재할당
 INSERT INTO routines (user_id, routine_name, alarm_time) VALUES
                                                              (@u_choi_worker, '오전 오픈 준비', '08:30:00'),
                                                              (@u_choi_worker, '오후 마감 정리', '22:00:00'),
                                                              (@u_lee_worker, '주말 오픈 루틴', '10:00:00'),
-                                                             (@u_owner_park, '매니저 확인 사항', '09:00:00'), -- (소유자 변경)
+                                                             (@u_owner_park, '매니저 확인 사항', '09:00:00'),
                                                              (@u_kang_worker, '청결 관리 루틴', '15:00:00');
 
 SET @r_choi_open = 1;
@@ -124,10 +140,11 @@ INSERT INTO salaries (worker_id, salary_type, salary_calculation, hourly_rate, f
                                                                                                                                                                                                                                                             (@wk_lee_hongkong, 'SALARY_WEEKLY', 'SALARY_CALCULATION_HOURLY', 11000, NULL, NULL, 'MONDAY', 0, 0, 1, 1, 1, 1),
                                                                                                                                                                                                                                                             (@wk_kang_mega, 'SALARY_MONTHLY', 'SALARY_CALCULATION_FIXED', NULL, 2300000, 25, NULL, 1, 1, 1, 1, 1, 0),
                                                                                                                                                                                                                                                             (@wk_choi_mega, 'SALARY_DAILY', 'SALARY_CALCULATION_HOURLY', 9860, NULL, NULL, NULL, 0, 0, 0, 1, 1, 0),
-                                                                                                                                                                                                                                                            (@wk_lee_olive, 'SALARY_MONTHLY', 'SALARY_CALCULATION_HOURLY', 12000, NULL, 15, NULL, 1, 1, 1, 1, 1, 1);
+                                                                                                                                                                                                                                                            (@wk_lee_olive, 'SALARY_MONTHLY', 'SALARY_CALCULATION_HOURLY', 12000, NULL, 15, NULL, 1, 1, 1, 1, 1, 1),
+                                                                                                                                                                                                                                                            (@wk_choi_personal, 'SALARY_MONTHLY', 'SALARY_CALCULATION_HOURLY', 10000, NULL, 10, NULL, 1, 1, 1, 1, 1, 1);
 
 -- =====================================
--- 7) WORKS (근무 기록) - 스키마에 맞게 급여 필드 추가 및 재계산
+-- 7) WORKS (근무 기록)
 -- =====================================
 INSERT INTO works (
     worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time,
@@ -154,7 +171,11 @@ INSERT INTO works (
 (@wk_choi_gs25, '2025-10-22', '2025-10-22 09:00:00', '2025-10-22 09:00:00', '2025-10-22 18:00:00', '2025-10-22 18:00:00', 60, 540, 480, 0, '반복 근무 테스트', 10000, 80000, 0, 0, 80000, 77360, 'MONDAY', '2025-11-22 00:00:00'),
 
 -- 7. 이알바 @ 홍콩반점: (2번과 동일) (야간 0분)
-(@wk_lee_hongkong, '2025-10-23', '2025-10-23 14:00:00', '2025-10-23 14:00:00', '2025-10-23 22:00:00', '2025-10-23 22:00:00', 60, 480, 420, 0, NULL, 11000, 77000, 0, 0, 77000, 74490, 'TUESDAY', '2025-11-23 00:00:00');
+(@wk_lee_hongkong, '2025-10-23', '2025-10-23 14:00:00', '2025-10-23 14:00:00', '2025-10-23 22:00:00', '2025-10-23 22:00:00', 60, 480, 420, 0, NULL, 11000, 77000, 0, 0, 77000, 74490, 'TUESDAY', '2025-11-23 00:00:00'),
+
+-- 8. [추가] 최알바 @ 개인 근무지: 10-12시 (야간 0분)
+(@wk_choi_personal, '2025-10-20', '2025-10-20 10:00:00', '2025-10-20 10:00:00', '2025-10-20 12:00:00', '2025-10-20 12:00:00', 0, 120, 120, 0, '개인 용무 기록', 10000, 20000, 0, 0, 20000, 19340, NULL, NULL);
+
 
 SET @work_1 = 1;
 SET @work_2 = 2;
@@ -163,6 +184,7 @@ SET @work_4 = 4;
 SET @work_5 = 5;
 SET @work_6 = 6;
 SET @work_7 = 7;
+SET @work_8 = 8;
 
 -- =====================================
 -- 8) WORK_ROUTINE_MAPPINGS (근무-루틴 연결)
