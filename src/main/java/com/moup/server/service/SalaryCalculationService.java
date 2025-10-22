@@ -131,12 +131,13 @@ public class SalaryCalculationService {
         while (cursor.isBefore(end)) {
             // 1. 총 근무시간(Gross) 1분 추가
             grossWorkMinutes++;
-
-            LocalTime cursorTime = cursor.toLocalTime();
-            // 2. 22:00 이후 이거나, 06:00 이전일 때
-            if (cursorTime.isAfter(NIGHT_START_TIME) || cursorTime.equals(NIGHT_START_TIME) || cursorTime.isBefore(NIGHT_END_TIME)) {
-                // 야간 근무시간 1분 추가
-                nightWorkMinutes++;
+            if (hasNightAllowance) {
+                LocalTime cursorTime = cursor.toLocalTime();
+                // 2. 22:00 이후 이거나, 06:00 이전일 때
+                if (cursorTime.isAfter(NIGHT_START_TIME) || cursorTime.equals(NIGHT_START_TIME) || cursorTime.isBefore(NIGHT_END_TIME)) {
+                    // 야간 근무시간 1분 추가
+                    nightWorkMinutes++;
+                }
             }
             cursor = cursor.plusMinutes(1);
         }
