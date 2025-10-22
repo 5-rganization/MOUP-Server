@@ -45,9 +45,13 @@ public interface HomeSpecification {
                                                                 "totalWorkMinutes": 5280,
                                                                 "dayTimeMinutes": 5280,
                                                                 "nightTimeMinutes": 0,
+                                                                "restTimeMinutes": 360,
                                                                 "totalHolidayAllowance": 80000,
+                                                                "totalNightAllowance": 0,
                                                                 "grossIncome": 960000,
-                                                                "fourMajorInsurances": 86400,
+                                                                "nationalPension": 43200,
+                                                                "healthInsurance": 34560,
+                                                                "employmentInsurance": 8640,
                                                                 "incomeTax": 26400,
                                                                 "netIncome": 847200
                                                             },
@@ -68,15 +72,19 @@ public interface HomeSpecification {
                                                                 "totalWorkMinutes": 10560,
                                                                 "dayTimeMinutes": 9600,
                                                                 "nightTimeMinutes": 960,
+                                                                "restTimeMinutes": 1320,
                                                                 "totalHolidayAllowance": 0,
+                                                                "totalNightAllowance": 80000,
                                                                 "grossIncome": 2200000,
-                                                                "fourMajorInsurances": 215600,
+                                                                "nationalPension": 99000,
+                                                                "healthInsurance": 96800,
+                                                                "employmentInsurance": 19800,
                                                                 "incomeTax": 88000,
                                                                 "netIncome": 1896400
                                                             }
                                                         ]
                                                     }
-                                                    """),
+                                                """),
                                     @ExampleObject(name = "사장님 홈 화면 조회", summary = "사장님 홈 화면 정보",
                                             value = """
                                                     {
@@ -94,11 +102,13 @@ public interface HomeSpecification {
                                                                     {
                                                                         "nickname": "성실알바최씨",
                                                                         "totalWorkMinutes": 5280,
+                                                                        "grossIncome": 960000,
                                                                         "netIncome": 847200
                                                                     },
                                                                     {
                                                                         "nickname": "주말알바이씨",
                                                                         "totalWorkMinutes": 2640,
+                                                                        "grossIncome": 380000,
                                                                         "netIncome": 338800
                                                                     }
                                                                 ]
@@ -113,6 +123,7 @@ public interface HomeSpecification {
                                                                     {
                                                                         "nickname": "미소알바강씨",
                                                                         "totalWorkMinutes": 4800,
+                                                                        "grossIncome": 820000,
                                                                         "netIncome": 750000
                                                                     }
                                                                 ]
