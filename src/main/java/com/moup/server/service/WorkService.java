@@ -335,11 +335,9 @@ public class WorkService {
     }
 
     private Work createWorkHelper(Worker worker, WorkCreateRequest request) {
-        Salary salary = salaryRepository.findByWorkerId(worker.getId())
-                .orElseThrow(SalaryWorkerNotFoundException::new);
+        Optional<Salary> salary = salaryRepository.findByWorkerId(worker.getId());
 
-        int hourlyRate = (salary != null) ? salary.getHourlyRate() : 0;
-        boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
+        int hourlyRate = salary.isPresent() ? salary.get().getHourlyRate() : 0;
 
         verifyStartEndTime(request.getStartTime(), request.getEndTime());
 
@@ -357,11 +355,7 @@ public class WorkService {
 
         // 2. SalaryCalculationService를 호출하여 '일급' 계산
         //    (주휴수당은 아직 모르므로 0을 전달)
-        Work workWithDailyIncome = salaryCalculationService.calculateDailyIncome(
-                work,
-                0,
-                hasNightAllowance
-        );
+        Work workWithDailyIncome = salaryCalculationService.calculateDailyIncome(work, 0);
 
         // 3. '일급'이 계산된 Work 객체를 DB에 생성 (이때 ID가 할당됨)
         workRepository.create(workWithDailyIncome);
@@ -375,11 +369,9 @@ public class WorkService {
     }
 
     private void updateWorkHelper(Worker worker, Long workId, WorkUpdateRequest request) {
-        Salary salary = salaryRepository.findByWorkerId(worker.getId())
-                .orElseThrow(SalaryWorkerNotFoundException::new);
+        Optional<Salary> salary = salaryRepository.findByWorkerId(worker.getId());
 
-        int hourlyRate = (salary != null) ? salary.getHourlyRate() : 0;
-        boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
+        int hourlyRate = salary.isPresent() ? salary.get().getHourlyRate() : 0;
 
         verifyStartEndTime(request.getStartTime(), request.getEndTime());
 
@@ -397,11 +389,7 @@ public class WorkService {
         );
 
         // 2. SalaryCalculationService를 호출하여 '일급' 계산
-        Work workWithDailyIncome = salaryCalculationService.calculateDailyIncome(
-                work,
-                0,
-                hasNightAllowance
-        );
+        Work workWithDailyIncome = salaryCalculationService.calculateDailyIncome(work, 0);
 
         // 3. '일급'이 계산된 Work 객체를 DB에 업데이트
         workRepository.update(workWithDailyIncome);

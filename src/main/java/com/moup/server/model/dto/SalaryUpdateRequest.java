@@ -48,6 +48,9 @@ public class SalaryUpdateRequest {
     @Schema(description = "소득세 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean hasIncomeTax;
     @NotNull(message = "필수 입력값입니다.")
+    @Schema(description = "주휴수당 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Boolean hasHolidayAllowance;
+    @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "야간수당 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean hasNightAllowance;
 
@@ -66,6 +69,7 @@ public class SalaryUpdateRequest {
                 .hasEmploymentInsurance(hasEmploymentInsurance)
                 .hasIndustrialAccident(hasIndustrialAccident)
                 .hasIncomeTax(hasIncomeTax)
+                .hasHolidayAllowance(hasHolidayAllowance)
                 .hasNightAllowance(hasNightAllowance)
                 .build();
     }
