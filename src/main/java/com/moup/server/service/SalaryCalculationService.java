@@ -62,6 +62,12 @@ public class SalaryCalculationService {
     /// 특정 날짜가 포함된 '주' 단위로 급여(주휴수당 등)를 재계산합니다.
     @Transactional
     public void recalculateWorkWeek(Long workerId, LocalDate date) {
+        Salary salary = salaryRepository.findByWorkerId(workerId)
+                .orElse(null); // Salary 정보가 없으면 기본값(false) 사용
+
+        boolean hasHolidayAllowance = (salary != null) && salary.getHasHolidayAllowance();
+        boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
+
         LocalDate startOfWeek = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         LocalDate endOfWeek = date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
 
@@ -75,7 +81,7 @@ public class SalaryCalculationService {
                 .sum();
 
         int weeklyHolidayAllowance = 0;
-        if (weeklyWorkMinutes >= 15 * 60) {
+        if (weeklyWorkMinutes >= 15 * 60 && hasHolidayAllowance) {
             // 주휴수당 발생 시, 주 평균 근무시간을 기준으로 수당을 계산합니다.
             double avgDailyWorkHours = (weeklyWorkMinutes / 60.0) / weekWorks.size();
             weeklyHolidayAllowance = (int) (avgDailyWorkHours * weekWorks.get(0).getHourlyRate());
@@ -86,7 +92,7 @@ public class SalaryCalculationService {
 
         List<Work> updatedWorks = weekWorks.stream()
                 .filter(work -> work.getEndTime() != null)
-                .map(work -> calculateDailyIncome(work, dailyHolidayAllowance))
+                .map(work -> calculateDailyIncome(work, dailyHolidayAllowance, hasNightAllowance))
                 .toList();
 
         // 해당 주의 모든 근무일에 대해 일급을 재계산합니다.
@@ -97,7 +103,7 @@ public class SalaryCalculationService {
     }
 
     /// 하루 근무에 대한 세전 일급(각종 수당 포함)을 상세하게 계산합니다.
-    public Work calculateDailyIncome(Work work, int dailyHolidayAllowance) {
+    public Work calculateDailyIncome(Work work, int dailyHolidayAllowance, boolean hasNightAllowance) {
         // end_time이 없으면 (아직 근무 중) 급여를 0으로 계산하고 반환
         if (work.getEndTime() == null) {
             return work.toBuilder()
@@ -141,7 +147,10 @@ public class SalaryCalculationService {
         // --- 수당 계산 ---
         int basePay = (int) (netWorkMinutes / 60.0 * work.getHourlyRate());
 
-        int nightAllowance = (int) (nightWorkMinutes / 60.0 * work.getHourlyRate() * 0.5);
+        int nightAllowance = 0;
+        if (hasNightAllowance) { nightAllowance = (int) (nightWorkMinutes / 60.0 * work.getHourlyRate() * 0.5); }
+
+        int grossIncome = basePay + nightAllowance + dailyHolidayAllowance;
 
         // 계산된 모든 급여 항목을 Work 객체로 반환합니다.
         return work.toBuilder()
@@ -151,7 +160,7 @@ public class SalaryCalculationService {
                 .basePay(basePay)
                 .nightAllowance(nightAllowance)
                 .holidayAllowance(dailyHolidayAllowance)
-                .grossIncome(basePay + nightAllowance + dailyHolidayAllowance)
+                .grossIncome(grossIncome)
                 .build();
     }
 
