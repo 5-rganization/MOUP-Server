@@ -4,6 +4,7 @@ import com.moup.server.model.entity.Work;
 import org.apache.ibatis.annotations.*;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -110,6 +111,18 @@ public interface WorkRepository {
             WHERE id = #{id} AND worker_id = #{workerId}
             """)
     void update(Work work);
+
+    /// 근무 ID에 해당하는 근무의 실제 출근 시간을 업데이트하는 메서드
+    ///
+    /// @param actualStartTime 업데이트할 실제 출근 시간
+    @Update("UPDATE works SET actual_start_time = #{actualStartTime} WHERE id = #{id}")
+    void updateActualStartTimeById(Long id, LocalTime actualStartTime);
+
+    /// 근무 ID에 해당하는 근무의 실제 퇴근 시간을 업데이트하는 메서드
+    ///
+    /// @param actualEndTime 업데이트할 실제 퇴근 시간
+    @Update("UPDATE works SET works.actual_end_time = #{actualEndTime} WHERE id = #{id}")
+    void updateActualEndTimeById(Long id, LocalTime actualEndTime);
 
     /// 근무 ID와 근무자 ID에 해당하는 근무를 삭제하는 메서드
     ///
