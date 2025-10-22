@@ -62,9 +62,11 @@ public class SalaryCalculationService {
     /// 특정 날짜가 포함된 '주' 단위로 급여(주휴수당 등)를 재계산합니다.
     @Transactional
     public void recalculateWorkWeek(Long workerId, LocalDate date) {
-        boolean hasNightAllowance = salaryRepository.findByWorkerId(workerId)
-                .map(Salary::getHasNightAllowance)
-                .orElse(false);
+        Salary salary = salaryRepository.findByWorkerId(workerId)
+                .orElse(null); // Salary 정보가 없으면 기본값(false) 사용
+
+        boolean hasHolidayAllowance = (salary != null) && salary.getHasHolidayAllowance();
+        boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
 
         LocalDate startOfWeek = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         LocalDate endOfWeek = date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
@@ -79,7 +81,7 @@ public class SalaryCalculationService {
                 .sum();
 
         int weeklyHolidayAllowance = 0;
-        if (weeklyWorkMinutes >= 15 * 60) {
+        if (weeklyWorkMinutes >= 15 * 60 && hasHolidayAllowance) {
             // 주휴수당 발생 시, 주 평균 근무시간을 기준으로 수당을 계산합니다.
             double avgDailyWorkHours = (weeklyWorkMinutes / 60.0) / weekWorks.size();
             weeklyHolidayAllowance = (int) (avgDailyWorkHours * weekWorks.get(0).getHourlyRate());
@@ -127,13 +129,14 @@ public class SalaryCalculationService {
         LocalDateTime cursor = start;
 
         while (cursor.isBefore(end)) {
-            grossWorkMinutes++; // 1. 총 근무시간(Gross) 1분 추가
-
+            // 1. 총 근무시간(Gross) 1분 추가
+            grossWorkMinutes++;
             if (hasNightAllowance) {
                 LocalTime cursorTime = cursor.toLocalTime();
                 // 2. 22:00 이후 이거나, 06:00 이전일 때
                 if (cursorTime.isAfter(NIGHT_START_TIME) || cursorTime.equals(NIGHT_START_TIME) || cursorTime.isBefore(NIGHT_END_TIME)) {
-                    nightWorkMinutes++; // 야간 근무시간 1분 추가
+                    // 야간 근무시간 1분 추가
+                    nightWorkMinutes++;
                 }
             }
             cursor = cursor.plusMinutes(1);
@@ -146,9 +149,9 @@ public class SalaryCalculationService {
         int basePay = (int) (netWorkMinutes / 60.0 * work.getHourlyRate());
 
         int nightAllowance = 0;
-        if (hasNightAllowance) {
-            nightAllowance = (int) (nightWorkMinutes / 60.0 * work.getHourlyRate() * 0.5);
-        }
+        if (hasNightAllowance) { nightAllowance = (int) (nightWorkMinutes / 60.0 * work.getHourlyRate() * 0.5); }
+
+        int grossIncome = basePay + nightAllowance + dailyHolidayAllowance;
 
         // 계산된 모든 급여 항목을 Work 객체로 반환합니다.
         return work.toBuilder()
@@ -158,7 +161,7 @@ public class SalaryCalculationService {
                 .basePay(basePay)
                 .nightAllowance(nightAllowance)
                 .holidayAllowance(dailyHolidayAllowance)
-                .grossIncome(basePay + nightAllowance + dailyHolidayAllowance)
+                .grossIncome(grossIncome)
                 .build();
     }
 
@@ -231,7 +234,7 @@ public class SalaryCalculationService {
         List<Worker> userWorkerList = workerRepository.findAllByUserId(userId);
         if (userWorkerList.isEmpty()) { return Collections.emptyList(); }
 
-        List<WorkerMonthlyWorkplaceSummaryResponse> summaryList = new ArrayList<>();
+        List<WorkerMonthlyWorkplaceSummaryResponse> summaryResponseList = new ArrayList<>();
         YearMonth targetMonth = YearMonth.of(year, month);
         LocalDate startDate = targetMonth.atDay(1);
         LocalDate endDate = targetMonth.atEndOfMonth();
@@ -240,7 +243,7 @@ public class SalaryCalculationService {
         List<Long> workerIdList = userWorkerList.stream().map(Worker::getId).toList();
 
         // [쿼리 1] 모든 Salary 정보
-        Map<Long, Salary> salaryMap = salaryRepository.findAllByWorkerIdIn(workerIdList)
+        Map<Long, Salary> salaryMap = salaryRepository.findAllByWorkerIdListIn(workerIdList)
                 .stream()
                 .collect(Collectors.toMap(Salary::getWorkerId, s -> s));
 
@@ -288,23 +291,28 @@ public class SalaryCalculationService {
 
 
             // 4. 시간 및 수당 계산 (DB에 저장된 값을 합산)
-            long totalWorkMinutes = workList.stream()
+            long totalWorkMinutes = workList.stream() // 순 근무시간 합계
                     .mapToLong(work -> work.getNetWorkMinutes() != null ? work.getNetWorkMinutes() : 0)
                     .sum();
 
-            long totalNightMinutes = workList.stream()
+            long totalNightMinutes = workList.stream() // 야간 근무 시간(분) 합계
                     .mapToLong(work -> work.getNightWorkMinutes() != null ? work.getNightWorkMinutes() : 0)
                     .sum();
 
-            long totalRestTimeMinutes = workList.stream()
+            long totalRestTimeMinutes = workList.stream() // 휴게 시간(분) 합계
                     .mapToLong(work -> work.getRestTimeMinutes() != null ? work.getRestTimeMinutes() : 0)
                     .sum();
 
-            int totalHolidayAllowance = workList.stream()
+            int totalHolidayAllowance = workList.stream() // 주휴수당(원) 합계
                     .mapToInt(work -> work.getHolidayAllowance() != null ? work.getHolidayAllowance() : 0)
                     .sum();
 
-            int grossIncome = workList.stream()
+            // --- 야간수당(원) 합계 계산 ---
+            int totalNightAllowance = workList.stream()
+                    .mapToInt(work -> work.getNightAllowance() != null ? work.getNightAllowance() : 0)
+                    .sum();
+
+            int grossIncome = workList.stream() // 세전 총 소득 합계
                     .mapToInt(work -> work.getGrossIncome() != null ? work.getGrossIncome() : 0)
                     .sum();
 
@@ -314,24 +322,37 @@ public class SalaryCalculationService {
             DeductionDetails deductions = calculateDeductions(grossIncome, totalWorkHours, salaryInfo);
 
             // --- 6. 최종 DTO 조립 ---
-            WorkerMonthlyWorkplaceSummaryResponse summary = WorkerMonthlyWorkplaceSummaryResponse.builder()
+            // 6-1. DTO에 맞게 nullable 공제 항목 계산
+            Integer nationalPension = salaryInfo.getHasNationalPension() ? deductions.nationalPension() : null;
+            Integer healthInsurance = salaryInfo.getHasHealthInsurance() ? deductions.healthInsurance() : null;
+            Integer employmentInsurance = salaryInfo.getHasEmploymentInsurance() ? deductions.employmentInsurance() : null;
+            Integer incomeTax = salaryInfo.getHasIncomeTax() ? deductions.incomeTax() : null;
+
+            // 6-2. netIncome 룰 적용
+            // 4개 항목이 모두 null이면 netIncome도 null, 아니면 계산된 값
+            Integer netIncome = getNullableNetIncome(salaryInfo, deductions);
+
+            WorkerMonthlyWorkplaceSummaryResponse summaryInfo = WorkerMonthlyWorkplaceSummaryResponse.builder()
                     .workplaceSummaryInfo(workplaceSummaryInfo)
                     .salarySummaryInfo(salarySummaryInfo)
                     .totalWorkMinutes(totalWorkMinutes)
-                    .dayTimeMinutes(totalWorkMinutes - totalNightMinutes) // netWorkMinutes - nightWorkMinutes = dayTimeMinutes
+                    .dayTimeMinutes(totalWorkMinutes - totalNightMinutes)
                     .nightTimeMinutes(totalNightMinutes)
                     .restTimeMinutes(totalRestTimeMinutes)
-                    .totalHolidayAllowance(totalHolidayAllowance)
                     .grossIncome(grossIncome)
-                    .fourMajorInsurances(deductions.nationalPension() + deductions.healthInsurance() + deductions.employmentInsurance())
-                    .incomeTax(deductions.incomeTax())
-                    .netIncome(deductions.netIncome())
+                    .totalHolidayAllowance(salaryInfo.getHasHolidayAllowance() ? totalHolidayAllowance : null)
+                    .totalNightAllowance(salaryInfo.getHasNightAllowance() ? totalNightAllowance : null)
+                    .nationalPension(nationalPension)
+                    .healthInsurance(healthInsurance)
+                    .employmentInsurance(employmentInsurance)
+                    .incomeTax(incomeTax)
+                    .netIncome(netIncome)
                     .build();
 
-            summaryList.add(summary);
+            summaryResponseList.add(summaryInfo);
         }
 
-        return summaryList;
+        return summaryResponseList;
     }
 
     /// 사장님이 소유한 모든 사업장의 근무자 급여를 계산하고 저장합니다. (사장님 전용)
@@ -358,7 +379,7 @@ public class SalaryCalculationService {
                 .collect(Collectors.toMap(User::getId, user -> user));
 
         // 4. [쿼리 4] 모든 근무자의 급여 정보를 한 번에 조회 (SalaryRepository 사용)
-        Map<Long, Salary> salaryMap = salaryRepository.findAllByWorkerIdIn(allWorkerIdList)
+        Map<Long, Salary> salaryMap = salaryRepository.findAllByWorkerIdListIn(allWorkerIdList)
                 .stream()
                 .collect(Collectors.toMap(Salary::getWorkerId, salary -> salary));
 
@@ -372,7 +393,7 @@ public class SalaryCalculationService {
                 .collect(Collectors.groupingBy(Work::getWorkerId));
 
         // 6. [In-Memory] 메모리에 로드된 데이터로 DTO 조립
-        List<OwnerMonthlyWorkplaceSummaryResponse> responseList = new ArrayList<>();
+        List<OwnerMonthlyWorkplaceSummaryResponse> summaryResponseList = new ArrayList<>();
 
         // 기준 루프를 '근무지'로 변경
         for (Workplace workplace : ownedWorkplaceList) {
@@ -383,7 +404,7 @@ public class SalaryCalculationService {
                     .isShared(workplace.isShared())
                     .build();
 
-            List<OwnerMonthlyWorkerSummaryResponse> workerSummaryList = new ArrayList<>();
+            List<OwnerMonthlyWorkerSummaryResponse> workerSummaryInfoList = new ArrayList<>();
 
             List<Worker> workersInThisWorkplace = allWorkerListInWorkplaces.stream()
                     .filter(w -> w.getWorkplaceId().equals(workplace.getId()))
@@ -398,8 +419,8 @@ public class SalaryCalculationService {
                 Salary salaryInfo = salaryMap.get(workerId);
                 if (salaryInfo == null) { continue; }
 
-                // --- 급여 계산 (수정됨) ---
-                // [수정 없음] 세전 총소득은 미리 계산된 값을 합산
+                // --- 급여 계산 ---
+                // 세전 총소득은 미리 계산된 값을 합산
                 int grossMonthlyIncome = workerWorkList.stream()
                         .mapToInt(Work::getGrossIncome)
                         .sum();
@@ -415,24 +436,35 @@ public class SalaryCalculationService {
                 User user = userMap.get(worker.getUserId());
                 String nickname = (user != null) ? user.getNickname() : "탈퇴한 근무자";
 
+                Integer netIncome = getNullableNetIncome(salaryInfo, deductions);
+
                 // --- 근무자 요약 DTO (OwnerMonthlyWorkerSummaryResponse) 생성 ---
                 OwnerMonthlyWorkerSummaryResponse workerSummary = OwnerMonthlyWorkerSummaryResponse.builder()
                         .nickname(nickname)
                         .totalWorkMinutes(totalNetWorkMinutes)
-                        .netIncome(deductions.netIncome())
+                        .grossIncome(grossMonthlyIncome)
+                        .netIncome(netIncome)
                         .build();
-                workerSummaryList.add(workerSummary);
+                workerSummaryInfoList.add(workerSummary);
             }
 
             OwnerMonthlyWorkplaceSummaryResponse workplaceSummaryResponse = OwnerMonthlyWorkplaceSummaryResponse.builder()
                     .workplaceSummaryInfo(workplaceSummary)
-                    .monthlyWorkerSummaryInfoList(workerSummaryList)
+                    .monthlyWorkerSummaryInfoList(workerSummaryInfoList)
                     .build();
 
-            responseList.add(workplaceSummaryResponse);
+            summaryResponseList.add(workplaceSummaryResponse);
         }
 
-        return responseList;
+        return summaryResponseList;
+    }
+
+    private Integer getNullableNetIncome(Salary salaryInfo, DeductionDetails deductions) {
+        boolean hasAnyDeduction = salaryInfo.getHasNationalPension() ||
+                salaryInfo.getHasHealthInsurance() ||
+                salaryInfo.getHasEmploymentInsurance() ||
+                salaryInfo.getHasIncomeTax();
+        return hasAnyDeduction ? deductions.netIncome() : null;
     }
 
     /// 세전소득, 근무시간, 급여정보를 바탕으로 모든 공제액과 세후소득을 계산합니다.

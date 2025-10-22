@@ -34,6 +34,8 @@ public class SalaryDetailResponse {
     private Boolean hasIndustrialAccident;
     @Schema(description = "소득세 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean hasIncomeTax;
+    @Schema(description = "주휴수당 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Boolean hasHolidayAllowance;
     @Schema(description = "야간수당 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean hasNightAllowance;
 }

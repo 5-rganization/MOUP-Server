@@ -162,6 +162,7 @@ CREATE TABLE `salaries`
     `has_employment_insurance` TINYINT(1)                                                                          NOT NULL,
     `has_industrial_accident`  TINYINT(1)                                                                          NOT NULL,
     `has_income_tax`           TINYINT(1)                                                                          NOT NULL,
+    `has_holiday_allowance`    TINYINT(1)                                                                          NOT NULL,
     `has_night_allowance`      TINYINT(1)                                                                          NOT NULL,
     FOREIGN KEY (`worker_id`) REFERENCES workers (`id`) ON DELETE CASCADE
 );
