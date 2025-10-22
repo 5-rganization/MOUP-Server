@@ -56,6 +56,7 @@ public interface WorkplaceSpecification {
                                                             "hasEmploymentInsurance": true,
                                                             "hasIndustrialAccident": true,
                                                             "hasIncomeTax": false,
+                                                            "hasHolidayAllowance": false
                                                             "hasNightAllowance": false
                                                         }
                                                     }
@@ -102,6 +103,7 @@ public interface WorkplaceSpecification {
                                                             "hasEmploymentInsurance": true,
                                                             "hasIndustrialAccident": true,
                                                             "hasIncomeTax": false,
+                                                            "hasHolidayAllowance": false
                                                             "hasNightAllowance": false
                                                         }
                                                     }
@@ -187,6 +189,7 @@ public interface WorkplaceSpecification {
                                                             "hasEmploymentInsurance": true,
                                                             "hasIndustrialAccident": true,
                                                             "hasIncomeTax": false,
+                                                            "hasHolidayAllowance": false
                                                             "hasNightAllowance": false
                                                         }
                                                     }
