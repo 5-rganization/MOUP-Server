@@ -16,7 +16,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.util.Collections;
 
 @RestController
 @Validated
@@ -110,6 +112,37 @@ public class WorkController implements WorkSpecification {
 
         workService.updateWork(userId, workId, request);
         return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @PatchMapping("/workplaces/{workplaceId}/workers/me/works")
+    public ResponseEntity<?> updateActualStartTimeOrCreateWork(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId
+    ) {
+        Long userId = identityService.getCurrentUserId();
+
+        if (workService.updateActualStartTimeOrCreateWork(userId, workplaceId)) {
+            return ResponseEntity.noContent().build();
+        } else {
+            WorkCreateRequest workCreateRequest = WorkCreateRequest.builder()
+                    .routineIdList(Collections.emptyList())
+                    .startTime(LocalDateTime.now())
+                    .actualStartTime(LocalDateTime.now())
+                    .endTime(null)
+                    .actualEndTime(null)
+                    .restTimeMinutes(0)
+                    .memo(null)
+                    .repeatDays(Collections.emptyList())
+                    .repeatEndDate(null)
+                    .build();
+
+            WorkCreateResponse response = workService.createMyWork(userId, workplaceId, workCreateRequest);
+            URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                    .path("/{id}")
+                    .buildAndExpand(response.getWorkId())
+                    .toUri();
+            return ResponseEntity.created(location).body(response);
+        }
     }
 
     @Override

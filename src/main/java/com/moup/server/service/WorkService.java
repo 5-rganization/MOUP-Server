@@ -328,18 +328,24 @@ public class WorkService {
     }
 
     @Transactional
-    public void updateActualStartTime(Long userId, Long workplaceId, Long workId) {
+    public boolean updateActualStartTimeOrCreateWork(Long userId, Long workplaceId) {
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplaceOwnerId);
 
-        if (!workRepository.existsByIdAndWorkerId(workId, userWorker.getId())) { throw new WorkNotFoundException(); }
+        Optional<Work> optWorkToStart = workRepository.findEligibleWorkForClockIn(userWorker.getId(), LocalDateTime.now());
 
-        workRepository.updateActualStartTimeById(workId, LocalTime.now());
+        if (optWorkToStart.isPresent()) {
+            Work workToStart = optWorkToStart.get();
+            workRepository.updateActualStartTimeById(workToStart.getId(), LocalTime.now());
+            return true;
+        } else {
+            return false;
+        }
     }
 
     @Transactional
-    public void updateActualEndTime(Long userId, Long workplaceId, Long workId) {
+    public void updateActualEndTime(Long userId, Long workplaceId) {
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplaceOwnerId);

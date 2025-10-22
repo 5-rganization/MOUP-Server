@@ -4,6 +4,7 @@ import com.moup.server.model.entity.Work;
 import org.apache.ibatis.annotations.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
@@ -93,6 +94,31 @@ public interface WorkRepository {
             @Param("workerIdList") List<Long> workerIdList,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
+    );
+
+    /// 특정 근무자(workerId)의 근무 중,
+    /// 1. 현재 시간(currentTime)보다 1시간 이내에 시작하고 (start_time)
+    /// 2. 아직 근무가 종료되지 않았으며 (end_time IS NULL)
+    /// 3. 실제 퇴근도 기록되지 않은 (actual_end_time IS NULL)
+    /// 가장 빠른 근무 1건을 조회하는 메서드
+    ///
+    /// @param workerId 조회할 근무자 ID
+    /// @param currentDateTime 기준이 되는 현재 시간
+    /// @return 조회된 Work 객체, 없으면 Optional.empty
+    @Select("""
+            SELECT * FROM works
+            WHERE worker_id = #{workerId}
+                AND actual_start_time IS NULL
+                AND end_time IS NULL
+                AND actual_end_time IS NULL
+                AND start_time > #{currentDateTime}
+                AND start_time BETWEEN DATE_SUB(#{currentTime}, INTERVAL 1 HOUR) AND DATE_ADD(#{currentTime}, INTERVAL 1 HOUR)
+            ORDER BY start_time
+            LIMIT 1
+    """)
+    Optional<Work> findEligibleWorkForClockIn(
+            @Param("workerId") Long workerId,
+            @Param("currentDateTime") LocalDateTime currentDateTime
     );
 
     /// 근무 ID와 근무자 ID에 해당하는 근무를 업데이트하는 메서드
