@@ -388,7 +388,7 @@ public class SalaryCalculationService {
                 .collect(Collectors.groupingBy(Work::getWorkerId));
 
         // 6. [In-Memory] 메모리에 로드된 데이터로 DTO 조립
-        List<OwnerMonthlyWorkplaceSummaryResponse> summaryResponseListList = new ArrayList<>();
+        List<OwnerMonthlyWorkplaceSummaryResponse> summaryResponseList = new ArrayList<>();
 
         // 기준 루프를 '근무지'로 변경
         for (Workplace workplace : ownedWorkplaceList) {
@@ -456,10 +456,10 @@ public class SalaryCalculationService {
                     .monthlyWorkerSummaryInfoList(workerSummaryInfoList)
                     .build();
 
-            summaryResponseListList.add(workplaceSummaryResponse);
+            summaryResponseList.add(workplaceSummaryResponse);
         }
 
-        return summaryResponseListList;
+        return summaryResponseList;
     }
 
     /// 세전소득, 근무시간, 급여정보를 바탕으로 모든 공제액과 세후소득을 계산합니다.
