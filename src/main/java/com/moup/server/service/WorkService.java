@@ -328,6 +328,28 @@ public class WorkService {
     }
 
     @Transactional
+    public void updateActualStartTime(Long userId, Long workplaceId, Long workId) {
+        Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
+        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
+        permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplaceOwnerId);
+
+        if (!workRepository.existsByIdAndWorkerId(workId, userWorker.getId())) { throw new WorkNotFoundException(); }
+
+        workRepository.updateActualStartTimeById(workId, LocalTime.now());
+    }
+
+    @Transactional
+    public void updateActualEndTime(Long userId, Long workplaceId, Long workId) {
+        Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
+        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
+        permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplaceOwnerId);
+
+        if (!workRepository.existsByIdAndWorkerId(workId, userWorker.getId())) { throw new WorkNotFoundException(); }
+
+        workRepository.updateActualEndTimeById(workId, LocalTime.now());
+    }
+
+    @Transactional
     public void deleteWork(Long requesterUserId, Long workId) {
         VerifiedWorkContextForUD context = getVerifiedWorkContextForUD(requesterUserId, workId);
 
