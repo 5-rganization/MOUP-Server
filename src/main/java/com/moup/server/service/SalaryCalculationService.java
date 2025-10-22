@@ -320,12 +320,7 @@ public class SalaryCalculationService {
 
             // 6-2. netIncome 룰 적용
             // 4개 항목이 모두 null이면 netIncome도 null, 아니면 계산된 값
-            Integer netIncome;
-            if (nationalPension == null && healthInsurance == null && employmentInsurance == null && incomeTax == null) {
-                netIncome = null;
-            } else {
-                netIncome = deductions.netIncome();
-            }
+            Integer netIncome = getNullableNetIncome(salaryInfo, deductions);
 
             WorkerMonthlyWorkplaceSummaryResponse summaryInfo = WorkerMonthlyWorkplaceSummaryResponse.builder()
                     .workplaceSummaryInfo(workplaceSummaryInfo)
@@ -431,15 +426,7 @@ public class SalaryCalculationService {
                 User user = userMap.get(worker.getUserId());
                 String nickname = (user != null) ? user.getNickname() : "탈퇴한 근무자";
 
-                Integer netIncome;
-                if (!salaryInfo.getHasNationalPension() &&
-                        !salaryInfo.getHasHealthInsurance() &&
-                        !salaryInfo.getHasEmploymentInsurance() &&
-                        !salaryInfo.getHasIncomeTax()) {
-                    netIncome = null;
-                } else {
-                    netIncome = deductions.netIncome();
-                }
+                Integer netIncome = getNullableNetIncome(salaryInfo, deductions);
 
                 // --- 근무자 요약 DTO (OwnerMonthlyWorkerSummaryResponse) 생성 ---
                 OwnerMonthlyWorkerSummaryResponse workerSummary = OwnerMonthlyWorkerSummaryResponse.builder()
@@ -460,6 +447,14 @@ public class SalaryCalculationService {
         }
 
         return summaryResponseList;
+    }
+
+    private Integer getNullableNetIncome(Salary salaryInfo, DeductionDetails deductions) {
+        boolean hasAnyDeduction = salaryInfo.getHasNationalPension() ||
+                salaryInfo.getHasHealthInsurance() ||
+                salaryInfo.getHasEmploymentInsurance() ||
+                salaryInfo.getHasIncomeTax();
+        return hasAnyDeduction ? deductions.netIncome() : null;
     }
 
     /// 세전소득, 근무시간, 급여정보를 바탕으로 모든 공제액과 세후소득을 계산합니다.
