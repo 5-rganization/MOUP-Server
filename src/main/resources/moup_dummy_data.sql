@@ -74,24 +74,23 @@ SET @wp_personal_choi = 6;
 -- =====================================
 -- 4) WORKERS (user↔workplace)
 -- =====================================
--- [수정] "사장/소유자"들이 본인 근무지를 생성하며 자동 등록되는 것을 먼저 INSERT
-INSERT INTO workers (user_id, workplace_id, worker_based_label_color, owner_based_label_color, is_accepted) VALUES
+INSERT INTO workers (user_id, workplace_id, worker_based_label_color, owner_based_label_color, is_accepted, is_now_working) VALUES
                                                                                                                 -- 박사장의 사업장 5개
-                                                                                                                (@u_owner_park, @wp_gs25, '#FFDC00', '#FFDC00', 1),        -- (ID: 1)
-                                                                                                                (@u_owner_park, @wp_mega, '#FFDC00', '#FFDC00', 1),        -- (ID: 2)
-                                                                                                                (@u_owner_park, @wp_hongkong, '#FFDC00', '#FFDC00', 1),    -- (ID: 3)
-                                                                                                                (@u_owner_park, @wp_olive, '#FFDC00', '#FFDC00', 1),       -- (ID: 4)
-                                                                                                                (@u_owner_park, @wp_studycafe, '#FFDC00', '#FFDC00', 1), -- (ID: 5)
+                                                                                                                (@u_owner_park, @wp_gs25, '#FFDC00', '#FFDC00', 1, 0),        -- (ID: 1)
+                                                                                                                (@u_owner_park, @wp_mega, '#FFDC00', '#FFDC00', 1, 0),        -- (ID: 2)
+                                                                                                                (@u_owner_park, @wp_hongkong, '#FFDC00', '#FFDC00', 1, 0),    -- (ID: 3)
+                                                                                                                (@u_owner_park, @wp_olive, '#FFDC00', '#FFDC00', 1, 0),       -- (ID: 4)
+                                                                                                                (@u_owner_park, @wp_studycafe, '#FFDC00', '#FFDC00', 1, 0), -- (ID: 5)
 
                                                                                                                 -- 최알바가 "개인 근무지"의 소유자로서 자동 등록
-                                                                                                                (@u_choi_worker, @wp_personal_choi, '#E6E6FA', '#E6E6FA', 1), -- (ID: 6)
+                                                                                                                (@u_choi_worker, @wp_personal_choi, '#E6E6FA', '#E6E6FA', 1, 0), -- (ID: 6)
 
                                                                                                                 -- 이후 알바생 근무자 등록 (ID가 7부터 시작)
-                                                                                                                (@u_choi_worker, @wp_gs25, '#FF4136', '#FF4136', 1),      -- (ID: 7)
-                                                                                                                (@u_lee_worker, @wp_hongkong, '#2ECC40', '#2ECC40', 1),     -- (ID: 8)
-                                                                                                                (@u_kang_worker, @wp_mega, '#0074D9', '#0074D9', 1),        -- (ID: 9)
-                                                                                                                (@u_choi_worker, @wp_mega, '#B10DC9', '#B10DC9', 1),        -- (ID: 10)
-                                                                                                                (@u_lee_worker, @wp_olive, '#FF851B', '#FF851B', 1);      -- (ID: 11)
+                                                                                                                (@u_choi_worker, @wp_gs25, '#FF4136', '#FF4136', 1, 0),      -- (ID: 7)
+                                                                                                                (@u_lee_worker, @wp_hongkong, '#2ECC40', '#2ECC40', 1, 0),     -- (ID: 8)
+                                                                                                                (@u_kang_worker, @wp_mega, '#0074D9', '#0074D9', 1, 0),        -- (ID: 9)
+                                                                                                                (@u_choi_worker, @wp_mega, '#B10DC9', '#B10DC9', 1, 0),        -- (ID: 10)
+                                                                                                                (@u_lee_worker, @wp_olive, '#FF851B', '#FF851B', 1, 0);      -- (ID: 11)
 
 SET @wk_park_gs25 = 1;
 SET @wk_park_mega = 2;
