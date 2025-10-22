@@ -224,7 +224,7 @@ public class SalaryCalculationService {
         List<Worker> userWorkerList = workerRepository.findAllByUserId(userId);
         if (userWorkerList.isEmpty()) { return Collections.emptyList(); }
 
-        List<WorkerMonthlyWorkplaceSummaryResponse> summaryResponseListList = new ArrayList<>();
+        List<WorkerMonthlyWorkplaceSummaryResponse> summaryResponseList = new ArrayList<>();
         YearMonth targetMonth = YearMonth.of(year, month);
         LocalDate startDate = targetMonth.atDay(1);
         LocalDate endDate = targetMonth.atEndOfMonth();
@@ -344,10 +344,10 @@ public class SalaryCalculationService {
                     .netIncome(netIncome)
                     .build();
 
-            summaryResponseListList.add(summaryInfo);
+            summaryResponseList.add(summaryInfo);
         }
 
-        return summaryResponseListList;
+        return summaryResponseList;
     }
 
     /// 사장님이 소유한 모든 사업장의 근무자 급여를 계산하고 저장합니다. (사장님 전용)
