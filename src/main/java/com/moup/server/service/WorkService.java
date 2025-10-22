@@ -335,10 +335,10 @@ public class WorkService {
     }
 
     private Work createWorkHelper(Worker worker, WorkCreateRequest request) {
-        Optional<Salary> salary = salaryRepository.findByWorkerId(worker.getId());
+        Optional<Salary> optSalary = salaryRepository.findByWorkerId(worker.getId());
 
-        int hourlyRate = salary.isPresent() ? salary.get().getHourlyRate() : 0;
-        boolean hasNightAllowance = salary.isPresent() ? salary.get().getHasNightAllowance() : false;
+        int hourlyRate = optSalary.map(Salary::getHourlyRate).orElse(0);
+        boolean hasNightAllowance = optSalary.map(Salary::getHasNightAllowance).orElse(false);
 
         verifyStartEndTime(request.getStartTime(), request.getEndTime());
 
@@ -370,10 +370,10 @@ public class WorkService {
     }
 
     private void updateWorkHelper(Worker worker, Long workId, WorkUpdateRequest request) {
-        Optional<Salary> salary = salaryRepository.findByWorkerId(worker.getId());
+        Optional<Salary> optSalary = salaryRepository.findByWorkerId(worker.getId());
 
-        int hourlyRate = salary.isPresent() ? salary.get().getHourlyRate() : 0;
-        boolean hasNightAllowance = salary.isPresent() ? salary.get().getHasNightAllowance() : false;
+        int hourlyRate = optSalary.map(Salary::getHourlyRate).orElse(0);
+        boolean hasNightAllowance = optSalary.map(Salary::getHasNightAllowance).orElse(false);
 
         verifyStartEndTime(request.getStartTime(), request.getEndTime());
 
