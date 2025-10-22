@@ -209,6 +209,7 @@ public class WorkplaceService {
     }
 
     @Transactional
+    // TODO: 알바생이 초대 코드 입력 시 해당 근무지 사장님에게 푸시알림 전달
     public WorkplaceJoinResponse joinWorkplace(User user, WorkplaceJoinRequest request) {
         if (user.getRole() != Role.ROLE_WORKER) { throw new InvalidPermissionAccessException(); }
 
