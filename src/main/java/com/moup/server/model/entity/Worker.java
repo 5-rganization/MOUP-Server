@@ -14,4 +14,5 @@ public class Worker {
     private String workerBasedLabelColor;
     private String ownerBasedLabelColor;
     private Boolean isAccepted;
+    private Boolean isNowWorking;
 }

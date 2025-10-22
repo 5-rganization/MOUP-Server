@@ -13,7 +13,7 @@ public interface WorkerRepository {
     ///
     /// @param worker 생성할 Worker 객체
     /// @return 생성된 행의 수
-    @Insert("INSERT INTO workers (user_id, workplace_id, worker_based_label_color, owner_based_label_color, is_accepted) VALUES (#{userId}, #{workplaceId}, #{workerBasedLabelColor}, #{ownerBasedLabelColor}, #{isAccepted})")
+    @Insert("INSERT INTO workers (user_id, workplace_id, worker_based_label_color, owner_based_label_color, is_accepted, is_now_working) VALUES (#{userId}, #{workplaceId}, #{workerBasedLabelColor}, #{ownerBasedLabelColor}, #{isAccepted}, #{isNowWorking})")
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
     Long create(Worker worker);
 
@@ -114,6 +114,15 @@ public interface WorkerRepository {
     /// @param isAccepted 업데이트할 초대 승인 여부
     @Update("UPDATE workers SET is_accepted = #{isAccepted} WHERE id = #{id} AND user_id = #{userId} AND workplace_id = #{workplaceId}")
     void updateIsAccepted(Long id, Long userId, Long workplaceId, Boolean isAccepted);
+
+    /// 근무자 ID, 사용자 ID, 근무지 ID에 해당하는 근무자의 현재 근무 중 여부를 업데이트하는 메서드.
+    ///
+    /// @param id 업데이트할 근무자의 ID
+    /// @param userId 업데이트할 근무자의 사용자 ID
+    /// @param workplaceId 업데이트할 근무자의 근무지 ID
+    /// @param isNowWorking 업데이트할 근무자의 현재 근무 중 여부
+    @Update("UPDATE workers SET is_now_working = #{isNowWorking} WHERE id = #{id} AND user_id = #{userId} AND workplace_id = #{workplaceId}")
+    void updateIsNowWorking(Long id, Long userId, Long workplaceId, Boolean isNowWorking);
 
     /// 근무자 ID, 사용자 ID, 근무지 ID에 해당하는 근무자를 삭제하는 메서드.
     ///

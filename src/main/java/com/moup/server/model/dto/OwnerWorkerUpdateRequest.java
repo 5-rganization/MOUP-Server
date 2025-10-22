@@ -24,6 +24,7 @@ public class OwnerWorkerUpdateRequest extends BaseWorkerUpdateRequest {
                 .workerBasedLabelColor(workerBasedLabelColor)
                 .ownerBasedLabelColor(ownerBasedLabelColor)
                 .isAccepted(true)
+                .isNowWorking(false)
                 .build();
     }
 }
