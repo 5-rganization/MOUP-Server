@@ -328,16 +328,23 @@ public class WorkService {
     }
 
     @Transactional
-    public boolean updateActualStartTimeOrCreateWork(Long userId, Long workplaceId) {
+    public boolean updateActualStartTime(Long userId, Long workplaceId) {
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplaceOwnerId);
 
-        Optional<Work> optWorkToStart = workRepository.findEligibleWorkForClockIn(userWorker.getId(), LocalDateTime.now());
+        List<Worker> userAllWorker = workerRepository.findAllByUserId(userId);
+        for (Worker worker: userAllWorker) {
+            if (Boolean.TRUE.equals(worker.getIsNowWorking())) { throw new WorkerAlreadyWorkingException(); }
+        }
+
+        LocalDateTime currentDateTime = LocalDateTime.now();
+        Optional<Work> optWorkToStart = workRepository.findEligibleWorkForClockIn(userWorker.getId(), currentDateTime);
 
         if (optWorkToStart.isPresent()) {
             Work workToStart = optWorkToStart.get();
-            workRepository.updateActualStartTimeById(workToStart.getId(), LocalTime.now());
+            workRepository.updateActualStartTimeById(workToStart.getId(), currentDateTime);
+            workerRepository.updateIsNowWorking(userWorker.getId(), userId, workplaceId, true);
             return true;
         } else {
             return false;
@@ -350,9 +357,26 @@ public class WorkService {
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplaceOwnerId);
 
-        if (!workRepository.existsByIdAndWorkerId(workId, userWorker.getId())) { throw new WorkNotFoundException(); }
+        if (userWorker.getIsNowWorking() == null || Boolean.FALSE.equals(userWorker.getIsNowWorking())) {
+            throw new WorkNotFoundException();
+        }
 
-        workRepository.updateActualEndTimeById(workId, LocalTime.now());
+        Optional<Work> optWorkToEnd = workRepository.findMostRecentWorkInProgress(userWorker.getId());
+
+        if (optWorkToEnd.isPresent()) {
+            Work workToEnd = optWorkToEnd.get();
+            boolean needsRecalculation = (workToEnd.getEndTime() == null);
+
+            workRepository.updateActualEndTimeById(workToEnd.getId(), LocalDateTime.now());
+            if (needsRecalculation) {
+                salaryCalculationService.recalculateWorkWeek(userWorker.getId(), workToEnd.getWorkDate());
+            }
+
+            workerRepository.updateIsNowWorking(userWorker.getId(), userId, workplaceId, false);
+        } else {
+            workerRepository.updateIsNowWorking(userWorker.getId(), userId, workplaceId, false);
+            throw new WorkNotFoundException();
+        }
     }
 
     @Transactional

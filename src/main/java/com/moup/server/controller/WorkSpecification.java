@@ -196,12 +196,25 @@ public interface WorkSpecification {
             @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    @PatchMapping("/workplaces/{workplaceId}/workers/me/works/start")
+    @PutMapping("/workplaces/{workplaceId}/workers/me/works/start")
     ResponseEntity<?> updateActualStartTimeOrCreateWork(
-            @Parameter(name = "workplaceId", description = "출근할 근무지(매장) ID", example = "1", required = true, in = ParameterIn.PATH)
+            @Parameter(name = "workplaceId", description = "출근할 근무지 ID", example = "1", required = true, in = ParameterIn.PATH)
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId
     );
 
+    @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
+    @Operation(summary = "근무 퇴근", description = "근무지 ID를 경로로 전달받아 실제 퇴근 시간이 없는 마지막 근무의 실제 퇴근 시간을 업데이트")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "근무 업데이트 성공"),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    @PatchMapping("/workplaces/{workplaceId}/workers/me/works/end")
+    ResponseEntity<?> updateWorkActualEndTime(
+            @Parameter(name = "workplaceId", description = "퇴근할 근무지 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId
+    );
 
     @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
     @DeleteMapping("/works/{workId}")

@@ -2,10 +2,7 @@ package com.moup.server.controller;
 
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.User;
-import com.moup.server.service.IdentityService;
-import com.moup.server.service.RoutineService;
-import com.moup.server.service.UserService;
-import com.moup.server.service.WorkService;
+import com.moup.server.service.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +25,7 @@ public class WorkController implements WorkSpecification {
     private final IdentityService identityService;
     private final WorkService workService;
     private final RoutineService routineService;
+    private final WorkerService workerService;
 
     @Override
     @PostMapping("/workplaces/{workplaceId}/workers/me/works")
@@ -115,13 +113,14 @@ public class WorkController implements WorkSpecification {
     }
 
     @Override
-    @PatchMapping("/workplaces/{workplaceId}/workers/me/works")
+    @PutMapping("/workplaces/{workplaceId}/workers/me/works")
+    @PreAuthorize("hasRole('ROLE_WORKER')")
     public ResponseEntity<?> updateActualStartTimeOrCreateWork(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId
     ) {
         Long userId = identityService.getCurrentUserId();
 
-        if (workService.updateActualStartTimeOrCreateWork(userId, workplaceId)) {
+        if (workService.updateActualStartTime(userId, workplaceId)) {
             return ResponseEntity.noContent().build();
         } else {
             WorkCreateRequest workCreateRequest = WorkCreateRequest.builder()
@@ -137,12 +136,25 @@ public class WorkController implements WorkSpecification {
                     .build();
 
             WorkCreateResponse response = workService.createMyWork(userId, workplaceId, workCreateRequest);
+            workerService.updateWorkerIsNowWorking(userId, workplaceId, true);
             URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                     .path("/{id}")
                     .buildAndExpand(response.getWorkId())
                     .toUri();
             return ResponseEntity.created(location).body(response);
         }
+    }
+
+    @Override
+    @PatchMapping("/workplaces/{workplaceId}/workers/me/works/end")
+    @PreAuthorize("hasRole('ROLE_WORKER')")
+    public ResponseEntity<?> updateWorkActualEndTime(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId
+    ) {
+        Long userId = identityService.getCurrentUserId();
+
+        workService.updateActualEndTime(userId, workplaceId);
+        return ResponseEntity.noContent().build();
     }
 
     @Override

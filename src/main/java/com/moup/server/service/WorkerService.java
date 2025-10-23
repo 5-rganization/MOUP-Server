@@ -133,6 +133,12 @@ public class WorkerService {
         salaryRepository.update(newSalary);
     }
 
+    public void updateWorkerIsNowWorking(Long userId, Long workplaceId, Boolean isNowWorking) {
+        Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
+
+        workerRepository.updateIsNowWorking(userWorker.getId(), userId, workplaceId, isNowWorking);
+    }
+
     public void deleteMyWorker(Long userId, Long workplaceId) {
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);

@@ -96,30 +96,43 @@ public interface WorkRepository {
             @Param("endDate") LocalDate endDate
     );
 
-    /// 특정 근무자(workerId)의 근무 중,
-    /// 1. 현재 시간(currentTime)보다 1시간 이내에 시작하고 (start_time)
-    /// 2. 아직 근무가 종료되지 않았으며 (end_time IS NULL)
-    /// 3. 실제 퇴근도 기록되지 않은 (actual_end_time IS NULL)
+    /// 특정 근무자(`workerId`)의 근무 중,
+    /// 1. 현재 시간(`currentDateTime`) 기준으로 1시간 전 ~ 1시간 후 사이에 시작하고 (`start_time`)
+    /// 2. 아직 '실제 출근'을 기록하지 않았으며 (`actual_start_time IS NULL`)
+    /// 3. 아직 '실제 퇴근'도 기록되지 않은 (`actual_end_time IS NULL`)
     /// 가장 빠른 근무 1건을 조회하는 메서드
     ///
     /// @param workerId 조회할 근무자 ID
     /// @param currentDateTime 기준이 되는 현재 시간
-    /// @return 조회된 Work 객체, 없으면 Optional.empty
+    /// @return 조회된 `Work` 객체, 없으면 `Optional.empty`
     @Select("""
             SELECT * FROM works
             WHERE worker_id = #{workerId}
                 AND actual_start_time IS NULL
-                AND end_time IS NULL
                 AND actual_end_time IS NULL
-                AND start_time > #{currentDateTime}
-                AND start_time BETWEEN DATE_SUB(#{currentTime}, INTERVAL 1 HOUR) AND DATE_ADD(#{currentTime}, INTERVAL 1 HOUR)
+                AND start_time BETWEEN DATE_SUB(#{currentDateTime}, INTERVAL 1 HOUR) AND DATE_ADD(#{currentDateTime}, INTERVAL 1 HOUR)
             ORDER BY start_time
             LIMIT 1
-    """)
+            """)
     Optional<Work> findEligibleWorkForClockIn(
             @Param("workerId") Long workerId,
             @Param("currentDateTime") LocalDateTime currentDateTime
     );
+
+    /// 특정 근무자(`workerId`)의 근무 중,
+    /// 실제 퇴근이 기록되지 않은 (`actual_end_time IS NULL`) 근무를 'start_time' 기준으로 가장 최근 1건을 조회하는 메서드
+    /// (현재 진행 중인 근무를 찾을 때 사용)
+    ///
+    /// @param workerId 조회할 근무자 ID
+    /// @return 조회된 `Work` 객체, 없으면 `Optional.empty`
+    @Select("""
+            SELECT * FROM works
+            WHERE worker_id = #{workerId}
+                AND actual_end_time IS NULL
+            ORDER BY start_time DESC
+            LIMIT 1
+            """)
+    Optional<Work> findMostRecentWorkInProgress(@Param("workerId") Long workerId);
 
     /// 근무 ID와 근무자 ID에 해당하는 근무를 업데이트하는 메서드
     ///
@@ -142,13 +155,21 @@ public interface WorkRepository {
     ///
     /// @param actualStartTime 업데이트할 실제 출근 시간
     @Update("UPDATE works SET actual_start_time = #{actualStartTime} WHERE id = #{id}")
-    void updateActualStartTimeById(Long id, LocalTime actualStartTime);
+    void updateActualStartTimeById(Long id, LocalDateTime actualStartTime);
 
     /// 근무 ID에 해당하는 근무의 실제 퇴근 시간을 업데이트하는 메서드
+    /// 'end_time'(예정 퇴근 시간)이 비어있을(NULL) 경우, 'end_time'도 'actual_end_time'과 동일한 값으로 함께 업데이트합니다.
     ///
-    /// @param actualEndTime 업데이트할 실제 퇴근 시간
-    @Update("UPDATE works SET works.actual_end_time = #{actualEndTime} WHERE id = #{id}")
-    void updateActualEndTimeById(Long id, LocalTime actualEndTime);
+    /// @param id 업데이트할 근무 ID
+    /// @param actualEndTime 업데이트할 실제 퇴근 시간 (LocalDateTime)
+    @Update("""
+            UPDATE works
+            SET
+                actual_end_time = #{actualEndTime},
+                end_time = COALESCE(end_time, #{actualEndTime})
+            WHERE id = #{id}
+            """)
+    void updateActualEndTimeById(@Param("id") Long id, @Param("actualEndTime") LocalDateTime actualEndTime);
 
     /// 근무 ID와 근무자 ID에 해당하는 근무를 삭제하는 메서드
     ///
