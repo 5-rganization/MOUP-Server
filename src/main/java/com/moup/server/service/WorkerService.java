@@ -128,7 +128,7 @@ public class WorkerService {
 
         return WorkerAttendanceInfoResponse.builder()
                 .workerId(workerId)
-                .WorkerWorkAttendanceInfoList(workerWorkAttendanceInfoList)
+                .workerWorkAttendanceInfoList(workerWorkAttendanceInfoList)
                 .build();
     }
 
