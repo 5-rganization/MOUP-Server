@@ -45,13 +45,13 @@ public interface WorkSpecification {
             @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "422", description = "유효하지 않은 필드값 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "근무자 근무 생성을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = OwnerWorkerWorkCreateRequest.class)))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "근무자 근무 생성을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkerWorkCreateRequest.class)))
     ResponseEntity<?> createWorkForWorker(
             @Parameter(name = "workplaceId", description = "근무를 생성할 매장 ID", example = "1", required = true, in = ParameterIn.PATH)
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
             @Parameter(name = "workerId", description = "근무를 생성할 근무자 ID", example = "1", required = true, in = ParameterIn.PATH)
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workerId,
-            @RequestBody @Valid OwnerWorkerWorkCreateRequest request
+            @RequestBody @Valid WorkerWorkCreateRequest request
     );
 
     @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
@@ -171,6 +171,23 @@ public interface WorkSpecification {
 
     @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
     @PatchMapping("/works/{workId}")
+    @Operation(summary = "사용자 근무 업데이트", description = "근무 ID를 경로로 전달받아 해당하는 근무를 업데이트")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "근무 업데이트 성공"),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "422", description = "유효하지 않은 필드값 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "근무 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = MyWorkUpdateRequest.class)))
+    ResponseEntity<?> updateMyWork(
+            @Parameter(name = "workId", description = "업데이트할 근무 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
+            @RequestBody @Valid MyWorkUpdateRequest request
+    );
+
+    @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
+    @PatchMapping("/workplaces/{workplaceId}/workers/{workerId}/works/{workId}")
     @Operation(summary = "근무 업데이트", description = "근무 ID를 경로로 전달받아 해당하는 근무를 업데이트")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "근무 업데이트 성공"),
@@ -179,11 +196,15 @@ public interface WorkSpecification {
             @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "422", description = "유효하지 않은 필드값 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "근무 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkUpdateRequest.class)))
-    ResponseEntity<?> updateWork(
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "근무 업데이트를 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkerWorkUpdateRequest.class)))
+    ResponseEntity<?> updateWorkForWorker(
+            @Parameter(name = "workplaceId", description = "근무를 생성할 매장 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
+            @Parameter(name = "workerId", description = "근무를 생성할 근무자 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workerId,
             @Parameter(name = "workId", description = "업데이트할 근무 ID", example = "1", required = true, in = ParameterIn.PATH)
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
-            @RequestBody @Valid WorkUpdateRequest request
+            @RequestBody @Valid WorkerWorkUpdateRequest request
     );
 
     @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")

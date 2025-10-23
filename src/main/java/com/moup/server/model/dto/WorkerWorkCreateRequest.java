@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 @Getter
 @Builder
 @Schema(description = "근무자 근무 생성 요청 DTO")
-public class OwnerWorkerWorkCreateRequest {
+public class WorkerWorkCreateRequest {
     @NotNull(message = "필수 입력값입니다.")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
     @Schema(description = "출근 시간 (yyyy-MM-dd HH:mm)", example = "2025-10-11 08:30", requiredMode = Schema.RequiredMode.REQUIRED)

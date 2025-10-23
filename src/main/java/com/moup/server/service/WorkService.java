@@ -46,7 +46,7 @@ public class WorkService {
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplaceOwnerId);
 
-        Work work = createWorkHelper(userWorker, request);
+        Work work = createMyWorkHelper(userWorker, request);
 
         routineService.saveWorkRoutineMapping(userId, request.getRoutineIdList(), work.getId());
 
@@ -56,16 +56,14 @@ public class WorkService {
     }
 
     @Transactional
-    public WorkCreateResponse createWorkForWorkerId(Long requesterUserId, Long workplaceId, Long workerId, OwnerWorkerWorkCreateRequest request) {
+    public WorkCreateResponse createWorkForWorkerId(Long requesterUserId, Long workplaceId, Long workerId, WorkerWorkCreateRequest request) {
         Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)
                 .orElseThrow(WorkerNotFoundException::new);
         if (worker.getUserId() == null) { throw new WorkerNotFoundException("이미 탈퇴한 근무자입니다."); }
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyOwnerPermission(requesterUserId, workplaceOwnerId);
 
-        Work work = createWorkHelper(worker, request);
-
-        Long workerUserId = userRepository.findById(worker.getUserId()).orElseThrow(UserNotFoundException::new).getId();
+        Work work = createWorkForWorkerHelper(worker, request);
 
         return WorkCreateResponse.builder()
                 .workId(work.getId())
@@ -320,12 +318,23 @@ public class WorkService {
     }
 
     @Transactional
-    public void updateWork(Long requesterUserId, Long workId, WorkUpdateRequest request) {
+    public void updateMyWork(Long requesterUserId, Long workId, MyWorkUpdateRequest request) {
         VerifiedWorkContextForUD context = getVerifiedWorkContextForUD(requesterUserId, workId);
 
-        updateWorkHelper(context.worker(), workId, request);
+        updateMyWorkHelper(context.worker(), workId, request);
 
         routineService.saveWorkRoutineMapping(context.worker().getUserId(), request.getRoutineIdList(), workId);
+    }
+
+    @Transactional
+    public void updateWorkForWorkerId(Long requesterUserId, Long workplaceId, Long workerId, Long workId, WorkerWorkUpdateRequest request) {
+        VerifiedWorkContextForUD context = getVerifiedWorkContextForUD(requesterUserId, workId);
+        Worker workerOfWork = context.worker();
+
+        if (!workerOfWork.getWorkplaceId().equals(workplaceId)) { throw new InvalidPermissionAccessException(); }
+        if (!workerOfWork.getId().equals(workerId)) { throw new InvalidPermissionAccessException(); }
+
+        updateWorkForWorkerHelper(workerOfWork, workId, request);
     }
 
     @Transactional
@@ -387,7 +396,7 @@ public class WorkService {
     }
 
     /// 사용자 근무 생성 헬퍼
-    private Work createWorkHelper(Worker worker, MyWorkCreateRequest request) {
+    private Work createMyWorkHelper(Worker worker, MyWorkCreateRequest request) {
         // 1. 급여 정보 조회 (기존 로직과 동일)
         Optional<Salary> optSalary = salaryRepository.findByWorkerId(worker.getId());
         int hourlyRate = optSalary.map(Salary::getHourlyRate).orElse(0);
@@ -396,7 +405,6 @@ public class WorkService {
         verifyStartEndTime(request.getStartTime(), request.getEndTime());
 
         // 2. DTO -> Entity 변환 (급여 필드는 모두 0으로 초기화)
-        // (MyWorkCreateRequest에 toEntity가 필요합니다. 아래 2번 항목 참고)
         Work work = request.toEntity(
                 worker.getId(),
                 hourlyRate, 0, 0, 0, 0, 0, 0
@@ -416,7 +424,7 @@ public class WorkService {
     }
 
     /// 사장님의 알바생 근무 생성 헬퍼
-    private Work createWorkHelper(Worker worker, OwnerWorkerWorkCreateRequest request) {
+    private Work createWorkForWorkerHelper(Worker worker, WorkerWorkCreateRequest request) {
         // 1. 급여 정보 조회 (기존 로직과 동일)
         Optional<Salary> optSalary = salaryRepository.findByWorkerId(worker.getId());
         int hourlyRate = optSalary.map(Salary::getHourlyRate).orElse(0);
@@ -425,7 +433,6 @@ public class WorkService {
         verifyStartEndTime(request.getStartTime(), request.getEndTime());
 
         // 2. DTO -> Entity 변환 (급여 필드는 모두 0으로 초기화)
-        // (OwnerWorkerWorkCreateRequest에 toEntity가 필요합니다. 아래 3번 항목 참고)
         Work work = request.toEntity(
                 worker.getId(),
                 hourlyRate, 0, 0, 0, 0, 0, 0
@@ -444,7 +451,40 @@ public class WorkService {
         return workWithDailyIncome;
     }
 
-    private void updateWorkHelper(Worker worker, Long workId, WorkUpdateRequest request) {
+    /// 사용자 근무 업데이트 헬퍼
+    private void updateMyWorkHelper(Worker worker, Long workId, MyWorkUpdateRequest request) {
+        Optional<Salary> optSalary = salaryRepository.findByWorkerId(worker.getId());
+
+        int hourlyRate = optSalary.map(Salary::getHourlyRate).orElse(0);
+        boolean hasNightAllowance = optSalary.map(Salary::getHasNightAllowance).orElse(false);
+
+        verifyStartEndTime(request.getStartTime(), request.getEndTime());
+
+        // 1. DTO -> Entity 변환 (급여 필드는 모두 0으로 초기화)
+        Work work = request.toEntity(
+                workId,
+                worker.getId(),
+                hourlyRate,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+        );
+
+        // 2. SalaryCalculationService를 호출하여 '일급' 계산
+        Work workWithDailyIncome = salaryCalculationService.calculateDailyIncome(work, 0, hasNightAllowance);
+
+        // 3. '일급'이 계산된 Work 객체를 DB에 업데이트
+        workRepository.update(workWithDailyIncome);
+
+        // 4. '주휴수당'을 포함한 '주급' 재계산
+        salaryCalculationService.recalculateWorkWeek(worker.getId(), workWithDailyIncome.getWorkDate());
+    }
+
+    /// 사장님의 알바생 근무 업데이트 헬퍼
+    private void updateWorkForWorkerHelper(Worker worker, Long workId, WorkerWorkUpdateRequest request) {
         Optional<Salary> optSalary = salaryRepository.findByWorkerId(worker.getId());
 
         int hourlyRate = optSalary.map(Salary::getHourlyRate).orElse(0);

@@ -49,7 +49,7 @@ public class WorkController implements WorkSpecification {
     public ResponseEntity<?> createWorkForWorker(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workerId,
-            @RequestBody @Valid OwnerWorkerWorkCreateRequest request
+            @RequestBody @Valid WorkerWorkCreateRequest request
     ) {
         Long userId = identityService.getCurrentUserId();
 
@@ -102,13 +102,27 @@ public class WorkController implements WorkSpecification {
 
     @Override
     @PatchMapping("/works/{workId}")
-    public ResponseEntity<?> updateWork(
+    public ResponseEntity<?> updateMyWork(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
-            @RequestBody @Valid WorkUpdateRequest request
+            @RequestBody @Valid MyWorkUpdateRequest request
     ) {
         Long userId = identityService.getCurrentUserId();
 
-        workService.updateWork(userId, workId, request);
+        workService.updateMyWork(userId, workId, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @PatchMapping("/workplaces/{workplaceId}/workers/{workerId}/works/{workId}")
+    public ResponseEntity<?> updateWorkForWorker(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workerId,
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
+            @RequestBody @Valid WorkerWorkUpdateRequest request
+    ) {
+        Long userId = identityService.getCurrentUserId();
+
+        workService.updateWorkForWorkerId(userId, workplaceId, workerId, workId, request);
         return ResponseEntity.noContent().build();
     }
 
