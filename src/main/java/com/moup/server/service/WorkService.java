@@ -6,6 +6,7 @@ import com.moup.server.model.entity.*;
 import com.moup.server.repository.*;
 import com.moup.server.util.PermissionVerifyUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,6 +14,7 @@ import java.time.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class WorkService {
@@ -375,7 +377,7 @@ public class WorkService {
             workerRepository.updateIsNowWorking(userWorker.getId(), userId, workplaceId, false);
         } else {
             workerRepository.updateIsNowWorking(userWorker.getId(), userId, workplaceId, false);
-            throw new WorkNotFoundException();
+            log.error("There is no work in progress: workerId = {}", userWorker.getId());
         }
     }
 
