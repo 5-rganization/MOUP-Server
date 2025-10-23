@@ -40,7 +40,7 @@ public class WorkService {
     private record VerifiedWorkContextForUD(Work work, Worker worker) {}
 
     @Transactional
-    public WorkCreateResponse createMyWork(Long userId, Long workplaceId, WorkCreateRequest request) {
+    public WorkCreateResponse createMyWork(Long userId, Long workplaceId, MyWorkCreateRequest request) {
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
                 .orElseThrow(WorkerNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
@@ -56,7 +56,7 @@ public class WorkService {
     }
 
     @Transactional
-    public WorkCreateResponse createWorkForWorkerId(Long requesterUserId, Long workplaceId, Long workerId, WorkCreateRequest request) {
+    public WorkCreateResponse createWorkForWorkerId(Long requesterUserId, Long workplaceId, Long workerId, OwnerWorkerWorkCreateRequest request) {
         Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)
                 .orElseThrow(WorkerNotFoundException::new);
         if (worker.getUserId() == null) { throw new WorkerNotFoundException("이미 탈퇴한 근무자입니다."); }
@@ -66,7 +66,6 @@ public class WorkService {
         Work work = createWorkHelper(worker, request);
 
         Long workerUserId = userRepository.findById(worker.getUserId()).orElseThrow(UserNotFoundException::new).getId();
-        routineService.saveWorkRoutineMapping(workerUserId, request.getRoutineIdList(), work.getId());
 
         return WorkCreateResponse.builder()
                 .workId(work.getId())
@@ -387,38 +386,61 @@ public class WorkService {
         deleteWorkHelper(context.worker(), context.work());
     }
 
-    private Work createWorkHelper(Worker worker, WorkCreateRequest request) {
+    /// 사용자 근무 생성 헬퍼
+    private Work createWorkHelper(Worker worker, MyWorkCreateRequest request) {
+        // 1. 급여 정보 조회 (기존 로직과 동일)
         Optional<Salary> optSalary = salaryRepository.findByWorkerId(worker.getId());
-
         int hourlyRate = optSalary.map(Salary::getHourlyRate).orElse(0);
         boolean hasNightAllowance = optSalary.map(Salary::getHasNightAllowance).orElse(false);
 
         verifyStartEndTime(request.getStartTime(), request.getEndTime());
 
-        // 1. DTO -> Entity 변환 (급여 필드는 모두 0으로 초기화)
+        // 2. DTO -> Entity 변환 (급여 필드는 모두 0으로 초기화)
+        // (MyWorkCreateRequest에 toEntity가 필요합니다. 아래 2번 항목 참고)
         Work work = request.toEntity(
                 worker.getId(),
-                hourlyRate,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0
+                hourlyRate, 0, 0, 0, 0, 0, 0
         );
 
-        // 2. SalaryCalculationService를 호출하여 '일급' 계산
-        //    (주휴수당은 아직 모르므로 0을 전달)
+        // 3. 일급 계산 (주휴수당 0으로)
         Work workWithDailyIncome = salaryCalculationService.calculateDailyIncome(work, 0, hasNightAllowance);
 
-        // 3. '일급'이 계산된 Work 객체를 DB에 생성 (이때 ID가 할당됨)
+        // 4. DB 생성
         workRepository.create(workWithDailyIncome);
 
-        // 4. '주휴수당'을 포함한 '주급' 재계산
-        //    (방금 생성된 workWithDailyIncome 객체는 ID가 있으므로 사용 가능)
+        // 5. 주급 재계산 (주휴수당 포함)
         salaryCalculationService.recalculateWorkWeek(worker.getId(), workWithDailyIncome.getWorkDate());
 
-        // 5. ID와 일급이 포함된 객체 반환
+        // 6. 생성된 Work 객체 반환
+        return workWithDailyIncome;
+    }
+
+    /// 사장님의 알바생 근무 생성 헬퍼
+    private Work createWorkHelper(Worker worker, OwnerWorkerWorkCreateRequest request) {
+        // 1. 급여 정보 조회 (기존 로직과 동일)
+        Optional<Salary> optSalary = salaryRepository.findByWorkerId(worker.getId());
+        int hourlyRate = optSalary.map(Salary::getHourlyRate).orElse(0);
+        boolean hasNightAllowance = optSalary.map(Salary::getHasNightAllowance).orElse(false);
+
+        verifyStartEndTime(request.getStartTime(), request.getEndTime());
+
+        // 2. DTO -> Entity 변환 (급여 필드는 모두 0으로 초기화)
+        // (OwnerWorkerWorkCreateRequest에 toEntity가 필요합니다. 아래 3번 항목 참고)
+        Work work = request.toEntity(
+                worker.getId(),
+                hourlyRate, 0, 0, 0, 0, 0, 0
+        );
+
+        // 3. 일급 계산 (주휴수당 0으로)
+        Work workWithDailyIncome = salaryCalculationService.calculateDailyIncome(work, 0, hasNightAllowance);
+
+        // 4. DB 생성
+        workRepository.create(workWithDailyIncome);
+
+        // 5. 주급 재계산 (주휴수당 포함)
+        salaryCalculationService.recalculateWorkWeek(worker.getId(), workWithDailyIncome.getWorkDate());
+
+        // 6. 생성된 Work 객체 반환
         return workWithDailyIncome;
     }
 

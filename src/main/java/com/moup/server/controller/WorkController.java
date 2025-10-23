@@ -31,7 +31,7 @@ public class WorkController implements WorkSpecification {
     @PostMapping("/workplaces/{workplaceId}/workers/me/works")
     public ResponseEntity<?> createMyWork(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
-            @RequestBody @Valid WorkCreateRequest request
+            @RequestBody @Valid MyWorkCreateRequest request
     ) {
         Long userId = identityService.getCurrentUserId();
 
@@ -49,7 +49,7 @@ public class WorkController implements WorkSpecification {
     public ResponseEntity<?> createWorkForWorker(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workerId,
-            @RequestBody @Valid WorkCreateRequest request
+            @RequestBody @Valid OwnerWorkerWorkCreateRequest request
     ) {
         Long userId = identityService.getCurrentUserId();
 
@@ -124,7 +124,7 @@ public class WorkController implements WorkSpecification {
             return ResponseEntity.noContent().build();
         } else {
             LocalDateTime currentDateTime = LocalDateTime.now();
-            WorkCreateRequest workCreateRequest = WorkCreateRequest.builder()
+            MyWorkCreateRequest request = MyWorkCreateRequest.builder()
                     .routineIdList(Collections.emptyList())
                     .startTime(currentDateTime)
                     .actualStartTime(currentDateTime)
@@ -136,7 +136,7 @@ public class WorkController implements WorkSpecification {
                     .repeatEndDate(null)
                     .build();
 
-            WorkCreateResponse response = workService.createMyWork(userId, workplaceId, workCreateRequest);
+            WorkCreateResponse response = workService.createMyWork(userId, workplaceId, request);
             workerService.updateWorkerIsNowWorking(userId, workplaceId, true);
             URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                     .path("/{id}")
