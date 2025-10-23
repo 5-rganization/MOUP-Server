@@ -279,6 +279,11 @@ public class SalaryCalculationService {
                     .isShared(workplace.isShared())
                     .build();
 
+            WorkerHomeWorkplaceSummaryInfo workerHomeWorkplaceSummaryInfo = WorkerHomeWorkplaceSummaryInfo.builder()
+                    .workplaceSummaryInfo(workplaceSummaryInfo)
+                    .isNowWorking(worker.getIsNowWorking())
+                    .build();
+
             // --- SalarySummaryResponse DTO 생성 ---
             SalarySummaryResponse salarySummaryInfo = SalarySummaryResponse.builder()
                     .salaryType(salaryInfo.getSalaryType())
@@ -333,7 +338,7 @@ public class SalaryCalculationService {
             Integer netIncome = getNullableNetIncome(salaryInfo, deductions);
 
             WorkerMonthlyWorkplaceSummaryResponse summaryInfo = WorkerMonthlyWorkplaceSummaryResponse.builder()
-                    .workplaceSummaryInfo(workplaceSummaryInfo)
+                    .homeWorkplaceSummaryInfo(workerHomeWorkplaceSummaryInfo)
                     .salarySummaryInfo(salarySummaryInfo)
                     .totalWorkMinutes(totalWorkMinutes)
                     .dayTimeMinutes(totalWorkMinutes - totalNightMinutes)

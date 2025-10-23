@@ -34,8 +34,24 @@ public interface WorkerSpecification {
     );
 
     @Tag(name = "Worker", description = "근무자 정보 관리 API 엔드포인트")
+    @GetMapping("/{workerId}")
+    @Operation(summary = "매장의 근무자 근태 조회 (사장님 전용)", description = "매장 ID와 근무자 ID를 경로로 전달받아 해당 근무자의 근태 정보를 조회")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "근무자 근태 정보 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkerAttendanceInfoResponse.class))),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    ResponseEntity<?> getWorkerAttendanceInfo(
+            @Parameter(name = "workplaceId", description = "조회할 매장 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
+            @Parameter(name = "workerId", description = "조회할 근무자 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workerId
+    );
+
+    @Tag(name = "Worker", description = "근무자 정보 관리 API 엔드포인트")
     @PatchMapping("/me")
-    @Operation(summary = "근무지에 사용자의 근무자 정보 업데이트 (알바생 전용)", description = "근무지 ID를 경로로 전달받아 해당 근무지에 사용자에 해당하는 근무자 정보를 업데이트")
+    @Operation(summary = "근무지에 사용자의 근무자 정보 업데이트 (알바생 전용)", description = "근무지 ID를 경로로 전달받아 해당 근무지의 사용자에 해당하는 근무자 정보를 업데이트")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "근무자 업데이트 성공"),
             @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
@@ -71,7 +87,7 @@ public interface WorkerSpecification {
 
     @Tag(name = "Worker", description = "근무자 정보 관리 API 엔드포인트")
     @DeleteMapping("/me")
-    @Operation(summary = "근무지에 사용자의 근무자 정보 삭제 (알바생 전용)", description = "근무지 ID를 경로로 전달받아 해당 근무지에 사용자에 해당하는 근무자 정보를 삭제")
+    @Operation(summary = "근무지에 사용자의 근무자 정보 삭제 (알바생 전용)", description = "근무지 ID를 경로로 전달받아 해당 근무지의 사용자에 해당하는 근무자 정보를 삭제")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "근무자 삭제 성공"),
             @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),

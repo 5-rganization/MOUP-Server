@@ -6,6 +6,7 @@ import com.moup.server.model.entity.*;
 import com.moup.server.repository.*;
 import com.moup.server.util.PermissionVerifyUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,6 +14,7 @@ import java.time.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class WorkService {
@@ -325,6 +327,57 @@ public class WorkService {
         updateWorkHelper(context.worker(), workId, request);
 
         routineService.saveWorkRoutineMapping(context.worker().getUserId(), request.getRoutineIdList(), workId);
+    }
+
+    @Transactional
+    public boolean updateActualStartTime(Long userId, Long workplaceId) {
+        Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
+        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
+        permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplaceOwnerId);
+
+        if (workerRepository.existsByUserIdAndIsNowWorking(userId, true)) {
+            throw new WorkerAlreadyWorkingException();
+        }
+
+        LocalDateTime currentDateTime = LocalDateTime.now();
+        Optional<Work> optWorkToStart = workRepository.findEligibleWorkForClockIn(userWorker.getId(), currentDateTime);
+
+        if (optWorkToStart.isPresent()) {
+            Work workToStart = optWorkToStart.get();
+            workRepository.updateActualStartTimeById(workToStart.getId(), currentDateTime);
+            workerRepository.updateIsNowWorking(userWorker.getId(), userId, workplaceId, true);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    @Transactional
+    public void updateActualEndTime(Long userId, Long workplaceId) {
+        Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
+        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
+        permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplaceOwnerId);
+
+        if (userWorker.getIsNowWorking() == null || Boolean.FALSE.equals(userWorker.getIsNowWorking())) {
+            throw new WorkNotFoundException();
+        }
+
+        Optional<Work> optWorkToEnd = workRepository.findMostRecentWorkInProgress(userWorker.getId());
+
+        if (optWorkToEnd.isPresent()) {
+            Work workToEnd = optWorkToEnd.get();
+            boolean needsRecalculation = (workToEnd.getEndTime() == null);
+
+            workRepository.updateActualEndTimeById(workToEnd.getId(), LocalDateTime.now());
+            if (needsRecalculation) {
+                salaryCalculationService.recalculateWorkWeek(userWorker.getId(), workToEnd.getWorkDate());
+            }
+
+            workerRepository.updateIsNowWorking(userWorker.getId(), userId, workplaceId, false);
+        } else {
+            workerRepository.updateIsNowWorking(userWorker.getId(), userId, workplaceId, false);
+            log.error("There is no work in progress: workerId = {}", userWorker.getId());
+        }
     }
 
     @Transactional

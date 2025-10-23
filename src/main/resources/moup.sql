@@ -109,6 +109,7 @@ CREATE TABLE `workers`
     `worker_based_label_color` VARCHAR(10)           NULL,
     `owner_based_label_color`  VARCHAR(10)           NULL,
     `is_accepted`              TINYINT(1)            NULL,
+    `is_now_working`           TINYINT(1)            NULL,
     FOREIGN KEY (`user_id`) REFERENCES users (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`workplace_id`) REFERENCES workplaces (`id`) ON DELETE CASCADE
 );

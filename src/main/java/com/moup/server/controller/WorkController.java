@@ -2,10 +2,7 @@ package com.moup.server.controller;
 
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.User;
-import com.moup.server.service.IdentityService;
-import com.moup.server.service.RoutineService;
-import com.moup.server.service.UserService;
-import com.moup.server.service.WorkService;
+import com.moup.server.service.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +13,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.util.Collections;
 
 @RestController
 @Validated
@@ -26,6 +25,7 @@ public class WorkController implements WorkSpecification {
     private final IdentityService identityService;
     private final WorkService workService;
     private final RoutineService routineService;
+    private final WorkerService workerService;
 
     @Override
     @PostMapping("/workplaces/{workplaceId}/workers/me/works")
@@ -109,6 +109,52 @@ public class WorkController implements WorkSpecification {
         Long userId = identityService.getCurrentUserId();
 
         workService.updateWork(userId, workId, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @PutMapping("/workplaces/{workplaceId}/workers/me/works/start")
+    @PreAuthorize("hasRole('ROLE_WORKER')")
+    public ResponseEntity<?> updateActualStartTimeOrCreateWork(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId
+    ) {
+        Long userId = identityService.getCurrentUserId();
+
+        if (workService.updateActualStartTime(userId, workplaceId)) {
+            return ResponseEntity.noContent().build();
+        } else {
+            LocalDateTime currentDateTime = LocalDateTime.now();
+            WorkCreateRequest workCreateRequest = WorkCreateRequest.builder()
+                    .routineIdList(Collections.emptyList())
+                    .startTime(currentDateTime)
+                    .actualStartTime(currentDateTime)
+                    .endTime(null)
+                    .actualEndTime(null)
+                    .restTimeMinutes(0)
+                    .memo(null)
+                    .repeatDays(Collections.emptyList())
+                    .repeatEndDate(null)
+                    .build();
+
+            WorkCreateResponse response = workService.createMyWork(userId, workplaceId, workCreateRequest);
+            workerService.updateWorkerIsNowWorking(userId, workplaceId, true);
+            URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                    .path("/{id}")
+                    .buildAndExpand(response.getWorkId())
+                    .toUri();
+            return ResponseEntity.created(location).body(response);
+        }
+    }
+
+    @Override
+    @PatchMapping("/workplaces/{workplaceId}/workers/me/works/end")
+    @PreAuthorize("hasRole('ROLE_WORKER')")
+    public ResponseEntity<?> updateWorkActualEndTime(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId
+    ) {
+        Long userId = identityService.getCurrentUserId();
+
+        workService.updateActualEndTime(userId, workplaceId);
         return ResponseEntity.noContent().build();
     }
 

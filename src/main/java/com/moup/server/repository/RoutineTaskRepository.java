@@ -23,7 +23,7 @@ public interface RoutineTaskRepository {
             """)
     void createBatch(@Param("taskList") List<RoutineTask> taskList);
 
-    /// 루틴 ID를 통해 해당 루틴의 모든 할 일 객체를 리스트로 반환하는 메서드
+    /// 루틴 ID를 통해 해당 루틴의 모든 할 일 객체를 리스트로 반환하는 메서드 (`order_index` 오름차순)
     ///
     /// @param routineId 조회할 할 일의 루틴 ID
     /// @return 조회된 RoutineTask 객체 리스트, 없으면 빈 배열

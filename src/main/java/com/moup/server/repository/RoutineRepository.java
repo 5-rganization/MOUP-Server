@@ -57,7 +57,7 @@ public interface RoutineRepository {
             """)
     Integer countTotalRoutinesByUserIdAndDate(@Param("userId") Long userId, @Param("date") LocalDate date);
 
-    /// 사용자 ID를 통해 해당 사용자의 모든 루틴 객체를 리스트로 반환하는 메서드
+    /// 사용자 ID를 통해 해당 사용자의 모든 루틴 객체를 리스트로 반환하는 메서드 (`alarm_time` 오름차순)
     ///
     /// @param userId 조회할 루틴의 사용자 ID
     /// @return 조회된 Routine 객체 리스트, 없으면 빈 배열
