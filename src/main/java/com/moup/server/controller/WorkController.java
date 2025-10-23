@@ -123,10 +123,11 @@ public class WorkController implements WorkSpecification {
         if (workService.updateActualStartTime(userId, workplaceId)) {
             return ResponseEntity.noContent().build();
         } else {
+            LocalDateTime currentDateTime = LocalDateTime.now();
             WorkCreateRequest workCreateRequest = WorkCreateRequest.builder()
                     .routineIdList(Collections.emptyList())
-                    .startTime(LocalDateTime.now())
-                    .actualStartTime(LocalDateTime.now())
+                    .startTime(currentDateTime)
+                    .actualStartTime(currentDateTime)
                     .endTime(null)
                     .actualEndTime(null)
                     .restTimeMinutes(0)
