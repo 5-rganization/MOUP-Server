@@ -330,13 +330,22 @@ public class WorkService {
 
     @Transactional
     public void updateWorkForWorkerId(Long requesterUserId, Long workplaceId, Long workerId, Long workId, WorkerWorkUpdateRequest request) {
-        VerifiedWorkContextForUD context = getVerifiedWorkContextForUD(requesterUserId, workId);
-        Worker workerOfWork = context.worker();
+        // 1. 근무지 조회 및 사장님 권한 검증
+        Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+        permissionVerifyUtil.verifyOwnerPermission(requesterUserId, workplace.getOwnerId());
 
-        if (!workerOfWork.getWorkplaceId().equals(workplaceId)) { throw new BadRequestException("잘못된 근무지 요청입니다."); }
-        if (!workerOfWork.getId().equals(workerId)) { throw new BadRequestException("잘못된 근무자 요청입니다."); }
+        // 2. 근무자 조회 (경로의 workplaceId와 workerId가 유효한지 확인)
+        Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId).orElseThrow(WorkerNotFoundException::new);
 
-        updateWorkForWorkerHelper(workerOfWork, workId, request);
+        // 3. 근무 기록 조회 (경로의 workId가 유효하고, 위 근무자의 것인지 확인)
+        Work work = workRepository.findById(workId)
+                .orElseThrow(WorkNotFoundException::new);
+        if (!work.getWorkerId().equals(worker.getId())) {
+            throw new BadRequestException("해당 근무 기록은 지정된 근무자의 것이 아닙니다.");
+        }
+
+        // 4. 검증 통과 후 업데이트 헬퍼 호출
+        updateWorkForWorkerHelper(worker, workId, request);
     }
 
     @Transactional
