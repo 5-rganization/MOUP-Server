@@ -34,7 +34,6 @@ public class FCMService {
     @Transactional
     public void sendToSingleUser(Long senderId, Long receiverId, String title, String body)
             throws FirebaseMessagingException {
-        // TODO: 송신자 데이터가 필요할 경우 사용하기 (없으면 빼서 DB 호출 최소화)
         User sender = userService.findUserById(senderId);   // 송신자 유저
         User receiver = userService.findUserById(receiverId);   // 수신자 유저
         String fcmToken = receiver.getFcmToken();   // 수신자 FCM 토큰
