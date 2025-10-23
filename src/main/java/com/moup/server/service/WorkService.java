@@ -333,8 +333,8 @@ public class WorkService {
         VerifiedWorkContextForUD context = getVerifiedWorkContextForUD(requesterUserId, workId);
         Worker workerOfWork = context.worker();
 
-        if (!workerOfWork.getWorkplaceId().equals(workplaceId)) { throw new BadRequestException(); }
-        if (!workerOfWork.getId().equals(workerId)) { throw new BadRequestException(); }
+        if (!workerOfWork.getWorkplaceId().equals(workplaceId)) { throw new BadRequestException("잘못된 근무지 요청입니다."); }
+        if (!workerOfWork.getId().equals(workerId)) { throw new BadRequestException("잘못된 근무자 요청입니다."); }
 
         updateWorkForWorkerHelper(workerOfWork, workId, request);
     }

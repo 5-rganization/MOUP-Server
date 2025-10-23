@@ -114,6 +114,7 @@ public class WorkController implements WorkSpecification {
 
     @Override
     @PatchMapping("/workplaces/{workplaceId}/workers/{workerId}/works/{workId}")
+    @PreAuthorize("hasRole('ROLE_OWNER')")
     public ResponseEntity<?> updateWorkForWorker(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workerId,
