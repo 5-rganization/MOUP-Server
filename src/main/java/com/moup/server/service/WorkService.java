@@ -335,9 +335,8 @@ public class WorkService {
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplaceOwnerId);
 
-        List<Worker> userAllWorker = workerRepository.findAllByUserId(userId);
-        for (Worker worker: userAllWorker) {
-            if (Boolean.TRUE.equals(worker.getIsNowWorking())) { throw new WorkerAlreadyWorkingException(); }
+        if (workerRepository.existsByUserIdAndIsNowWorking(userId, true)) {
+            throw new WorkerAlreadyWorkingException();
         }
 
         LocalDateTime currentDateTime = LocalDateTime.now();
