@@ -41,6 +41,19 @@ public class WorkerController implements WorkerSpecification {
     }
 
     @Override
+    @GetMapping("/{workerId}")
+    @PreAuthorize("hasRole('ROLE_OWNER')")
+    public ResponseEntity<?> getWorkerAttendanceInfo(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workerId
+    ) {
+        Long userId = identityService.getCurrentUserId();
+
+        WorkerAttendanceInfoResponse response = workerService.getWorkerAttendanceInfo(userId, workplaceId, workerId);
+        return ResponseEntity.ok().body(response);
+    }
+
+    @Override
     @PatchMapping("/me")
     @PreAuthorize("hasRole('ROLE_WORKER')")
     public ResponseEntity<?> updateMyWorker(

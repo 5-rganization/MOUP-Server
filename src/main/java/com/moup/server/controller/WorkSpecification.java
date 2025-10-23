@@ -187,7 +187,7 @@ public interface WorkSpecification {
     );
 
     @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
-    @Operation(summary = "근무 출근",
+    @Operation(summary = "근무 출근 (알바생 전용)",
             description = "근무지 ID를 경로로 전달받아 출근 시간이 지금으로부터 과거 1시간 ~ 미래 1시간 사이에 해당하는 근무의 실제 출근 시간을 업데이트, 없으면 근무 생성")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "근무 생성 성공"),
@@ -195,6 +195,7 @@ public interface WorkSpecification {
             @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "근무자가 이미 근무중인 상태", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     @PutMapping("/workplaces/{workplaceId}/workers/me/works/start")
     ResponseEntity<?> updateActualStartTimeOrCreateWork(
@@ -203,7 +204,7 @@ public interface WorkSpecification {
     );
 
     @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
-    @Operation(summary = "근무 퇴근", description = "근무지 ID를 경로로 전달받아 실제 퇴근 시간이 없는 마지막 근무의 실제 퇴근 시간을 업데이트")
+    @Operation(summary = "근무 퇴근 (알바생 전용)", description = "근무지 ID를 경로로 전달받아 실제 퇴근 시간이 없는 마지막 근무의 실제 퇴근 시간을 업데이트")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "근무 업데이트 성공"),
             @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),

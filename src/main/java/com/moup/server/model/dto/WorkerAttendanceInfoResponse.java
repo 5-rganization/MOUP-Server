@@ -13,5 +13,5 @@ public class WorkerAttendanceInfoResponse {
     @Schema(description = "근무자 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long workerId;
     @Schema(description = "알바생 출석 정보 (없으면 빈 배열)", requiredMode = Schema.RequiredMode.REQUIRED)
-    private List<WorkerWorkAttendanceResponse> WorkerWorkAttendanceInfo;
+    private List<WorkerWorkAttendanceResponse> WorkerWorkAttendanceInfoList;
 }

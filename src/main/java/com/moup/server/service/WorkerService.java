@@ -28,6 +28,7 @@ public class WorkerService {
     private final UserRepository userRepository;
 
     private final PermissionVerifyUtil permissionVerifyUtil;
+    private final WorkRepository workRepository;
 
     public WorkerSummaryListResponse getWorkerList(Long userId, Long workplaceId) {
         Workplace userWorkplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
@@ -107,6 +108,27 @@ public class WorkerService {
 
         return WorkerSummaryListResponse.builder()
                 .workerSummaryInfoList(workerSummaryInfoList)
+                .build();
+    }
+
+    public WorkerAttendanceInfoResponse getWorkerAttendanceInfo(Long userId, Long workplaceId, Long workerId) {
+        Workplace userWorkplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+        permissionVerifyUtil.verifyOwnerPermission(userId, userWorkplace.getOwnerId());
+
+        List<WorkerWorkAttendanceResponse> workerWorkAttendanceInfoList = workRepository.findAllByWorkerId(workerId).stream()
+                .map(work -> WorkerWorkAttendanceResponse.builder()
+                        .workId(work.getId())
+                        .workDate(work.getWorkDate())
+                        .startTime(work.getStartTime())
+                        .actualStartTime(work.getActualStartTime())
+                        .endTime(work.getEndTime())
+                        .actualEndTime(work.getEndTime())
+                        .build())
+                .toList();
+
+        return WorkerAttendanceInfoResponse.builder()
+                .workerId(workerId)
+                .WorkerWorkAttendanceInfoList(workerWorkAttendanceInfoList)
                 .build();
     }
 

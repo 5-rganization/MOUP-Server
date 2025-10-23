@@ -67,7 +67,7 @@ public interface WorkerRepository {
     ///
     /// @param workplaceId 조회할 근무지 ID
     /// @return 조회된 Worker 객체 리스트, 없으면 빈 배열
-    @Select("SELECT * FROM workers WHERE workplace_id = #{workplaceId}")
+    @Select("SELECT * FROM workers WHERE workplace_id = #{workplaceId} ")
     List<Worker> findAllByWorkplaceId(Long workplaceId);
 
     @Select("""
