@@ -15,11 +15,8 @@ import java.util.stream.Collectors;
 
 @Getter
 @Builder
-@Schema(description = "근무 업데이트 요청 DTO")
-public class WorkUpdateRequest {
-    @NotNull(message = "값이 없을 경우 빈 배열을 전달해야 합니다.")
-    @Schema(description = "연결할 루틴 ID 리스트 (없으면 빈 배열)", example = "[1, 2]", requiredMode = Schema.RequiredMode.REQUIRED)
-    private List<Long> routineIdList;
+@Schema(description = "근무자 근무 업데이트 요청 DTO")
+public class WorkerWorkUpdateRequest {
     @NotNull(message = "필수 입력값입니다.")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
     @Schema(description = "출근 시간 (yyyy-MM-dd HH:mm)", example = "2025-10-11 08:30", requiredMode = Schema.RequiredMode.REQUIRED)
@@ -81,6 +78,7 @@ public class WorkUpdateRequest {
                 .nightAllowance(nightAllowance)
                 .holidayAllowance(holidayAllowance)
                 .grossIncome(basePay + nightAllowance + holidayAllowance)
+                .estimatedNetIncome(0) // 추정 세후 소득은 나중에 별도 계산
                 .repeatDays(repeatDaysStr)
                 .repeatEndDate(repeatEndDate)
                 .build();

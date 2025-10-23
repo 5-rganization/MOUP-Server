@@ -15,8 +15,8 @@ import java.util.stream.Collectors;
 
 @Getter
 @Builder
-@Schema(description = "근무 생성 요청 DTO")
-public class WorkCreateRequest {
+@Schema(description = "사용자 근무 생성 요청 DTO")
+public class MyWorkCreateRequest {
     @NotNull(message = "값이 없을 경우 빈 배열을 전달해야 합니다.")
     @Schema(description = "연결할 루틴 ID 리스트 (없으면 빈 배열)", example = "[1, 2]", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<Long> routineIdList;
@@ -80,6 +80,7 @@ public class WorkCreateRequest {
                 .nightAllowance(nightAllowance)
                 .holidayAllowance(holidayAllowance)
                 .grossIncome(basePay + nightAllowance + holidayAllowance)
+                .estimatedNetIncome(0) // 추정 세후 소득은 나중에 별도 계산
                 .repeatDays(repeatDaysStr)
                 .repeatEndDate(repeatEndDate)
                 .build();
