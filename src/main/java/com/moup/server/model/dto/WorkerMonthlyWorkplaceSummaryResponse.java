@@ -9,7 +9,7 @@ import lombok.Getter;
 @Schema(description = "알바생 월간 근무지 요약 조회 응답 DTO")
 public class WorkerMonthlyWorkplaceSummaryResponse {
     @Schema(description = "근무지 요약 정보", requiredMode = Schema.RequiredMode.REQUIRED)
-    private WorkplaceSummaryResponse workplaceSummaryInfo;
+    private WorkerHomeWorkplaceSummaryInfo homeWorkplaceSummaryInfo;
     @Schema(description = "급여 요약 정보", requiredMode = Schema.RequiredMode.REQUIRED)
     private SalarySummaryResponse salarySummaryInfo;
     @Schema(description = "총 근무시간 (분)", example = "420", requiredMode = Schema.RequiredMode.REQUIRED)
