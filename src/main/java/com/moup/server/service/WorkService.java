@@ -32,6 +32,7 @@ public class WorkService {
     private record VerifiedWorkContextForRead(
             Work work,
             long workMinutes,
+            Worker worker,
             WorkerSummaryResponse workerSummaryInfo,
             WorkplaceSummaryResponse workplaceSummaryInfo,
             boolean isEditable
@@ -93,6 +94,7 @@ public class WorkService {
                 .memo(context.work().getMemo())
                 .repeatDays(repeatDays)
                 .repeatEndDate(context.work().getRepeatEndDate())
+                .isUserWork(checkIsUserWork(userId, context.worker().getUserId()))
                 .isEditable(context.isEditable())
                 .build();
     }
@@ -100,7 +102,6 @@ public class WorkService {
     @Transactional(readOnly = true)
     public WorkSummaryResponse getWork(Long userId, Long workId) {
         VerifiedWorkContextForRead context = getVerifiedWorkContextForRead(userId, workId);
-
         List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(context.work().getRepeatDays());
 
         return WorkSummaryResponse.builder()
@@ -115,6 +116,7 @@ public class WorkService {
                 .estimatedNetIncome(context.work().getEstimatedNetIncome())
                 .repeatDays(repeatDays)
                 .repeatEndDate(context.work().getRepeatEndDate())
+                .isUserWork(checkIsUserWork(userId, context.worker().getUserId()))
                 .isEditable(context.isEditable())
                 .build();
     }
@@ -182,8 +184,7 @@ public class WorkService {
             List<WorkSummaryResponse> workSummaryList = workerWorkList.stream()
                     .map(work -> {
                         long workMinutes = work.getGrossWorkMinutes();
-                        boolean isEditable = checkEditable(userId, userWorker.getUserId(), workplace.getOwnerId());
-                        return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummaryInfo, workMinutes, isEditable);
+                        return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummaryInfo, workMinutes, true, true);
                     })
                     .toList();
             userWorkSummaryList.addAll(workSummaryList);
@@ -263,8 +264,9 @@ public class WorkService {
             List<WorkSummaryResponse> workerWorkSummaryList = workerWorkList.stream()
                     .map(work -> {
                         long workMinutes = work.getGrossWorkMinutes();
+                        boolean isUserWork = checkIsUserWork(user.getId(), workplaceWorker.getUserId());
                         boolean isEditable = checkEditable(user.getId(), workplaceWorker.getUserId(), workplace.getOwnerId());
-                        return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummaryInfo, workMinutes, isEditable);
+                        return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummaryInfo, workMinutes, isUserWork, isEditable);
                     })
                     .toList();
             workSummaryInfoList.addAll(workerWorkSummaryList);
@@ -308,7 +310,7 @@ public class WorkService {
         List<WorkSummaryResponse> workSummaryInfoList = userWorkList.stream()
                 .map(userWork -> {
                     long workMinutes = userWork.getGrossWorkMinutes();
-                    return convertWorkToSummaryResponse(userWork, userWorkerSummaryInfo, workplaceSummary, workMinutes, true);
+                    return convertWorkToSummaryResponse(userWork, userWorkerSummaryInfo, workplaceSummary, workMinutes, true, true);
                 })
                 .toList();
 
@@ -331,8 +333,8 @@ public class WorkService {
         VerifiedWorkContextForUD context = getVerifiedWorkContextForUD(requesterUserId, workId);
         Worker workerOfWork = context.worker();
 
-        if (!workerOfWork.getWorkplaceId().equals(workplaceId)) { throw new InvalidPermissionAccessException(); }
-        if (!workerOfWork.getId().equals(workerId)) { throw new InvalidPermissionAccessException(); }
+        if (!workerOfWork.getWorkplaceId().equals(workplaceId)) { throw new BadRequestException(); }
+        if (!workerOfWork.getId().equals(workerId)) { throw new BadRequestException(); }
 
         updateWorkForWorkerHelper(workerOfWork, workId, request);
     }
@@ -554,7 +556,7 @@ public class WorkService {
         boolean isEditable = checkEditable(requesterUserId, requestedWorker.getUserId(), workplace.getOwnerId());
 
         // 9. 모든 데이터를 컨테이너에 담아 반환
-        return new VerifiedWorkContextForRead(work, workMinutes, workerSummaryInfo, workplaceSummary, isEditable);
+        return new VerifiedWorkContextForRead(work, workMinutes, requestedWorker, workerSummaryInfo, workplaceSummary, isEditable);
     }
 
     private VerifiedWorkContextForUD getVerifiedWorkContextForUD(Long requesterUserId, Long workId) {
@@ -613,6 +615,7 @@ public class WorkService {
             WorkerSummaryResponse workerSummaryInfo,
             WorkplaceSummaryResponse workplaceSummaryInfo,
             long workMinutes,
+            boolean isUserWork,
             boolean isEditable
     ) {
         List<DayOfWeek> repeatDays = convertDayOfWeekStrToList(work.getRepeatDays());
@@ -629,8 +632,13 @@ public class WorkService {
                 .estimatedNetIncome(work.getEstimatedNetIncome())
                 .repeatDays(repeatDays)
                 .repeatEndDate(work.getRepeatEndDate())
+                .isUserWork(isUserWork)
                 .isEditable(isEditable)
                 .build();
+    }
+
+    private boolean checkIsUserWork(Long requesterUserId, Long workerUserId) {
+        return workerUserId.equals(requesterUserId);
     }
 
     private boolean checkEditable(Long userId, Long workerUserId, Long workplaceOwnerId) {
