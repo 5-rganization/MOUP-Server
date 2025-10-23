@@ -122,7 +122,7 @@ public class WorkerService {
                         .startTime(work.getStartTime())
                         .actualStartTime(work.getActualStartTime())
                         .endTime(work.getEndTime())
-                        .actualEndTime(work.getEndTime())
+                        .actualEndTime(work.getActualEndTime())
                         .build())
                 .toList();
 
