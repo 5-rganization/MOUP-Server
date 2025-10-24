@@ -134,9 +134,9 @@ CREATE TABLE `works`
     `holiday_allowance`       INT                   DEFAULT 0,  -- 주휴수당 (해당 주에 발생한 수당을 N등분하여 일별로 저장)
     `gross_income`            INT                   DEFAULT 0,  -- 세전 일급 (위 4가지의 합)
     `estimated_net_income`    INT                   DEFAULT 0,  -- 추정 세후 일급 (캘린더 표시용)
-    `repeat_days`             VARCHAR(100)          NULL,
-    `repeat_end_date`         DATETIME              NULL,
-    FOREIGN KEY (`worker_id`) REFERENCES workers (`id`) ON DELETE CASCADE
+    `repeat_group_id`         VARCHAR(36)           NULL,
+    FOREIGN KEY (`worker_id`) REFERENCES workers (`id`) ON DELETE CASCADE,
+    INDEX `idx_repeat_group_id` (`repeat_group_id`)
 );
 
 CREATE TABLE `work_routine_mappings`
