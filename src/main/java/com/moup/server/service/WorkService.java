@@ -400,14 +400,13 @@ public class WorkService {
         // 퇴근 기록 업데이트 및 상태 변경
         if (optWorkToEnd.isPresent()) {
             Work workToEnd = optWorkToEnd.get();
-            boolean needsRecalculation = (workToEnd.getEndTime() == null); // 예정 퇴근 시간이 없었는지 확인
             LocalDateTime currentDateTime = LocalDateTime.now();
 
             // 실제 퇴근 시간 업데이트 (예정 퇴근 시간이 없었다면 같이 업데이트)
             workRepository.updateActualEndTimeById(workToEnd.getId(), currentDateTime);
 
             // 급여 재계산 필요 여부 확인 및 실행
-            if (needsRecalculation || (workToEnd.getEndTime() != null && !workToEnd.getEndTime().equals(currentDateTime))) {
+            if (!workToEnd.getEndTime().equals(currentDateTime)) {
                 // 업데이트 후 work 객체를 다시 로드해서 정확한 정보로 재계산
                 Work updatedWork = workRepository.findById(workToEnd.getId()).orElse(workToEnd);
                 salaryCalculationService.recalculateWorkWeek(userWorker.getId(), updatedWork.getWorkDate());
