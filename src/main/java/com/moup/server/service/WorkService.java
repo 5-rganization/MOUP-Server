@@ -392,7 +392,7 @@ public class WorkService {
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplaceOwnerId);
-        if (userWorker.getIsNowWorking() == null || !userWorker.getIsNowWorking()) { throw new WorkNotFoundException("현재 진행 중인 근무가 없습니다."); }
+        if (!Boolean.TRUE.equals(userWorker.getIsNowWorking())) { throw new WorkNotFoundException("현재 진행 중인 근무가 없습니다."); }
 
         // 가장 최근의 진행 중인 근무 조회
         Optional<Work> optWorkToEnd = workRepository.findMostRecentWorkInProgress(userWorker.getId());
@@ -402,13 +402,16 @@ public class WorkService {
             Work workToEnd = optWorkToEnd.get();
             LocalDateTime currentDateTime = LocalDateTime.now();
 
+            // 예정된 종료 시간(null 포함)과 실제 종료 시간이 다르면 재계산
+            boolean needsRecalculation = !Objects.equals(workToEnd.getEndTime(), currentDateTime);
+
             // 실제 퇴근 시간 업데이트 (예정 퇴근 시간이 없었다면 같이 업데이트)
             workRepository.updateActualEndTimeById(workToEnd.getId(), currentDateTime);
 
             // 급여 재계산 필요 여부 확인 및 실행
-            if (!workToEnd.getEndTime().equals(currentDateTime)) {
+            if (needsRecalculation) {
                 // 업데이트 후 work 객체를 다시 로드해서 정확한 정보로 재계산
-                Work updatedWork = workRepository.findById(workToEnd.getId()).orElse(workToEnd);
+                Work updatedWork = workRepository.findById(workToEnd.getId()).orElse(workToEnd); // DB 조회 실패 시 이전 객체 사용 (방어)
                 salaryCalculationService.recalculateWorkWeek(userWorker.getId(), updatedWork.getWorkDate());
             }
 
