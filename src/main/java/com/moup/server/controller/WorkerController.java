@@ -41,12 +41,23 @@ public class WorkerController implements WorkerSpecification {
     }
 
     @Override
-    @PatchMapping("/{workerId}/join-request")
+    @PatchMapping("/{workerId}/accept")
     @PreAuthorize("hasRole('ROLE_OWNER')")
-    public ResponseEntity<?> acceptWorkerJoinRequest(@PathVariable Long workplaceId, @PathVariable Long workerId) {
+    public ResponseEntity<?> acceptWorker(@PathVariable Long workplaceId, @PathVariable Long workerId) {
         Long ownerId = identityService.getCurrentUserId();
 
         workerService.acceptWorker(ownerId, workplaceId, workerId);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @DeleteMapping("/{workerId}/accept")
+    @PreAuthorize("hasRole('ROLE_OWNER')")
+    public ResponseEntity<?> rejectWorker(@PathVariable Long workplaceId, @PathVariable Long workerId) {
+        Long ownerId = identityService.getCurrentUserId();
+
+        workerService.rejectWorker(ownerId, workplaceId, workerId);
 
         return ResponseEntity.noContent().build();
     }

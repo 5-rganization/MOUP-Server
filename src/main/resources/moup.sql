@@ -15,7 +15,6 @@ CREATE TABLE `users`
     `deleted_at`  TIMESTAMP,
     `is_deleted`  TINYINT(1)                                                         DEFAULT 0,
     `fcm_token`   TEXT,
-    -- TODO: 사용자 당 생성할 수 있는 근무지 20개로 제한
     UNIQUE KEY `unique_provider` (`provider`, `provider_id`)
 );
 
