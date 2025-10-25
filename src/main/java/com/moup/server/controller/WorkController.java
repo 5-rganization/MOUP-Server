@@ -3,6 +3,8 @@ package com.moup.server.controller;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.User;
 import com.moup.server.service.*;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
@@ -179,16 +181,23 @@ public class WorkController implements WorkSpecification {
     @Override
     @DeleteMapping("/works/{workId}")
     public ResponseEntity<?> deleteWork(
-            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
-            @RequestParam(required = false, defaultValue = "false") boolean deleteAllFuture
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId
     ) {
         Long userId = identityService.getCurrentUserId();
 
-        if (deleteAllFuture) {
-            workService.deleteRecurringWorkIncludingDate(userId, workId);
-        } else {
-            workService.deleteWork(userId, workId);
-        }
+        workService.deleteWork(userId, workId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @DeleteMapping("/works/recurring/{workId}")
+    public ResponseEntity<?> deleteRecurringWorkIncludingDate(
+            @Parameter(name = "workId", description = "삭제할 기준 근무 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId
+    ) {
+        Long userId = identityService.getCurrentUserId();
+
+        workService.deleteRecurringWorkIncludingDate(userId, workId);
         return ResponseEntity.noContent().build();
     }
 
