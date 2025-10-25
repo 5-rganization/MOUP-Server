@@ -41,7 +41,7 @@ public interface RoutineSpecification {
     ResponseEntity<?> getAllTodayRoutine();
 
     @GetMapping("/{routineId}")
-    @Operation(summary = "루틴 조회", description = "조회할 루틴 ID를 경로로 전달받아 조회 (기본적으로 상세 정보 반환, `?view=summary` 파라미터 사용 시 요약 정보 반환)")
+    @Operation(summary = "루틴 조회", description = "조회할 루틴 ID를 경로로 전달받아 조회 (기본적으로 상세 정보 반환, `view=summary` 파라미터 사용 시 요약 정보 반환)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "루틴 조회 성공",
                     content = @Content(mediaType = "application/json", schema = @Schema(oneOf = { RoutineDetailResponse.class, RoutineSummaryResponse.class }),
@@ -80,7 +80,7 @@ public interface RoutineSpecification {
             @Parameter(name = "routineId", description = "조회할 루틴 ID", example = "1", required = true, in = ParameterIn.PATH)
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long routineId,
             @Parameter(name = "view", description = "조회 방식 (기본값: 상세 정보, `summary`: 요약 정보)", in = ParameterIn.QUERY, schema = @Schema(allowableValues = {"summary"}))
-            @RequestParam(name = "view", required = false) ViewType view
+            @RequestParam(name = "view", required = false, defaultValue = "DETAIL") ViewType view
     );
 
     @PatchMapping("/{routineId}")

@@ -5,12 +5,17 @@ import org.apache.ibatis.annotations.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 @Mapper
 public interface WorkRepository {
+
+    // 여러 그룹 ID와 마지막 근무일을 담을 내부 레코드 (또는 DTO)
+    record GroupIdAndDate(String groupId, LocalDate lastDate) {}
+    // 여러 그룹 ID와 요일 이름을 담을 내부 레코드 (또는 DTO)
+    record GroupIdAndDayName(String groupId, String dayName) {}
 
     /// 근무를 생성하는 메서드
     ///
@@ -21,17 +26,40 @@ public interface WorkRepository {
                 worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time,
                 rest_time_minutes, gross_work_minutes, net_work_minutes, night_work_minutes,
                 memo, hourly_rate, base_pay, night_allowance, holiday_allowance,
-                gross_income, estimated_net_income, repeat_days, repeat_end_date
+                gross_income, estimated_net_income, repeat_group_id
             )
             VALUES (
                 #{workerId}, #{workDate}, #{startTime}, #{actualStartTime}, #{endTime}, #{actualEndTime},
                 #{restTimeMinutes}, #{grossWorkMinutes}, #{netWorkMinutes}, #{nightWorkMinutes},
                 #{memo}, #{hourlyRate}, #{basePay}, #{nightAllowance}, #{holidayAllowance},
-                #{grossIncome}, #{estimatedNetIncome}, #{repeatDays}, #{repeatEndDate}
+                #{grossIncome}, #{estimatedNetIncome}, #{repeatGroupId}
             )
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
-    Long create(Work work);
+    long create(Work work);
+
+    /// 반복 근무 생성 시 배치(Batch) 삽입을 위한 메서드
+    @Insert("""
+            <script>
+                INSERT INTO works (
+                    worker_id, work_date, start_time, end_time, rest_time_minutes,
+                    gross_work_minutes, net_work_minutes, night_work_minutes,
+                    memo, hourly_rate, base_pay, night_allowance, holiday_allowance,
+                    gross_income, estimated_net_income, repeat_group_id
+                )
+                VALUES
+                <foreach item="work" collection="works" separator=",">
+                    (
+                        #{work.workerId}, #{work.workDate}, #{work.startTime}, #{work.endTime}, #{work.restTimeMinutes},
+                        #{work.grossWorkMinutes}, #{work.netWorkMinutes}, #{work.nightWorkMinutes},
+                        #{work.memo}, #{work.hourlyRate}, #{work.basePay}, #{work.nightAllowance}, #{work.holidayAllowance},
+                        #{work.grossIncome}, #{work.estimatedNetIncome}, #{work.repeatGroupId}
+                    )
+                </foreach>
+            </script>
+            """)
+    @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
+    long createBatch(@Param("works") List<Work> works);
 
     /// 근무 ID와 근무자 ID를 통해 해당 근무가 존재하는지 여부를 반환하는 메서드
     ///
@@ -141,6 +169,60 @@ public interface WorkRepository {
             """)
     Optional<Work> findMostRecentWorkInProgress(@Param("workerId") Long workerId);
 
+    /// 특정 반복 그룹 ID에 해당하는 근무 중 가장 빠른 날짜의 근무를 조회합니다.
+    /// (반복 시작일 및 요일 계산 기준 확인용)
+    /// @param repeatGroupId 반복 그룹 ID
+    /// @return 가장 빠른 근무 Optional
+    @Select("SELECT * FROM works WHERE repeat_group_id = #{repeatGroupId} ORDER BY work_date ASC, start_time ASC LIMIT 1")
+    Optional<Work> findFirstWorkByRepeatGroupId(@Param("repeatGroupId") String repeatGroupId);
+
+    /// 특정 반복 그룹 ID에 해당하는 근무 중 가장 늦은 날짜(반복 종료일)를 조회합니다.
+    /// @param repeatGroupId 반복 그룹 ID
+    /// @return 반복 종료 날짜 Optional
+    @Select("SELECT MAX(work_date) FROM works WHERE repeat_group_id = #{repeatGroupId}")
+    Optional<LocalDate> findLastWorkDateByRepeatGroupId(@Param("repeatGroupId") String repeatGroupId);
+
+    /// 특정 반복 그룹 ID에 해당하는 근무들의 요일(DayOfWeek) 목록을 중복 없이 조회합니다.
+    /// (반복 요일 확인용)
+    /// @param repeatGroupId 반복 그룹 ID
+    /// @return 요일(DayOfWeek) 이름 문자열 목록 (e.g., ["MONDAY", "WEDNESDAY"])
+    @Select("SELECT DISTINCT DAYNAME(work_date) FROM works WHERE repeat_group_id = #{repeatGroupId}")
+    List<String> findDistinctDayNamesByRepeatGroupId(@Param("repeatGroupId") String repeatGroupId);
+
+    /// 여러 반복 그룹 ID들에 해당하는 근무 중 가장 늦은 날짜(반복 종료일) 목록을 조회합니다.
+    /// @param groupIdList 반복 그룹 ID 리스트
+    /// @return 각 그룹 ID와 해당 그룹의 마지막 근무 날짜(lastDate)를 담은 리스트
+    @Select("""
+            <script>
+            SELECT repeat_group_id as groupId, MAX(work_date) as lastDate
+            FROM works
+            WHERE repeat_group_id IN
+                <foreach item="id" collection="groupIdList" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            GROUP BY repeat_group_id
+            </script>
+            """)
+    List<GroupIdAndDate> findLastWorkDatesByGroupIdList(@Param("groupIdList") Collection<String> groupIdList);
+
+    /// 여러 반복 그룹 ID들에 해당하는 근무들의 요일(DayOfWeek) 이름 목록을 조회합니다.
+    /// (GROUP BY를 사용하여 각 그룹별 요일 조합을 가져옵니다)
+    /// @param groupIdList 반복 그룹 ID 리스트
+    /// @return 각 그룹 ID와 해당 그룹에 포함된 요일 이름(dayName)을 담은 리스트 (중복될 수 있음)
+    @Select("""
+            <script>
+            SELECT repeat_group_id as groupId, DAYNAME(work_date) as dayName
+            FROM works
+            WHERE repeat_group_id IN
+                <foreach item="id" collection="groupIdList" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            GROUP BY repeat_group_id, DAYNAME(work_date) /* 각 그룹 내 요일 중복 제거 */
+            ORDER BY repeat_group_id /* Java 처리 용이성을 위해 정렬 */
+            </script>
+            """)
+    List<GroupIdAndDayName> findDistinctDayNamesByGroupIdList(@Param("groupIdList") Collection<String> groupIdList);
+
     /// 근무 ID와 근무자 ID에 해당하는 근무를 업데이트하는 메서드
     ///
     /// @param work 업데이트할 Work 객체
@@ -153,7 +235,8 @@ public interface WorkRepository {
                 night_work_minutes = #{nightWorkMinutes},
                 memo = #{memo}, hourly_rate = #{hourlyRate}, base_pay = #{basePay},
                 night_allowance = #{nightAllowance}, holiday_allowance = #{holidayAllowance},
-                gross_income = #{grossIncome}, estimated_net_income = #{estimatedNetIncome}, repeat_days = #{repeatDays}, repeat_end_date = #{repeatEndDate}
+                gross_income = #{grossIncome}, estimated_net_income = #{estimatedNetIncome}, 
+                repeat_group_id = #{repeatGroupId}
             WHERE id = #{id} AND worker_id = #{workerId}
             """)
     void update(Work work);
@@ -165,17 +248,11 @@ public interface WorkRepository {
     void updateActualStartTimeById(Long id, LocalDateTime actualStartTime);
 
     /// 근무 ID에 해당하는 근무의 실제 퇴근 시간을 업데이트하는 메서드
-    /// 'end_time'(예정 퇴근 시간)이 비어있을(NULL) 경우, 'end_time'도 'actual_end_time'과 동일한 값으로 함께 업데이트합니다.
+    /// 'end_time'(예정 퇴근 시간)이 비어있을(`NULL`) 경우, 'end_time'도 'actual_end_time'과 동일한 값으로 함께 업데이트합니다.
     ///
     /// @param id 업데이트할 근무 ID
     /// @param actualEndTime 업데이트할 실제 퇴근 시간 (LocalDateTime)
-    @Update("""
-            UPDATE works
-            SET
-                actual_end_time = #{actualEndTime},
-                end_time = COALESCE(end_time, #{actualEndTime})
-            WHERE id = #{id}
-            """)
+    @Update("UPDATE works SET actual_end_time = #{actualEndTime}, end_time = COALESCE(end_time, #{actualEndTime}) WHERE id = #{id}")
     void updateActualEndTimeById(@Param("id") Long id, @Param("actualEndTime") LocalDateTime actualEndTime);
 
     /// 근무 ID와 근무자 ID에 해당하는 근무를 삭제하는 메서드
@@ -184,4 +261,26 @@ public interface WorkRepository {
     /// @param workerId 삭제할 근무의 근무자 ID
     @Delete("DELETE FROM works WHERE id = #{id} AND worker_id = #{workerId}")
     void delete(Long id, Long workerId);
+
+    /// 특정 반복 그룹(`repeatGroupId`)에 속하면서 특정 날짜(`date`) **포함** 이후의 모든 근무를 삭제합니다.
+    /// @param repeatGroupId 삭제할 반복 그룹 ID
+    /// @param date 기준 날짜 (이 날짜 포함 미래의 근무 삭제)
+    /// @return 삭제된 행의 수
+    @Delete("""
+            DELETE FROM works
+            WHERE repeat_group_id = #{repeatGroupId}
+                AND work_date >= #{date} /* 기준일 포함 */
+            """)
+    int deleteRecurringWorkFromDate(@Param("repeatGroupId") String repeatGroupId, @Param("date") LocalDate date);
+
+    /// 특정 반복 그룹(`repeatGroupId`)에 속하면서 특정 날짜(`date`) **보다 미래**의 모든 근무를 삭제합니다.
+    /// @param repeatGroupId 삭제할 반복 그룹 ID
+    /// @param date 기준 날짜 (이 날짜보다 미래의 근무만 삭제)
+    /// @return 삭제된 행의 수
+    @Delete("""
+            DELETE FROM works
+            WHERE repeat_group_id = #{repeatGroupId}
+                AND work_date > #{date} /* 기준일 제외 */
+            """)
+    int deleteRecurringWorkAfterDate(@Param("repeatGroupId") String repeatGroupId, @Param("date") LocalDate date);
 }

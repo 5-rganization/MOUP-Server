@@ -58,17 +58,20 @@ public class RoutineController implements RoutineSpecification {
     @GetMapping("/{routineId}")
     public ResponseEntity<?> getRoutine(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long routineId,
-            @RequestParam(name = "view", required = false) ViewType view
+            @RequestParam(name = "view", required = false, defaultValue = "DETAIL") ViewType view
     ) {
         Long userId = identityService.getCurrentUserId();
 
-        if (view == ViewType.SUMMARY) {
-            RoutineSummaryResponse response = routineService.getRoutine(userId, routineId);
-            return ResponseEntity.ok().body(response);
-        }
-
-        RoutineDetailResponse response = routineService.getRoutineDetail(userId, routineId);
-        return ResponseEntity.ok().body(response);
+        return switch (view) {
+            case SUMMARY -> {
+                RoutineSummaryResponse response = routineService.getRoutine(userId, routineId);
+                yield ResponseEntity.ok().body(response);
+            }
+            case DETAIL -> {
+                RoutineDetailResponse response = routineService.getRoutineDetail(userId, routineId);
+                yield ResponseEntity.ok().body(response);
+            }
+        };
     }
 
     @Override

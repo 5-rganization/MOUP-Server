@@ -52,13 +52,10 @@ public class WorkerWorkUpdateRequest {
             int nightWorkMinutes,
             int basePay,
             int nightAllowance,
-            int holidayAllowance
+            int holidayAllowance,
+            String repeatGroupId
     ) {
         LocalDate workDate = startTime.toLocalDate();
-
-        String repeatDaysStr = repeatDays.stream()
-                .map(DayOfWeek::name)
-                .collect(Collectors.joining(","));
 
         return Work.builder()
                 .id(workId)
@@ -78,9 +75,8 @@ public class WorkerWorkUpdateRequest {
                 .nightAllowance(nightAllowance)
                 .holidayAllowance(holidayAllowance)
                 .grossIncome(basePay + nightAllowance + holidayAllowance)
-                .estimatedNetIncome(0) // 추정 세후 소득은 나중에 별도 계산
-                .repeatDays(repeatDaysStr)
-                .repeatEndDate(repeatEndDate)
+                .estimatedNetIncome(0)
+                .repeatGroupId(repeatGroupId)
                 .build();
     }
 }

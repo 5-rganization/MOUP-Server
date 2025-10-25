@@ -3,6 +3,8 @@ package com.moup.server.controller;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.User;
 import com.moup.server.service.*;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
@@ -78,17 +80,20 @@ public class WorkController implements WorkSpecification {
     @GetMapping("/works/{workId}")
     public ResponseEntity<?> getWork(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
-            @RequestParam(name = "view", required = false) ViewType view
+            @RequestParam(name = "view", required = false, defaultValue = "DETAIL") ViewType view
     ) {
         Long userId = identityService.getCurrentUserId();
 
-        if (view == ViewType.SUMMARY) {
-            WorkSummaryResponse response = workService.getWork(userId, workId);
-            return ResponseEntity.ok().body(response);
-        }
-
-        WorkDetailResponse response = workService.getWorkDetail(userId, workId);
-        return ResponseEntity.ok().body(response);
+        return switch (view) {
+            case SUMMARY -> {
+                WorkSummaryResponse response = workService.getWork(userId, workId);
+                yield ResponseEntity.ok().body(response);
+            }
+            case DETAIL -> {
+                WorkDetailResponse response = workService.getWorkDetail(userId, workId);
+                yield ResponseEntity.ok().body(response);
+            }
+        };
     }
 
     @Override
@@ -108,8 +113,18 @@ public class WorkController implements WorkSpecification {
     ) {
         Long userId = identityService.getCurrentUserId();
 
-        workService.updateMyWork(userId, workId, request);
-        return ResponseEntity.noContent().build();
+        WorkService.UpdateWorkResult result = workService.updateMyWork(userId, workId, request);
+
+        if (result.recurringCreatedOrReplaced()) {
+            // 반복 근무가 생성/대체된 경우: 200 OK + 새 ID 목록 반환
+            WorkCreateResponse response = WorkCreateResponse.builder()
+                    .workId(result.resultingWorkIds())
+                    .build();
+            return ResponseEntity.ok().body(response);
+        } else {
+            // 단일 근무만 업데이트된 경우: 204 No Content 반환
+            return ResponseEntity.noContent().build();
+        }
     }
 
     @Override
@@ -123,8 +138,18 @@ public class WorkController implements WorkSpecification {
     ) {
         Long userId = identityService.getCurrentUserId();
 
-        workService.updateWorkForWorkerId(userId, workplaceId, workerId, workId, request);
-        return ResponseEntity.noContent().build();
+        WorkService.UpdateWorkResult result = workService.updateWorkForWorkerId(userId, workplaceId, workerId, workId, request);
+
+        if (result.recurringCreatedOrReplaced()) {
+            // 반복 근무가 생성/대체된 경우: 200 OK + 새 ID 목록 반환
+            WorkCreateResponse response = WorkCreateResponse.builder()
+                    .workId(result.resultingWorkIds())
+                    .build();
+            return ResponseEntity.ok().body(response);
+        } else {
+            // 단일 근무만 업데이트된 경우: 204 No Content 반환
+            return ResponseEntity.noContent().build();
+        }
     }
 
     @Override
@@ -175,10 +200,24 @@ public class WorkController implements WorkSpecification {
 
     @Override
     @DeleteMapping("/works/{workId}")
-    public ResponseEntity<?> deleteWork(@PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId) {
+    public ResponseEntity<?> deleteWork(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId
+    ) {
         Long userId = identityService.getCurrentUserId();
 
         workService.deleteWork(userId, workId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @DeleteMapping("/works/recurring/{workId}")
+    public ResponseEntity<?> deleteRecurringWorkIncludingDate(
+            @Parameter(name = "workId", description = "삭제할 기준 근무 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId
+    ) {
+        Long userId = identityService.getCurrentUserId();
+
+        workService.deleteRecurringWorkIncludingDate(userId, workId);
         return ResponseEntity.noContent().build();
     }
 

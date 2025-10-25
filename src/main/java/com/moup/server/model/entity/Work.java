@@ -27,6 +27,5 @@ public class Work {
     private Integer holidayAllowance;
     private Integer grossIncome;
     private Integer estimatedNetIncome;
-    private String repeatDays;
-    private LocalDate repeatEndDate;
+    private String repeatGroupId;
 }
