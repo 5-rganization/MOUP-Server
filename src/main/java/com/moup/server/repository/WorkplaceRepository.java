@@ -64,6 +64,13 @@ public interface WorkplaceRepository {
             """)
     List<Workplace> findAllByIdListIn(@Param("idList") List<Long> idList);
 
+    /// 등록자 ID에 해당하는 모든 매장을 조회하는 메서드
+    ///
+    /// @param ownerId 조회할 등록자 ID
+    /// @return 조회된 Workplace 객체 리스트
+    @Select("SELECT * FROM workplaces WHERE owner_id = #{ownerId}")
+    List<Workplace> findAllByOwnerId(@Param("ownerId") Long ownerId);
+
     /// 근무지의 ID와 등록자 ID에 해당하는 근무지를 업데이트하는 메서드
     ///
     /// @param workplace 업데이트할 Workplace 객체

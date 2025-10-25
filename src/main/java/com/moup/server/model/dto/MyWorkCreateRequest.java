@@ -15,8 +15,8 @@ import java.util.stream.Collectors;
 
 @Getter
 @Builder
-@Schema(description = "근무 업데이트 요청 DTO")
-public class WorkUpdateRequest {
+@Schema(description = "사용자 근무 생성 요청 DTO")
+public class MyWorkCreateRequest {
     @NotNull(message = "값이 없을 경우 빈 배열을 전달해야 합니다.")
     @Schema(description = "연결할 루틴 ID 리스트 (없으면 빈 배열)", example = "[1, 2]", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<Long> routineIdList;
@@ -46,15 +46,21 @@ public class WorkUpdateRequest {
     @Schema(description = "반복 종료 날짜 (yyyy-MM-dd)", example = "2025-11-11", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private LocalDate repeatEndDate;
 
-    public Work toEntity(Long workId, Long workerId, Integer hourlyRate) {
+    public Work toEntity(
+            Long workerId,
+            Integer hourlyRate,
+            int grossWorkMinutes,
+            int netWorkMinutes,
+            int nightWorkMinutes,
+            int basePay,
+            int nightAllowance,
+            int holidayAllowance,
+            String repeatGroupId
+    ) {
         LocalDate workDate = startTime.toLocalDate();
 
-        String repeatDaysStr = repeatDays.stream()
-                .map(DayOfWeek::name)
-                .collect(Collectors.joining(","));
-
         return Work.builder()
-                .id(workId)
+                .id(null)
                 .workerId(workerId)
                 .workDate(workDate)
                 .startTime(startTime)
@@ -62,10 +68,17 @@ public class WorkUpdateRequest {
                 .endTime(endTime)
                 .actualEndTime(actualEndTime)
                 .restTimeMinutes(restTimeMinutes)
+                .grossWorkMinutes(grossWorkMinutes)
+                .netWorkMinutes(netWorkMinutes)
+                .nightWorkMinutes(nightWorkMinutes)
                 .memo(memo)
                 .hourlyRate(hourlyRate)
-                .repeatDays(repeatDaysStr)
-                .repeatEndDate(repeatEndDate)
+                .basePay(basePay)
+                .nightAllowance(nightAllowance)
+                .holidayAllowance(holidayAllowance)
+                .grossIncome(basePay + nightAllowance + holidayAllowance)
+                .estimatedNetIncome(0)
+                .repeatGroupId(repeatGroupId)
                 .build();
     }
 }

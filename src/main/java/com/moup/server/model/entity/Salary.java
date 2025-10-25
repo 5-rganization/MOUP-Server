@@ -28,5 +28,6 @@ public class Salary {
     private Boolean hasEmploymentInsurance;
     private Boolean hasIndustrialAccident;
     private Boolean hasIncomeTax;
+    private Boolean hasHolidayAllowance;
     private Boolean hasNightAllowance;
 }

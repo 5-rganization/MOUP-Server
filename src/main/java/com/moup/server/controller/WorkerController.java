@@ -27,16 +27,29 @@ public class WorkerController implements WorkerSpecification {
     @PreAuthorize("hasRole('ROLE_OWNER')")
     public ResponseEntity<?> getWorkerList(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
-            @RequestParam(name = "isActiveOnly", required = false) Boolean isActiveOnly
+            @RequestParam(name = "isActiveOnly", required = false, defaultValue = "false") boolean isActiveOnly
     ) {
         Long userId = identityService.getCurrentUserId();
 
         WorkerSummaryListResponse response;
-        if (Boolean.TRUE.equals(isActiveOnly)) {
+        if (isActiveOnly) {
             response = workerService.getActiveWorkerList(userId, workplaceId);
         } else {
             response = workerService.getWorkerList(userId, workplaceId);
         }
+        return ResponseEntity.ok().body(response);
+    }
+
+    @Override
+    @GetMapping("/{workerId}")
+    @PreAuthorize("hasRole('ROLE_OWNER')")
+    public ResponseEntity<?> getWorkerAttendanceInfo(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workerId
+    ) {
+        Long userId = identityService.getCurrentUserId();
+
+        WorkerAttendanceInfoResponse response = workerService.getWorkerAttendanceInfo(userId, workplaceId, workerId);
         return ResponseEntity.ok().body(response);
     }
 

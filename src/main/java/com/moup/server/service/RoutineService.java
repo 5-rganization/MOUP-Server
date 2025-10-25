@@ -166,6 +166,13 @@ public class RoutineService {
     }
 
     @Transactional(readOnly = true)
+    public int getTodayTotalRoutineCount(Long userId, LocalDate date) {
+        Integer count = routineRepository.countTotalRoutinesByUserIdAndDate(userId, date);
+
+        return (count != null) ? count : 0;
+    }
+
+    @Transactional(readOnly = true)
     public RoutineSummaryListResponse getAllRoutineByWork(Long userId, Long workId) {
         List<RoutineSummaryResponse> routineSummaryInfoList = getAllRoutineByWorkRoutineMapping(userId, workId);
 

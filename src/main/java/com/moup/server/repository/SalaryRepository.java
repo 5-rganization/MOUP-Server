@@ -16,11 +16,11 @@ public interface SalaryRepository {
             INSERT INTO salaries (
                                   worker_id, salary_type, salary_calculation, hourly_rate, fixed_rate, salary_date, salary_day,
                                   has_national_pension, has_health_insurance, has_employment_insurance, has_industrial_accident,
-                                  has_income_tax, has_night_allowance
+                                  has_income_tax, has_holiday_allowance, has_night_allowance
                                   )
             VALUES (
                     #{workerId}, #{salaryType}, #{salaryCalculation}, #{hourlyRate}, #{fixedRate}, #{salaryDate}, #{salaryDay},
-                    #{hasNationalPension}, #{hasHealthInsurance}, #{hasEmploymentInsurance}, #{hasIndustrialAccident}, #{hasIncomeTax}, #{hasNightAllowance}
+                    #{hasNationalPension}, #{hasHealthInsurance}, #{hasEmploymentInsurance}, #{hasIndustrialAccident}, #{hasIncomeTax}, #{hasHolidayAllowance}, #{hasNightAllowance}
                     )
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
@@ -38,13 +38,15 @@ public interface SalaryRepository {
     /// @param workerIdList 조회할 급여의 근무자 ID 배열
     /// @return 조회된 Salary 객체 배열, 없으면 빈 배열
     @Select("""
-            SELECT * FROM salaries
-            WHERE worker_id IN
-            <foreach item='id' collection='workerIdList' open='(' separator=',' close=')'>
-                #{id}
-            </foreach>
+            <script>
+                SELECT * FROM salaries
+                WHERE worker_id IN
+                <foreach item='id' collection='workerIdList' open='(' separator=',' close=')'>
+                    #{id}
+                </foreach>
+            </script>
             """)
-    List<Salary> findAllByWorkerIdIn(@Param("workerIdList") List<Long> workerIdList);
+    List<Salary> findAllByWorkerIdListIn(@Param("workerIdList") List<Long> workerIdList);
 
     /// 급여 ID와 근무자 ID에 해당하는 급여 정보를 업데이트하는 메서드.
     ///
@@ -54,7 +56,7 @@ public interface SalaryRepository {
                                 hourly_rate = #{hourlyRate}, fixed_rate = #{fixedRate}, salary_date = #{salaryDate}, salary_day = #{salaryDay},
                                 has_national_pension = #{hasNationalPension}, has_health_insurance = #{hasHealthInsurance},
                                 has_employment_insurance = #{hasEmploymentInsurance}, has_industrial_accident = #{hasIndustrialAccident}, 
-                                has_income_tax = #{hasIncomeTax}, has_night_allowance = #{hasNightAllowance}
+                                has_income_tax = #{hasIncomeTax}, has_holiday_allowance = #{hasHolidayAllowance}, has_night_allowance = #{hasNightAllowance}
             WHERE id = #{id} AND worker_id = #{workerId}
             """)
     void update(Salary salary);

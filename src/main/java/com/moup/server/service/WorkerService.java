@@ -29,6 +29,7 @@ public class WorkerService {
     private final UserRepository userRepository;
 
     private final PermissionVerifyUtil permissionVerifyUtil;
+    private final WorkRepository workRepository;
     private final FCMService fCMService;
 
     public WorkerSummaryListResponse getWorkerList(Long userId, Long workplaceId) {
@@ -112,6 +113,27 @@ public class WorkerService {
                 .build();
     }
 
+    public WorkerAttendanceInfoResponse getWorkerAttendanceInfo(Long userId, Long workplaceId, Long workerId) {
+        Workplace userWorkplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+        permissionVerifyUtil.verifyOwnerPermission(userId, userWorkplace.getOwnerId());
+
+        List<WorkerWorkAttendanceResponse> workerWorkAttendanceInfoList = workRepository.findAllByWorkerId(workerId).stream()
+                .map(work -> WorkerWorkAttendanceResponse.builder()
+                        .workId(work.getId())
+                        .workDate(work.getWorkDate())
+                        .startTime(work.getStartTime())
+                        .actualStartTime(work.getActualStartTime())
+                        .endTime(work.getEndTime())
+                        .actualEndTime(work.getActualEndTime())
+                        .build())
+                .toList();
+
+        return WorkerAttendanceInfoResponse.builder()
+                .workerId(workerId)
+                .workerWorkAttendanceInfoList(workerWorkAttendanceInfoList)
+                .build();
+    }
+
     public void updateMyWorker(User user, Long workplaceId, WorkerWorkerUpdateRequest request) {
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId).orElseThrow(WorkerNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
@@ -133,6 +155,12 @@ public class WorkerService {
         Salary newSalary = request.getSalaryUpdateRequest().toEntity(salaryId, workerId);
 
         salaryRepository.update(newSalary);
+    }
+
+    public void updateWorkerIsNowWorking(Long userId, Long workplaceId, Boolean isNowWorking) {
+        Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
+
+        workerRepository.updateIsNowWorking(userWorker.getId(), userId, workplaceId, isNowWorking);
     }
 
     public void deleteMyWorker(Long userId, Long workplaceId) {

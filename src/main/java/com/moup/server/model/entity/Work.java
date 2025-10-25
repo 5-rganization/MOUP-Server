@@ -17,6 +17,9 @@ public class Work {
     private LocalDateTime endTime;
     private LocalDateTime actualEndTime;
     private Integer restTimeMinutes;
+    private Integer grossWorkMinutes;
+    private Integer netWorkMinutes;
+    private Integer nightWorkMinutes;
     private String memo;
     private Integer hourlyRate;
     private Integer basePay;
@@ -24,6 +27,5 @@ public class Work {
     private Integer holidayAllowance;
     private Integer grossIncome;
     private Integer estimatedNetIncome;
-    private String repeatDays;
-    private LocalDate repeatEndDate;
+    private String repeatGroupId;
 }

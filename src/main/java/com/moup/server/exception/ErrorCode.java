@@ -26,6 +26,7 @@ public enum ErrorCode {
     WORKPLACE_NAME_ALREADY_USED(HttpStatus.CONFLICT, "WORKPLACE_NAME_409", "사용자가 이미 등록한 근무지 이름입니다."),
     WORKER_NOT_FOUND(HttpStatus.NOT_FOUND, "WORKER_404", "해당하는 근무자가 존재하지 않습니다."),
     WORKER_ALREADY_EXISTS(HttpStatus.CONFLICT, "WORKER_409", "근무지에 이미 등록된 근무자입니다."),
+    WORKER_ALREADY_WORKING(HttpStatus.CONFLICT, "WORKING_409", "이미 근무 중입니다"),
     SALARY_WORKER_NOT_FOUND(HttpStatus.NOT_FOUND, "SALARY_404", "근무자에 해당하는 급여가 존재하지 않습니다."),
     WORK_NOT_FOUND(HttpStatus.NOT_FOUND, "WORK_404", "해당 근무가 존재하지 않습니다."),
     ROUTINE_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUTINE_404", "해당 루틴이 존재하지 않습니다."),

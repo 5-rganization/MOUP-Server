@@ -5,82 +5,66 @@ import com.moup.server.common.AlarmContent;
 import com.moup.server.common.AlarmTitle;
 import com.moup.server.common.Role;
 import com.moup.server.exception.*;
-import com.moup.server.model.dto.BaseWorkplaceCreateRequest;
-import com.moup.server.model.dto.BaseWorkplaceDetailResponse;
-import com.moup.server.model.dto.BaseWorkplaceUpdateRequest;
-import com.moup.server.model.dto.InviteCodeGenerateRequest;
-import com.moup.server.model.dto.InviteCodeGenerateResponse;
-import com.moup.server.model.dto.InviteCodeInquiryResponse;
-import com.moup.server.model.dto.OwnerWorkplaceCreateRequest;
-import com.moup.server.model.dto.OwnerWorkplaceDetailResponse;
-import com.moup.server.model.dto.OwnerWorkplaceUpdateRequest;
-import com.moup.server.model.dto.SalaryCreateRequest;
-import com.moup.server.model.dto.SalaryDetailResponse;
-import com.moup.server.model.dto.WorkerWorkplaceCreateRequest;
-import com.moup.server.model.dto.WorkerWorkplaceDetailResponse;
-import com.moup.server.model.dto.WorkerWorkplaceUpdateRequest;
-import com.moup.server.model.dto.WorkplaceCreateResponse;
-import com.moup.server.model.dto.WorkplaceJoinRequest;
-import com.moup.server.model.dto.WorkplaceJoinResponse;
-import com.moup.server.model.dto.WorkplaceSummaryResponse;
+import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.Salary;
 import com.moup.server.model.entity.User;
-import com.moup.server.model.entity.Worker;
 import com.moup.server.model.entity.Workplace;
-import com.moup.server.repository.MonthlySalaryRepository;
-import com.moup.server.repository.SalaryRepository;
-import com.moup.server.repository.WorkRepository;
-import com.moup.server.repository.WorkerRepository;
-import com.moup.server.repository.WorkplaceRepository;
+import com.moup.server.model.entity.Worker;
+import com.moup.server.repository.*;
+import com.moup.server.util.PermissionVerifyUtil;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.transaction.annotation.Transactional;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
 import java.util.Comparator;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class WorkplaceService {
 
-    @Value("${workplace.creation.limit}")
-    private int workplaceCreationLimit;
-
   private final WorkplaceRepository workplaceRepository;
   private final WorkerRepository workerRepository;
   private final SalaryRepository salaryRepository;
-  private final WorkRepository workRepository;
-  private final MonthlySalaryRepository monthlySalaryRepository;
-
   private final InviteCodeService inviteCodeService;
-  private final FCMService fCMService;
+  private final PermissionVerifyUtil permissionVerifyUtil;
+  private final FCMService fcmService;
+  @Value("${workplace.creation.limit}")
+  private int workplaceCreationLimit;
 
   // ========== 근무지 메서드 ==========
 
   @Transactional
   public WorkplaceCreateResponse createWorkplace(User user, BaseWorkplaceCreateRequest request) {
-    if (user.getRole() == Role.ROLE_OWNER
-        && request instanceof OwnerWorkplaceCreateRequest ownerWorkplaceCreateRequest) {
-      Worker createdWorker = createWorkplaceAndWorkerHelper(user.getId(),
-          ownerWorkplaceCreateRequest);
-      return WorkplaceCreateResponse.builder()
-          .workplaceId(createdWorker.getWorkplaceId())
-          .build();
-    } else if (user.getRole() == Role.ROLE_WORKER
-        && request instanceof WorkerWorkplaceCreateRequest workerWorkplaceCreateRequest) {
-      Worker createdWorker = createWorkplaceAndWorkerHelper(user.getId(),
-          workerWorkplaceCreateRequest);
+    return switch (user.getRole()) {
+      case ROLE_OWNER -> {
+        // switch는 Role로만 분기하므로, request 타입 체크는 case 내부에서 수행
+        if (!(request instanceof OwnerWorkplaceCreateRequest ownerRequest)) {
+          throw new InvalidPermissionAccessException();
+        }
+        Worker createdWorker = createWorkplaceAndWorkerHelper(user.getId(), ownerRequest);
+        yield WorkplaceCreateResponse.builder()
+            .workplaceId(createdWorker.getWorkplaceId())
+            .build();
+      }
+      case ROLE_WORKER -> {
+        if (!(request instanceof WorkerWorkplaceCreateRequest workerRequest)) {
+          throw new InvalidPermissionAccessException();
+        }
+        Worker createdWorker = createWorkplaceAndWorkerHelper(user.getId(), workerRequest);
 
-      Salary salaryToCreate = workerWorkplaceCreateRequest.getSalaryCreateRequest()
-          .toEntity(createdWorker.getId());
-      salaryRepository.create(salaryToCreate);
+        Salary salaryToCreate = workerRequest.getSalaryCreateRequest()
+            .toEntity(createdWorker.getId());
+        salaryRepository.create(salaryToCreate);
 
-      return WorkplaceCreateResponse.builder()
-          .workplaceId(createdWorker.getWorkplaceId())
-          .build();
-    } else {
-      throw new InvalidPermissionAccessException();
-    }
+        yield WorkplaceCreateResponse.builder()
+            .workplaceId(createdWorker.getWorkplaceId())
+            .build();
+      }
+      // ADMIN 등 다른 역할은 허용하지 않음
+      case ROLE_ADMIN -> throw new InvalidPermissionAccessException();
+    };
   }
 
   @Transactional(readOnly = true)
@@ -90,34 +74,35 @@ public class WorkplaceService {
     Worker worker = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId)
         .orElseThrow(WorkerNotFoundException::new);
 
-    if (user.getRole() == Role.ROLE_WORKER) {
-      Salary salary = salaryRepository.findByWorkerId(worker.getId())
-          .orElseThrow(SalaryWorkerNotFoundException::new);
-      SalaryDetailResponse salaryInfo = SalaryDetailResponse.builder()
-          .salaryType(salary.getSalaryType())
-          .salaryCalculation(salary.getSalaryCalculation())
-          .hourlyRate(salary.getHourlyRate())
-          .salaryDate(salary.getSalaryDate())
-          .hasNationalPension(salary.getHasNationalPension())
-          .hasHealthInsurance(salary.getHasHealthInsurance())
-          .hasEmploymentInsurance(salary.getHasEmploymentInsurance())
-          .hasIndustrialAccident(salary.getHasIndustrialAccident())
-          .hasIncomeTax(salary.getHasIncomeTax())
-          .hasNightAllowance(salary.getHasNightAllowance())
-          .build();
+    return switch (user.getRole()) {
+      case ROLE_WORKER -> {
+        Salary salary = salaryRepository.findByWorkerId(worker.getId())
+            .orElseThrow(SalaryWorkerNotFoundException::new);
+        SalaryDetailResponse salaryInfo = SalaryDetailResponse.builder()
+            .salaryType(salary.getSalaryType())
+            .salaryCalculation(salary.getSalaryCalculation())
+            .hourlyRate(salary.getHourlyRate())
+            .salaryDate(salary.getSalaryDate())
+            .hasNationalPension(salary.getHasNationalPension())
+            .hasHealthInsurance(salary.getHasHealthInsurance())
+            .hasEmploymentInsurance(salary.getHasEmploymentInsurance())
+            .hasIndustrialAccident(salary.getHasIndustrialAccident())
+            .hasIncomeTax(salary.getHasIncomeTax())
+            .hasNightAllowance(salary.getHasNightAllowance())
+            .build();
 
-      return WorkerWorkplaceDetailResponse.builder()
-          .workplaceId(workplaceId)
-          .workplaceName(workplace.getWorkplaceName())
-          .categoryName(workplace.getCategoryName())
-          .address(workplace.getAddress())
-          .latitude(workplace.getLatitude())
-          .longitude(workplace.getLongitude())
-          .workerBasedLabelColor(worker.getWorkerBasedLabelColor())
-          .salaryDetailInfo(salaryInfo)
-          .build();
-    } else if (user.getRole() == Role.ROLE_OWNER) {
-      return OwnerWorkplaceDetailResponse.builder()
+        yield WorkerWorkplaceDetailResponse.builder()
+            .workplaceId(workplaceId)
+            .workplaceName(workplace.getWorkplaceName())
+            .categoryName(workplace.getCategoryName())
+            .address(workplace.getAddress())
+            .latitude(workplace.getLatitude())
+            .longitude(workplace.getLongitude())
+            .workerBasedLabelColor(worker.getWorkerBasedLabelColor())
+            .salaryDetailInfo(salaryInfo)
+            .build();
+      }
+      case ROLE_OWNER -> OwnerWorkplaceDetailResponse.builder()
           .workplaceId(workplaceId)
           .workplaceName(workplace.getWorkplaceName())
           .categoryName(workplace.getCategoryName())
@@ -126,9 +111,8 @@ public class WorkplaceService {
           .longitude(workplace.getLongitude())
           .ownerBasedLabelColor(worker.getOwnerBasedLabelColor())
           .build();
-    } else {
-      throw new InvalidPermissionAccessException();
-    }
+      case ROLE_ADMIN -> throw new InvalidPermissionAccessException();
+    };
   }
 
   @Transactional(readOnly = true)
@@ -147,13 +131,13 @@ public class WorkplaceService {
   }
 
   @Transactional(readOnly = true)
-  public List<WorkplaceSummaryResponse> getAllWorkplace(Long userId, Boolean isShared) {
+  public List<WorkplaceSummaryResponse> getAllWorkplace(Long userId, boolean isShared) {
     List<Worker> userAllWorkers = workerRepository.findAllByUserId(userId);
 
     return userAllWorkers.stream()
         .map(worker -> workplaceRepository.findById(worker.getWorkplaceId())
             .orElseThrow(WorkplaceNotFoundException::new))
-        .filter(workplace -> isShared == null || workplace.isShared() == isShared)
+        .filter(workplace -> workplace.isShared() == isShared)
         .map(workplace -> WorkplaceSummaryResponse.builder()
             .workplaceId(workplace.getId())
             .workplaceName(workplace.getWorkplaceName())
@@ -165,23 +149,29 @@ public class WorkplaceService {
 
   @Transactional
   public void updateWorkplace(User user, Long workplaceId, BaseWorkplaceUpdateRequest request) {
-    if (user.getRole() == Role.ROLE_OWNER
-        && request instanceof OwnerWorkplaceUpdateRequest ownerRequest) {
-      Long workerId = updateWorkplaceAndWorkerHelper(user.getId(), workplaceId, ownerRequest);
-      workerRepository.updateOwnerBasedLabelColor(workerId, user.getId(), workplaceId,
-          ownerRequest.getOwnerBasedLabelColor());
-    } else if (user.getRole() == Role.ROLE_WORKER
-        && request instanceof WorkerWorkplaceUpdateRequest workerRequest) {
-      Long workerId = updateWorkplaceAndWorkerHelper(user.getId(), workplaceId, workerRequest);
-      workerRepository.updateWorkerBasedLabelColor(workerId, user.getId(), workplaceId,
-          workerRequest.getWorkerBasedLabelColor());
+    switch (user.getRole()) {
+      case ROLE_OWNER -> {
+        if (!(request instanceof OwnerWorkplaceUpdateRequest ownerRequest)) {
+          throw new InvalidPermissionAccessException();
+        }
+        Long workerId = updateWorkplaceAndWorkerHelper(user.getId(), workplaceId, ownerRequest);
+        workerRepository.updateOwnerBasedLabelColor(workerId, user.getId(), workplaceId,
+            ownerRequest.getOwnerBasedLabelColor());
+      }
+      case ROLE_WORKER -> {
+        if (!(request instanceof WorkerWorkplaceUpdateRequest workerRequest)) {
+          throw new InvalidPermissionAccessException();
+        }
+        Long workerId = updateWorkplaceAndWorkerHelper(user.getId(), workplaceId, workerRequest);
+        workerRepository.updateWorkerBasedLabelColor(workerId, user.getId(), workplaceId,
+            workerRequest.getWorkerBasedLabelColor());
 
-      Long salaryId = salaryRepository.findByWorkerId(workerId)
-          .orElseThrow(SalaryWorkerNotFoundException::new).getId();
-      Salary newSalary = workerRequest.getSalaryUpdateRequest().toEntity(salaryId, workerId);
-      salaryRepository.update(newSalary);
-    } else {
-      throw new InvalidPermissionAccessException();
+        Long salaryId = salaryRepository.findByWorkerId(workerId)
+            .orElseThrow(SalaryWorkerNotFoundException::new).getId();
+        Salary newSalary = workerRequest.getSalaryUpdateRequest().toEntity(salaryId, workerId);
+        salaryRepository.update(newSalary);
+      }
+      case ROLE_ADMIN -> throw new InvalidPermissionAccessException();
     }
   }
 
@@ -190,8 +180,10 @@ public class WorkplaceService {
     Workplace workplace = workplaceRepository.findById(workplaceId)
         .orElseThrow(WorkplaceNotFoundException::new);
     if (workplace.getOwnerId().equals(userId)) {
+      // 근무지(매장)을 만든 사용자가 삭제하는 경우
       workplaceRepository.delete(workplaceId, userId);
     } else {
+      // 근무자가 근무지에서 탈퇴하는 경우
       Long workerId = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
           .orElseThrow(WorkerNotFoundException::new).getId();
       workerRepository.delete(workerId, userId, workplaceId);
@@ -202,11 +194,11 @@ public class WorkplaceService {
     if (workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, request.getWorkplaceName())) {
       throw new WorkplaceNameAlreadyUsedException();
     }
-    
+
     // TODO: JUnit으로 단위 테스트하기
-      if (workplaceRepository.getOwnedWorkplaceCountByUserId(userId) >= workplaceCreationLimit) {
-        throw new WorkplaceLimitExceededException(ErrorCode.WORKPLACE_LIMIT_EXCEEDED);
-      }
+    if (workplaceRepository.getOwnedWorkplaceCountByUserId(userId) >= workplaceCreationLimit) {
+      throw new WorkplaceLimitExceededException(ErrorCode.WORKPLACE_LIMIT_EXCEEDED);
+    }
 
     Workplace workplaceToCreate = request.toWorkplaceEntity(userId);
     workplaceRepository.create(workplaceToCreate);
@@ -239,11 +231,10 @@ public class WorkplaceService {
   @Transactional
   public InviteCodeGenerateResponse generateInviteCode(User user, Long workplaceId,
       InviteCodeGenerateRequest request) {
-    Workplace workplace = workplaceRepository.findById(workplaceId)
-        .orElseThrow(WorkplaceNotFoundException::new);
-    if (!workplace.getOwnerId().equals(user.getId()) || user.getRole() != Role.ROLE_OWNER) {
-      throw new InvalidPermissionAccessException();
+    if (!workplaceRepository.existsById(workplaceId)) {
+      throw new WorkplaceNotFoundException();
     }
+    permissionVerifyUtil.verifyOwnerPermission(user.getId(), workplaceId);
 
     boolean returnAlreadyExists =
         !request.isForceGenerate() && inviteCodeService.existsByWorkplaceId(workplaceId);
@@ -258,10 +249,6 @@ public class WorkplaceService {
 
   @Transactional(readOnly = true)
   public InviteCodeInquiryResponse inquireInviteCode(User user, String inviteCode) {
-    if (user.getRole() != Role.ROLE_WORKER) {
-      throw new InvalidPermissionAccessException();
-    }
-
     Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCode(inviteCode.toUpperCase());
     if (workerRepository.existsByUserIdAndWorkplaceId(user.getId(), workplaceId)) {
       throw new WorkerAlreadyExistsException();
@@ -282,10 +269,6 @@ public class WorkplaceService {
 
   @Transactional
   public WorkplaceJoinResponse joinWorkplace(User user, WorkplaceJoinRequest request) {
-    if (user.getRole() != Role.ROLE_WORKER) {
-      throw new InvalidPermissionAccessException();
-    }
-
     Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCode(
         request.getInviteCode().toUpperCase());
     if (!workplaceRepository.existsById(workplaceId)) {
@@ -295,12 +278,12 @@ public class WorkplaceService {
       throw new WorkerAlreadyExistsException();
     }
 
-    Long ownerId = workplaceRepository.findOwnerId(workplaceId);
+    Long ownerId = workplaceRepository.findOwnerId(workplaceId)
 
     // 푸시 알림 전달
     // TODO: JUnit으로 단위 테스트하기
     try {
-      fCMService.sendToSingleUser(user.getId(), ownerId,
+      fcmService.sendToSingleUser(user.getId(), ownerId,
           // 제목: "근무지 참가 요청"
           // 본문: "{유저 이름}님이 근무지 참가 요청을 보냈습니다."
           AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_REQUEST.toString(),

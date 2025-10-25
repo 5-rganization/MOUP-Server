@@ -27,9 +27,9 @@ public class WorkSummaryResponse {
     @Schema(description = "출근 시간 (yyyy-MM-dd HH:mm)", example = "2025-10-11 08:30", requiredMode = Schema.RequiredMode.REQUIRED)
     private LocalDateTime startTime;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
-    @Schema(description = "퇴근 시간 (yyyy-MM-dd HH:mm)", example = "2025-10-11 15:30", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "퇴근 시간 (yyyy-MM-dd HH:mm)", example = "2025-10-11 15:30", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private LocalDateTime endTime;
-    @Schema(description = "근무 시간 (분단위)", example = "420", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "근무 시간 (분단위)", example = "420", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Long workMinutes;
     @Schema(description = "휴게 시간 (분단위, 없을 경우 0)", example = "15", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer restTimeMinutes;
@@ -40,6 +40,8 @@ public class WorkSummaryResponse {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     @Schema(description = "반복 종료 날짜 (yyyy-MM-dd)", example = "2025-11-11", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private LocalDate repeatEndDate;
-    @Schema(description = "현재 사용자의 수정 가능 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "사용자의 근무 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Boolean isMyWork;
+    @Schema(description = "사용자의 수정 가능 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean isEditable;
 }
