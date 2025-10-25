@@ -253,7 +253,7 @@ public interface WorkSpecification {
             @ApiResponse(responseCode = "422", description = "유효하지 않은 필드값 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     ResponseEntity<?> deleteWork(
-            @Parameter(name = "workId", description = "삭제할 (기준) 근무 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @Parameter(name = "workId", description = "삭제할 근무 ID", example = "1", required = true, in = ParameterIn.PATH)
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId
     );
 

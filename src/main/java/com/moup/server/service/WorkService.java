@@ -47,6 +47,13 @@ public class WorkService {
     /// 반복 정보 캐싱용 레코드
     private record RepeatInfo(List<DayOfWeek> days, LocalDate endDate) {}
 
+    /// 캘린더 조회 시 미리 로드된 근무 데이터 및 반복 정보 캐시를 담는 레코드
+    private record CalendarWorkData(
+            List<Work> allWorks, // 반복 정보 캐싱에 사용될 전체 근무 목록
+            Map<Long, List<Work>> workMapByWorker, // Worker ID별로 그룹화된 근무 목록
+            Map<String, RepeatInfo> repeatInfoCache // 미리 생성된 반복 정보 캐시
+    ) {}
+
     /// 근무 업데이트 결과용 레코드
     public record UpdateWorkResult(boolean recurringCreatedOrReplaced, List<Long> resultingWorkIds) {}
 
@@ -208,20 +215,21 @@ public class WorkService {
         LocalDate startDate = baseYearMonth.minusMonths(6).atDay(1);
         LocalDate endDate = baseYearMonth.plusMonths(6).atEndOfMonth();
 
-        // N+1 방지 미리 로드
+        // --- 사용자 및 근무지 관련 정보 로드 ---
         List<Worker> userWorkerList = workerRepository.findAllByUserId(userId);
         if (userWorkerList.isEmpty()) { return WorkCalendarListResponse.builder().workSummaryInfoList(Collections.emptyList()).build(); }
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
         List<Long> workplaceIdList = userWorkerList.stream().map(Worker::getWorkplaceId).distinct().toList();
         List<Long> workerIdList = userWorkerList.stream().map(Worker::getId).toList();
         Map<Long, Workplace> workplaceMap = workplaceRepository.findAllByIdListIn(workplaceIdList).stream().collect(Collectors.toMap(Workplace::getId, w -> w));
-        List<Work> allWorks = workRepository.findAllByWorkerIdListInAndDateRange(workerIdList, startDate, endDate);
-        Map<Long, List<Work>> workMapByWorker = allWorks.stream().collect(Collectors.groupingBy(Work::getWorkerId));
 
-        // 반복 정보 캐시 생성
-        Map<String, RepeatInfo> repeatInfoCache = prefetchRepeatInfo(allWorks);
+        // --- 근무 데이터 및 캐시 로드 ---
+        CalendarWorkData calendarData = preloadCalendarWorkData(workerIdList, startDate, endDate);
+        Map<Long, List<Work>> workMapByWorker = calendarData.workMapByWorker();
+        Map<String, RepeatInfo> repeatInfoCache = calendarData.repeatInfoCache();
+        // --------------------------------------------------------
 
-        // DTO 조립
+        // DTO 조립 (반복 정보 캐시 사용)
         List<WorkSummaryResponse> userWorkSummaryList = new ArrayList<>();
         for (Worker userWorker : userWorkerList) {
             Workplace workplace = workplaceMap.get(userWorker.getWorkplaceId());
@@ -231,7 +239,6 @@ public class WorkService {
                     .workplaceId(workplace.getId()).workplaceName(workplace.getWorkplaceName()).isShared(workplace.isShared()).build();
             List<Work> workerWorkList = workMapByWorker.getOrDefault(userWorker.getId(), Collections.emptyList());
 
-            // convertWorkToSummaryResponse 호출 시 캐시 전달
             List<WorkSummaryResponse> workSummaryList = workerWorkList.stream().map(work -> {
                 long workMinutes = work.getNetWorkMinutes() != null ? work.getNetWorkMinutes() : 0;
                 return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummaryInfo, workMinutes, true, true, repeatInfoCache);
@@ -251,7 +258,7 @@ public class WorkService {
         LocalDate startDate = baseYearMonth.minusMonths(6).atDay(1);
         LocalDate endDate = baseYearMonth.plusMonths(6).atEndOfMonth();
 
-        // 권한 확인 및 N+1 방지 미리 로드
+        // --- 근무지 및 근무자 관련 정보 로드 ---
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
         Optional<Worker> requesterWorkerOpt = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId);
         if (requesterWorkerOpt.isEmpty() && !workplace.getOwnerId().equals(user.getId())) { throw new InvalidPermissionAccessException(); }
@@ -259,30 +266,29 @@ public class WorkService {
                 .workplaceId(workplace.getId()).workplaceName(workplace.getWorkplaceName()).isShared(workplace.isShared()).build();
         List<Worker> workplaceWorkerList = workerRepository.findAllByWorkplaceId(workplaceId);
         if (workplaceWorkerList.isEmpty()) { return WorkCalendarListResponse.builder().workSummaryInfoList(Collections.emptyList()).build(); }
-        List<Long> workerIdList = workplaceWorkerList.stream().map(Worker::getId).toList();
+        List<Long> workerIdList = workplaceWorkerList.stream().map(Worker::getId).toList(); // 헬퍼 메서드 호출에 필요
         List<Long> userIdList = workplaceWorkerList.stream().map(Worker::getUserId).filter(Objects::nonNull).distinct().toList();
         Map<Long, User> userMap = userRepository.findAllByIdListIn(userIdList).stream().collect(Collectors.toMap(User::getId, u -> u));
-        List<Work> allWorkList = workRepository.findAllByWorkerIdListInAndDateRange(workerIdList, startDate, endDate);
-        Map<Long, List<Work>> workMapByWorker = allWorkList.stream().collect(Collectors.groupingBy(Work::getWorkerId));
 
-        // 반복 정보 캐시 생성
-        Map<String, RepeatInfo> repeatInfoCache = prefetchRepeatInfo(allWorkList);
+        // --- 근무 데이터 및 캐시 로드 ---
+        CalendarWorkData calendarData = preloadCalendarWorkData(workerIdList, startDate, endDate);
+        Map<Long, List<Work>> workMapByWorker = calendarData.workMapByWorker();
+        Map<String, RepeatInfo> repeatInfoCache = calendarData.repeatInfoCache();
+        // --------------------------------------------------------
 
-        // DTO 조립
+        // DTO 조립 (반복 정보 캐시 사용)
         List<WorkSummaryResponse> workSummaryInfoList = new ArrayList<>();
         for (Worker workplaceWorker : workplaceWorkerList) {
-            // 미리 로드한 userMap에서 User 객체 가져오기
             User workerUser = null;
             if (workplaceWorker.getUserId() != null) { workerUser = userMap.get(workplaceWorker.getUserId()); }
-
-            WorkerSummaryResponse workerSummaryInfo = createWorkerSummary(workplaceWorker, workerUser);
+            WorkerSummaryResponse workerSummaryInfo = createWorkerSummary(workplaceWorker, workerUser); // User 객체 전달
             List<Work> workerWorkList = workMapByWorker.getOrDefault(workplaceWorker.getId(), Collections.emptyList());
 
-            // convertWorkToSummaryResponse 호출 시 캐시 전달
             List<WorkSummaryResponse> workerWorkSummaryList = workerWorkList.stream().map(work -> {
                 long workMinutes = work.getNetWorkMinutes() != null ? work.getNetWorkMinutes() : 0;
                 boolean isMyWork = checkIsMyWork(user.getId(), workplaceWorker.getUserId());
                 boolean isEditable = checkEditable(user.getId(), workplaceWorker.getUserId(), workplace.getOwnerId());
+                // workplaceSummaryInfo는 루프 밖에서 미리 생성한 것 사용
                 return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummaryInfo, workMinutes, isMyWork, isEditable, repeatInfoCache);
             }).toList();
             workSummaryInfoList.addAll(workerWorkSummaryList);
@@ -829,6 +835,25 @@ public class WorkService {
         }
     }
 
+    /// 특정 기간 동안 주어진 근무자 ID 목록에 대한 근무 기록과 반복 정보를 미리 로드합니다.
+    /// @param workerIdList 조회할 Worker ID 목록
+    /// @param startDate 조회 시작일
+    /// @param endDate 조회 종료일
+    /// @return 미리 로드된 근무 데이터 및 반복 정보 캐시 (CalendarWorkData)
+    private CalendarWorkData preloadCalendarWorkData(List<Long> workerIdList, LocalDate startDate, LocalDate endDate) {
+        // 1. Work 정보 한 번에 조회
+        List<Work> allWorks = workRepository.findAllByWorkerIdListInAndDateRange(workerIdList, startDate, endDate);
+
+        // 2. Work 정보 Map으로 변환 (workerId를 key로 그룹화)
+        Map<Long, List<Work>> workMapByWorker = allWorks.stream()
+                .collect(Collectors.groupingBy(Work::getWorkerId));
+
+        // 3. 반복 정보 캐시 생성
+        Map<String, RepeatInfo> repeatInfoCache = prefetchRepeatInfo(allWorks);
+
+        // 4. 결과 반환
+        return new CalendarWorkData(allWorks, workMapByWorker, repeatInfoCache);
+    }
 
     /// 근무 목록에서 반복 그룹 ID를 추출하고, 최적화된 쿼리로 반복 정보를 미리 조회하여 캐시를 생성합니다.
     private Map<String, RepeatInfo> prefetchRepeatInfo(List<Work> works) {
