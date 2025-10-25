@@ -128,10 +128,6 @@ public class WorkplaceController implements WorkplaceSpecification, InviteCodeSp
         }
     }
 
-    // TODO: 근무지 초대 승인 및 알바생에게 승인 푸시 알림 구현
-
-    // TODO: 사장님 매장 근무자 수정 기능 구현
-
     @Override
     @GetMapping("/invite-codes/{inviteCode}")
     @PreAuthorize("hasRole('ROLE_WORKER')")
