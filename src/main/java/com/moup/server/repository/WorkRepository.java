@@ -155,7 +155,9 @@ public interface WorkRepository {
     );
 
     /// 특정 근무자(`workerId`)의 근무 중,
-    /// 실제 퇴근이 기록되지 않은 (`actual_end_time IS NULL`) 근무를 'start_time' 기준으로 가장 최근 1건을 조회하는 메서드 (`start_time` 내림차순)
+    /// 실제 출근이 기록되었고 (`actual_start_time IS NOT NULL`)
+    /// 실제 퇴근은 기록되지 않은 (`actual_end_time IS NULL`) 근무를
+    /// '실제 출근 시간' 기준으로 가장 최근 1건을 조회하는 메서드 (`actual_start_time` 내림차순)
     /// - 현재 진행 중인 근무를 찾을 때 사용
     ///
     /// @param workerId 조회할 근무자 ID
@@ -163,8 +165,9 @@ public interface WorkRepository {
     @Select("""
             SELECT * FROM works
             WHERE worker_id = #{workerId}
+                AND actual_start_time IS NOT NULL
                 AND actual_end_time IS NULL
-            ORDER BY start_time DESC
+            ORDER BY actual_start_time DESC
             LIMIT 1
             """)
     Optional<Work> findMostRecentWorkInProgress(@Param("workerId") Long workerId);
