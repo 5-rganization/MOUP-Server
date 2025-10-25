@@ -1,10 +1,17 @@
 package com.moup.server.repository;
 
 import com.moup.server.model.entity.Workplace;
-import org.apache.ibatis.annotations.*;
 
 import java.util.List;
 import java.util.Optional;
+
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Options;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 @Mapper
 public interface WorkplaceRepository {
@@ -29,7 +36,7 @@ public interface WorkplaceRepository {
 
     /// 등록자 ID, 근무지 이름을 통해 해당 근무지가 존재하는지(등록자가 이미 만들었는지) 여부를 반환하는 메서드
     ///
-    /// @param ownerId 조회할 등록자 ID
+    /// @param ownerId       조회할 등록자 ID
     /// @param workplaceName 조회할 근무지 이름
     /// @return 존재하면 true, 그렇지 않으면 false
     @Select("SELECT EXISTS(SELECT 1 FROM workplaces WHERE owner_id = #{ownerId} AND workplace_name = #{workplaceName})")
@@ -76,8 +83,14 @@ public interface WorkplaceRepository {
 
     /// 근무지 ID와 등록자 ID에 해당하는 근무지를 삭제하는 메서드.
     ///
-    /// @param id 삭제할 근무지의 ID
+    /// @param id      삭제할 근무지의 ID
     /// @param ownerId 삭제할 근무지의 등록자 ID
     @Delete("DELETE FROM workplaces WHERE id = #{id} AND owner_id = #{ownerId}")
     void delete(Long id, Long ownerId);
+
+    @Select("SELECT owner_id FROM workplaces WHERE id = #{workplaceId}")
+    Long findOwnerId(Long workplaceId);
+
+    @Select("SELECT COUNT(*) FROM workplaces WHERE owner_id = #{userId}")
+    int getOwnedWorkplaceCountByUserId(Long userId);
 }

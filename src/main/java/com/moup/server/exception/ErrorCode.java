@@ -21,6 +21,7 @@ public enum ErrorCode {
     USER_ALREADY_EXISTS(HttpStatus.CONFLICT, "USER_409", "이미 등록된 유저입니다."),
     ALARM_NOT_FOUND(HttpStatus.NOT_FOUND, "ALARM_404", "알림이 존재하지 않습니다."),
     ALARM_ALREADY_READ(HttpStatus.CONFLICT, "ALARM_409", "알림이 이미 읽음 처리 되었습니다."),
+    WORKPLACE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "WORKPLACE_400", "근무지 생성 개수를 초과했습니다."),
     WORKPLACE_NOT_FOUND(HttpStatus.NOT_FOUND, "WORKPLACE_404", "해당 근무지(매장)는 존재하지 않습니다."),
     WORKPLACE_NAME_ALREADY_USED(HttpStatus.CONFLICT, "WORKPLACE_NAME_409", "사용자가 이미 등록한 근무지 이름입니다."),
     WORKER_NOT_FOUND(HttpStatus.NOT_FOUND, "WORKER_404", "해당하는 근무자가 존재하지 않습니다."),

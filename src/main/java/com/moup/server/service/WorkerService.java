@@ -1,9 +1,9 @@
 package com.moup.server.service;
 
-import com.moup.server.exception.CannotDeleteDataException;
-import com.moup.server.exception.SalaryWorkerNotFoundException;
-import com.moup.server.exception.WorkerNotFoundException;
-import com.moup.server.exception.WorkplaceNotFoundException;
+import com.google.firebase.messaging.FirebaseMessagingException;
+import com.moup.server.common.AlarmContent;
+import com.moup.server.common.AlarmTitle;
+import com.moup.server.exception.*;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.Salary;
 import com.moup.server.model.entity.User;
@@ -13,6 +13,7 @@ import com.moup.server.repository.*;
 import com.moup.server.util.PermissionVerifyUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,7 @@ public class WorkerService {
 
     private final PermissionVerifyUtil permissionVerifyUtil;
     private final WorkRepository workRepository;
+    private final FCMService fCMService;
 
     public WorkerSummaryListResponse getWorkerList(Long userId, Long workplaceId) {
         Workplace userWorkplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
@@ -174,8 +176,42 @@ public class WorkerService {
         permissionVerifyUtil.verifyOwnerPermission(userId, workplaceOwnerId);
 
         Long workerUserId = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId).orElseThrow(WorkerNotFoundException::new).getUserId();
-        if (workerUserId.equals(userId)) { throw new CannotDeleteDataException(); }
+        if (workerUserId.equals(userId)) {
+            throw new CannotDeleteDataException();
+        }
 
         workerRepository.delete(workerId, workerUserId, workplaceId);
+    }
+
+    @Transactional
+    public void acceptWorker(Long ownerUserId, Long workplaceId, Long workerId) {
+        Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+        Long workplaceOwnerId = workplace.getOwnerId();
+        permissionVerifyUtil.verifyOwnerPermission(ownerUserId, workplaceOwnerId);
+        Long workerUserId = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId).orElseThrow(WorkerNotFoundException::new).getUserId();
+
+        // 푸시 알림 송신
+        try {
+            fCMService.sendToSingleUser(ownerUserId, workerUserId, AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_ACCEPTED.toString(), AlarmContent.ALARM_CONTENT_WORKPLACE_JOIN_ACCEPTED.getContent(workplace.getWorkplaceName()));
+        } catch (FirebaseMessagingException e) {
+            throw new CustomFirebaseMessagingException(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+
+        workerRepository.updateIsAccepted(workerId, workerUserId, workplaceId, true);
+    }
+
+    @Transactional
+    public void rejectWorker(Long ownerUserId, Long workplaceId, Long workerId) {
+        Long workerUserId = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId).orElseThrow(WorkerNotFoundException::new).getUserId();
+        Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+
+        deleteWorkerForOwner(ownerUserId, workplaceId, workerId);
+
+        // 푸시 알림 송신
+        try {
+            fCMService.sendToSingleUser(ownerUserId, workerUserId, AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_REJECTED.toString(), AlarmContent.ALARM_CONTENT_WORKPLACE_JOIN_REJECTED.getContent(workplace.getWorkplaceName()));
+        } catch (FirebaseMessagingException e) {
+            throw new CustomFirebaseMessagingException(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
     }
 }
