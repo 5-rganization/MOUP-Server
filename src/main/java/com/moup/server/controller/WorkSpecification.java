@@ -175,6 +175,7 @@ public interface WorkSpecification {
     @PatchMapping("/works/{workId}")
     @Operation(summary = "사용자 근무 업데이트", description = "근무 ID를 경로로 전달받아 해당하는 근무를 업데이트")
     @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "근무 업데이트 및 반복 근무 생성/대체 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkCreateResponse.class))),
             @ApiResponse(responseCode = "204", description = "근무 업데이트 성공"),
             @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
@@ -192,6 +193,7 @@ public interface WorkSpecification {
     @PatchMapping("/workplaces/{workplaceId}/workers/{workerId}/works/{workId}")
     @Operation(summary = "근무자 근무 업데이트 (사장님 전용)", description = "매장 ID와 근무자 ID를 경로로 전달받아 해당 매장에 근무를 업데이트")
     @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "근무 업데이트 및 반복 근무 생성/대체 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkCreateResponse.class))),
             @ApiResponse(responseCode = "204", description = "근무 업데이트 성공"),
             @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),

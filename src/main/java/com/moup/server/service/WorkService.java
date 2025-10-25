@@ -47,6 +47,9 @@ public class WorkService {
     /// 반복 정보 캐싱용 레코드
     private record RepeatInfo(List<DayOfWeek> days, LocalDate endDate) {}
 
+    /// 근무 업데이트 결과용 레코드
+    public record UpdateWorkResult(boolean recurringCreatedOrReplaced, List<Long> resultingWorkIds) {}
+
     // =================================================================
     // 근무 생성 (Create)
     // =================================================================
@@ -320,40 +323,87 @@ public class WorkService {
     // 근무 수정 (Update)
     // =================================================================
 
-    /// 사용자가 자신의 '단일' 근무 기록을 수정합니다.
+    /// 사용자가 자신의 근무 기록을 수정합니다.
+    /// - DTO의 반복 설정에 따라 단일 또는 반복 업데이트를 수행합니다.
     /// @param requesterUserId 요청 사용자 ID
     /// @param workId 수정할 근무 ID
     /// @param request 근무 수정 요청 DTO
+    /// @return UpdateWorkResult (반복 생성 여부 및 결과 ID 리스트 포함)
     @Transactional
-    public void updateMyWork(Long requesterUserId, Long workId, MyWorkUpdateRequest request) {
-        // 권한 검증 및 관련 정보 로드
+    public UpdateWorkResult updateMyWork(Long requesterUserId, Long workId, MyWorkUpdateRequest request) {
         VerifiedWorkContextForUD context = getVerifiedWorkContextForUD(requesterUserId, workId);
-        // 본인 근무인지 재확인
-        if (!context.worker().getUserId().equals(requesterUserId)) { throw new InvalidPermissionAccessException("본인의 근무 기록만 수정할 수 있습니다."); }
+        if (!Objects.equals(context.worker().getUserId(), requesterUserId)) { throw new InvalidPermissionAccessException("본인의 근무 기록만 수정할 수 있습니다."); }
 
-        // 단일 근무 업데이트 로직 호출
-        updateMyWorkHelper(context.worker(), workId, request);
-        // 루틴 연결 정보 업데이트
-        routineService.saveWorkRoutineMapping(context.worker().getUserId(), request.getRoutineIdList(), workId);
+        List<Work> resultingWorks; // 결과를 담을 리스트
+        boolean recurringReplaced = false; // 반복 대체 여부 플래그
+
+        if (request.getRepeatDays() == null || request.getRepeatDays().isEmpty()) {
+            // --- 반복 중단 또는 단일 근무 수정 ---
+            stopRecurrenceAndUpdateSingle(context.worker(), context.work(), request.getStartTime(), request.getEndTime(),
+                    request.getActualStartTime(), request.getActualEndTime(), request.getRestTimeMinutes(), request.getMemo());
+            // 단일 업데이트 후에는 해당 workId 하나만 결과로 간주
+            resultingWorks = List.of(context.work().toBuilder().id(workId).build()); // ID만 있는 임시 객체
+        } else {
+            // --- 새로운 반복 시작 또는 기존 반복 변경 ---
+            resultingWorks = replaceWithNewRecurringWorks(context.worker(), context.work(), request.getStartTime(), request.getEndTime(),
+                    request.getRestTimeMinutes(), request.getMemo(), request.getRepeatDays(), request.getRepeatEndDate());
+            recurringReplaced = true;
+        }
+
+        // 루틴 연결 (첫 근무 또는 단일 근무에)
+        if (!resultingWorks.isEmpty()) {
+            routineService.saveWorkRoutineMapping(context.worker().getUserId(), request.getRoutineIdList(), resultingWorks.get(0).getId());
+        }
+
+        // 결과 ID 리스트 추출
+        List<Long> resultingWorkIds = resultingWorks.stream()
+                .map(Work::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        return new UpdateWorkResult(recurringReplaced, resultingWorkIds);
     }
 
-    /// 사장님이 특정 근무자의 '단일' 근무 기록을 수정합니다.
+    /// 사장님이 특정 근무자의 근무 기록을 수정합니다.
+    /// - DTO의 반복 설정에 따라 단일 또는 반복 업데이트를 수행합니다.
     /// @param requesterUserId 요청 사장님 ID
     /// @param workplaceId 근무지 ID
     /// @param workerId 대상 근무자(Worker) ID
     /// @param workId 수정할 근무 ID
     /// @param request 근무 수정 요청 DTO
+    /// @return UpdateWorkResult (반복 생성 여부 및 결과 ID 리스트 포함)
     @Transactional
-    public void updateWorkForWorkerId(Long requesterUserId, Long workplaceId, Long workerId, Long workId, WorkerWorkUpdateRequest request) {
-        // 권한 및 데이터 유효성 검증
+    public UpdateWorkResult updateWorkForWorkerId(Long requesterUserId, Long workplaceId, Long workerId, Long workId, WorkerWorkUpdateRequest request) {
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
         permissionVerifyUtil.verifyOwnerPermission(requesterUserId, workplace.getOwnerId());
         Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId).orElseThrow(WorkerNotFoundException::new);
         Work work = workRepository.findById(workId).orElseThrow(WorkNotFoundException::new);
         if (!work.getWorkerId().equals(worker.getId())) { throw new BadRequestException("해당 근무 기록은 지정된 근무자의 것이 아닙니다."); }
 
-        // 단일 근무 업데이트 로직 호출
-        updateWorkForWorkerHelper(worker, workId, request);
+        List<Work> resultingWorks;
+        boolean recurringReplaced = false;
+
+        if (request.getRepeatDays() == null || request.getRepeatDays().isEmpty()) {
+            // --- 반복 중단 또는 단일 근무 수정 ---
+            stopRecurrenceAndUpdateSingle(worker, work, request.getStartTime(), request.getEndTime(),
+                    request.getActualStartTime(), request.getActualEndTime(), request.getRestTimeMinutes(), request.getMemo());
+            resultingWorks = List.of(work.toBuilder().id(workId).build());
+            recurringReplaced = false;
+        } else {
+            // --- 새로운 반복 시작 또는 기존 반복 변경 ---
+            resultingWorks = replaceWithNewRecurringWorks(worker, work, request.getStartTime(), request.getEndTime(),
+                    request.getRestTimeMinutes(), request.getMemo(), request.getRepeatDays(), request.getRepeatEndDate());
+            recurringReplaced = true;
+        }
+
+        // 사장님이 수정 시 루틴 매핑은 건드리지 않음
+
+        List<Long> resultingWorkIds = resultingWorks.stream()
+                .map(Work::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        return new UpdateWorkResult(recurringReplaced, resultingWorkIds);
     }
 
     /// 사용자의 실제 출근 시간을 기록합니다.
@@ -451,7 +501,7 @@ public class WorkService {
         if (work.getRepeatGroupId() == null) { throw new BadRequestException("반복 근무가 아닌 단일 근무입니다."); }
 
         // 해당 근무일 및 이후 모든 반복 일정 삭제
-        long deletedCount = workRepository.deleteFutureByRepeatGroupId(work.getRepeatGroupId(), work.getWorkDate());
+        long deletedCount = workRepository.deleteRecurringWorkFromDate(work.getRepeatGroupId(), work.getWorkDate());
         log.info("Deleted {} future recurring works for group {}", deletedCount, work.getRepeatGroupId());
 
         // 삭제된 주의 주휴수당 재계산 필요
@@ -584,55 +634,69 @@ public class WorkService {
                 .collect(Collectors.toList());
     }
 
+    /// 반복 중단: 미래 반복 삭제 후 현재 근무는 단일로 업데이트
+    private void stopRecurrenceAndUpdateSingle(Worker worker, Work currentWork, LocalDateTime newStartTime, LocalDateTime newEndTime,
+                                               LocalDateTime newActualStartTime, LocalDateTime newActualEndTime,
+                                               Integer newRestTimeMinutes, String newMemo) {
+        // 1. 기존에 반복 그룹이 있었는지 확인
+        if (currentWork.getRepeatGroupId() != null) {
+            // 2. 현재 근무의 '다음 날'부터 미래 반복 삭제
+            long deletedCount = workRepository.deleteRecurringWorkAfterDate(currentWork.getRepeatGroupId(), currentWork.getWorkDate());
+            log.info("Stopped recurrence: Deleted {} future works after {} for group {}", deletedCount, currentWork.getWorkDate(), currentWork.getRepeatGroupId());
+        }
 
-    /// 사용자 '단일' 근무 업데이트 헬퍼 (MyWorkUpdateRequest 용)
-    private void updateMyWorkHelper(Worker worker, Long workId, MyWorkUpdateRequest request) {
-        // 공통 업데이트 로직 호출
-        updateSingleWorkInternal(worker, workId, request.getStartTime(), request.getEndTime(),
-                request.getActualStartTime(), request.getActualEndTime(), request.getRestTimeMinutes(), request.getMemo());
+        // 3. 현재 근무는 '단일' 근무로 업데이트 (repeatGroupId = null)
+        updateSingleWorkInternal(worker, currentWork.getId(), newStartTime, newEndTime,
+                newActualStartTime, newActualEndTime, newRestTimeMinutes, newMemo,
+                null);
     }
 
-    /// 사장님의 알바생 '단일' 근무 업데이트 헬퍼 (WorkerWorkUpdateRequest 용)
-    private void updateWorkForWorkerHelper(Worker worker, Long workId, WorkerWorkUpdateRequest request) {
-        // 공통 업데이트 로직 호출
-        updateSingleWorkInternal(worker, workId, request.getStartTime(), request.getEndTime(),
-                request.getActualStartTime(), request.getActualEndTime(), request.getRestTimeMinutes(), request.getMemo());
+    /// 새로운 반복 시작/변경: 기존 반복 삭제 후 새로운 반복 생성
+    private List<Work> replaceWithNewRecurringWorks(Worker worker, Work currentWork, LocalDateTime newStartTime, LocalDateTime newEndTime,
+                                                    Integer newRestTimeMinutes, String newMemo,
+                                                    List<DayOfWeek> newRepeatDays, LocalDate newRepeatEndDate) {
+        // 1. 기존에 반복 그룹이 있었는지 확인
+        if (currentWork.getRepeatGroupId() != null) {
+            // 2. 현재 근무 '포함'하여 미래 반복 삭제
+            long deletedCount = workRepository.deleteRecurringWorkFromDate(currentWork.getRepeatGroupId(), currentWork.getWorkDate());
+            log.info("Replacing recurrence: Deleted {} works from {} for group {}", deletedCount, currentWork.getWorkDate(), currentWork.getRepeatGroupId());
+        } else {
+            // 기존이 단일 근무였다면 해당 근무만 삭제
+            workRepository.delete(currentWork.getId(), worker.getId());
+            log.info("Replacing single work with recurrence: Deleted work id {}", currentWork.getId());
+        }
+
+        // 3. 새로운 반복 근무 생성 및 반환 (createRecurringWorks 헬퍼 재사용)
+        // (주의: createRecurringWorks는 실제 시간(actual)을 null로 생성함)
+        // - 주급 재계산은 createRecurringWorks 내부에서 처리됨
+        return createRecurringWorks(worker, newStartTime, newEndTime,
+                newRestTimeMinutes, newMemo, newRepeatDays, newRepeatEndDate);
     }
 
-    /// '단일' 근무 업데이트 공통 로직 (내부용)
+    /// '단일' 근무 업데이트 공통 로직
     private void updateSingleWorkInternal(Worker worker, Long workId, LocalDateTime startTime, LocalDateTime endTime,
                                           LocalDateTime actualStartTime, LocalDateTime actualEndTime,
-                                          Integer restTimeMinutes, String memo) {
-        // 급여 정보 로드 및 시간 유효성 검증
+                                          Integer restTimeMinutes, String memo,
+                                          String repeatGroupId) {
         Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElseThrow(SalaryWorkerNotFoundException::new);
         int hourlyRate = salary.getHourlyRate() != null ? salary.getHourlyRate() : 0;
         boolean hasNightAllowance = salary.getHasNightAllowance();
         verifyStartEndTime(startTime, endTime);
 
-        // 기존 repeatGroupId 유지
-        String repeatGroupId = workRepository.findById(workId).map(Work::getRepeatGroupId).orElse(null);
-
-        // 일급 재계산 (주휴수당 0으로)
         Work tempWork = Work.builder().startTime(startTime).endTime(endTime).restTimeMinutes(restTimeMinutes).hourlyRate(hourlyRate).build();
         Work workWithDailyIncome = salaryCalculationService.calculateDailyIncome(tempWork, 0, hasNightAllowance);
 
-        // 최종 업데이트할 Work 객체 생성 (기존 정보 + 계산된 급여 + DTO 입력값)
         Work workToUpdate = workWithDailyIncome.toBuilder()
-                .id(workId) // 업데이트 대상 ID
+                .id(workId)
                 .workerId(worker.getId())
                 .workDate(startTime.toLocalDate())
-                .startTime(startTime) // DTO 값
-                .endTime(endTime)     // DTO 값
-                .actualStartTime(actualStartTime) // DTO 값
-                .actualEndTime(actualEndTime)     // DTO 값
-                .restTimeMinutes(restTimeMinutes) // DTO 값
-                .memo(memo)                       // DTO 값
-                .repeatGroupId(repeatGroupId)     // 기존 값 유지
+                .startTime(startTime).endTime(endTime)
+                .actualStartTime(actualStartTime).actualEndTime(actualEndTime)
+                .restTimeMinutes(restTimeMinutes).memo(memo)
+                .repeatGroupId(repeatGroupId)
                 .build();
 
-        // DB 업데이트
         workRepository.update(workToUpdate);
-        // 주급 재계산 (주휴수당 반영 및 전파)
         salaryCalculationService.recalculateWorkWeek(worker.getId(), workToUpdate.getWorkDate());
     }
 

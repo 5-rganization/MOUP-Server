@@ -113,8 +113,18 @@ public class WorkController implements WorkSpecification {
     ) {
         Long userId = identityService.getCurrentUserId();
 
-        workService.updateMyWork(userId, workId, request);
-        return ResponseEntity.noContent().build();
+        WorkService.UpdateWorkResult result = workService.updateMyWork(userId, workId, request);
+
+        if (result.recurringCreatedOrReplaced()) {
+            // 반복 근무가 생성/대체된 경우: 200 OK + 새 ID 목록 반환
+            WorkCreateResponse response = WorkCreateResponse.builder()
+                    .workId(result.resultingWorkIds())
+                    .build();
+            return ResponseEntity.ok().body(response);
+        } else {
+            // 단일 근무만 업데이트된 경우: 204 No Content 반환
+            return ResponseEntity.noContent().build();
+        }
     }
 
     @Override
@@ -128,8 +138,18 @@ public class WorkController implements WorkSpecification {
     ) {
         Long userId = identityService.getCurrentUserId();
 
-        workService.updateWorkForWorkerId(userId, workplaceId, workerId, workId, request);
-        return ResponseEntity.noContent().build();
+        WorkService.UpdateWorkResult result = workService.updateWorkForWorkerId(userId, workplaceId, workerId, workId, request);
+
+        if (result.recurringCreatedOrReplaced()) {
+            // 반복 근무가 생성/대체된 경우: 200 OK + 새 ID 목록 반환
+            WorkCreateResponse response = WorkCreateResponse.builder()
+                    .workId(result.resultingWorkIds())
+                    .build();
+            return ResponseEntity.ok().body(response);
+        } else {
+            // 단일 근무만 업데이트된 경우: 204 No Content 반환
+            return ResponseEntity.noContent().build();
+        }
     }
 
     @Override
