@@ -78,7 +78,7 @@ public interface WorkplaceSpecification {
 
     @Tag(name = "Workplace", description = "근무지(매장) 정보 관리 API 엔드포인트")
     @GetMapping("/{workplaceId}")
-    @Operation(summary = "근무지(매장) 조회", description = "조회할 근무지(매장)의 ID를 경로로 전달받아 조회 (기본적으로 상세 정보 반환, `?view=summary` 파라미터 사용 시 요약 정보 반환)")
+    @Operation(summary = "근무지(매장) 조회", description = "조회할 근무지(매장)의 ID를 경로로 전달받아 조회 (기본적으로 상세 정보 반환, `view=summary` 파라미터 사용 시 요약 정보 반환)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "근무지(매장) 조회 성공",
                     content = @Content(mediaType = "application/json", schema = @Schema(oneOf = { WorkerWorkplaceDetailResponse.class, OwnerWorkplaceDetailResponse.class, WorkplaceSummaryResponse.class }),
@@ -135,7 +135,7 @@ public interface WorkplaceSpecification {
             @Parameter(name = "workplaceId", description = "조회할 근무지(매장) ID", example = "1", required = true, in = ParameterIn.PATH)
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
             @Parameter(name = "view", description = "조회 방식 (기본값: 상세 정보, `summary`: 요약 정보)", in = ParameterIn.QUERY, schema = @Schema(allowableValues = {"summary"}))
-            @RequestParam(name = "view", required = false) ViewType view
+            @RequestParam(name = "view", required = false, defaultValue = "DETAIL") ViewType view
     );
 
     @Tag(name = "Workplace", description = "근무지(매장) 정보 관리 API 엔드포인트")
@@ -146,7 +146,7 @@ public interface WorkplaceSpecification {
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     ResponseEntity<?> getAllWorkplace(
             @Parameter(name = "isShared", description = "공유 근무지(매장) 조회 여부", in = ParameterIn.QUERY)
-            @RequestParam(name = "isShared", required = false) Boolean isShared
+            @RequestParam(name = "isShared", required = false, defaultValue = "false") boolean isShared
     );
 
     @Tag(name = "Workplace", description = "근무지(매장) 정보 관리 API 엔드포인트")

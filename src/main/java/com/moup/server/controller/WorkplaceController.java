@@ -1,5 +1,6 @@
 package com.moup.server.controller;
 
+import com.moup.server.exception.InvalidArgumentException;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.User;
 import com.moup.server.service.*;
@@ -52,25 +53,28 @@ public class WorkplaceController implements WorkplaceSpecification, InviteCodeSp
     @GetMapping("/{workplaceId}")
     public ResponseEntity<?> getWorkplace(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
-            @RequestParam(name = "view", required = false) ViewType view
+            @RequestParam(name = "view", required = false, defaultValue = "DETAIL") ViewType view
     ) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
-        if (view == ViewType.SUMMARY) {
-            WorkplaceSummaryResponse response = workplaceService.getWorkplace(userId, workplaceId);
-            return ResponseEntity.ok().body(response);
-        }
-
-        BaseWorkplaceDetailResponse response = workplaceService.getWorkplaceDetail(user, workplaceId);
-        return ResponseEntity.ok().body(response);
+        return switch (view) {
+            case SUMMARY -> {
+                WorkplaceSummaryResponse response = workplaceService.getWorkplace(userId, workplaceId);
+                yield ResponseEntity.ok().body(response); // 계산된 응답 반환
+            }
+            case DETAIL -> {
+                BaseWorkplaceDetailResponse response = workplaceService.getWorkplaceDetail(user, workplaceId);
+                yield ResponseEntity.ok().body(response); // 계산된 응답 반환
+            }
+        };
     }
 
     @Override
     @GetMapping
     public ResponseEntity<?> getAllWorkplace(
             @Parameter(name = "isShared", description = "공유 근무지(매장) 조회 여부", in = ParameterIn.QUERY)
-            @RequestParam(name = "isShared", required = false) Boolean isShared
+            @RequestParam(name = "isShared", required = false, defaultValue = "false") boolean isShared
     ) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);

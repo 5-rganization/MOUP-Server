@@ -78,17 +78,20 @@ public class WorkController implements WorkSpecification {
     @GetMapping("/works/{workId}")
     public ResponseEntity<?> getWork(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
-            @RequestParam(name = "view", required = false) ViewType view
+            @RequestParam(name = "view", required = false, defaultValue = "DETAIL") ViewType view
     ) {
         Long userId = identityService.getCurrentUserId();
 
-        if (view == ViewType.SUMMARY) {
-            WorkSummaryResponse response = workService.getWork(userId, workId);
-            return ResponseEntity.ok().body(response);
-        }
-
-        WorkDetailResponse response = workService.getWorkDetail(userId, workId);
-        return ResponseEntity.ok().body(response);
+        return switch (view) {
+            case SUMMARY -> {
+                WorkSummaryResponse response = workService.getWork(userId, workId);
+                yield ResponseEntity.ok().body(response);
+            }
+            case DETAIL -> {
+                WorkDetailResponse response = workService.getWorkDetail(userId, workId);
+                yield ResponseEntity.ok().body(response);
+            }
+        };
     }
 
     @Override
@@ -175,21 +178,17 @@ public class WorkController implements WorkSpecification {
 
     @Override
     @DeleteMapping("/works/{workId}")
-    public ResponseEntity<?> deleteWork(@PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId) {
-        Long userId = identityService.getCurrentUserId();
-
-        workService.deleteWork(userId, workId);
-        return ResponseEntity.noContent().build();
-    }
-
-    @Override
-    @DeleteMapping("/works/{workId}")
-    public ResponseEntity<?> deleteRecurringWorkIncludingDate(
-            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId
+    public ResponseEntity<?> deleteWork(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
+            @RequestParam(required = false, defaultValue = "false") boolean deleteAllFuture
     ) {
         Long userId = identityService.getCurrentUserId();
 
-        workService.deleteRecurringWorkIncludingDate(userId, workId);
+        if (deleteAllFuture) {
+            workService.deleteRecurringWorkIncludingDate(userId, workId);
+        } else {
+            workService.deleteWork(userId, workId);
+        }
         return ResponseEntity.noContent().build();
     }
 

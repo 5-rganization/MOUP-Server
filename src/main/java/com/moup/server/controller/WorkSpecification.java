@@ -72,7 +72,7 @@ public interface WorkSpecification {
 
     @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
     @GetMapping("/works/{workId}")
-    @Operation(summary = "근무 조회", description = "조회할 근무 ID를 경로로 전달받아 조회 (기본적으로 상세 정보 반환, `?view=summary` 파라미터 사용 시 요약 정보 반환)")
+    @Operation(summary = "근무 조회", description = "조회할 근무 ID를 경로로 전달받아 조회 (기본적으로 상세 정보 반환, `view=summary` 파라미터 사용 시 요약 정보 반환)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "근무 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(oneOf = { WorkDetailResponse.class, WorkSummaryResponse.class }),
                     examples = {
@@ -154,7 +154,7 @@ public interface WorkSpecification {
             @Parameter(name = "workId", description = "조회할 근무 ID", example = "1", required = true, in = ParameterIn.PATH)
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
             @Parameter(name = "view", description = "조회 방식 (기본값: 상세 정보, `summary`: 요약 정보)", in = ParameterIn.QUERY, schema = @Schema(allowableValues = {"summary"}))
-            @RequestParam(name = "view", required = false) ViewType view
+            @RequestParam(name = "view", required = false, defaultValue = "DETAIL") ViewType view
     );
 
     @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
@@ -242,7 +242,7 @@ public interface WorkSpecification {
 
     @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
     @DeleteMapping("/works/{workId}")
-    @Operation(summary = "근무 삭제", description = "근무 ID를 경로로 전달받아 해당하는 근무를 삭제")
+    @Operation(summary = "근무 삭제 (단일 또는 반복)", description = "근무 ID를 경로로 전달받아 해당하는 근무를 삭제, `deleteAllFuture=true` 쿼리 파라미터를 사용하면 해당 근무일을 포함한 이후의 모든 반복 근무를 함께 삭제")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "근무 삭제 성공"),
             @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
@@ -251,23 +251,10 @@ public interface WorkSpecification {
             @ApiResponse(responseCode = "422", description = "유효하지 않은 필드값 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     ResponseEntity<?> deleteWork(
-            @Parameter(name = "workId", description = "삭제할 근무 ID", example = "1", required = true, in = ParameterIn.PATH)
-            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId
-    );
-
-    @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
-    @DeleteMapping("/works/{workId}")
-    @Operation(summary = "기준 근무 및 이후 반복 근무 전체 삭제", description = "삭제할 기준 근무 ID를 경로로 전달받아 해당 근무와 이후 반복 근무들을 전체 삭제")
-    @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "근무 삭제 성공"),
-            @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "422", description = "유효하지 않은 필드값 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    ResponseEntity<?> deleteRecurringWorkIncludingDate(
-            @Parameter(name = "workId", description = "삭제할 기준이 되는 반복 근무 ID", example = "1", required = true, in = ParameterIn.PATH)
-            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId
+            @Parameter(name = "workId", description = "삭제할 (기준) 근무 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
+            @Parameter(name = "deleteAllFuture", description = "true로 설정 시, 해당 근무일을 포함한 이후의 모든 반복 근무를 함께 삭제합니다.", example = "false", in = ParameterIn.QUERY)
+            @RequestParam(name = "deleteAllFuture", required = false, defaultValue = "false") boolean deleteAllFuture
     );
 
     @Tag(name = "Routine", description = "루틴 정보 관리 API 엔드포인트")

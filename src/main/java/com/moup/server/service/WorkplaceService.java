@@ -117,12 +117,12 @@ public class WorkplaceService {
     }
 
     @Transactional(readOnly = true)
-    public List<WorkplaceSummaryResponse> getAllWorkplace(Long userId, Boolean isShared) {
+    public List<WorkplaceSummaryResponse> getAllWorkplace(Long userId, boolean isShared) {
         List<Worker> userAllWorkers = workerRepository.findAllByUserId(userId);
 
         return userAllWorkers.stream()
                 .map(worker -> workplaceRepository.findById(worker.getWorkplaceId()).orElseThrow(WorkplaceNotFoundException::new))
-                .filter(workplace -> isShared == null || workplace.isShared() == isShared)
+                .filter(workplace -> workplace.isShared() == isShared)
                 .map(workplace -> WorkplaceSummaryResponse.builder()
                         .workplaceId(workplace.getId())
                         .workplaceName(workplace.getWorkplaceName())
