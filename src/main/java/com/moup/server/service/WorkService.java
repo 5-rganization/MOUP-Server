@@ -580,7 +580,7 @@ public class WorkService {
         // (주의: createBatch 후 ID가 없을 수 있으므로, group ID와 기간으로 조회)
         return workRepository.findAllByWorkerIdAndDateRange(
                         worker.getId(), startDate, repeatEndDate).stream()
-                .filter(w -> repeatGroupId.equals(w.getRepeatGroupId()))
+                .filter(w -> Objects.equals(repeatGroupId, w.getRepeatGroupId()))
                 .collect(Collectors.toList());
     }
 
@@ -816,11 +816,12 @@ public class WorkService {
 
     /// 요청자가 해당 근무의 주체인지 확인하는 헬퍼
     private boolean checkIsUserWork(Long requesterUserId, Long workerUserId) {
-        return workerUserId != null && workerUserId.equals(requesterUserId);
+        return Objects.equals(requesterUserId, workerUserId);
     }
 
     /// 요청자가 해당 근무를 수정/삭제할 권한이 있는지 확인하는 헬퍼 (본인 또는 사장님)
     private boolean checkEditable(Long userId, Long workerUserId, Long workplaceOwnerId) {
-        return (workerUserId != null && workerUserId.equals(userId)) || workplaceOwnerId.equals(userId);
+        return (workerUserId != null && workerUserId.equals(userId)) // 본인 근무자인 경우 (null 체크 포함)
+                || Objects.equals(workplaceOwnerId, userId);       // 또는 근무지 사장님인 경우 (null 안전 비교)
     }
 }
