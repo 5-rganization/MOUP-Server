@@ -763,8 +763,7 @@ public class WorkService {
     }
 
 
-    /// 근무 목록에서 반복 그룹 ID를 추출하고, 각 그룹 ID별 반복 정보를 미리 조회하여 캐시를 생성합니다.
-    /// (목록 조회 시 N+1 방지용)
+    /// 근무 목록에서 반복 그룹 ID를 추출하고, 최적화된 쿼리로 반복 정보를 미리 조회하여 캐시를 생성합니다.
     private Map<String, RepeatInfo> prefetchRepeatInfo(List<Work> works) {
         // 1. 목록에서 고유한 repeatGroupId 추출
         Set<String> repeatGroupIds = works.stream()
@@ -776,11 +775,39 @@ public class WorkService {
             return Collections.emptyMap(); // 반복 근무가 없으면 빈 맵 반환
         }
 
-        // 2. 각 그룹 ID별로 반복 정보 조회 (getRepeatInfo 호출)
+        // 2. [쿼리 1] 모든 그룹의 마지막 날짜(endDate)를 한 번에 조회
+        Map<String, LocalDate> endDateMap = workRepository.findLastWorkDatesByGroupIdList(repeatGroupIds)
+                .stream()
+                .collect(Collectors.toMap(WorkRepository.GroupIdAndDate::groupId,
+                        WorkRepository.GroupIdAndDate::lastDate));
+
+        // 3. [쿼리 2] 모든 그룹의 (그룹 ID, 요일 이름) 쌍을 한 번에 조회
+        List<WorkRepository.GroupIdAndDayName> dayNamePairs = workRepository.findDistinctDayNamesByGroupIdList(repeatGroupIds);
+
+        // 4. (그룹 ID, 요일 이름) 쌍 리스트를 -> Map<그룹 ID, List<DayOfWeek>> 로 변환
+        Map<String, List<DayOfWeek>> daysMap = new HashMap<>();
+        for (WorkRepository.GroupIdAndDayName pair : dayNamePairs) {
+            DayOfWeek dayOfWeek = dayNameToDayOfWeek(pair.dayName());
+            if (dayOfWeek != null) {
+                // 해당 groupId의 리스트를 가져오거나 새로 만들어서 요일 추가
+                daysMap.computeIfAbsent(pair.groupId(), k -> new ArrayList<>()).add(dayOfWeek);
+            }
+        }
+        // (선택적) 각 그룹의 요일 리스트 정렬
+        daysMap.values().forEach(Collections::sort);
+
+        // 5. 최종 캐시 Map 생성 (endDateMap과 daysMap 조합)
         Map<String, RepeatInfo> cache = new HashMap<>();
         for (String groupId : repeatGroupIds) {
-            cache.put(groupId, getRepeatInfo(groupId));
+            LocalDate endDate = endDateMap.get(groupId); // null일 수 없음 (이론상)
+            List<DayOfWeek> days = daysMap.getOrDefault(groupId, Collections.emptyList()); // 요일이 없을 수 있음 (DB 데이터 오류 시)
+            if (endDate != null) { // endDate가 null이면 캐시에 넣지 않음 (방어 코드)
+                cache.put(groupId, new RepeatInfo(days, endDate));
+            } else {
+                log.error("Could not find end date for repeat group ID: {}", groupId); // 종료일 누락 시 에러 로그
+            }
         }
+
         return cache;
     }
 

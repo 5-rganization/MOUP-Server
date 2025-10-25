@@ -6,11 +6,17 @@ import org.apache.ibatis.annotations.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 @Mapper
 public interface WorkRepository {
+
+    // 여러 그룹 ID와 마지막 근무일을 담을 내부 레코드 (또는 DTO)
+    record GroupIdAndDate(String groupId, LocalDate lastDate) {}
+    // 여러 그룹 ID와 요일 이름을 담을 내부 레코드 (또는 DTO)
+    record GroupIdAndDayName(String groupId, String dayName) {}
 
     /// 근무를 생성하는 메서드
     ///
@@ -183,6 +189,40 @@ public interface WorkRepository {
     /// @return 요일(DayOfWeek) 이름 문자열 목록 (e.g., ["MONDAY", "WEDNESDAY"])
     @Select("SELECT DISTINCT DAYNAME(work_date) FROM works WHERE repeat_group_id = #{repeatGroupId}")
     List<String> findDistinctDayNamesByRepeatGroupId(@Param("repeatGroupId") String repeatGroupId);
+
+    /// 여러 반복 그룹 ID들에 해당하는 근무 중 가장 늦은 날짜(반복 종료일) 목록을 조회합니다.
+    /// @param groupIdList 반복 그룹 ID 리스트
+    /// @return 각 그룹 ID와 해당 그룹의 마지막 근무 날짜(lastDate)를 담은 리스트
+    @Select("""
+            <script>
+            SELECT repeat_group_id as groupId, MAX(work_date) as lastDate
+            FROM works
+            WHERE repeat_group_id IN
+                <foreach item="id" collection="groupIdList" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            GROUP BY repeat_group_id
+            </script>
+            """)
+    List<GroupIdAndDate> findLastWorkDatesByGroupIdList(@Param("groupIdList") Collection<String> groupIdList);
+
+    /// 여러 반복 그룹 ID들에 해당하는 근무들의 요일(DayOfWeek) 이름 목록을 조회합니다.
+    /// (GROUP BY를 사용하여 각 그룹별 요일 조합을 가져옵니다)
+    /// @param groupIdList 반복 그룹 ID 리스트
+    /// @return 각 그룹 ID와 해당 그룹에 포함된 요일 이름(dayName)을 담은 리스트 (중복될 수 있음)
+    @Select("""
+            <script>
+            SELECT repeat_group_id as groupId, DAYNAME(work_date) as dayName
+            FROM works
+            WHERE repeat_group_id IN
+                <foreach item="id" collection="groupIdList" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            GROUP BY repeat_group_id, DAYNAME(work_date) /* 각 그룹 내 요일 중복 제거 */
+            ORDER BY repeat_group_id /* Java 처리 용이성을 위해 정렬 */
+            </script>
+            """)
+    List<GroupIdAndDayName> findDistinctDayNamesByGroupIdList(@Param("groupIdList") Collection<String> groupIdList);
 
     /// 근무 ID와 근무자 ID에 해당하는 근무를 업데이트하는 메서드
     ///
