@@ -61,11 +61,11 @@ public class WorkplaceController implements WorkplaceSpecification, InviteCodeSp
         return switch (view) {
             case SUMMARY -> {
                 WorkplaceSummaryResponse response = workplaceService.getWorkplace(userId, workplaceId);
-                yield ResponseEntity.ok().body(response); // 계산된 응답 반환
+                yield ResponseEntity.ok().body(response);
             }
             case DETAIL -> {
                 BaseWorkplaceDetailResponse response = workplaceService.getWorkplaceDetail(user, workplaceId);
-                yield ResponseEntity.ok().body(response); // 계산된 응답 반환
+                yield ResponseEntity.ok().body(response);
             }
         };
     }
