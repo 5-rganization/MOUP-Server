@@ -5,7 +5,6 @@ import org.apache.ibatis.annotations.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -263,10 +262,10 @@ public interface WorkRepository {
     @Delete("DELETE FROM works WHERE id = #{id} AND worker_id = #{workerId}")
     void delete(Long id, Long workerId);
 
-    /// 특정 반복 그룹(`repeat_group_id`)에 속하면서 특정 날짜(`date`) 이후의 모든 근무를 삭제합니다.
+    /// 특정 반복 그룹(`repeat_group_id`)에 속하면서 특정 날짜(`date`) 및 이후의 모든 근무를 삭제합니다.
     ///
     /// @param repeatGroupId 삭제할 반복 그룹 ID
-    /// @param date 기준 날짜 (이 날짜보다 미래의 근무만 삭제)
-    @Delete("DELETE FROM works WHERE repeat_group_id = #{repeatGroupId} AND work_date > #{date}")
+    /// @param date 기준 날짜 (이 날짜 포함 미래의 근무를 삭제)
+    @Delete("DELETE FROM works WHERE repeat_group_id = #{repeatGroupId} AND work_date >= #{date}")
     long deleteFutureByRepeatGroupId(@Param("repeatGroupId") String repeatGroupId, @Param("date") LocalDate date);
 }

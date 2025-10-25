@@ -439,18 +439,18 @@ public class WorkService {
         deleteWorkHelper(context.worker(), context.work());
     }
 
-    /// '반복' 근무 그룹의 '미래' 일정을 삭제합니다.
+    /// 기준이 되는 반복 근무와 '반복' 근무 그룹의 '미래' 일정을 삭제합니다.
     /// @param requesterUserId 요청 사용자 ID
     /// @param workId 기준이 되는 반복 근무 그룹의 근무 ID
     @Transactional
-    public void deleteFutureRecurringWork(Long requesterUserId, Long workId) {
+    public void deleteRecurringWorkIncludingDate(Long requesterUserId, Long workId) {
         // 권한 검증 및 관련 정보 로드
         VerifiedWorkContextForUD context = getVerifiedWorkContextForUD(requesterUserId, workId);
         Work work = context.work();
         // 반복 근무인지 확인
         if (work.getRepeatGroupId() == null) { throw new BadRequestException("반복 근무가 아닌 단일 근무입니다."); }
 
-        // 해당 근무일 이후의 모든 반복 일정 삭제
+        // 해당 근무일 및 이후 모든 반복 일정 삭제
         long deletedCount = workRepository.deleteFutureByRepeatGroupId(work.getRepeatGroupId(), work.getWorkDate());
         log.info("Deleted {} future recurring works for group {}", deletedCount, work.getRepeatGroupId());
 

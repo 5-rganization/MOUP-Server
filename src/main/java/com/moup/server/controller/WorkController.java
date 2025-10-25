@@ -183,6 +183,17 @@ public class WorkController implements WorkSpecification {
     }
 
     @Override
+    @DeleteMapping("/works/{workId}")
+    public ResponseEntity<?> deleteRecurringWorkIncludingDate(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId
+    ) {
+        Long userId = identityService.getCurrentUserId();
+
+        workService.deleteRecurringWorkIncludingDate(userId, workId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
     @GetMapping("/works/{workId}/routines")
     public ResponseEntity<?> getWorkAllRoutine(@PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId) {
         Long userId = identityService.getCurrentUserId();
