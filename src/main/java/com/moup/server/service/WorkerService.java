@@ -183,7 +183,6 @@ public class WorkerService {
         workerRepository.delete(workerId, workerUserId, workplaceId);
     }
 
-    // TODO: JUnit으로 단위 테스트하기
     @Transactional
     public void acceptWorker(Long ownerUserId, Long workplaceId, Long workerId) {
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
@@ -201,7 +200,6 @@ public class WorkerService {
         workerRepository.updateIsAccepted(workerId, workerUserId, workplaceId, true);
     }
 
-    // TODO: JUnit으로 단위 테스트하기
     @Transactional
     public void rejectWorker(Long ownerUserId, Long workplaceId, Long workerId) {
         Long workerUserId = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId).orElseThrow(WorkerNotFoundException::new).getUserId();

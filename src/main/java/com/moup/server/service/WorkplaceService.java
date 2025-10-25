@@ -278,7 +278,7 @@ public class WorkplaceService {
       throw new WorkerAlreadyExistsException();
     }
 
-    Long ownerId = workplaceRepository.findOwnerId(workplaceId)
+    Long ownerId = workplaceRepository.findOwnerId(workplaceId);
 
     // 푸시 알림 전달
     // TODO: JUnit으로 단위 테스트하기
