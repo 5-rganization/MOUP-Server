@@ -4,14 +4,7 @@ import com.google.firebase.messaging.FirebaseMessagingException;
 import com.moup.server.common.AlarmContent;
 import com.moup.server.common.AlarmTitle;
 import com.moup.server.common.Role;
-import com.moup.server.exception.CustomFirebaseMessagingException;
-import com.moup.server.exception.ErrorCode;
-import com.moup.server.exception.InvalidPermissionAccessException;
-import com.moup.server.exception.SalaryWorkerNotFoundException;
-import com.moup.server.exception.WorkerAlreadyExistsException;
-import com.moup.server.exception.WorkerNotFoundException;
-import com.moup.server.exception.WorkplaceNameAlreadyUsedException;
-import com.moup.server.exception.WorkplaceNotFoundException;
+import com.moup.server.exception.*;
 import com.moup.server.model.dto.BaseWorkplaceCreateRequest;
 import com.moup.server.model.dto.BaseWorkplaceDetailResponse;
 import com.moup.server.model.dto.BaseWorkplaceUpdateRequest;
@@ -42,12 +35,16 @@ import com.moup.server.repository.WorkplaceRepository;
 import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class WorkplaceService {
+
+    @Value("${workplace.creation.limit}")
+    private int workplaceCreationLimit;
 
   private final WorkplaceRepository workplaceRepository;
   private final WorkerRepository workerRepository;
@@ -205,6 +202,11 @@ public class WorkplaceService {
     if (workplaceRepository.existsByOwnerIdAndWorkplaceName(userId, request.getWorkplaceName())) {
       throw new WorkplaceNameAlreadyUsedException();
     }
+    
+    // TODO: JUnit으로 단위 테스트하기
+      if (workplaceRepository.getOwnedWorkplaceCountByUserId(userId) >= workplaceCreationLimit) {
+        throw new WorkplaceLimitExceededException(ErrorCode.WORKPLACE_LIMIT_EXCEEDED);
+      }
 
     Workplace workplaceToCreate = request.toWorkplaceEntity(userId);
     workplaceRepository.create(workplaceToCreate);
