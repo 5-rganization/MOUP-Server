@@ -26,6 +26,7 @@ public interface HomeSpecification {
                                                     {
                                                         "nowMonth": 9,
                                                         "totalSalary": 2743600,
+                                                        "prevMonthSalaryDiff": 243600,
                                                         "todayRoutineCounts": 3,
                                                         "workerMonthlyWorkplaceSummaryInfoList": [
                                                             {
@@ -90,6 +91,7 @@ public interface HomeSpecification {
                                                     {
                                                         "nowMonth": 9,
                                                         "totalSalary": 1186000,
+                                                        "prevMonthSalaryDiff": 86000,
                                                         "todayRoutineCounts": 5,
                                                         "ownerMonthlyWorkplaceSummaryInfoList": [
                                                             {
