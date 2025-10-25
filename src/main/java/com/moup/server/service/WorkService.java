@@ -56,7 +56,7 @@ public class WorkService {
     /// @param userId 요청 사용자 ID
     /// @param workplaceId 근무지 ID
     /// @param request 근무 생성 요청 DTO
-    /// @return 생성된 근무 ID 응답 DTO
+    /// @return 생성된 모든 근무 ID 배열 응답 DTO
     @Transactional
     public WorkCreateResponse createMyWork(Long userId, Long workplaceId, MyWorkCreateRequest request) {
         // 근무자 정보 및 권한 확인
@@ -65,20 +65,25 @@ public class WorkService {
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplaceOwnerId);
 
-        // 근무 생성 (단일 또는 반복)
+        // 근무 생성 (단일 또는 반복), 생성된 모든 Work 객체 리스트 반환
         List<Work> createdWorks = createMyWorkHelper(userWorker, request);
 
         // 모든 생성된 근무에 루틴 연결
         if (request.getRoutineIdList() != null && !request.getRoutineIdList().isEmpty()) {
             for (Work work : createdWorks) {
-                // 각 근무 인스턴스에 대해 루틴 매핑 저장
                 routineService.saveWorkRoutineMapping(userId, request.getRoutineIdList(), work.getId());
             }
         }
 
-        // 대표(첫 번째) 근무 ID 반환
+        // 생성된 모든 근무 ID 추출
+        List<Long> createdWorkIds = createdWorks.stream()
+                .map(Work::getId)
+                .filter(Objects::nonNull) // ID가 null인 경우 방지 (MyBatis 배치 설정 따라)
+                .collect(Collectors.toList());
+
+        // 모든 ID 리스트를 DTO에 담아 반환
         return WorkCreateResponse.builder()
-                .workId(createdWorks.get(0).getId())
+                .workId(createdWorkIds)
                 .build();
     }
 
@@ -88,24 +93,30 @@ public class WorkService {
     /// @param workplaceId 근무지 ID
     /// @param workerId 대상 근무자(Worker) ID
     /// @param request 근무 생성 요청 DTO
-    /// @return 생성된 근무 ID 응답 DTO
+    /// @return 생성된 모든 근무 ID 배열 응답 DTO
     @Transactional
     public WorkCreateResponse createWorkForWorkerId(Long requesterUserId, Long workplaceId, Long workerId, WorkerWorkCreateRequest request) {
         // 근무자 정보 및 사장님 권한 확인
         Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)
                 .orElseThrow(WorkerNotFoundException::new);
-        if (worker.getUserId() == null) { throw new WorkerNotFoundException("이미 탈퇴한 근무자입니다."); } // User 정보가 없는 경우 (탈퇴)
+        if (worker.getUserId() == null) { throw new WorkerNotFoundException("이미 탈퇴한 근무자입니다."); }
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyOwnerPermission(requesterUserId, workplaceOwnerId);
 
-        // 근무 생성 (단일 또는 반복)
+        // 근무 생성 (단일 또는 반복), 생성된 모든 Work 객체 리스트 반환
         List<Work> createdWorks = createWorkForWorkerHelper(worker, request);
 
         // 사장님이 생성 시 루틴은 연결하지 않음
 
-        // 대표(첫 번째) 근무 ID 반환
+        // 생성된 모든 근무 ID 추출
+        List<Long> createdWorkIds = createdWorks.stream()
+                .map(Work::getId)
+                .filter(Objects::nonNull) // ID가 null인 경우 방지
+                .collect(Collectors.toList());
+
+        // 모든 ID 리스트를 DTO에 담아 반환
         return WorkCreateResponse.builder()
-                .workId(createdWorks.get(0).getId())
+                .workId(createdWorkIds)
                 .build();
     }
 
