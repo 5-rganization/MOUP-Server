@@ -369,7 +369,7 @@ public class WorkService {
         if (workerRepository.existsByUserIdAndIsNowWorking(userId, true)) { throw new WorkerAlreadyWorkingException(); }
 
         // 현재 시간 기준으로 출근 가능한 근무 조회
-        LocalDateTime currentDateTime = LocalDateTime.now(ZoneId.of("Asia/Seoul")); // 시간대 지정
+        LocalDateTime currentDateTime = LocalDateTime.now();
         Optional<Work> optWorkToStart = workRepository.findEligibleWorkForClockIn(userWorker.getId(), currentDateTime);
 
         // 출근 기록 업데이트 및 상태 변경
@@ -401,7 +401,7 @@ public class WorkService {
         if (optWorkToEnd.isPresent()) {
             Work workToEnd = optWorkToEnd.get();
             boolean needsRecalculation = (workToEnd.getEndTime() == null); // 예정 퇴근 시간이 없었는지 확인
-            LocalDateTime currentDateTime = LocalDateTime.now(ZoneId.of("Asia/Seoul")); // 시간대 지정
+            LocalDateTime currentDateTime = LocalDateTime.now();
 
             // 실제 퇴근 시간 업데이트 (예정 퇴근 시간이 없었다면 같이 업데이트)
             workRepository.updateActualEndTimeById(workToEnd.getId(), currentDateTime);
