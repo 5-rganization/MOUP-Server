@@ -157,7 +157,7 @@ public class WorkService {
                 .memo(context.work().getMemo())
                 .repeatDays(repeatDays)
                 .repeatEndDate(repeatEndDate)
-                .isUserWork(checkIsUserWork(userId, context.worker().getUserId()))
+                .isMyWork(checkIsMyWork(userId, context.worker().getUserId()))
                 .isEditable(context.isEditable())
                 .build();
     }
@@ -191,7 +191,7 @@ public class WorkService {
                 .estimatedNetIncome(context.work().getEstimatedNetIncome())
                 .repeatDays(repeatDays)
                 .repeatEndDate(repeatEndDate)
-                .isUserWork(checkIsUserWork(userId, context.worker().getUserId()))
+                .isMyWork(checkIsMyWork(userId, context.worker().getUserId()))
                 .isEditable(context.isEditable())
                 .build();
     }
@@ -278,9 +278,9 @@ public class WorkService {
             // convertWorkToSummaryResponse 호출 시 캐시 전달
             List<WorkSummaryResponse> workerWorkSummaryList = workerWorkList.stream().map(work -> {
                 long workMinutes = work.getNetWorkMinutes() != null ? work.getNetWorkMinutes() : 0;
-                boolean isUserWork = checkIsUserWork(user.getId(), workplaceWorker.getUserId());
+                boolean isMyWork = checkIsMyWork(user.getId(), workplaceWorker.getUserId());
                 boolean isEditable = checkEditable(user.getId(), workplaceWorker.getUserId(), workplace.getOwnerId());
-                return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummaryInfo, workMinutes, isUserWork, isEditable, repeatInfoCache);
+                return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummaryInfo, workMinutes, isMyWork, isEditable, repeatInfoCache);
             }).toList();
             workSummaryInfoList.addAll(workerWorkSummaryList);
         }
@@ -703,7 +703,7 @@ public class WorkService {
     /// 목록 조회 시에는 repeatInfoCache를 전달하여 N+1 방지
     private WorkSummaryResponse convertWorkToSummaryResponse(
             Work work, WorkerSummaryResponse workerSummaryInfo, WorkplaceSummaryResponse workplaceSummaryInfo,
-            long workMinutes, boolean isUserWork, boolean isEditable, Map<String, RepeatInfo> repeatInfoCache) { // ⬅️ 캐시 파라미터 추가
+            long workMinutes, boolean isMyWork, boolean isEditable, Map<String, RepeatInfo> repeatInfoCache) { // ⬅️ 캐시 파라미터 추가
 
         List<DayOfWeek> repeatDays = Collections.emptyList();
         LocalDate repeatEndDate = null;
@@ -732,7 +732,7 @@ public class WorkService {
                 .estimatedNetIncome(work.getEstimatedNetIncome())
                 .repeatDays(repeatDays)
                 .repeatEndDate(repeatEndDate)
-                .isUserWork(isUserWork)
+                .isMyWork(isMyWork)
                 .isEditable(isEditable)
                 .build();
     }
@@ -815,7 +815,7 @@ public class WorkService {
     }
 
     /// 요청자가 해당 근무의 주체인지 확인하는 헬퍼
-    private boolean checkIsUserWork(Long requesterUserId, Long workerUserId) {
+    private boolean checkIsMyWork(Long requesterUserId, Long workerUserId) {
         return Objects.equals(requesterUserId, workerUserId);
     }
 

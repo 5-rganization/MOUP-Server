@@ -111,7 +111,7 @@ public interface WorkSpecification {
                                                     "WEDNESDAY"
                                                 ],
                                                 "repeatEndDate": "2025-11-11",
-                                                "isUserWork": true,
+                                                "isMyWork": true,
                                                 "isEditable": true
                                         }
                                         """),
@@ -141,7 +141,7 @@ public interface WorkSpecification {
                                                     "WEDNESDAY"
                                                 ],
                                                 "repeatEndDate": "2025-11-11",
-                                                "isUserWork": true,
+                                                "isMyWork": true,
                                                 "isEditable": true
                                             }
                                             """)
