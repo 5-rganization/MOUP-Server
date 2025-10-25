@@ -41,12 +41,12 @@ public interface RoutineSpecification {
     ResponseEntity<?> getAllTodayRoutine();
 
     @GetMapping("/{routineId}")
-    @Operation(summary = "루틴 조회", description = "조회할 루틴 ID를 경로로 전달받아 조회 (기본적으로 상세 정보 반환, `view=summary` 파라미터 사용 시 요약 정보 반환)")
+    @Operation(summary = "루틴 조회", description = "조회할 루틴 ID를 경로로 전달받아 조회 (`view=detail`: 상세 정보 반환 - 기본값, `view=summary`: 요약 정보 반환)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "루틴 조회 성공",
                     content = @Content(mediaType = "application/json", schema = @Schema(oneOf = { RoutineDetailResponse.class, RoutineSummaryResponse.class }),
                             examples = {
-                                    @ExampleObject(name = "상세 정보 조회 (기본값)", summary = "루틴 상세 정보",
+                                    @ExampleObject(name = "상세 정보 조회 (`view=detail` - 기본값)", summary = "루틴 상세 정보",
                                             value = """
                                                     {
                                                         "routineId": 1,

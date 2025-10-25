@@ -78,12 +78,12 @@ public interface WorkplaceSpecification {
 
     @Tag(name = "Workplace", description = "근무지(매장) 정보 관리 API 엔드포인트")
     @GetMapping("/{workplaceId}")
-    @Operation(summary = "근무지(매장) 조회", description = "조회할 근무지(매장)의 ID를 경로로 전달받아 조회 (기본적으로 상세 정보 반환, `view=summary` 파라미터 사용 시 요약 정보 반환)")
+    @Operation(summary = "근무지(매장) 조회", description = "조회할 근무지(매장)의 ID를 경로로 전달받아 조회 (`view=detail`: 상세 정보 반환 - 기본값, `view=summary`: 요약 정보 반환)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "근무지(매장) 조회 성공",
                     content = @Content(mediaType = "application/json", schema = @Schema(oneOf = { WorkerWorkplaceDetailResponse.class, OwnerWorkplaceDetailResponse.class, WorkplaceSummaryResponse.class }),
                             examples = {
-                                    @ExampleObject(name = "상세 정보 조회 (기본값) - 알바생", summary = "근무지 상세 정보",
+                                    @ExampleObject(name = "알바생 근무지 상세 정보 조회 (`view=detail` - 기본값)", summary = "근무지 상세 정보",
                                             value = """
                                                     {
                                                         "workplaceName": "세븐일레븐 동탄중심상가점",
@@ -108,7 +108,7 @@ public interface WorkplaceSpecification {
                                                         }
                                                     }
                                                     """),
-                                    @ExampleObject(name = "상세 정보 조회 (기본값) - 사장님", summary = "매장 상세 정보",
+                                    @ExampleObject(name = "사장님 매장 상세 정보 조회 (`view=detail` - 기본값)", summary = "매장 상세 정보",
                                             value = """
                                                     {
                                                         "workplaceName": "세븐일레븐 동탄중심상가점",
