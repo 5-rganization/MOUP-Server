@@ -34,6 +34,6 @@ public class WorkerMonthlyWorkplaceSummaryResponse {
     private Integer employmentInsurance;
     @Schema(description = "소득세 (원)", example = "0", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Integer incomeTax;
-    @Schema(description = "세후 실지급액 (원)", example = "63610", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @Schema(description = "세후 실지급액 (원)", example = "63610", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer netIncome;
 }

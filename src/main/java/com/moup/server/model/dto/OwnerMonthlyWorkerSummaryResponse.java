@@ -14,6 +14,6 @@ public class OwnerMonthlyWorkerSummaryResponse {
     private Long totalWorkMinutes;
     @Schema(description = "세전 총소득 (원)", example = "70210", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer grossIncome;
-    @Schema(description = "세후 실지급액 (원)", example = "70210", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @Schema(description = "세후 실지급액 (원)", example = "70210", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer netIncome;
 }

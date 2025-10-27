@@ -790,6 +790,15 @@ public class WorkService {
             repeatEndDate = repeatInfo.endDate();
         }
 
+        // --- netIncome이 null일 경우 grossIncome 사용 ---
+        Integer estimatedNet = work.getEstimatedNetIncome();
+        Integer gross = work.getGrossIncome();
+
+        // 1. estimatedNetIncome이 null이 아니면 그 값을 사용
+        // 2. estimatedNetIncome이 null이고 grossIncome이 null이 아니면 grossIncome을 사용
+        // 3. 둘 다 null이면 0을 사용
+        Integer finalNetIncome = (estimatedNet != null) ? estimatedNet : ((gross != null) ? gross : 0);
+
         return WorkSummaryResponse.builder()
                 .workId(work.getId())
                 .workerSummaryInfo(workerSummaryInfo)
@@ -799,7 +808,7 @@ public class WorkService {
                 .endTime(work.getEndTime())
                 .workMinutes(workMinutes)
                 .restTimeMinutes(work.getRestTimeMinutes())
-                .estimatedNetIncome(work.getEstimatedNetIncome())
+                .estimatedNetIncome(finalNetIncome)
                 .repeatDays(repeatDays)
                 .repeatEndDate(repeatEndDate)
                 .isMyWork(isMyWork)
