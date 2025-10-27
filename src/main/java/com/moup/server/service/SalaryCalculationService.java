@@ -325,35 +325,33 @@ public class SalaryCalculationService {
             if (salaryType == SalaryType.SALARY_MONTHLY) {
                 Integer payDayOfMonth = salaryInfo.getSalaryDate();
                 if (payDayOfMonth != null) {
+
+                    LocalDate thisMonthPayday;
                     try {
-                        // 2월 30일 같이 유효하지 않은 날짜 처리
-                        LocalDate thisMonthPayday = today.withDayOfMonth(payDayOfMonth);
-                        LocalDate nextPayday;
-
-                        if (today.isAfter(thisMonthPayday)) {
-                            // 오늘이 이번 달 급여일보다 늦었으면, 다음 달 급여일
-                            nextPayday = thisMonthPayday.plusMonths(1);
-                        } else {
-                            // 아니면, 이번 달 급여일
-                            nextPayday = thisMonthPayday;
-                        }
-                        daysUntilPayday = (int) ChronoUnit.DAYS.between(today, nextPayday);
-
+                        // 1. 이번 달의 급여일 날짜를 계산
+                        thisMonthPayday = today.withDayOfMonth(payDayOfMonth);
                     } catch (java.time.DateTimeException e) {
-                        // (예외 처리) 2월 30일 등 존재하지 않는 날짜가 DB에 저장된 경우
-                        // 이 경우, 해당 월의 마지막 날을 급여일로 간주
-                        LocalDate lastDayOfThisMonth = today.with(TemporalAdjusters.lastDayOfMonth());
-                        LocalDate nextPayday;
-
-                        if (today.isAfter(lastDayOfThisMonth)) {
-                            // 이번 달 말일이 이미 지났으면, 다음 달 말일
-                            nextPayday = lastDayOfThisMonth.plusMonths(1).with(TemporalAdjusters.lastDayOfMonth());
-                        } else {
-                            // 아니면, 이번 달 말일
-                            nextPayday = lastDayOfThisMonth;
-                        }
-                        daysUntilPayday = (int) ChronoUnit.DAYS.between(today, nextPayday);
+                        // 2. (예: 2월 30일)처럼 유효하지 않으면, 이번 달의 마지막 날로 설정
+                        thisMonthPayday = today.with(TemporalAdjusters.lastDayOfMonth());
                     }
+
+                    LocalDate nextPayday;
+                    if (today.isAfter(thisMonthPayday)) {
+                        // 3. 오늘이 이번 달 급여일보다 늦었다면, '다음 달'의 급여일을 계산
+                        LocalDate nextMonth = today.plusMonths(1);
+                        try {
+                            // 4. 다음 달의 급여일 날짜를 계산
+                            nextPayday = nextMonth.withDayOfMonth(payDayOfMonth);
+                        } catch (java.time.DateTimeException e) {
+                            // 5. (예: 4월 31일)처럼 유효하지 않으면, 다음 달의 마지막 날로 설정
+                            nextPayday = nextMonth.with(TemporalAdjusters.lastDayOfMonth());
+                        }
+                    } else {
+                        // 6. 아직 이번 달 급여일이 지나지 않았으면, 이번 달 급여일이 D-day 대상
+                        nextPayday = thisMonthPayday;
+                    }
+
+                    daysUntilPayday = (int) ChronoUnit.DAYS.between(today, nextPayday);
                 }
             } else if (salaryType == SalaryType.SALARY_WEEKLY) {
                 DayOfWeek payDayOfWeek = salaryInfo.getSalaryDay();
