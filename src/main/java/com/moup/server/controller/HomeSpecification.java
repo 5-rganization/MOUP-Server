@@ -30,19 +30,15 @@ public interface HomeSpecification {
                                                         "todayRoutineCounts": 3,
                                                         "workerMonthlyWorkplaceSummaryInfoList": [
                                                             {
-                                                                "workplaceSummaryInfo": {
-                                                                    "workplaceId": 1,
-                                                                    "workplaceName": "GS25 역삼점",
-                                                                    "isShared": false
+                                                                "homeWorkplaceSummaryInfo": {
+                                                                    "workplaceSummaryInfo": {
+                                                                        "workplaceId": 1,
+                                                                        "workplaceName": "GS25 역삼점",
+                                                                        "isShared": false
+                                                                    },
+                                                                    "isNowWorking": false
                                                                 },
-                                                                "salarySummaryInfo": {
-                                                                    "salaryType": "SALARY_MONTHLY",
-                                                                    "salaryCalculation": "SALARY_CALCULATION_HOURLY",
-                                                                    "hourlyRate": 10000,
-                                                                    "fixedRate": null,
-                                                                    "salaryDate": 10,
-                                                                    "salaryDay": null
-                                                                },
+                                                                "daysUntilPayday": 14,
                                                                 "totalWorkMinutes": 5280,
                                                                 "dayTimeMinutes": 5280,
                                                                 "nightTimeMinutes": 0,
@@ -57,19 +53,15 @@ public interface HomeSpecification {
                                                                 "netIncome": 847200
                                                             },
                                                             {
-                                                                "workplaceSummaryInfo": {
-                                                                    "workplaceId": 2,
-                                                                    "workplaceName": "메가커피 선릉점",
-                                                                    "isShared": true
+                                                                "homeWorkplaceSummaryInfo": {
+                                                                    "workplaceSummaryInfo": {
+                                                                        "workplaceId": 2,
+                                                                        "workplaceName": "메가커피 선릉점",
+                                                                        "isShared": true
+                                                                    },
+                                                                    "isNowWorking": false
                                                                 },
-                                                                "salarySummaryInfo": {
-                                                                    "salaryType": "SALARY_MONTHLY",
-                                                                    "salaryCalculation": "SALARY_CALCULATION_FIXED",
-                                                                    "hourlyRate": null,
-                                                                    "fixedRate": 2200000,
-                                                                    "salaryDate": 25,
-                                                                    "salaryDay": null
-                                                                },
+                                                                "daysUntilPayday": 29,
                                                                 "totalWorkMinutes": 10560,
                                                                 "dayTimeMinutes": 9600,
                                                                 "nightTimeMinutes": 960,
@@ -85,7 +77,7 @@ public interface HomeSpecification {
                                                             }
                                                         ]
                                                     }
-                                                """),
+                                                    """),
                                     @ExampleObject(name = "사장님 홈 화면 조회", summary = "사장님 홈 화면 정보",
                                             value = """
                                                     {

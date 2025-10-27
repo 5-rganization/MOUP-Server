@@ -2,6 +2,7 @@ package com.moup.server.service;
 
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.*;
+import com.moup.server.model.enums.SalaryType;
 import com.moup.server.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,6 +15,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -284,17 +286,6 @@ public class SalaryCalculationService {
                     .isNowWorking(worker.getIsNowWorking())
                     .build();
 
-            // --- SalarySummaryResponse DTO 생성 ---
-            SalarySummaryResponse salarySummaryInfo = SalarySummaryResponse.builder()
-                    .salaryType(salaryInfo.getSalaryType())
-                    .salaryCalculation(salaryInfo.getSalaryCalculation())
-                    .hourlyRate(salaryInfo.getHourlyRate())
-                    .fixedRate(salaryInfo.getFixedRate())
-                    .salaryDate(salaryInfo.getSalaryDate())
-                    .salaryDay(salaryInfo.getSalaryDay())
-                    .build();
-
-
             // 4. 시간 및 수당 계산 (DB에 저장된 값을 합산)
             long totalWorkMinutes = workList.stream() // 순 근무시간 합계
                     .mapToLong(work -> work.getNetWorkMinutes() != null ? work.getNetWorkMinutes() : 0)
@@ -326,6 +317,54 @@ public class SalaryCalculationService {
             // --- 5. 공제액 계산 ---
             DeductionDetails deductions = calculateDeductions(grossIncome, totalWorkHours, salaryInfo);
 
+            // --- 5-1. 급여일 D-day 계산 ---
+            Integer daysUntilPayday = null;
+            LocalDate today = LocalDate.now();
+            SalaryType salaryType = salaryInfo.getSalaryType();
+
+            if (salaryType == SalaryType.SALARY_MONTHLY) {
+                Integer payDayOfMonth = salaryInfo.getSalaryDate();
+                if (payDayOfMonth != null) {
+                    try {
+                        // 2월 30일 같이 유효하지 않은 날짜 처리
+                        LocalDate thisMonthPayday = today.withDayOfMonth(payDayOfMonth);
+                        LocalDate nextPayday;
+
+                        if (today.isAfter(thisMonthPayday)) {
+                            // 오늘이 이번 달 급여일보다 늦었으면, 다음 달 급여일
+                            nextPayday = thisMonthPayday.plusMonths(1);
+                        } else {
+                            // 아니면, 이번 달 급여일
+                            nextPayday = thisMonthPayday;
+                        }
+                        daysUntilPayday = (int) ChronoUnit.DAYS.between(today, nextPayday);
+
+                    } catch (java.time.DateTimeException e) {
+                        // (예외 처리) 2월 30일 등 존재하지 않는 날짜가 DB에 저장된 경우
+                        // 이 경우, 해당 월의 마지막 날을 급여일로 간주
+                        LocalDate lastDayOfThisMonth = today.with(TemporalAdjusters.lastDayOfMonth());
+                        LocalDate nextPayday;
+
+                        if (today.isAfter(lastDayOfThisMonth)) {
+                            // 이번 달 말일이 이미 지났으면, 다음 달 말일
+                            nextPayday = lastDayOfThisMonth.plusMonths(1).with(TemporalAdjusters.lastDayOfMonth());
+                        } else {
+                            // 아니면, 이번 달 말일
+                            nextPayday = lastDayOfThisMonth;
+                        }
+                        daysUntilPayday = (int) ChronoUnit.DAYS.between(today, nextPayday);
+                    }
+                }
+            } else if (salaryType == SalaryType.SALARY_WEEKLY) {
+                DayOfWeek payDayOfWeek = salaryInfo.getSalaryDay();
+                if (payDayOfWeek != null) {
+                    // 오늘을 포함하여 다음 번 돌아오는 급여 요일
+                    LocalDate nextPayday = today.with(TemporalAdjusters.nextOrSame(payDayOfWeek));
+                    daysUntilPayday = (int) ChronoUnit.DAYS.between(today, nextPayday);
+                }
+            }
+            // SALARY_DAILY의 경우 daysUntilPayday는 초기값인 null 유지
+
             // --- 6. 최종 DTO 조립 ---
             // 6-1. DTO에 맞게 nullable 공제 항목 계산
             Integer nationalPension = salaryInfo.getHasNationalPension() ? deductions.nationalPension() : null;
@@ -336,7 +375,7 @@ public class SalaryCalculationService {
 
             WorkerMonthlyWorkplaceSummaryResponse summaryInfo = WorkerMonthlyWorkplaceSummaryResponse.builder()
                     .homeWorkplaceSummaryInfo(workerHomeWorkplaceSummaryInfo)
-                    .salarySummaryInfo(salarySummaryInfo)
+                    .daysUntilPayday(daysUntilPayday)
                     .totalWorkMinutes(totalWorkMinutes)
                     .dayTimeMinutes(totalWorkMinutes - totalNightMinutes)
                     .nightTimeMinutes(totalNightMinutes)

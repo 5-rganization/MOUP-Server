@@ -10,8 +10,8 @@ import lombok.Getter;
 public class WorkerMonthlyWorkplaceSummaryResponse {
     @Schema(description = "근무지 요약 정보", requiredMode = Schema.RequiredMode.REQUIRED)
     private WorkerHomeWorkplaceSummaryInfo homeWorkplaceSummaryInfo;
-    @Schema(description = "급여 요약 정보", requiredMode = Schema.RequiredMode.REQUIRED)
-    private SalarySummaryResponse salarySummaryInfo;
+    @Schema(description = "월급날까지 남은 날", example = "3", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    private Integer daysUntilPayday;
     @Schema(description = "총 근무시간 (분)", example = "420", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long totalWorkMinutes;
     @Schema(description = "총 주간시간 (분)", example = "360", requiredMode = Schema.RequiredMode.REQUIRED)
