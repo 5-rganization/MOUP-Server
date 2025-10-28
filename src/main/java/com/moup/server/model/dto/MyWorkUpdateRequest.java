@@ -10,8 +10,9 @@ import lombok.Getter;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
+
+import static com.moup.server.common.TimeConstants.SEOUL_ZONE_ID;
 
 @Getter
 @Builder
@@ -42,8 +43,6 @@ public class MyWorkUpdateRequest {
     @Schema(description = "반복 종료 날짜 (yyyy-MM-dd)", example = "2025-11-11", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private LocalDate repeatEndDate;
 
-    private static final ZoneId SEOUL_ZONE_ID = ZoneId.of("Asia/Seoul");
-
     public Work toEntity(
             Long workId,
             Long workerId,
@@ -64,7 +63,7 @@ public class MyWorkUpdateRequest {
                 .workDate(workDate)
                 .startTime(startTime.atZone(SEOUL_ZONE_ID).toLocalDateTime())
                 .actualStartTime(actualStartTime != null ? actualStartTime.atZone(SEOUL_ZONE_ID).toLocalDateTime() : null)
-                .endTime(endTime != null ? endTime.atZone(SEOUL_ZONE_ID).toLocalDateTime() : null)
+                .endTime(endTime.atZone(SEOUL_ZONE_ID).toLocalDateTime())
                 .actualEndTime(actualEndTime != null ? actualEndTime.atZone(SEOUL_ZONE_ID).toLocalDateTime() : null)
                 .restTimeMinutes(restTimeMinutes)
                 .grossWorkMinutes(grossWorkMinutes)

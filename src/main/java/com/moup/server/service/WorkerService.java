@@ -15,11 +15,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
+import static com.moup.server.common.TimeConstants.SEOUL_ZONE_ID;
 
 @Service
 @RequiredArgsConstructor
@@ -32,8 +33,6 @@ public class WorkerService {
     private final PermissionVerifyUtil permissionVerifyUtil;
     private final WorkRepository workRepository;
     private final FCMService fCMService;
-
-    private static final ZoneId SEOUL_ZONE_ID = ZoneId.of("Asia/Seoul");
 
     public WorkerSummaryListResponse getWorkerList(Long userId, Long workplaceId) {
         Workplace userWorkplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);

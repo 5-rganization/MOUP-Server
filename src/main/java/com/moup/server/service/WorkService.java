@@ -15,6 +15,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.moup.server.common.TimeConstants.SEOUL_ZONE_ID;
+
 /// 근무(Work) 관련 비즈니스 로직을 처리하는 서비스 클래스
 @Slf4j
 @Service
@@ -33,7 +35,6 @@ public class WorkService {
 
     // --- 상수 ---
     private static final long MAX_REPEAT_DAYS_LIMIT = 365L; // 반복 생성 최대 기간
-    private static final ZoneId SEOUL_ZONE_ID = ZoneId.of("Asia/Seoul");
 
     // --- 내부 레코드 (데이터 전달용) ---
     /// 근무 조회 시 권한 검증 후 필요한 데이터를 담는 레코드
@@ -159,7 +160,7 @@ public class WorkService {
                 .workplaceSummaryInfo(context.workplaceSummaryInfo())
                 .routineSummaryInfoList(routineSummaryList)
                 .workDate(context.work().getWorkDate())
-                .startTime(context.work().getStartTime().atZone(ZoneId.of("Asia/Seoul")).toInstant())
+                .startTime(context.work().getStartTime().atZone(SEOUL_ZONE_ID).toInstant())
                 .actualStartTime(context.work().getActualStartTime() != null ? context.work().getActualStartTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
                 .endTime(context.work().getEndTime() != null ? context.work().getEndTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
                 .actualEndTime(context.work().getActualEndTime() != null ? context.work().getActualEndTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
@@ -195,7 +196,7 @@ public class WorkService {
                 .workerSummaryInfo(context.workerSummaryInfo())
                 .workplaceSummaryInfo(context.workplaceSummaryInfo())
                 .workDate(context.work().getWorkDate())
-                .startTime(context.work().getStartTime().atZone(ZoneId.of("Asia/Seoul")).toInstant())
+                .startTime(context.work().getStartTime().atZone(SEOUL_ZONE_ID).toInstant())
                 .endTime(context.work().getEndTime() != null ? context.work().getEndTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
                 .workMinutes(context.workMinutes())
                 .restTimeMinutes(context.work().getRestTimeMinutes())
