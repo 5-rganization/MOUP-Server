@@ -145,12 +145,8 @@ public class AuthController {
       // 3-b-1. DB 저장을 위한 User 엔티티 생성
       String username = service.getUsername(userInfo);
       if (username == null) {
-        // Apple 로그인의 경우 클라이언트를 통해 유저 이름 수신
-        if (nameVerifyUtil.verifyName(loginRequest.getUsername())) {
+          // Apple 로그인의 경우 클라이언트를 통해 유저 이름 수신
           username = loginRequest.getUsername();
-        } else {
-          throw new InvalidNameException("잘못된 사용자 이름입니다.");
-        }
       }
 
       // 3-b-2. DB에 유저 생성 및 토큰 관리
