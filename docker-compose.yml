@@ -28,7 +28,7 @@ services:
     image: mysql:8.0
     environment:
       MYSQL_ROOT_PASSWORD: ${DATABASE_PASSWORD}
-      MYSQL_DATABASE: moup_db
+      MYSQL_DATABASE: ${DATABASE_NAME}
       TZ: Asia/Seoul
     command:
       - --character-set-server=utf8mb4

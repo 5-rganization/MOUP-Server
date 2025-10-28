@@ -47,3 +47,4 @@ docker-compose.override.yml
 # Local Docker files
 mysql-data/
 redis-data/
+nginx/nginx.dev.conf
