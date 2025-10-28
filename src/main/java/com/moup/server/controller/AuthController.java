@@ -74,7 +74,6 @@ public class AuthController {
                   "refreshToken": "string"
               }
               """))),
-      @ApiResponse(responseCode = "400", description = "유효하지 않은 사용자 이름 형식 (Apple 로그인 시)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
       @ApiResponse(responseCode = "401", description = "유효하지 않은 Authorization Code", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
       @ApiResponse(responseCode = "409", description = "이미 가입된 유저 (처리 중 오류)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
       @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
