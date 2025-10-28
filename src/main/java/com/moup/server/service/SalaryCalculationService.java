@@ -303,6 +303,11 @@ public class SalaryCalculationService {
                     .mapToInt(work -> work.getHolidayAllowance() != null ? work.getHolidayAllowance() : 0)
                     .sum();
 
+            // --- 총 주간 근무 급여 (기본급) 합계 ---
+            int dayTimeIncome = workList.stream()
+                    .mapToInt(work -> work.getBasePay() != null ? work.getBasePay() : 0)
+                    .sum();
+
             // --- 야간수당(원) 합계 계산 ---
             int totalNightAllowance = workList.stream()
                     .mapToInt(work -> work.getNightAllowance() != null ? work.getNightAllowance() : 0)
@@ -378,6 +383,7 @@ public class SalaryCalculationService {
                     .dayTimeMinutes(totalWorkMinutes - totalNightMinutes)
                     .nightTimeMinutes(totalNightMinutes)
                     .restTimeMinutes(totalRestTimeMinutes)
+                    .dayTimeIncome(dayTimeIncome)
                     .grossIncome(grossIncome)
                     .totalHolidayAllowance(salaryInfo.getHasHolidayAllowance() ? totalHolidayAllowance : null)
                     .totalNightAllowance(salaryInfo.getHasNightAllowance() ? totalNightAllowance : null)
