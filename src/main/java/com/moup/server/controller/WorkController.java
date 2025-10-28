@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.Collections;
@@ -163,11 +164,11 @@ public class WorkController implements WorkSpecification {
         if (workService.updateActualStartTime(userId, workplaceId)) {
             return ResponseEntity.noContent().build();
         } else {
-            LocalDateTime currentDateTime = LocalDateTime.now();
+            Instant currentTime = Instant.now();
             MyWorkCreateRequest request = MyWorkCreateRequest.builder()
                     .routineIdList(Collections.emptyList())
-                    .startTime(currentDateTime)
-                    .actualStartTime(currentDateTime)
+                    .startTime(currentTime)
+                    .actualStartTime(currentTime)
                     .endTime(null)
                     .actualEndTime(null)
                     .restTimeMinutes(0)

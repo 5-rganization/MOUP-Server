@@ -16,6 +16,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static com.moup.server.common.TimeConstants.SEOUL_ZONE_ID;
+
 @Service
 @RequiredArgsConstructor
 public class RoutineService {
@@ -150,8 +152,8 @@ public class RoutineService {
                     return TodayWorkRoutineCountResponse.builder()
                             .workId(work.getId())
                             .workplaceSummaryInfo(workplaceSummary)
-                            .startTime(work.getStartTime())
-                            .endTime(work.getEndTime())
+                            .startTime(work.getStartTime().atZone(SEOUL_ZONE_ID).toInstant())
+                            .endTime(work.getEndTime() != null ? work.getEndTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
                             .workMinutes(Duration.between(work.getStartTime(), work.getEndTime()).toMinutes())
                             .routineCount(routineCount)
                             .build();

@@ -20,6 +20,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static com.moup.server.common.TimeConstants.SEOUL_ZONE_ID;
+
 @Service
 @RequiredArgsConstructor
 public class WorkerService {
@@ -121,10 +123,10 @@ public class WorkerService {
                 .map(work -> WorkerWorkAttendanceResponse.builder()
                         .workId(work.getId())
                         .workDate(work.getWorkDate())
-                        .startTime(work.getStartTime())
-                        .actualStartTime(work.getActualStartTime())
-                        .endTime(work.getEndTime())
-                        .actualEndTime(work.getActualEndTime())
+                        .startTime(work.getStartTime().atZone(SEOUL_ZONE_ID).toInstant())
+                        .actualStartTime(work.getActualStartTime() != null ? work.getActualStartTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
+                        .endTime(work.getEndTime() != null ? work.getEndTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
+                        .actualEndTime(work.getActualEndTime() != null ? work.getActualEndTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
                         .build())
                 .toList();
 
