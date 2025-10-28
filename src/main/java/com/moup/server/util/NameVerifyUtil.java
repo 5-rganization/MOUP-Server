@@ -7,8 +7,6 @@ import java.util.regex.Pattern;
 
 @Component
 public class NameVerifyUtil {
-    private static final Pattern CONSONANTS_ONLY_PATTERN = Pattern.compile("^[ㄱ-ㅎ]+$");
-    private static final Pattern VOWELS_ONLY_PATTERN = Pattern.compile("^[ㅏ-ㅣ]+$");
     private static final Pattern INCOMPLETE_HANGUL_PATTERN = Pattern.compile("[ㄱ-ㅎㅏ-ㅣ]");
     private static final Pattern HANGUL_PATTERN = Pattern.compile("[가-힣]");
     private static final Pattern ALPHABET_PATTERN = Pattern.compile("[a-zA-Z]");
@@ -65,19 +63,11 @@ public class NameVerifyUtil {
             throw new InvalidFieldFormatException("닉네임에 빈 값이 들어올 수 없습니다.");
         }
 
-        String trimmed = nickname.trim();
-
-        if (!nickname.equals(trimmed) || nickname.contains(" ")) {
+        if (nickname.contains(" ")) {
             throw new InvalidFieldFormatException("닉네임 앞뒤 또는 중간에 공백을 사용할 수 없습니다.");
         }
 
-        if (CONSONANTS_ONLY_PATTERN.matcher(trimmed).matches()) {
-            throw new InvalidFieldFormatException("자음만 사용할 수 없습니다.");
-        }
-
-        if (VOWELS_ONLY_PATTERN.matcher(trimmed).matches()) {
-            throw new InvalidFieldFormatException("모음만 사용할 수 없습니다.");
-        }
+        String trimmed = nickname.trim();
 
         if (INCOMPLETE_HANGUL_PATTERN.matcher(trimmed).find()) {
             throw new InvalidFieldFormatException("정확한 글자를 입력해야 합니다.");
