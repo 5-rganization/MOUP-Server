@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,8 @@ public class RoutineService {
     private static final int MAX_ROUTINE_COUNT_PER_USER = 20; // 사용자당 루틴 연결 최대 개수
     private static final int MAX_TASK_COUNT_PER_ROUTINE = 50; // 루틴당 할 일 연결 최대 개수
     private static final int MAX_ROUTINE_COUNT_PER_WORK = 10; // 근무당 루틴 연결 최대 개수
+
+    private static final ZoneId SEOUL_ZONE_ID = ZoneId.of("Asia/Seoul");
 
     @Transactional
     public RoutineCreateResponse createRoutine(Long userId, RoutineCreateRequest request) {
@@ -150,8 +153,8 @@ public class RoutineService {
                     return TodayWorkRoutineCountResponse.builder()
                             .workId(work.getId())
                             .workplaceSummaryInfo(workplaceSummary)
-                            .startTime(work.getStartTime())
-                            .endTime(work.getEndTime())
+                            .startTime(work.getStartTime().atZone(SEOUL_ZONE_ID).toInstant())
+                            .endTime(work.getEndTime() != null ? work.getEndTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
                             .workMinutes(Duration.between(work.getStartTime(), work.getEndTime()).toMinutes())
                             .routineCount(routineCount)
                             .build();

@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -31,6 +32,8 @@ public class WorkerService {
     private final PermissionVerifyUtil permissionVerifyUtil;
     private final WorkRepository workRepository;
     private final FCMService fCMService;
+
+    private static final ZoneId SEOUL_ZONE_ID = ZoneId.of("Asia/Seoul");
 
     public WorkerSummaryListResponse getWorkerList(Long userId, Long workplaceId) {
         Workplace userWorkplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
@@ -121,10 +124,10 @@ public class WorkerService {
                 .map(work -> WorkerWorkAttendanceResponse.builder()
                         .workId(work.getId())
                         .workDate(work.getWorkDate())
-                        .startTime(work.getStartTime())
-                        .actualStartTime(work.getActualStartTime())
-                        .endTime(work.getEndTime())
-                        .actualEndTime(work.getActualEndTime())
+                        .startTime(work.getStartTime().atZone(SEOUL_ZONE_ID).toInstant())
+                        .actualStartTime(work.getActualStartTime() != null ? work.getActualStartTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
+                        .endTime(work.getEndTime() != null ? work.getEndTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
+                        .actualEndTime(work.getActualEndTime() != null ? work.getActualEndTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
                         .build())
                 .toList();
 

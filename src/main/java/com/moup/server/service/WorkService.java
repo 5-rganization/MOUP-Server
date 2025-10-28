@@ -33,6 +33,7 @@ public class WorkService {
 
     // --- 상수 ---
     private static final long MAX_REPEAT_DAYS_LIMIT = 365L; // 반복 생성 최대 기간
+    private static final ZoneId SEOUL_ZONE_ID = ZoneId.of("Asia/Seoul");
 
     // --- 내부 레코드 (데이터 전달용) ---
     /// 근무 조회 시 권한 검증 후 필요한 데이터를 담는 레코드
@@ -158,10 +159,10 @@ public class WorkService {
                 .workplaceSummaryInfo(context.workplaceSummaryInfo())
                 .routineSummaryInfoList(routineSummaryList)
                 .workDate(context.work().getWorkDate())
-                .startTime(context.work().getStartTime())
-                .actualStartTime(context.work().getActualStartTime())
-                .endTime(context.work().getEndTime())
-                .actualEndTime(context.work().getActualEndTime())
+                .startTime(context.work().getStartTime().atZone(ZoneId.of("Asia/Seoul")).toInstant())
+                .actualStartTime(context.work().getActualStartTime() != null ? context.work().getActualStartTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
+                .endTime(context.work().getEndTime() != null ? context.work().getEndTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
+                .actualEndTime(context.work().getActualEndTime() != null ? context.work().getActualEndTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
                 .restTimeMinutes(context.work().getRestTimeMinutes())
                 .workMinutes(context.workMinutes())
                 .memo(context.work().getMemo())
@@ -194,8 +195,8 @@ public class WorkService {
                 .workerSummaryInfo(context.workerSummaryInfo())
                 .workplaceSummaryInfo(context.workplaceSummaryInfo())
                 .workDate(context.work().getWorkDate())
-                .startTime(context.work().getStartTime())
-                .endTime(context.work().getEndTime())
+                .startTime(context.work().getStartTime().atZone(ZoneId.of("Asia/Seoul")).toInstant())
+                .endTime(context.work().getEndTime() != null ? context.work().getEndTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
                 .workMinutes(context.workMinutes())
                 .restTimeMinutes(context.work().getRestTimeMinutes())
                 .estimatedNetIncome(context.work().getEstimatedNetIncome())
@@ -288,7 +289,6 @@ public class WorkService {
                 long workMinutes = work.getNetWorkMinutes() != null ? work.getNetWorkMinutes() : 0;
                 boolean isMyWork = checkIsMyWork(user.getId(), workplaceWorker.getUserId());
                 boolean isEditable = checkEditable(user.getId(), workplaceWorker.getUserId(), workplace.getOwnerId());
-                // workplaceSummaryInfo는 루프 밖에서 미리 생성한 것 사용
                 return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummaryInfo, workMinutes, isMyWork, isEditable, repeatInfoCache);
             }).toList();
             workSummaryInfoList.addAll(workerWorkSummaryList);
@@ -341,18 +341,40 @@ public class WorkService {
         if (!Objects.equals(context.worker().getUserId(), requesterUserId)) { throw new InvalidPermissionAccessException("본인의 근무 기록만 수정할 수 있습니다."); }
 
         List<Work> resultingWorks; // 결과를 담을 리스트
-        boolean recurringReplaced = false; // 반복 대체 여부 플래그
+        boolean recurringReplaced; // 반복 대체 여부 플래그
+
+        LocalDateTime newStartTime = request.getStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime();
+        LocalDateTime newEndTime = (request.getEndTime() != null) ? request.getEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
+        LocalDateTime newActualStartTime = (request.getActualStartTime() != null) ? request.getActualStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
+        LocalDateTime newActualEndTime = (request.getActualEndTime() != null) ? request.getActualEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
 
         if (request.getRepeatDays() == null || request.getRepeatDays().isEmpty()) {
             // --- 반복 중단 또는 단일 근무 수정 ---
-            stopRecurrenceAndUpdateSingle(context.worker(), context.work(), request.getStartTime(), request.getEndTime(),
-                    request.getActualStartTime(), request.getActualEndTime(), request.getRestTimeMinutes(), request.getMemo());
+            stopRecurrenceAndUpdateSingle(
+                    context.worker(),
+                    context.work(),
+                    newStartTime,
+                    newEndTime,
+                    newActualStartTime,
+                    newActualEndTime,
+                    request.getRestTimeMinutes(),
+                    request.getMemo()
+            );
             // 단일 업데이트 후에는 해당 workId 하나만 결과로 간주
             resultingWorks = List.of(context.work().toBuilder().id(workId).build()); // ID만 있는 임시 객체
+            recurringReplaced = false;
         } else {
             // --- 새로운 반복 시작 또는 기존 반복 변경 ---
-            resultingWorks = replaceWithNewRecurringWorks(context.worker(), context.work(), request.getStartTime(), request.getEndTime(),
-                    request.getRestTimeMinutes(), request.getMemo(), request.getRepeatDays(), request.getRepeatEndDate());
+            resultingWorks = replaceWithNewRecurringWorks(
+                    context.worker(),
+                    context.work(),
+                    newStartTime,
+                    newEndTime,
+                    request.getRestTimeMinutes(),
+                    request.getMemo(),
+                    request.getRepeatDays(),
+                    request.getRepeatEndDate()
+            );
             recurringReplaced = true;
         }
 
@@ -387,18 +409,39 @@ public class WorkService {
         if (!work.getWorkerId().equals(worker.getId())) { throw new BadRequestException("해당 근무 기록은 지정된 근무자의 것이 아닙니다."); }
 
         List<Work> resultingWorks;
-        boolean recurringReplaced = false;
+        boolean recurringReplaced;
+
+        LocalDateTime newStartTime = request.getStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime();
+        LocalDateTime newEndTime = (request.getEndTime() != null) ? request.getEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
+        LocalDateTime newActualStartTime = (request.getActualStartTime() != null) ? request.getActualStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
+        LocalDateTime newActualEndTime = (request.getActualEndTime() != null) ? request.getActualEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
 
         if (request.getRepeatDays() == null || request.getRepeatDays().isEmpty()) {
             // --- 반복 중단 또는 단일 근무 수정 ---
-            stopRecurrenceAndUpdateSingle(worker, work, request.getStartTime(), request.getEndTime(),
-                    request.getActualStartTime(), request.getActualEndTime(), request.getRestTimeMinutes(), request.getMemo());
+            stopRecurrenceAndUpdateSingle(
+                    worker,
+                    work,
+                    newStartTime,
+                    newEndTime,
+                    newActualStartTime,
+                    newActualEndTime,
+                    request.getRestTimeMinutes(),
+                    request.getMemo()
+            );
             resultingWorks = List.of(work.toBuilder().id(workId).build());
             recurringReplaced = false;
         } else {
             // --- 새로운 반복 시작 또는 기존 반복 변경 ---
-            resultingWorks = replaceWithNewRecurringWorks(worker, work, request.getStartTime(), request.getEndTime(),
-                    request.getRestTimeMinutes(), request.getMemo(), request.getRepeatDays(), request.getRepeatEndDate());
+            resultingWorks = replaceWithNewRecurringWorks(
+                    worker,
+                    work,
+                    newStartTime,
+                    newEndTime,
+                    request.getRestTimeMinutes(),
+                    request.getMemo(),
+                    request.getRepeatDays(),
+                    request.getRepeatEndDate()
+            );
             recurringReplaced = true;
         }
 
@@ -521,30 +564,63 @@ public class WorkService {
     /// 사용자 근무 생성 헬퍼 (MyWorkCreateRequest 용)
     /// @return 생성된 근무 리스트 (단일 근무 시 크기 1)
     private List<Work> createMyWorkHelper(Worker worker, MyWorkCreateRequest request) {
+        LocalDateTime startTime = request.getStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime();
+        LocalDateTime endTime = (request.getEndTime() != null) ? request.getEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
+        LocalDateTime actualStartTime = (request.getActualStartTime() != null) ? request.getActualStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
+        LocalDateTime actualEndTime = (request.getActualEndTime() != null) ? request.getActualEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
+
         if (request.getRepeatDays() == null || request.getRepeatDays().isEmpty()) {
-            Work singleWork = createSingleWork(worker, request.getStartTime(), request.getEndTime(),
-                    request.getActualStartTime(), request.getActualEndTime(),
-                    request.getRestTimeMinutes(), request.getMemo());
+            Work singleWork = createSingleWork(
+                    worker,
+                    startTime,
+                    endTime,
+                    actualStartTime,
+                    actualEndTime,
+                    request.getRestTimeMinutes(),
+                    request.getMemo()
+            );
             return Collections.singletonList(singleWork); // 단일 근무도 리스트로 반환
         } else {
-            return createRecurringWorks(worker, request.getStartTime(), request.getEndTime(),
-                    request.getRestTimeMinutes(), request.getMemo(),
-                    request.getRepeatDays(), request.getRepeatEndDate());
+            return createRecurringWorks(
+                    worker,
+                    startTime,
+                    endTime,
+                    request.getRestTimeMinutes(),
+                    request.getMemo(),
+                    request.getRepeatDays(),
+                    request.getRepeatEndDate()
+            );
         }
     }
 
     /// 사장님의 알바생 근무 생성 헬퍼 (WorkerWorkCreateRequest 용)
     /// @return 생성된 근무 리스트 (단일 근무 시 크기 1)
     private List<Work> createWorkForWorkerHelper(Worker worker, WorkerWorkCreateRequest request) {
+        LocalDateTime startTime = request.getStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime();
+        LocalDateTime endTime = (request.getEndTime() != null) ? request.getEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
+        LocalDateTime actualStartTime = (request.getActualStartTime() != null) ? request.getActualStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
+        LocalDateTime actualEndTime = (request.getActualEndTime() != null) ? request.getActualEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
+
         if (request.getRepeatDays() == null || request.getRepeatDays().isEmpty()) {
-            Work singleWork = createSingleWork(worker, request.getStartTime(), request.getEndTime(),
-                    request.getActualStartTime(), request.getActualEndTime(),
-                    request.getRestTimeMinutes(), request.getMemo());
+            Work singleWork = createSingleWork(
+                    worker,
+                    startTime,
+                    endTime,
+                    actualStartTime,
+                    actualEndTime,
+                    request.getRestTimeMinutes(),
+                    request.getMemo()
+            );
             return Collections.singletonList(singleWork); // 단일 근무도 리스트로 반환
         } else {
-            return createRecurringWorks(worker, request.getStartTime(), request.getEndTime(),
-                    request.getRestTimeMinutes(), request.getMemo(),
-                    request.getRepeatDays(), request.getRepeatEndDate());
+            return createRecurringWorks(
+                    worker,
+                    startTime,
+                    endTime,
+                    request.getRestTimeMinutes(),
+                    request.getMemo(),
+                    request.getRepeatDays(),
+                    request.getRepeatEndDate());
         }
     }
 
@@ -804,8 +880,8 @@ public class WorkService {
                 .workerSummaryInfo(workerSummaryInfo)
                 .workplaceSummaryInfo(workplaceSummaryInfo)
                 .workDate(work.getWorkDate())
-                .startTime(work.getStartTime())
-                .endTime(work.getEndTime())
+                .startTime(work.getStartTime().atZone(SEOUL_ZONE_ID).toInstant())
+                .endTime(work.getEndTime() != null ? work.getEndTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
                 .workMinutes(workMinutes)
                 .restTimeMinutes(work.getRestTimeMinutes())
                 .estimatedNetIncome(finalNetIncome)

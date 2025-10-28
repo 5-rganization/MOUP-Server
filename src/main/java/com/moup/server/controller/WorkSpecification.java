@@ -100,10 +100,10 @@ public interface WorkSpecification {
                                                     }
                                                 ],
                                                 "workDate": "2025-10-11",
-                                                "startTime": "2025-10-11 08:30",
-                                                "actualStartTime": "2025-10-11 08:35",
-                                                "endTime": "2025-10-11 15:30",
-                                                "actualEndTime": "2025-10-11 15:40",
+                                                "startTime": "2025-10-11T08:30:00Z",
+                                                "actualStartTime": "2025-10-11T08:35:00Z",
+                                                "endTime": "2025-10-11T15:30:00Z",
+                                                "actualEndTime": "2025-10-11T15:40:00Z",
                                                 "restTimeMinutes": 30,
                                                 "memo": "오늘 재고 정리하는 날",
                                                 "repeatDays": [
@@ -132,8 +132,8 @@ public interface WorkSpecification {
                                                     "isShared": true
                                                 },
                                                 "workDate": "2025-10-11",
-                                                "startTime": "2025-10-11 08:30",
-                                                "endTime": "2025-10-11 15:30",
+                                                "startTime": "2025-10-11T08:30:00Z",
+                                                "endTime": "2025-10-11T15:30:00Z",
                                                 "workMinutes": 420,
                                                 "restTimeMinutes": 30,
                                                 "repeatDays": [

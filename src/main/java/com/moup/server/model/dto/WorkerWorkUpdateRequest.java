@@ -7,9 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.*;
 import java.util.List;
 
 @Getter
@@ -17,19 +15,15 @@ import java.util.List;
 @Schema(description = "근무자 근무 업데이트 요청 DTO")
 public class WorkerWorkUpdateRequest {
     @NotNull(message = "필수 입력값입니다.")
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
-    @Schema(description = "출근 시간 (yyyy-MM-dd HH:mm)", example = "2025-10-11 08:30", requiredMode = Schema.RequiredMode.REQUIRED)
-    private LocalDateTime startTime;
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
-    @Schema(description = "실제 출근 시간 (yyyy-MM-dd HH:mm)", example = "2025-10-11 08:35", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    private LocalDateTime actualStartTime;
+    @Schema(description = "출근 시간 (ISO 8601 UTC)", example = "2025-10-11T08:30:00Z", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Instant startTime;
+    @Schema(description = "실제 출근 시간 (ISO 8601 UTC)", example = "2025-10-11T08:35:00Z", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    private Instant actualStartTime;
     @NotNull(message = "필수 입력값입니다.")
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
-    @Schema(description = "퇴근 시간 (yyyy-MM-dd HH:mm)", example = "2025-10-11 15:30", requiredMode = Schema.RequiredMode.REQUIRED)
-    private LocalDateTime endTime;
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
-    @Schema(description = "실제 퇴근 시간 (yyyy-MM-dd HH:mm)", example = "2025-10-11 15:40", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    private LocalDateTime actualEndTime;
+    @Schema(description = "퇴근 시간 (ISO 8601 UTC)", example = "2025-10-11T15:30:00Z", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Instant endTime;
+    @Schema(description = "실제 퇴근 시간 (ISO 8601 UTC)", example = "2025-10-11T15:40:00Z", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    private Instant actualEndTime;
     @NotNull(message = "값이 없을 경우 0을 전달해야 합니다.")
     @Schema(description = "휴게 시간 (분단위, 없을 경우 0)", example = "15", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer restTimeMinutes;
@@ -41,6 +35,8 @@ public class WorkerWorkUpdateRequest {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     @Schema(description = "반복 종료 날짜 (yyyy-MM-dd)", example = "2025-11-11", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private LocalDate repeatEndDate;
+
+    private static final ZoneId SEOUL_ZONE_ID = ZoneId.of("Asia/Seoul");
 
     public Work toEntity(
             Long workId,
@@ -54,16 +50,16 @@ public class WorkerWorkUpdateRequest {
             int holidayAllowance,
             String repeatGroupId
     ) {
-        LocalDate workDate = startTime.toLocalDate();
+        LocalDate workDate = startTime.atZone(SEOUL_ZONE_ID).toLocalDate();
 
         return Work.builder()
                 .id(workId)
                 .workerId(workerId)
                 .workDate(workDate)
-                .startTime(startTime)
-                .actualStartTime(actualStartTime)
-                .endTime(endTime)
-                .actualEndTime(actualEndTime)
+                .startTime(startTime.atZone(SEOUL_ZONE_ID).toLocalDateTime())
+                .actualStartTime(actualStartTime != null ? actualStartTime.atZone(SEOUL_ZONE_ID).toLocalDateTime() : null)
+                .endTime(endTime.atZone(SEOUL_ZONE_ID).toLocalDateTime())
+                .actualEndTime(actualEndTime != null ? actualEndTime.atZone(SEOUL_ZONE_ID).toLocalDateTime() : null)
                 .restTimeMinutes(restTimeMinutes)
                 .grossWorkMinutes(grossWorkMinutes)
                 .netWorkMinutes(netWorkMinutes)
