@@ -1,0 +1,81 @@
+package com.moup.server.model.dto;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.moup.server.model.entity.Work;
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
+import lombok.Builder;
+import lombok.Getter;
+
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Getter
+@Builder
+@Schema(description = "근무자 근무 생성 요청 DTO")
+public class WorkerWorkCreateRequest {
+    @NotNull(message = "필수 입력값입니다.")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
+    @Schema(description = "출근 시간 (yyyy-MM-dd HH:mm)", example = "2025-10-11 08:30", requiredMode = Schema.RequiredMode.REQUIRED)
+    private LocalDateTime startTime;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
+    @Schema(description = "실제 출근 시간 (yyyy-MM-dd HH:mm)", example = "2025-10-11 08:35", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    private LocalDateTime actualStartTime;
+    @NotNull(message = "필수 입력값입니다.")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
+    @Schema(description = "퇴근 시간 (yyyy-MM-dd HH:mm)", example = "2025-10-11 15:30", requiredMode = Schema.RequiredMode.REQUIRED)
+    private LocalDateTime endTime;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
+    @Schema(description = "실제 퇴근 시간 (yyyy-MM-dd HH:mm)", example = "2025-10-11 15:40", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    private LocalDateTime actualEndTime;
+    @NotNull(message = "값이 없을 경우 0을 전달해야 합니다.")
+    @Schema(description = "휴게 시간 (분단위, 없을 경우 0)", example = "15", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Integer restTimeMinutes;
+    @Schema(description = "메모", example = "오늘 재고 정리하는 날", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    private String memo;
+    @NotNull(message = "값이 없을 경우 빈 배열을 전달해야 합니다.")
+    @Schema(description = "반복 요일 (없으면 빈 배열)", example = "[\"MONDAY\", \"WEDNESDAY\"]", requiredMode = Schema.RequiredMode.REQUIRED)
+    private List<DayOfWeek> repeatDays;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    @Schema(description = "반복 종료 날짜 (yyyy-MM-dd)", example = "2025-11-11", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    private LocalDate repeatEndDate;
+
+    public Work toEntity(
+            Long workerId,
+            Integer hourlyRate,
+            int grossWorkMinutes,
+            int netWorkMinutes,
+            int nightWorkMinutes,
+            int basePay,
+            int nightAllowance,
+            int holidayAllowance,
+            String repeatGroupId
+    ) {
+        LocalDate workDate = startTime.toLocalDate();
+
+        return Work.builder()
+                .id(null)
+                .workerId(workerId)
+                .workDate(workDate)
+                .startTime(startTime)
+                .actualStartTime(actualStartTime)
+                .endTime(endTime)
+                .actualEndTime(actualEndTime)
+                .restTimeMinutes(restTimeMinutes)
+                .grossWorkMinutes(grossWorkMinutes)
+                .netWorkMinutes(netWorkMinutes)
+                .nightWorkMinutes(nightWorkMinutes)
+                .memo(memo)
+                .hourlyRate(hourlyRate)
+                .basePay(basePay)
+                .nightAllowance(nightAllowance)
+                .holidayAllowance(holidayAllowance)
+                .grossIncome(basePay + nightAllowance + holidayAllowance)
+                .estimatedNetIncome(0)
+                .repeatGroupId(repeatGroupId)
+                .build();
+    }
+}
