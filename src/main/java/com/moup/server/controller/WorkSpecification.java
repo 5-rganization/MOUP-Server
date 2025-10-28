@@ -222,7 +222,7 @@ public interface WorkSpecification {
             @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "409", description = "근무자가 이미 근무중인 상태", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    @PutMapping("/workplaces/{workplaceId}/workers/me/works/start")
+    @PostMapping("/workplaces/{workplaceId}/workers/me/works/start")
     ResponseEntity<?> updateActualStartTimeOrCreateWork(
             @Parameter(name = "workplaceId", description = "출근할 근무지 ID", example = "1", required = true, in = ParameterIn.PATH)
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId

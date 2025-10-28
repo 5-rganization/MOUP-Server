@@ -153,7 +153,7 @@ public class WorkController implements WorkSpecification {
     }
 
     @Override
-    @PutMapping("/workplaces/{workplaceId}/workers/me/works/start")
+    @PostMapping("/workplaces/{workplaceId}/workers/me/works/start")
     @PreAuthorize("hasRole('ROLE_WORKER')")
     public ResponseEntity<?> updateActualStartTimeOrCreateWork(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId
