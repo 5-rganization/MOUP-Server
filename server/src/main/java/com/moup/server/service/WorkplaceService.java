@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
@@ -131,20 +132,31 @@ public class WorkplaceService {
   }
 
   @Transactional(readOnly = true)
-  public List<WorkplaceSummaryResponse> getAllWorkplace(Long userId, boolean isShared) {
-    List<Worker> userAllWorkers = workerRepository.findAllByUserId(userId);
+  public List<WorkplaceSummaryResponse> getAllWorkplace(Long userId, boolean isSharedOnly) {
+      // 1. [쿼리 1] 사용자가 속한 모든 Worker 정보를 가져온다.
+      List<Worker> userAllWorkers = workerRepository.findAllByUserId(userId);
 
-    return userAllWorkers.stream()
-        .map(worker -> workplaceRepository.findById(worker.getWorkplaceId())
-            .orElseThrow(WorkplaceNotFoundException::new))
-        .filter(workplace -> workplace.isShared() == isShared)
-        .map(workplace -> WorkplaceSummaryResponse.builder()
-            .workplaceId(workplace.getId())
-            .workplaceName(workplace.getWorkplaceName())
-            .isShared(workplace.isShared())
-            .build())
-        .sorted(Comparator.comparing(WorkplaceSummaryResponse::getWorkplaceName))
-        .toList();
+      // 2. Worker 정보에서 workplaceId 리스트를 추출한다. (중복 제거)
+      List<Long> workplaceIds = userAllWorkers.stream()
+              .map(Worker::getWorkplaceId)
+              .distinct()
+              .toList();
+
+      if (workplaceIds.isEmpty()) { return Collections.emptyList(); }
+
+      // 3. [쿼리 2] workplaceId 리스트로 모든 Workplace 정보를 '한 번에' 가져온다.
+      List<Workplace> workplaces = workplaceRepository.findAllByIdListIn(workplaceIds);
+
+      // 4. 이제 DB 조회가 아닌 '메모리'에서 필터링 및 DTO 변환을 수행한다.
+      return workplaces.stream()
+              .filter(workplace -> !isSharedOnly || workplace.isShared())
+              .map(workplace -> WorkplaceSummaryResponse.builder()
+                      .workplaceId(workplace.getId())
+                      .workplaceName(workplace.getWorkplaceName())
+                      .isShared(workplace.isShared())
+                      .build())
+              .sorted(Comparator.comparing(WorkplaceSummaryResponse::getWorkplaceName))
+              .toList();
   }
 
   @Transactional

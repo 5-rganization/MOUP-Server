@@ -1,11 +1,8 @@
 package com.moup.server.controller;
 
-import com.moup.server.exception.InvalidArgumentException;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.User;
 import com.moup.server.service.*;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
@@ -73,13 +70,12 @@ public class WorkplaceController implements WorkplaceSpecification, InviteCodeSp
     @Override
     @GetMapping
     public ResponseEntity<?> getAllWorkplace(
-            @Parameter(name = "isShared", description = "공유 근무지(매장) 조회 여부", in = ParameterIn.QUERY)
-            @RequestParam(name = "isShared", required = false, defaultValue = "false") boolean isShared
+            @RequestParam(name = "isSharedOnly", required = false, defaultValue = "false") boolean isSharedOnly
     ) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);
 
-        List<WorkplaceSummaryResponse> summaryResponseList = workplaceService.getAllWorkplace(user.getId(), isShared);
+        List<WorkplaceSummaryResponse> summaryResponseList = workplaceService.getAllWorkplace(user.getId(), isSharedOnly);
 
         WorkplaceSummaryListResponse response = WorkplaceSummaryListResponse.builder()
                 .workplaceSummaryInfoList(summaryResponseList)
