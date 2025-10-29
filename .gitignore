@@ -38,7 +38,10 @@ out/
 .vscode/
 
 ### Custom ###
-src/main/**/config/TokenGeneratorConfig.java
-src/main/resources/keys/*.json
-**.p12
-**.log
+
+docker-compose.override.yml
+
+# Local Docker files
+mysql-data/
+redis-data/
+nginx/nginx.dev.conf

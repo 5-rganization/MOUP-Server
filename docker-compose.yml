@@ -1,0 +1,50 @@
+name: moup
+version: "3.8"
+
+services:
+  # 1. Nginx
+  nginx:
+    image: nginx:1.27-alpine
+    depends_on:
+      - server
+    # ports: (override 파일에서 정의)
+    # volumes: (override 파일에서 정의)
+
+  # 2. Spring Server
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    env_file:
+      - ./.env
+    expose: # (내부 포트만 노출)
+      - "8080"
+    depends_on:
+      - mysql
+      - redis
+
+  # 3. MySQL Database
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DATABASE_PASSWORD}
+      MYSQL_DATABASE: ${DATABASE_NAME}
+      TZ: Asia/Seoul
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=Asia/Seoul
+    # ports: (override 파일에서 정의)
+    # volumes: (override 파일에서 정의)
+
+  # 4. Redis Cache
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    # ports: (override 파일에서 정의)
+    # volumes: (override 파일에서 정의)
+
+# 볼륨 '정의'만 하고, '드라이버' 설정은 prod 파일에서 함
+volumes:
+  mysql_data:
+  redis_data:
