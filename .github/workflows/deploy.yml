@@ -22,21 +22,27 @@ jobs:
           git pull origin main
           
           # 3. .env 파일 생성 (이 로직은 Docker Compose에 완벽합니다!)
-          # (기존 .env 생성 스크립트... 그대로 복사)
           echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > .env
           echo "DATABASE_USERNAME=${{ secrets.DATABASE_USERNAME }}" >> .env
           echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
-          echo "REDIS_HOST=redis" >> .env  # Docker 내부 통신을 위해 'redis'로 변경
-          echo "REDIS_PORT=6379" >> .env   # Docker 내부 포트
+          echo "REDIS_HOST=${{ secrets.REDIS_HOST }}" >> .env
+          echo "REDIS_PORT=${{ secrets.REDIS_PORT }}" >> .env
           echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" >> .env
           echo "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" >> .env
-          # ... (모든 secrets를 .env에 echo) ...
-          
-          # 4. (삭제) Native 빌드 및 실행 명령어 제거
-          # ./gradlew build -x test  <-- Docker가 빌드하므로 삭제
-          # pkill -f 'java.*MOUP'    <-- Docker가 관리하므로 삭제
-          # set -a && source .env     <-- Docker가 자동 로드하므로 삭제
-          # nohup java -jar ...       <-- Docker가 실행하므로 삭제
+          echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> .env
+          echo "S3_BUCKET_NAME=${{ secrets.S3_BUCKET_NAME }}" >> .env
+          echo "AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }}" >> .env
+          echo "AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }}" >> .env
+          echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env
+          echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env
+          echo "GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}" >> .env
+          echo "APPLE_CLIENT_ID=${{ secrets.APPLE_CLIENT_ID }}" >> .env
+          echo "APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}" >> .env
+          echo "APPLE_KEY_ID=${{ secrets.APPLE_KEY_ID }}" >> .env
+          echo "APPLE_PRIVATE_KEY=${{ secrets.APPLE_PRIVATE_KEY }}" >> .env
+          echo "APPLE_REDIRECT_URI=${{ secrets.APPLE_REDIRECT_URI }}" >> .env
+          echo "ADMIN_AUTH_TOKEN=${{ secrets.ADMIN_AUTH_TOKEN }}" >> .env
+          echo "FIREBASE_ACCOUNT_KEY_PATH=${{ secrets.FIREBASE_ACCOUNT_KEY_PATH }}" >> .env
           
           # 5. (추가) Docker Compose로 빌드 및 재시작
           echo "Starting Docker Compose deployment..."
