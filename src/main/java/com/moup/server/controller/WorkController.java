@@ -16,7 +16,6 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.Collections;
 
@@ -27,7 +26,6 @@ public class WorkController implements WorkSpecification {
     private final UserService userService;
     private final IdentityService identityService;
     private final WorkService workService;
-    private final RoutineService routineService;
     private final WorkerService workerService;
 
     @Override
@@ -220,14 +218,5 @@ public class WorkController implements WorkSpecification {
 
         workService.deleteRecurringWorkIncludingDate(userId, workId);
         return ResponseEntity.noContent().build();
-    }
-
-    @Override
-    @GetMapping("/works/{workId}/routines")
-    public ResponseEntity<?> getWorkAllRoutine(@PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId) {
-        Long userId = identityService.getCurrentUserId();
-
-        RoutineSummaryListResponse response = routineService.getAllRoutineByWork(userId, workId);
-        return ResponseEntity.ok().body(response);
     }
 }

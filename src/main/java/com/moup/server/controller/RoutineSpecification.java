@@ -105,4 +105,14 @@ public interface RoutineSpecification {
             @ApiResponse(responseCode = "404", description = "존재하지 않는 루틴", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     ResponseEntity<?> deleteRoutine(@PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long routineId);
+
+    @GetMapping("/works/{workId}/routines")
+    @Operation(summary = "근무에 해당하는 루틴 조회", description = "근무에 해당하는 루틴 조회")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "근무에 해당하는 루틴 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RoutineSummaryListResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    ResponseEntity<?> getWorkAllRoutine(
+            @Parameter(name = "workId", description = "루틴을 조회할 근무 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId
+    );
 }

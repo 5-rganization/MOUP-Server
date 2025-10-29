@@ -94,4 +94,13 @@ public class RoutineController implements RoutineSpecification {
         routineService.deleteRoutine(userId, routineId);
         return ResponseEntity.noContent().build();
     }
+
+    @Override
+    @GetMapping("/works/{workId}/routines")
+    public ResponseEntity<?> getWorkAllRoutine(@PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId) {
+        Long userId = identityService.getCurrentUserId();
+
+        RoutineSummaryListResponse response = routineService.getAllRoutineByWork(userId, workId);
+        return ResponseEntity.ok().body(response);
+    }
 }
