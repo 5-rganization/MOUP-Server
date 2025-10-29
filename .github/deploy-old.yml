@@ -1,0 +1,78 @@
+name: Deploy Old Server
+
+on:
+  workflow_dispatch:
+
+jobs:
+  manual-db-init:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Deploy Old Spring Boot on Raspberry Pi
+      run: |
+        sshpass -p "${{ secrets.RPI_PASSWORD }}" ssh -o StrictHostKeyChecking=no -p ${{ secrets.RPI_PORT }} ${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }} << 'EOF'
+          set -e
+        
+          # Navigate to the project directory
+          cd /home/${{ secrets.RPI_USER }}/MOUP-Server-old
+          
+          # Start the ssh-agent
+          eval "$(ssh-agent -s)"
+          
+          # Add the SSH private key from the secret to the agent
+          echo "${{ secrets.RPI_DEPLOY_KEY }}" | ssh-add -
+          
+          # Pull the latest changes
+          git pull origin main
+          
+          # Build the Spring Boot application, skipping tests
+          ./gradlew build -x test
+          
+          # Kill any existing Spring Boot process
+          pkill -f 'java.*MOUP' || true
+          
+          # .env 파일 생성
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > .env
+          echo "DATABASE_USERNAME=${{ secrets.DATABASE_USERNAME }}" >> .env
+          echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
+          echo "REDIS_HOST=${{ secrets.REDIS_HOST }}" >> .env
+          echo "REDIS_PORT=${{ secrets.REDIS_PORT }}" >> .env
+          echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" >> .env
+          echo "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" >> .env
+          echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> .env
+          echo "S3_BUCKET_NAME=${{ secrets.S3_BUCKET_NAME }}" >> .env
+          echo "AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }}" >> .env
+          echo "AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }}" >> .env
+          echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env
+          echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env
+          echo "GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}" >> .env
+          echo "APPLE_CLIENT_ID=${{ secrets.APPLE_CLIENT_ID }}" >> .env
+          echo "APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}" >> .env
+          echo "APPLE_KEY_ID=${{ secrets.APPLE_KEY_ID }}" >> .env
+          echo "APPLE_PRIVATE_KEY=${{ secrets.APPLE_PRIVATE_KEY }}" >> .env
+          echo "APPLE_REDIRECT_URI=${{ secrets.APPLE_REDIRECT_URI }}" >> .env
+          echo "ADMIN_AUTH_TOKEN=${{ secrets.ADMIN_AUTH_TOKEN }}" >> .env
+          echo "FIREBASE_ACCOUNT_KEY_PATH=${{ secrets.FIREBASE_ACCOUNT_KEY_PATH }}" >> .env
+          
+          # .env 파일의 환경 변수 로드
+          set -a && source .env
+          
+          # 환경 변수 로드 확인 (선택 사항, 민감 정보 노출 주의)
+          # echo "Debug: KEYSTORE_PASSWORD is $KEYSTORE_PASSWORD" 
+          # echo "Debug: DATABASE_URL is $DATABASE_URL"
+          
+          # Run the Spring Boot application in the background, redirecting output to app.log
+          nohup java -jar build/libs/MOUP_Server-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod > app.log 2>&1 &
+
+          # ----- 여기에 crontab 설정 명령어 추가 -----
+          # 하드 삭제 스크립트 파일명
+          DELETE_SCRIPT="/home/${{ secrets.RPI_USER }}/MOUP-Server-old/src/main/resources/delete_old_users.sh"
+          
+          # 스크립트 실행 권한 부여
+          chmod +x "$DELETE_SCRIPT"
+          
+          # 기존 crontab에서 동일한 스케줄 삭제 후, 새로운 스케줄 등록
+          (crontab -l 2>/dev/null | grep -v "delete_old_users.sh"; echo "0 0 * * * /bin/bash $DELETE_SCRIPT >> /home/${{ secrets.RPI_USER }}/MOUP-Server-old/delete_old_users.log 2>&1") | crontab -
+          
+          echo "Crontab 설정 완료: 매일 0시 0분에 사용자 영구 삭제 스크립트 실행"
+        EOF
