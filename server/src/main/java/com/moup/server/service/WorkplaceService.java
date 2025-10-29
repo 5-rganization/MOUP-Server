@@ -231,10 +231,8 @@ public class WorkplaceService {
   @Transactional
   public InviteCodeGenerateResponse generateInviteCode(User user, Long workplaceId,
       InviteCodeGenerateRequest request) {
-    if (!workplaceRepository.existsById(workplaceId)) {
-      throw new WorkplaceNotFoundException();
-    }
-    permissionVerifyUtil.verifyOwnerPermission(user.getId(), workplaceId);
+    Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+    permissionVerifyUtil.verifyOwnerPermission(user.getId(), workplace.getOwnerId());
 
     boolean returnAlreadyExists =
         !request.isForceGenerate() && inviteCodeService.existsByWorkplaceId(workplaceId);
