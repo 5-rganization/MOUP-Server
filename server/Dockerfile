@@ -1,34 +1,41 @@
 # ==================================
 # STAGE 1: Build Stage (빌드 스테이지)
 # ==================================
-# Gradle과 JDK 17이 포함된 이미지를 기반으로 "builder" 스테이지를 정의합니다.
-FROM gradle:8-jdk17-alpine AS builder
+# [수정] openjdk 이미지를 사용하고, 스테이지 이름(AS build_stage)과 platform 플래그 추가
+FROM --platform=linux/arm64 openjdk:17-jdk-slim AS build_stage
 
 # 작업 디렉터리를 /app으로 설정
 WORKDIR /app
 
+# [추가] 빌드에 필요한 유틸리티(xargs 포함) 설치
+# apt-get update 후에 설치하고, 캐시 정리(rm -rf)하여 이미지 크기 최적화
+RUN apt-get update && apt-get install -y findutils && rm -rf /var/lib/apt/lists/*
+
 # (캐시 최적화) 먼저 의존성 관련 파일만 복사합니다.
-# 이렇게 하면 소스 코드만 변경됐을 때 Docker가 이 레이어를 캐시합니다.
 COPY build.gradle settings.gradle ./
 COPY gradlew ./
 COPY gradle/ ./gradle/
 
+# gradlew 실행 권한 부여 (openjdk 이미지에는 chmod가 있으므로 추가)
+RUN chmod +x ./gradlew
+
 # (캐시 최적화) 의존성을 먼저 다운로드합니다.
-RUN ./gradlew dependencies --no-daemon
+# RUN ./gradlew dependencies --no-daemon # openjdk 이미지에는 gradlew가 없으므로 주석 처리 (아래 bootJar에서 처리)
 
 # 나머지 소스 코드를 복사합니다.
 COPY src/ ./src/
 
 # Gradle wrapper를 사용해 테스트를 제외하고 bootJar를 빌드합니다.
 # --no-daemon은 CI/CD 환경에서 Gradle 데몬을 띄우지 않아 리소스를 아낍니다.
+# [수정] gradlew 실행 권한 부여 후 실행
 RUN ./gradlew bootJar --no-daemon -x test
 
 
 # =====================================
 # STAGE 2: Runtime Stage (런타임 스테이지)
 # =====================================
-# Java 17 실행 환경(JRE)만 포함된 가벼운 Alpine 이미지를 사용합니다.
-FROM eclipse-temurin:17-jre-alpine
+# [수정] openjdk 이미지를 사용하고 platform 플래그 추가
+FROM --platform=linux/arm64 openjdk:17-jdk-slim
 
 # 작업 디렉토리를 /app으로 설정
 WORKDIR /app
@@ -37,9 +44,8 @@ WORKDIR /app
 ENV TZ=Asia/Seoul
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# "builder" 스테이지에서 빌드된 .jar 파일을 app.jar라는 이름으로 복사합니다.
-# build/libs/에 .jar 파일이 하나만 있다고 가정합니다.
-COPY --from=builder /app/build/libs/*.jar app.jar
+# [수정] --from=builder -> --from=build_stage 로 변경
+COPY --from=build_stage /app/build/libs/*.jar app.jar
 
 # .env 파일에서 주입될 환경 변수 (예시)
 # docker-compose.yml에서 env_file로 실제 값이 주입됩니다.
@@ -64,5 +70,7 @@ ENV REDIS_HOST=${REDIS_HOST}
 ENV REDIS_PORT=${REDIS_PORT}
 ENV REDIS_PASSWORD=${REDIS_PASSWORD}
 ENV FIREBASE_ACCOUNT_KEY_PATH=${FIREBASE_ACCOUNT_KEY_PATH}
+
 # 컨테이너가 시작될 때 실행할 명령어
 ENTRYPOINT ["java", "-jar", "app.jar"]
+

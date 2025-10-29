@@ -1,50 +1,73 @@
+# 라즈베리파이 운영용 통합 docker-compose.yml (SD 카드 사용)
 name: moup
-version: "3.8"
 
 services:
-  # 1. Nginx
+  # 1. Nginx (Reverse Proxy & SSL)
   nginx:
     image: nginx:1.27-alpine
+    ports:
+      # 운영 환경 포트 노출 (HTTP, HTTPS)
+      - "80:80"
+      - "443:443"
+    volumes:
+      # 운영용 nginx 설정 및 SSL 인증서 마운트
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro # 실제 SSL 인증서 경로
+      # (Let's Encrypt 사용 시 관련 경로 추가)
     depends_on:
       - server
-    # ports: (override 파일에서 정의)
-    # volumes: (override 파일에서 정의)
+    restart: unless-stopped # 운영 환경 재시작 정책
 
-  # 2. Spring Server
+  # 2. Spring Server (API)
   server:
     build:
       context: ./server
       dockerfile: Dockerfile
     env_file:
-      - ./.env
-    expose: # (내부 포트만 노출)
-      - "8080"
+      - ./.env # 루트의 .env 파일 로드
+    expose:
+      - "8080" # 내부 Nginx 연결용 포트
     depends_on:
-      - mysql
-      - redis
+      mysql:
+        condition: service_healthy # MySQL 준비 완료 후 시작
+      redis:
+        condition: service_started # Redis 시작 후 시작
+    restart: unless-stopped # 운영 환경 재시작 정책
 
   # 3. MySQL Database
   mysql:
     image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: ${DATABASE_PASSWORD}
-      MYSQL_DATABASE: ${DATABASE_NAME}
+      MYSQL_ROOT_PASSWORD: ${DATABASE_PASSWORD} # .env 파일에서 변수 주입
+      MYSQL_DATABASE: ${DATABASE_NAME}          # .env 파일에서 DB 이름 주입
       TZ: Asia/Seoul
     command:
+      # 한글(utf8mb4) 설정 및 타임존 설정
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       - --default-time-zone=Asia/Seoul
-    # ports: (override 파일에서 정의)
-    # volumes: (override 파일에서 정의)
+    healthcheck: # server가 기다릴 healthcheck
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DATABASE_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      # 라즈베리파이 SD 카드 홈 디렉토리 아래 폴더와 바인드 마운트
+      - ~/moup-data/mysql:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d # 초기화 스크립트 (선택 사항)
+    # ports는 운영 환경에서 노출하지 않음 (로컬 테스트 필요시 임시 추가)
+    restart: unless-stopped # 운영 환경 재시작 정책
 
   # 4. Redis Cache
   redis:
     image: redis:7-alpine
-    command: redis-server --requirepass ${REDIS_PASSWORD}
-    # ports: (override 파일에서 정의)
-    # volumes: (override 파일에서 정의)
+    command: redis-server --requirepass ${REDIS_PASSWORD} # .env에서 비번 관리
+    volumes:
+      # 라즈베리파이 SD 카드 홈 디렉토리 아래 폴더와 바인드 마운트
+      - ~/moup-data/redis:/data
+    # ports는 운영 환경에서 노출하지 않음 (로컬 테스트 필요시 임시 추가)
+    restart: unless-stopped # 운영 환경 재시작 정책
 
-# 볼륨 '정의'만 하고, '드라이버' 설정은 prod 파일에서 함
-volumes:
-  mysql_data:
-  redis_data:
+# 볼륨 정의 섹션 (바인드 마운트를 사용하므로 비워둠)
+volumes: {}
