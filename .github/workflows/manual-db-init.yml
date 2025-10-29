@@ -1,56 +1,56 @@
-name: Manual DB Initialization
+name: Manual DB Initialization (Docker)
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Allows manual triggering from GitHub Actions UI
     inputs:
       insert_dummy_data:
-        description: '기본 DB 생성 후 더미 데이터를 추가로 삽입합니다.'
+        description: '기본 DB 생성 후 더미 데이터를 추가로 삽입합니다. (Execute moup_dummy_data.sql)'
         required: true
         type: boolean
-        default: true
+        default: true # Default to inserting dummy data
 
 jobs:
   manual-db-init:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest # GitHub Actions runner environment
 
     steps:
-      - name: Execute SQL on server
+      - name: Execute SQL on Docker container via SSH
+        # Connects to the Raspberry Pi via SSH and runs commands
         run: |
           sshpass -p "${{ secrets.RPI_PASSWORD }}" ssh -o StrictHostKeyChecking=no -p ${{ secrets.RPI_PORT }} ${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }} << 'EOF'
-            set -e
-            
-            echo "Connecting to server..."
+            # === Script Start ===
+            set -e # Exit immediately if a command exits with a non-zero status.
 
-            # Make DB connection info at home directory
-            echo "Making DB connection info..."
-            echo "[client]" > ~/.my.cnf
-            echo "user=root" >> ~/.my.cnf
-            echo "password=${{ secrets.DATABASE_PASSWORD }}" >> ~/.my.cnf
-            chmod 600 ~/.my.cnf
-
-            # Execute SQL DB Schema
-            echo "Executing SQL script..."
+            echo "Connecting to server and navigating to project directory..."
+            # Navigate to the project directory where docker-compose.yml is located
             cd /home/${{ secrets.RPI_USER }}/MOUP-Server
-            mysql --defaults-file=~/.my.cnf moup < src/main/resources/moup.sql 2> /tmp/mysql_error.log
-            
-            echo "--- MySQL Error Log (moup.sql) ---"
-            cat /tmp/mysql_error.log
-            echo "------------------------------------"
 
-            # (Optional) Execute SQL Dummy Data
+            # Define SQL file paths relative to the project root
+            SCHEMA_SQL="db/moup.sql" # Corrected path for schema
+            DUMMY_DATA_SQL="db/moup_dummy_data.sql" # Corrected path for dummy data
+
+            # Execute Base Schema SQL using docker compose exec
+            echo "Executing Base Schema SQL script ($SCHEMA_SQL)..."
+            # Executes the mysql command inside the 'mysql' container
+            # Reads the SQL file from the host path mounted into the container
+            # Note: We assume the ./db/init volume mount is correctly set in docker-compose.yml
+            # We pass the password directly using -p"$MYSQL_ROOT_PASSWORD"
+            docker compose exec -T \
+              -e MYSQL_PWD="${{ secrets.DATABASE_PASSWORD }}" \
+              mysql mysql -u root "${{ secrets.DATABASE_NAME }}" < "$SCHEMA_SQL"
+            echo "Base Schema SQL execution attempted."
+
+            # (Optional) Execute Dummy Data SQL if the input checkbox was checked
             if [[ "${{ github.event.inputs.insert_dummy_data }}" == "true" ]]; then
-              echo "Checkbox is checked. Inserting dummy data..."
-              mysql --defaults-file=~/.my.cnf moup < src/main/resources/moup_dummy_data.sql 2> /tmp/mysql_dummy_error.log
-              
-              echo "--- MySQL Error Log (moup_dummy_data.sql) ---"
-              cat /tmp/mysql_dummy_error.log
-              echo "------------------------------------"
+              echo "Checkbox is checked. Inserting dummy data from $DUMMY_DATA_SQL..."
+              docker compose exec -T \
+                -e MYSQL_PWD="${{ secrets.DATABASE_PASSWORD }}" \
+                mysql mysql -u root "${{ secrets.DATABASE_NAME }}" < "$DUMMY_DATA_SQL"
+              echo "Dummy Data SQL execution attempted."
             else
               echo "Checkbox is not checked. Skipping dummy data insertion."
             fi
 
-            # Delete DB connection info
-            echo "Deleting DB connection info..."
-            rm ~/.my.cnf
-            echo "SQL execution complete."
+            echo "Manual DB Initialization complete."
+            # === Script End ===
           EOF
