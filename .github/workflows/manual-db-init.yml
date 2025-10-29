@@ -33,19 +33,19 @@ jobs:
             echo "Executing Base Schema SQL script ($SCHEMA_SQL)..."
             # Executes the mysql command inside the 'mysql' container
             # Reads the SQL file from the host path mounted into the container
-            # Note: We assume the ./db/init volume mount is correctly set in docker-compose.yml
-            # We pass the password directly using -p"$MYSQL_ROOT_PASSWORD"
+            # Adds --default-character-set=utf8mb4 to ensure correct encoding
             docker compose exec -T \
               -e MYSQL_PWD="${{ secrets.DATABASE_PASSWORD }}" \
-              mysql mysql -u root "${{ secrets.DATABASE_NAME }}" < "$SCHEMA_SQL"
+              mysql mysql --default-character-set=utf8mb4 -u root "${{ secrets.DATABASE_NAME }}" < "$SCHEMA_SQL"
             echo "Base Schema SQL execution attempted."
 
             # (Optional) Execute Dummy Data SQL if the input checkbox was checked
             if [[ "${{ github.event.inputs.insert_dummy_data }}" == "true" ]]; then
               echo "Checkbox is checked. Inserting dummy data from $DUMMY_DATA_SQL..."
+              # Adds --default-character-set=utf8mb4 here as well
               docker compose exec -T \
                 -e MYSQL_PWD="${{ secrets.DATABASE_PASSWORD }}" \
-                mysql mysql -u root "${{ secrets.DATABASE_NAME }}" < "$DUMMY_DATA_SQL"
+                mysql mysql --default-character-set=utf8mb4 -u root "${{ secrets.DATABASE_NAME }}" < "$DUMMY_DATA_SQL"
               echo "Dummy Data SQL execution attempted."
             else
               echo "Checkbox is not checked. Skipping dummy data insertion."
@@ -54,3 +54,4 @@ jobs:
             echo "Manual DB Initialization complete."
             # === Script End ===
           EOF
+
