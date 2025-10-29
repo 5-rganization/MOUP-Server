@@ -145,7 +145,7 @@ public interface WorkplaceSpecification {
             @ApiResponse(responseCode = "200", description = "모든 근무지(매장) 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkplaceSummaryListResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     ResponseEntity<?> getAllWorkplace(
-            @Parameter(name = "isSharedOnly", description = "공유 근무지(매장) 조회 여부", in = ParameterIn.QUERY)
+            @Parameter(name = "isSharedOnly", description = "공유 근무지(매장)만 조회 여부", in = ParameterIn.QUERY)
             @RequestParam(name = "isSharedOnly", required = false, defaultValue = "false") boolean isSharedOnly
     );
 
