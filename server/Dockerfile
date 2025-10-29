@@ -1,45 +1,43 @@
 # ==================================
 # STAGE 1: Build Stage (빌드 스테이지)
 # ==================================
-# openjdk:17-jdk-slim (Debian slim 기반, apt-get 포함) 사용, ARM64 플랫폼 명시
+# openjdk:17-jdk-slim 사용 (빌드는 성공했었음)
 FROM --platform=linux/arm64 openjdk:17-jdk-slim AS build_stage
 
-# 작업 디렉터리 설정
 WORKDIR /app
 
-# [추가] 빌드에 필요한 유틸리티(findutils for xargs, git for versioning if needed) 설치
+# 빌드 유틸리티 설치
 RUN apt-get update && apt-get install -y --no-install-recommends findutils git && \
     rm -rf /var/lib/apt/lists/*
 
-# Gradle Wrapper 파일 먼저 복사
+# Gradle Wrapper 복사 및 권한 설정
 COPY gradlew ./
 COPY gradle/ ./gradle/
-RUN chmod +x ./gradlew # 실행 권한 부여
+RUN chmod +x ./gradlew
 
-# 의존성 정의 파일 복사
+# 의존성 파일 복사
 COPY build.gradle settings.gradle ./
 
-# 의존성 다운로드 (소스 변경 시 캐시 재사용)
+# 의존성 다운로드
 RUN ./gradlew dependencies --no-daemon --build-cache
 
-# 나머지 소스 코드 복사
+# 소스 코드 복사
 COPY src/ ./src/
 
-# Gradle 빌드 캐시를 사용하여 bootJar 빌드 (테스트 제외)
+# 애플리케이션 빌드
 RUN ./gradlew bootJar --no-daemon -x test --build-cache
 
 
 # =====================================
 # STAGE 2: Runtime Stage (런타임 스테이지)
 # =====================================
-# [수정] openjdk의 JRE slim 버전 사용 (Debian 기반, ARM64 지원)
-FROM --platform=linux/arm64 openjdk:17-jre-slim
+# [수정] eclipse-temurin의 표준 JRE 버전 사용 (ARM64 지원 확실)
+FROM --platform=linux/arm64 eclipse-temurin:17-jre
 
-# 작업 디렉터리 설정
 WORKDIR /app
 
 # 한국 시간대(Timezone) 설정
-# Debian 기반이므로 tzdata 패키지 사용
+# eclipse-temurin 표준 이미지는 Debian/Ubuntu 기반이므로 tzdata 사용
 RUN apt-get update && apt-get install -y --no-install-recommends tzdata && \
     ln -snf /usr/share/zoneinfo/Asia/Seoul /etc/localtime && \
     echo "Asia/Seoul" > /etc/timezone && \
