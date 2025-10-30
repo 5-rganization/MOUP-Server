@@ -28,10 +28,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_PAT }}
 
-      - name: Build & Push (linux/arm64) with cache
+      - name: Build & Push (linux/arm64)
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ./server
+          file: ./server/Dockerfile
           push: true
           platforms: linux/arm64,linux/amd64
           tags: |

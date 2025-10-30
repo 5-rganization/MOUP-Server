@@ -38,7 +38,6 @@ out/
 .vscode/
 
 ### Custom ###
-
 docker-compose.override.yml
 
 # Local Docker files
