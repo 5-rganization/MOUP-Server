@@ -271,7 +271,6 @@ public class SalaryCalculationService {
 
             // [필터 2] 해당 월에 근무 기록이 없으면 건너뜁니다.
             List<Work> workList = workMap.getOrDefault(workerId, Collections.emptyList());
-            if (workList.isEmpty()) { continue; }
 
             // [필터 3] 근무지 정보 조회
             Workplace workplace = workplaceMap.get(worker.getWorkplaceId());

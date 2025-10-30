@@ -37,6 +37,7 @@ public class OwnerWorkplaceCreateRequest extends BaseWorkplaceCreateRequest {
                 .workplaceId(workplaceId)
                 .ownerBasedLabelColor(ownerBasedLabelColor)
                 .isAccepted(true)
+                .isNowWorking(false)
                 .build();
     }
 }

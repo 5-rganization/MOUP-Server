@@ -308,6 +308,7 @@ public class WorkplaceService {
         .workplaceId(workplaceId)
         .workerBasedLabelColor(request.getWorkerBasedLabelColor())
         .isAccepted(false)
+        .isNowWorking(false)
         .build();
     workerRepository.create(worker);
 

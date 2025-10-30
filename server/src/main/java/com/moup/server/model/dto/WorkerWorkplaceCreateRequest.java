@@ -42,6 +42,7 @@ public class WorkerWorkplaceCreateRequest extends BaseWorkplaceCreateRequest {
                 .workplaceId(workplaceId)
                 .workerBasedLabelColor(workerBasedLabelColor)
                 .isAccepted(true)
+                .isNowWorking(false)
                 .build();
     }
 }
