@@ -26,7 +26,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_PAT }}
+          password: ${{ github.token }}
 
       - name: Build & Push (linux/arm64)
         uses: docker/build-push-action@v6
@@ -34,7 +34,7 @@ jobs:
           context: ./server
           file: ./server/Dockerfile
           push: true
-          platforms: linux/arm64,linux/amd64
+          platforms: linux/arm64
           tags: |
             ghcr.io/${{ github.repository_owner }}/moup-server:latest
             ghcr.io/${{ github.repository_owner }}/moup-server:${{ github.sha }}
