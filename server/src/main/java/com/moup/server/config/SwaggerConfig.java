@@ -82,3 +82,4 @@ public class SwaggerConfig {
         return GroupedOpenApi.builder().group("홈 화면 관련 API").pathsToMatch(paths).build();
     }
 }
+
