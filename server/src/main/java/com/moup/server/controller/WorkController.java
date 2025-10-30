@@ -39,25 +39,24 @@ public class WorkController implements WorkSpecification {
         WorkCreateResponse response = workService.createMyWork(userId, workplaceId, request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
-                .buildAndExpand(response.getWorkId())
+                .buildAndExpand(response.getWorkIdList())
                 .toUri();
         return ResponseEntity.created(location).body(response);
     }
 
     @Override
-    @PostMapping("/workplaces/{workplaceId}/workers/{workerId}/works")
+    @PostMapping("/workplaces/{workplaceId}/works/batch")
     @PreAuthorize("hasRole('ROLE_OWNER')")
-    public ResponseEntity<?> createWorkForWorker(
+    public ResponseEntity<?> createWorkForWorkers(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
-            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workerId,
-            @RequestBody @Valid WorkerWorkCreateRequest request
+            @RequestBody @Valid WorkersWorkCreateRequest request
     ) {
         Long userId = identityService.getCurrentUserId();
 
-        WorkCreateResponse response = workService.createWorkForWorkerId(userId, workplaceId, workerId, request);
+        WorkCreateResponse response = workService.createWorkForWorkerIdList(userId, workplaceId, request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
-                .buildAndExpand(response.getWorkId())
+                .buildAndExpand(response.getWorkIdList())
                 .toUri();
         return ResponseEntity.created(location).body(response);
     }
@@ -130,7 +129,7 @@ public class WorkController implements WorkSpecification {
         if (result.recurringCreatedOrReplaced()) {
             // 반복 근무가 생성/대체된 경우: 200 OK + 새 ID 목록 반환
             WorkCreateResponse response = WorkCreateResponse.builder()
-                    .workId(result.resultingWorkIds())
+                    .workIdList(result.resultingWorkIds())
                     .build();
             return ResponseEntity.ok().body(response);
         } else {
@@ -155,7 +154,7 @@ public class WorkController implements WorkSpecification {
         if (result.recurringCreatedOrReplaced()) {
             // 반복 근무가 생성/대체된 경우: 200 OK + 새 ID 목록 반환
             WorkCreateResponse response = WorkCreateResponse.builder()
-                    .workId(result.resultingWorkIds())
+                    .workIdList(result.resultingWorkIds())
                     .build();
             return ResponseEntity.ok().body(response);
         } else {
@@ -215,7 +214,7 @@ public class WorkController implements WorkSpecification {
             workerService.updateWorkerIsNowWorking(userId, workplaceId, true);
             URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                     .path("/{id}")
-                    .buildAndExpand(response.getWorkId())
+                    .buildAndExpand(response.getWorkIdList())
                     .toUri();
             return ResponseEntity.created(location).body(response);
         }

@@ -87,6 +87,27 @@ public interface WorkerRepository {
     @Select("SELECT * FROM workers WHERE workplace_id = #{workplaceId} ")
     List<Worker> findAllByWorkplaceId(Long workplaceId);
 
+    /// ID 리스트에 포함되고 특정 근무지에 소속된 모든 Worker를 한 번에 조회합니다.
+    /// (배치 생성 시 권한 검증용)
+    ///
+    /// @param workerIdList 조회할 Worker ID 리스트
+    /// @param workplaceId 소속되어야 할 Workplace ID
+    /// @return 조건에 맞는 Worker 리스트
+    @Select("""
+        <script>
+            SELECT * FROM workers
+            WHERE workplace_id = #{workplaceId}
+            AND id IN
+            <foreach item="id" collection="workerIdList" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        </script>
+    """)
+    List<Worker> findAllByIdInAndWorkplaceId(
+            @Param("workerIdList") List<Long> workerIdList,
+            @Param("workplaceId") Long workplaceId
+    );
+
     @Select("""
             <script>
                 SELECT * FROM workers

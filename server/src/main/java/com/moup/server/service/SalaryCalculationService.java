@@ -148,10 +148,11 @@ public class SalaryCalculationService {
         if (netWorkMinutes < 0) netWorkMinutes = 0;
 
         // --- 수당 계산 ---
-        int basePay = (int) (netWorkMinutes / 60.0 * work.getHourlyRate());
+        int hourlyRate = (work.getHourlyRate() != null) ? work.getHourlyRate() : 0;
+        int basePay = (int) (netWorkMinutes / 60.0 * hourlyRate);
 
         int nightAllowance = 0;
-        if (hasNightAllowance) { nightAllowance = (int) (nightWorkMinutes / 60.0 * work.getHourlyRate() * 0.5); }
+        if (hasNightAllowance) { nightAllowance = (int) (nightWorkMinutes / 60.0 * hourlyRate * 0.5); }
 
         int grossIncome = basePay + nightAllowance + dailyHolidayAllowance;
 
@@ -164,6 +165,7 @@ public class SalaryCalculationService {
                 .nightAllowance(nightAllowance)
                 .holidayAllowance(dailyHolidayAllowance)
                 .grossIncome(grossIncome)
+                .hourlyRate(work.getHourlyRate())
                 .build();
     }
 
@@ -177,7 +179,9 @@ public class SalaryCalculationService {
         if (monthWorks.isEmpty()) return;
 
         // 현재까지의 근무 기록을 바탕으로 예상 월급을 추정합니다.
-        int currentGrossSum = monthWorks.stream().mapToInt(Work::getGrossIncome).sum();
+        int currentGrossSum = monthWorks.stream()
+                .mapToInt(work -> work.getGrossIncome() != null ? work.getGrossIncome() : 0)
+                .sum();
         long daysWorked = monthWorks.size();
 
         long daysInMonth = endDate.getDayOfMonth();
@@ -466,11 +470,11 @@ public class SalaryCalculationService {
                 // --- 급여 계산 ---
                 // 세전 총소득은 미리 계산된 값을 합산
                 int grossMonthlyIncome = workerWorkList.stream()
-                        .mapToInt(Work::getGrossIncome)
+                        .mapToInt(work -> work.getGrossIncome() != null ? work.getGrossIncome() : 0)
                         .sum();
 
                 long totalNetWorkMinutes = workerWorkList.stream()
-                        .mapToLong(Work::getNetWorkMinutes)
+                        .mapToLong(work -> work.getNetWorkMinutes() != null ? work.getNetWorkMinutes() : 0)
                         .sum();
 
                 long totalWorkHours = totalNetWorkMinutes / 60;
@@ -512,20 +516,20 @@ public class SalaryCalculationService {
         int localIncomeTax = 0;
 
         if (totalWorkHours >= insuranceMinHours) {
-            if (salaryInfo.getHasNationalPension()) {
+            if (Boolean.TRUE.equals(salaryInfo.getHasNationalPension())) {
                 nationalPension = (int) (grossIncome * nationalPensionRate);
             }
-            if (salaryInfo.getHasHealthInsurance()) {
+            if (Boolean.TRUE.equals(salaryInfo.getHasHealthInsurance())) {
                 int baseHealthInsurance = (int) (grossIncome * healthInsuranceRate);
                 int longTermCareInsurance = (int) (baseHealthInsurance * longTermCareInsuranceRate);
                 healthInsurance = baseHealthInsurance + longTermCareInsurance;
             }
-            if (salaryInfo.getHasEmploymentInsurance()) {
+            if (Boolean.TRUE.equals(salaryInfo.getHasEmploymentInsurance())) {
                 employmentInsurance = (int) (grossIncome * employmentInsuranceRate);
             }
         }
 
-        if (salaryInfo.getHasIncomeTax()) {
+        if (Boolean.TRUE.equals(salaryInfo.getHasIncomeTax())) {
             incomeTax = (int) (grossIncome * incomeTaxRate);
             localIncomeTax = (int) (incomeTax * 0.1);
         }

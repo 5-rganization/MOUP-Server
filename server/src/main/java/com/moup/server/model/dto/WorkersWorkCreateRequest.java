@@ -15,7 +15,10 @@ import static com.moup.server.common.TimeConstants.SEOUL_ZONE_ID;
 @Getter
 @Builder
 @Schema(description = "근무자 근무 생성 요청 DTO")
-public class WorkerWorkCreateRequest {
+public class WorkersWorkCreateRequest {
+    @NotNull(message = "값이 없을 경우 빈 배열을 전달해야 합니다.")
+    @Schema(description = "근무를 생성할 근무자 배열 (없으면 빈 배열)", example = "[1, 2]", requiredMode = Schema.RequiredMode.REQUIRED)
+    private List<Long> workerIdList;
     @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "출근 시간 (ISO 8601 UTC)", example = "2025-10-11T08:30:00Z", requiredMode = Schema.RequiredMode.REQUIRED)
     private Instant startTime;
