@@ -21,12 +21,15 @@ services:
 
   # 2. Spring Server (API)
   server:
-    image: ghcr.io/<OWNER_OR_ORG>/moup-server:latest   # <- CI가 푸시한 이미지
-    platform: linux/arm64   # (선택) 라즈베리 보장
+    build:
+      context: ./server
+      dockerfile: Dockerfile
     env_file:
       - ./.env # 루트의 .env 파일 로드
     expose:
       - "8080" # 내부 Nginx 연결용 포트
+    volumes:
+      - ./gradle-cache:/home/gradle/.gradle
     depends_on:
       mysql:
         condition: service_healthy # MySQL 준비 완료 후 시작
