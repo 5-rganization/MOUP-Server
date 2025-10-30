@@ -37,9 +37,9 @@ public class WorkController implements WorkSpecification {
         Long userId = identityService.getCurrentUserId();
 
         WorkCreateResponse response = workService.createMyWork(userId, workplaceId, request);
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}")
-                .buildAndExpand(response.getWorkIdList())
+        URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/works/{id}")
+                .buildAndExpand(response.getWorkIdList().get(0))
                 .toUri();
         return ResponseEntity.created(location).body(response);
     }
@@ -53,12 +53,18 @@ public class WorkController implements WorkSpecification {
     ) {
         Long userId = identityService.getCurrentUserId();
 
-        WorkCreateResponse response = workService.createWorkForWorkerIdList(userId, workplaceId, request);
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}")
-                .buildAndExpand(response.getWorkIdList())
-                .toUri();
-        return ResponseEntity.created(location).body(response);
+        WorkersWorkCreateResponse response = workService.createWorkForWorkerIdList(userId, workplaceId, request);
+
+        if (response.getFailedWorkerInfoList() != null && !response.getFailedWorkerInfoList().isEmpty()) {
+            return ResponseEntity.ok(response);
+        } else {
+            URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
+                    .path("/works/{id}")
+                    .buildAndExpand(response.getSuccessWorkIdList().get(0))
+                    .toUri();
+
+            return ResponseEntity.created(location).body(response);
+        }
     }
 
     @Override
@@ -213,8 +219,8 @@ public class WorkController implements WorkSpecification {
             WorkCreateResponse response = workService.createMyWork(userId, workplaceId, request);
             workerService.updateWorkerIsNowWorking(userId, workplaceId, true);
             URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                    .path("/{id}")
-                    .buildAndExpand(response.getWorkIdList())
+                    .path("/works/{id}")
+                    .buildAndExpand(response.getWorkIdList().get(0))
                     .toUri();
             return ResponseEntity.created(location).body(response);
         }

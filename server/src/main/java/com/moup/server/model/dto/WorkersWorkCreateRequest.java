@@ -3,6 +3,7 @@ package com.moup.server.model.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.moup.server.model.entity.Work;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Getter;
@@ -16,7 +17,7 @@ import static com.moup.server.common.TimeConstants.SEOUL_ZONE_ID;
 @Builder
 @Schema(description = "근무자 근무 생성 요청 DTO")
 public class WorkersWorkCreateRequest {
-    @NotNull(message = "값이 없을 경우 빈 배열을 전달해야 합니다.")
+    @NotEmpty(message = "근무자 ID 배열은 비어있을 수 없습니다.")
     @Schema(description = "근무를 생성할 근무자 배열 (없으면 빈 배열)", example = "[1, 2]", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<Long> workerIdList;
     @NotNull(message = "필수 입력값입니다.")

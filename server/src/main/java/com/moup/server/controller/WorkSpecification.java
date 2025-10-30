@@ -38,7 +38,8 @@ public interface WorkSpecification {
     @PostMapping("/workplaces/{workplaceId}/works/batch")
     @Operation(summary = "근무자들에게 근무 생성 (사장님 전용)", description = "매장 ID를 경로로 전달받아 해당 매장에 근무자들의 근무를 생성")
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "근무 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkCreateResponse.class))),
+            @ApiResponse(responseCode = "200", description = "근무 생성 일부 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkersWorkCreateResponse.class))),
+            @ApiResponse(responseCode = "201", description = "근무 생성 전체 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkersWorkCreateResponse.class))),
             @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),

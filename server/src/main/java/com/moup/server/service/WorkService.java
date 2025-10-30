@@ -106,7 +106,7 @@ public class WorkService {
     /// @param request 근무 일괄 생성 요청 DTO (workerIdList 포함)
     /// @return 생성된 모든 근무 ID 배열 응답 DTO
     @Transactional
-    public WorkCreateResponse createWorkForWorkerIdList(Long requesterUserId, Long workplaceId, WorkersWorkCreateRequest request) {
+    public WorkersWorkCreateResponse createWorkForWorkerIdList(Long requesterUserId, Long workplaceId, WorkersWorkCreateRequest request) {
 
         // 1. 근무지 정보 및 사장님 권한 확인
         Workplace workplace = workplaceRepository.findById(workplaceId)
@@ -123,26 +123,64 @@ public class WorkService {
                 .stream()
                 .collect(Collectors.toMap(Worker::getId, w -> w));
 
-        List<Work> allCreatedWorks = new ArrayList<>(); // 생성된 모든 Work 객체를 담을 리스트
+        // --- 유효한 근무자들의 User 맵(닉네임)을 미리 조회 ---
+        List<Long> validUserIds = validWorkerMap.values().stream()
+                .map(Worker::getUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<Long, User> userMap = Collections.emptyMap();
+
+        if (!validUserIds.isEmpty()) {
+            userMap = userRepository.findAllByIdListIn(validUserIds)
+                    .stream()
+                    .collect(Collectors.toMap(User::getId, u -> u));
+        }
+
+        // --- workerId -> nickname을 빠르게 찾기 위한 맵 생성 ---
+        Map<Long, String> nicknameMap = new HashMap<>();
+        for (Worker worker : validWorkerMap.values()) {
+            if (worker.getUserId() != null) {
+                User user = userMap.get(worker.getUserId());
+                if (user != null) {
+                    nicknameMap.put(worker.getId(), user.getNickname());
+                }
+            }
+        }
+
+        List<Work> allCreatedWorks = new ArrayList<>();
+        List<FailedWorkerInfo> failedWorkers = new ArrayList<>();
 
         // 3. DTO의 workerIdList를 순회하며 각 근무자별로 근무 생성
         for (Long workerId : requestedWorkerIds) {
-            Worker worker = validWorkerMap.get(workerId);
+            String nickname = nicknameMap.getOrDefault(workerId, "탈퇴한 근무자");
 
-            // 3-1. 검증: 맵에 없으면 -> 소속이 아니거나 존재하지 않는 근무자
-            if (worker == null) {
-                throw new WorkerNotFoundException("요청한 근무자(ID: " + workerId + ")가 해당 근무지(ID: " + workplaceId + ") 소속이 아닙니다.");
+            try {
+                Worker worker = validWorkerMap.get(workerId);
+
+                // 3-1. 검증: 맵에 없으면 -> 소속이 아니거나 존재하지 않는 근무자
+                if (worker == null) {
+                    throw new WorkerNotFoundException("요청한 근무자(ID: " + workerId + ")가 해당 근무지(ID: " + workplaceId + ") 소속이 아닙니다.");
+                }
+                // 3-2. 검증: 탈퇴한 근무자
+                if (worker.getUserId() == null) {
+                    throw new WorkerNotFoundException("요청한 근무자(ID: " + workerId + ")는 탈퇴했거나 존재하지 않는 근무자입니다.");
+                }
+
+                // 4. 기존 헬퍼 메서드를 호출하여 '이 근무자'의 근무 생성 (단일 또는 반복)
+                List<Work> createdWorksForThisWorker = createWorkForWorkerHelper(worker, request);
+
+                // 5. 최종 결과 리스트에 추가
+                allCreatedWorks.addAll(createdWorksForThisWorker);
+            } catch (Exception e) {
+                failedWorkers.add(FailedWorkerInfo.builder()
+                        .workerId(workerId)
+                        .nickname(nickname)
+                        .reason(e.getMessage())
+                        .build()
+                );
             }
-            // 3-2. 검증: 탈퇴한 근무자
-            if (worker.getUserId() == null) {
-                throw new WorkerNotFoundException("근무자(ID: " + workerId + ")는 이미 탈퇴한 근무자입니다.");
-            }
-
-            // 4. 기존 헬퍼 메서드를 호출하여 '이 근무자'의 근무 생성 (단일 또는 반복)
-            List<Work> createdWorksForThisWorker = createWorkForWorkerHelper(worker, request);
-
-            // 5. 최종 결과 리스트에 추가
-            allCreatedWorks.addAll(createdWorksForThisWorker);
         }
 
         // 6. 생성된 모든 근무 ID 추출
@@ -152,8 +190,9 @@ public class WorkService {
                 .collect(Collectors.toList());
 
         // 7. 모든 ID 리스트를 DTO에 담아 반환
-        return WorkCreateResponse.builder()
-                .workIdList(createdWorkIds)
+        return WorkersWorkCreateResponse.builder()
+                .successWorkIdList(createdWorkIds)
+                .failedWorkerInfoList(failedWorkers)
                 .build();
     }
 
