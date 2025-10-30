@@ -1,5 +1,9 @@
-# Docker 빌드 시 무시할 파일 및 디렉토리
-.gradle/
-build/
+.git
+.github
+.gradle
+build
+**/*.md
+docs/
+src/test/
 .idea/
 *.log
