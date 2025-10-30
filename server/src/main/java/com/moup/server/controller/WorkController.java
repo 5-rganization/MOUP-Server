@@ -37,29 +37,34 @@ public class WorkController implements WorkSpecification {
         Long userId = identityService.getCurrentUserId();
 
         WorkCreateResponse response = workService.createMyWork(userId, workplaceId, request);
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}")
-                .buildAndExpand(response.getWorkId())
+        URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/works/{id}")
+                .buildAndExpand(response.getWorkIdList().get(0))
                 .toUri();
         return ResponseEntity.created(location).body(response);
     }
 
     @Override
-    @PostMapping("/workplaces/{workplaceId}/workers/{workerId}/works")
+    @PostMapping("/workplaces/{workplaceId}/works/batch")
     @PreAuthorize("hasRole('ROLE_OWNER')")
-    public ResponseEntity<?> createWorkForWorker(
+    public ResponseEntity<?> createWorkForWorkers(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
-            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workerId,
-            @RequestBody @Valid WorkerWorkCreateRequest request
+            @RequestBody @Valid WorkersWorkCreateRequest request
     ) {
         Long userId = identityService.getCurrentUserId();
 
-        WorkCreateResponse response = workService.createWorkForWorkerId(userId, workplaceId, workerId, request);
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}")
-                .buildAndExpand(response.getWorkId())
-                .toUri();
-        return ResponseEntity.created(location).body(response);
+        WorkersWorkCreateResponse response = workService.createWorkForWorkerIdList(userId, workplaceId, request);
+
+        if (response.getFailedWorkerInfoList() != null && !response.getFailedWorkerInfoList().isEmpty()) {
+            return ResponseEntity.ok(response);
+        } else {
+            URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
+                    .path("/works/{id}")
+                    .buildAndExpand(response.getSuccessWorkIdList().get(0))
+                    .toUri();
+
+            return ResponseEntity.created(location).body(response);
+        }
     }
 
     @Override
@@ -130,7 +135,7 @@ public class WorkController implements WorkSpecification {
         if (result.recurringCreatedOrReplaced()) {
             // 반복 근무가 생성/대체된 경우: 200 OK + 새 ID 목록 반환
             WorkCreateResponse response = WorkCreateResponse.builder()
-                    .workId(result.resultingWorkIds())
+                    .workIdList(result.resultingWorkIds())
                     .build();
             return ResponseEntity.ok().body(response);
         } else {
@@ -155,7 +160,7 @@ public class WorkController implements WorkSpecification {
         if (result.recurringCreatedOrReplaced()) {
             // 반복 근무가 생성/대체된 경우: 200 OK + 새 ID 목록 반환
             WorkCreateResponse response = WorkCreateResponse.builder()
-                    .workId(result.resultingWorkIds())
+                    .workIdList(result.resultingWorkIds())
                     .build();
             return ResponseEntity.ok().body(response);
         } else {
@@ -214,8 +219,8 @@ public class WorkController implements WorkSpecification {
             WorkCreateResponse response = workService.createMyWork(userId, workplaceId, request);
             workerService.updateWorkerIsNowWorking(userId, workplaceId, true);
             URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                    .path("/{id}")
-                    .buildAndExpand(response.getWorkId())
+                    .path("/works/{id}")
+                    .buildAndExpand(response.getWorkIdList().get(0))
                     .toUri();
             return ResponseEntity.created(location).body(response);
         }

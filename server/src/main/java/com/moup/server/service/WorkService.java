@@ -95,40 +95,104 @@ public class WorkService {
 
         // 모든 ID 리스트를 DTO에 담아 반환
         return WorkCreateResponse.builder()
-                .workId(createdWorkIds)
+                .workIdList(createdWorkIds)
                 .build();
     }
 
-    /// 사장님이 특정 근무자의 근무를 생성합니다 (단일 또는 반복).
-    /// 루틴은 연결하지 않습니다.
+    /// 사장님이 '여러 근무자'에게 근무를 '일괄 생성'합니다 (단일 또는 반복).
+    ///
     /// @param requesterUserId 요청 사장님 ID
     /// @param workplaceId 근무지 ID
-    /// @param workerId 대상 근무자(Worker) ID
-    /// @param request 근무 생성 요청 DTO
+    /// @param request 근무 일괄 생성 요청 DTO (workerIdList 포함)
     /// @return 생성된 모든 근무 ID 배열 응답 DTO
     @Transactional
-    public WorkCreateResponse createWorkForWorkerId(Long requesterUserId, Long workplaceId, Long workerId, WorkerWorkCreateRequest request) {
-        // 근무자 정보 및 사장님 권한 확인
-        Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)
-                .orElseThrow(WorkerNotFoundException::new);
-        if (worker.getUserId() == null) { throw new WorkerNotFoundException("이미 탈퇴한 근무자입니다."); }
-        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        permissionVerifyUtil.verifyOwnerPermission(requesterUserId, workplaceOwnerId);
+    public WorkersWorkCreateResponse createWorkForWorkerIdList(Long requesterUserId, Long workplaceId, WorkersWorkCreateRequest request) {
 
-        // 근무 생성 (단일 또는 반복), 생성된 모든 Work 객체 리스트 반환
-        List<Work> createdWorks = createWorkForWorkerHelper(worker, request);
+        // 1. 근무지 정보 및 사장님 권한 확인
+        Workplace workplace = workplaceRepository.findById(workplaceId)
+                .orElseThrow(() -> new WorkplaceNotFoundException("해당 근무지를 찾을 수 없습니다. ID: " + workplaceId));
+        permissionVerifyUtil.verifyOwnerPermission(requesterUserId, workplace.getOwnerId());
 
-        // 사장님이 생성 시 루틴은 연결하지 않음
+        List<Long> requestedWorkerIds = request.getWorkerIdList();
+        if (requestedWorkerIds == null || requestedWorkerIds.isEmpty()) {
+            throw new BadRequestException("근무를 생성할 근무자 ID가 비어있습니다.");
+        }
 
-        // 생성된 모든 근무 ID 추출
-        List<Long> createdWorkIds = createdWorks.stream()
-                .map(Work::getId)
-                .filter(Objects::nonNull) // ID가 null인 경우 방지
+        // 2. 요청된 모든 근무자가 해당 근무지 소속이 맞는지 '배치 쿼리'로 한 번에 검증
+        Map<Long, Worker> validWorkerMap = workerRepository.findAllByIdInAndWorkplaceId(requestedWorkerIds, workplaceId)
+                .stream()
+                .collect(Collectors.toMap(Worker::getId, w -> w));
+
+        // --- 유효한 근무자들의 User 맵(닉네임)을 미리 조회 ---
+        List<Long> validUserIds = validWorkerMap.values().stream()
+                .map(Worker::getUserId)
+                .filter(Objects::nonNull)
+                .distinct()
                 .collect(Collectors.toList());
 
-        // 모든 ID 리스트를 DTO에 담아 반환
-        return WorkCreateResponse.builder()
-                .workId(createdWorkIds)
+        Map<Long, User> userMap = Collections.emptyMap();
+
+        if (!validUserIds.isEmpty()) {
+            userMap = userRepository.findAllByIdListIn(validUserIds)
+                    .stream()
+                    .collect(Collectors.toMap(User::getId, u -> u));
+        }
+
+        // --- workerId -> nickname을 빠르게 찾기 위한 맵 생성 ---
+        Map<Long, String> nicknameMap = new HashMap<>();
+        for (Worker worker : validWorkerMap.values()) {
+            if (worker.getUserId() != null) {
+                User user = userMap.get(worker.getUserId());
+                if (user != null) {
+                    nicknameMap.put(worker.getId(), user.getNickname());
+                }
+            }
+        }
+
+        List<Work> allCreatedWorks = new ArrayList<>();
+        List<FailedWorkerInfo> failedWorkers = new ArrayList<>();
+
+        // 3. DTO의 workerIdList를 순회하며 각 근무자별로 근무 생성
+        for (Long workerId : requestedWorkerIds) {
+            String nickname = nicknameMap.getOrDefault(workerId, "탈퇴한 근무자");
+
+            try {
+                Worker worker = validWorkerMap.get(workerId);
+
+                // 3-1. 검증: 맵에 없으면 -> 소속이 아니거나 존재하지 않는 근무자
+                if (worker == null) {
+                    throw new WorkerNotFoundException("요청한 근무자(ID: " + workerId + ")가 해당 근무지(ID: " + workplaceId + ") 소속이 아닙니다.");
+                }
+                // 3-2. 검증: 탈퇴한 근무자
+                if (worker.getUserId() == null) {
+                    throw new WorkerNotFoundException("요청한 근무자(ID: " + workerId + ")는 탈퇴했거나 존재하지 않는 근무자입니다.");
+                }
+
+                // 4. 기존 헬퍼 메서드를 호출하여 '이 근무자'의 근무 생성 (단일 또는 반복)
+                List<Work> createdWorksForThisWorker = createWorkForWorkerHelper(worker, request);
+
+                // 5. 최종 결과 리스트에 추가
+                allCreatedWorks.addAll(createdWorksForThisWorker);
+            } catch (Exception e) {
+                failedWorkers.add(FailedWorkerInfo.builder()
+                        .workerId(workerId)
+                        .nickname(nickname)
+                        .reason(e.getMessage())
+                        .build()
+                );
+            }
+        }
+
+        // 6. 생성된 모든 근무 ID 추출
+        List<Long> createdWorkIds = allCreatedWorks.stream()
+                .map(Work::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        // 7. 모든 ID 리스트를 DTO에 담아 반환
+        return WorkersWorkCreateResponse.builder()
+                .successWorkIdList(createdWorkIds)
+                .failedWorkerInfoList(failedWorkers)
                 .build();
     }
 
@@ -594,9 +658,9 @@ public class WorkService {
         }
     }
 
-    /// 사장님의 알바생 근무 생성 헬퍼 (WorkerWorkCreateRequest 용)
+    /// 사장님의 알바생 근무 생성 헬퍼 (WorkersWorkCreateRequest 용)
     /// @return 생성된 근무 리스트 (단일 근무 시 크기 1)
-    private List<Work> createWorkForWorkerHelper(Worker worker, WorkerWorkCreateRequest request) {
+    private List<Work> createWorkForWorkerHelper(Worker worker, WorkersWorkCreateRequest request) {
         LocalDateTime startTime = request.getStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime();
         LocalDateTime endTime = (request.getEndTime() != null) ? request.getEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
         LocalDateTime actualStartTime = (request.getActualStartTime() != null) ? request.getActualStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
@@ -629,29 +693,27 @@ public class WorkService {
     private Work createSingleWork(Worker worker, LocalDateTime startTime, LocalDateTime endTime,
                                   LocalDateTime actualStartTime, LocalDateTime actualEndTime,
                                   Integer restTimeMinutes, String memo) {
-        // 급여 정보 로드
         Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElseThrow(SalaryWorkerNotFoundException::new);
         int hourlyRate = salary.getHourlyRate() != null ? salary.getHourlyRate() : 0;
         boolean hasNightAllowance = salary.getHasNightAllowance();
-        verifyStartEndTime(startTime, endTime); // 시간 유효성 검증
+        verifyStartEndTime(startTime, endTime);
 
-        // 일급 계산 (주휴수당 0으로)
         Work tempWork = Work.builder().startTime(startTime).endTime(endTime).restTimeMinutes(restTimeMinutes).hourlyRate(hourlyRate).build();
         Work workWithDailyIncome = salaryCalculationService.calculateDailyIncome(tempWork, 0, hasNightAllowance);
 
-        // 최종 Work 엔티티 생성
         Work workToCreate = workWithDailyIncome.toBuilder()
                 .workerId(worker.getId()).workDate(startTime.toLocalDate())
-                .actualStartTime(actualStartTime).actualEndTime(actualEndTime) // 실제 시간 반영
-                .memo(memo).repeatGroupId(null)
+                .startTime(startTime).endTime(endTime)
+                .actualStartTime(actualStartTime).actualEndTime(actualEndTime)
+                .restTimeMinutes(restTimeMinutes)
+                .memo(memo)
+                .hourlyRate(hourlyRate)
+                .repeatGroupId(null)
                 .build();
 
-        // DB 저장
         workRepository.create(workToCreate);
-        // 주급 재계산 (주휴수당 반영 및 전파)
         salaryCalculationService.recalculateWorkWeek(worker.getId(), workToCreate.getWorkDate());
 
-        // 생성 및 재계산 후 최종 상태를 DB에서 다시 조회하여 반환
         return workRepository.findById(workToCreate.getId()).orElse(workToCreate);
     }
 
@@ -691,7 +753,8 @@ public class WorkService {
                         .startTime(newStartTime).endTime(newEndTime)
                         .actualStartTime(null) // 반복 생성 시 실제 시간 null
                         .actualEndTime(null)   // 반복 생성 시 실제 시간 null
-                        .memo(memo).repeatGroupId(repeatGroupId) // 동일한 그룹 ID
+                        .memo(memo)
+                        .repeatGroupId(repeatGroupId) // 동일한 그룹 ID
                         .build();
                 worksToCreate.add(recurringWork);
                 weeksToRecalculate.add(currentDate.with(DayOfWeek.MONDAY)); // 해당 주의 월요일 추가
