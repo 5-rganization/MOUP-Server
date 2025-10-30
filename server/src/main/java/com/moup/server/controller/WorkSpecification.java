@@ -17,8 +17,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.YearMonth;
 
+@Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
 public interface WorkSpecification {
-    @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
     @PostMapping("/workplaces/{workplaceId}/workers/me/works")
     @Operation(summary = "근무지(매장)에 사용자 근무 생성", description = "근무지(매장) ID를 경로로 전달받아 해당 근무지(매장)에 사용자의 근무를 생성")
     @ApiResponses({
@@ -35,7 +35,6 @@ public interface WorkSpecification {
             @RequestBody @Valid MyWorkCreateRequest request
     );
 
-    @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
     @PostMapping("/workplaces/{workplaceId}/workers/{workerId}/works")
     @Operation(summary = "근무자에게 근무 생성 (사장님 전용)", description = "매장 ID와 근무자 ID를 경로로 전달받아 해당 매장에 특정 근무자의 근무를 생성")
     @ApiResponses({
@@ -54,7 +53,6 @@ public interface WorkSpecification {
             @RequestBody @Valid WorkerWorkCreateRequest request
     );
 
-    @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
     @GetMapping("/workplaces/{workplaceId}/workers/me/works")
     @Operation(summary = "특정 근무지(매장)에서 사용자 근무 범위 조회", description = "근무지(매장) ID를 경로로, 연-월을 매개변수로 전달받아 해당 날짜를 중간값으로 1년간 해당 근무지(매장)에서 사용자의 근무를 조회")
     @ApiResponses({
@@ -70,7 +68,6 @@ public interface WorkSpecification {
             @RequestParam(name = "baseYearMonth") YearMonth baseYearMonth
     );
 
-    @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
     @GetMapping("/works/{workId}")
     @Operation(summary = "근무 조회", description = "조회할 근무 ID를 경로로 전달받아 조회 (`view=detail`: 상세 정보 반환 - 기본값, `view=summary`: 요약 정보 반환)")
     @ApiResponses({
@@ -157,7 +154,6 @@ public interface WorkSpecification {
             @RequestParam(name = "view", required = false, defaultValue = "DETAIL") ViewType view
     );
 
-    @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
     @GetMapping("/works")
     @Operation(summary = "사용자의 모든 근무 범위 조회", description = "연-월을 매개변수로 전달받아 해당 날짜를 중간값으로 1년간 사용자의 모든 근무를 조회")
     @ApiResponses({
@@ -171,7 +167,21 @@ public interface WorkSpecification {
             @RequestParam(name = "baseYearMonth") YearMonth baseYearMonth
     );
 
-    @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
+    @GetMapping("/{workplaceId}/works")
+    @Operation(summary = "특정 근무지(매장)의 모든 근무 범위 조회", description = "근무지(매장) ID를 경로로, 연-월을 매개변수로 전달받아 해당 날짜를 중간값으로 1년간 해당 근무지(매장)의 모든 근무를 조회")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "근무 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkCalendarListResponse.class))),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    ResponseEntity<?> getAllWorkByWorkplace(
+            @Parameter(name = "workplaceId", description = "조회할 근무지(매장) ID", example = "1", in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
+            @Parameter(name = "baseYearMonth", description = "조회할 연-월 (yyyy-MM)", in = ParameterIn.QUERY, required = true)
+            @RequestParam(name = "baseYearMonth") YearMonth baseYearMonth
+    );
+
     @PatchMapping("/works/{workId}")
     @Operation(summary = "사용자 근무 업데이트", description = "근무 ID를 경로로 전달받아 해당하는 근무를 업데이트")
     @ApiResponses({
@@ -189,7 +199,6 @@ public interface WorkSpecification {
             @RequestBody @Valid MyWorkUpdateRequest request
     );
 
-    @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
     @PatchMapping("/workplaces/{workplaceId}/workers/{workerId}/works/{workId}")
     @Operation(summary = "근무자 근무 업데이트 (사장님 전용)", description = "매장 ID와 근무자 ID를 경로로 전달받아 해당 매장에 근무를 업데이트")
     @ApiResponses({
@@ -211,38 +220,6 @@ public interface WorkSpecification {
             @RequestBody @Valid WorkerWorkUpdateRequest request
     );
 
-    @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
-    @Operation(summary = "근무 출근 (알바생 전용)",
-            description = "근무지 ID를 경로로 전달받아 출근 시간이 지금으로부터 과거 1시간 ~ 미래 1시간 사이에 해당하는 근무의 실제 출근 시간을 업데이트, 없으면 근무 생성")
-    @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "근무 생성 성공"),
-            @ApiResponse(responseCode = "204", description = "근무 업데이트 성공"),
-            @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "409", description = "근무자가 이미 근무중인 상태", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    @PostMapping("/workplaces/{workplaceId}/workers/me/works/start")
-    ResponseEntity<?> updateActualStartTimeOrCreateWork(
-            @Parameter(name = "workplaceId", description = "출근할 근무지 ID", example = "1", required = true, in = ParameterIn.PATH)
-            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId
-    );
-
-    @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
-    @Operation(summary = "근무 퇴근 (알바생 전용)", description = "근무지 ID를 경로로 전달받아 실제 퇴근 시간이 없는 마지막 근무의 실제 퇴근 시간을 업데이트")
-    @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "근무 업데이트 성공"),
-            @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    @PatchMapping("/workplaces/{workplaceId}/workers/me/works/end")
-    ResponseEntity<?> updateWorkActualEndTime(
-            @Parameter(name = "workplaceId", description = "퇴근할 근무지 ID", example = "1", required = true, in = ParameterIn.PATH)
-            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId
-    );
-
-    @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
     @DeleteMapping("/works/{workId}")
     @Operation(summary = "근무 삭제", description = "근무 ID를 경로로 전달받아 해당하는 근무를 삭제")
     @ApiResponses({
@@ -270,5 +247,34 @@ public interface WorkSpecification {
     ResponseEntity<?> deleteRecurringWorkIncludingDate(
             @Parameter(name = "workId", description = "삭제할 기준 근무 ID", example = "1", required = true, in = ParameterIn.PATH)
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId
+    );
+
+    @Operation(summary = "근무 출근 (알바생 전용)",
+            description = "근무지 ID를 경로로 전달받아 출근 시간이 지금으로부터 과거 1시간 ~ 미래 1시간 사이에 해당하는 근무의 실제 출근 시간을 업데이트, 없으면 근무 생성")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "근무 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkCreateResponse.class))),
+            @ApiResponse(responseCode = "204", description = "근무 업데이트 성공"),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "근무자가 이미 근무중인 상태", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    @PostMapping("/workplaces/{workplaceId}/workers/me/works/start")
+    ResponseEntity<?> updateActualStartTimeOrCreateWork(
+            @Parameter(name = "workplaceId", description = "출근할 근무지 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId
+    );
+
+    @Operation(summary = "근무 퇴근 (알바생 전용)", description = "근무지 ID를 경로로 전달받아 실제 퇴근 시간이 없는 마지막 근무의 실제 퇴근 시간을 업데이트")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "근무 업데이트 성공"),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    @PatchMapping("/workplaces/{workplaceId}/workers/me/works/end")
+    ResponseEntity<?> updateWorkActualEndTime(
+            @Parameter(name = "workplaceId", description = "퇴근할 근무지 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId
     );
 }

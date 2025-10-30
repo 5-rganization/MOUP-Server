@@ -15,8 +15,6 @@ import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.YearMonth;
-
 @RequestMapping("/workplaces")
 public interface WorkplaceSpecification {
     @Tag(name = "Workplace", description = "근무지(매장) 정보 관리 API 엔드포인트")
@@ -220,20 +218,4 @@ public interface WorkplaceSpecification {
             @Parameter(name = "workplaceId", description = "삭제할 근무지(매장) ID", example = "1", required = true, in = ParameterIn.PATH)
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId
     );
-
-    @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
-    @GetMapping("/{workplaceId}/works")
-    @Operation(summary = "특정 근무지(매장)의 모든 근무 범위 조회", description = "근무지(매장) ID를 경로로, 연-월을 매개변수로 전달받아 해당 날짜를 중간값으로 1년간 해당 근무지(매장)의 모든 근무를 조회")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "근무 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkCalendarListResponse.class))),
-            @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    ResponseEntity<?> getAllWorkByWorkplace(
-            @Parameter(name = "workplaceId", description = "조회할 근무지(매장) ID", example = "1", in = ParameterIn.PATH)
-            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
-            @Parameter(name = "baseYearMonth", description = "조회할 연-월 (yyyy-MM)", in = ParameterIn.QUERY, required = true)
-            @RequestParam(name = "baseYearMonth") YearMonth baseYearMonth
-            );
 }

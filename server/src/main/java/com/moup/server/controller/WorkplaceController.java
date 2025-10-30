@@ -156,17 +156,4 @@ public class WorkplaceController implements WorkplaceSpecification, InviteCodeSp
                 .toUri();
         return ResponseEntity.created(location).body(response);
     }
-
-    @Override
-    @GetMapping("/{workplaceId}/works")
-    public ResponseEntity<?> getAllWorkByWorkplace(
-            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
-            @RequestParam(name = "baseYearMonth") YearMonth baseYearMonth
-    ) {
-        Long userId = identityService.getCurrentUserId();
-        User user = userService.findUserById(userId);
-
-        WorkCalendarListResponse response = workService.getAllWorkByWorkplace(user, workplaceId, baseYearMonth);
-        return ResponseEntity.ok().body(response);
-    }
 }

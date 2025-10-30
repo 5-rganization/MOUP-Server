@@ -105,6 +105,19 @@ public class WorkController implements WorkSpecification {
     }
 
     @Override
+    @GetMapping("/{workplaceId}/works")
+    public ResponseEntity<?> getAllWorkByWorkplace(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
+            @RequestParam(name = "baseYearMonth") YearMonth baseYearMonth
+    ) {
+        Long userId = identityService.getCurrentUserId();
+        User user = userService.findUserById(userId);
+
+        WorkCalendarListResponse response = workService.getAllWorkByWorkplace(user, workplaceId, baseYearMonth);
+        return ResponseEntity.ok().body(response);
+    }
+
+    @Override
     @PatchMapping("/works/{workId}")
     public ResponseEntity<?> updateMyWork(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
@@ -152,6 +165,29 @@ public class WorkController implements WorkSpecification {
     }
 
     @Override
+    @DeleteMapping("/works/{workId}")
+    public ResponseEntity<?> deleteWork(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId
+    ) {
+        Long userId = identityService.getCurrentUserId();
+
+        workService.deleteWork(userId, workId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @DeleteMapping("/works/recurring/{workId}")
+    public ResponseEntity<?> deleteRecurringWorkIncludingDate(
+            @Parameter(name = "workId", description = "삭제할 기준 근무 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId
+    ) {
+        Long userId = identityService.getCurrentUserId();
+
+        workService.deleteRecurringWorkIncludingDate(userId, workId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
     @PostMapping("/workplaces/{workplaceId}/workers/me/works/start")
     @PreAuthorize("hasRole('ROLE_WORKER')")
     public ResponseEntity<?> updateActualStartTimeOrCreateWork(
@@ -194,29 +230,6 @@ public class WorkController implements WorkSpecification {
         Long userId = identityService.getCurrentUserId();
 
         workService.updateActualEndTime(userId, workplaceId);
-        return ResponseEntity.noContent().build();
-    }
-
-    @Override
-    @DeleteMapping("/works/{workId}")
-    public ResponseEntity<?> deleteWork(
-            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId
-    ) {
-        Long userId = identityService.getCurrentUserId();
-
-        workService.deleteWork(userId, workId);
-        return ResponseEntity.noContent().build();
-    }
-
-    @Override
-    @DeleteMapping("/works/recurring/{workId}")
-    public ResponseEntity<?> deleteRecurringWorkIncludingDate(
-            @Parameter(name = "workId", description = "삭제할 기준 근무 ID", example = "1", required = true, in = ParameterIn.PATH)
-            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId
-    ) {
-        Long userId = identityService.getCurrentUserId();
-
-        workService.deleteRecurringWorkIncludingDate(userId, workId);
         return ResponseEntity.noContent().build();
     }
 }

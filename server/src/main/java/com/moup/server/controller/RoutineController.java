@@ -3,7 +3,6 @@ package com.moup.server.controller;
 import com.moup.server.model.dto.*;
 import com.moup.server.service.IdentityService;
 import com.moup.server.service.RoutineService;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +13,6 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
 
-@Tag(name = "Routine", description = "루틴 정보 관리 API 엔드포인트")
 @RestController
 @Validated
 @RequiredArgsConstructor
