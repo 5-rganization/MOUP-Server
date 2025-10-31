@@ -43,10 +43,10 @@ public class JwtFilter extends OncePerRequestFilter {
                 String token = authHeader.substring(7);
 
                 if (jwtUtil.isValidToken(token)) {
-                    String username = jwtUtil.getUsername(token);
+                    Long userId = jwtUtil.getUserId(token);
 
                     // UserDetails 생성
-                    UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
+                    UserDetails userDetails = customUserDetailsService.loadUserByUsername(String.valueOf(userId));
 
                     // 인증 객체 생성
                     UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());

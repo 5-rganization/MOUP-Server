@@ -99,9 +99,8 @@ public class JwtUtil {
             Jwts.parser().verifyWith((SecretKey) key).build().parseSignedClaims(token);
             return true;
         } catch (Exception e) {
-            e.getStackTrace();
+            log.warn("Invalid JWT Token: {}", e.getMessage());
             return false;
         }
     }
-
 }
