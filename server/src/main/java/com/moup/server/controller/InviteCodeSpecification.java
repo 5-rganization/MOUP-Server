@@ -22,7 +22,7 @@ public interface InviteCodeSpecification {
     @Operation(summary = "초대 코드 생성 (사장님 전용)", description = "근무지(매장) ID를 경로로 전달받아 초대 코드 생성")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "이미 만들어진 초대 코드 존재", content = @Content(mediaType = "application/json", schema = @Schema(implementation = InviteCodeGenerateResponse.class))),
-            @ApiResponse(responseCode = "201", description = "새로운 초대 코드 생성 성공"),
+            @ApiResponse(responseCode = "201", description = "새로운 초대 코드 생성 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = InviteCodeGenerateResponse.class))),
             @ApiResponse(responseCode = "403", description = "역할에 맞지 않는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
