@@ -62,7 +62,7 @@ public interface UserRepository {
     void updateById(Long id, String nickname, Role role);
 
     @Update("UPDATE users SET nickname = #{nickname} WHERE id = #{id}")
-    void updateNicknameById(Long userId, String nickname);
+    void updateNicknameById(Long id, String nickname);
 
     @Select("SELECT * FROM users ORDER BY id LIMIT #{batchSize} OFFSET #{offset}")
     List<User> findUsersWithPaging(@Param("offset") int page, @Param("batchSize") int batchSize);
