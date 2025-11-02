@@ -122,8 +122,8 @@ public class SwaggerConfig {
 
 
     /// DebugTokenHolder를 Spring Bean으로 직접 등록합니다.
+    /// - **배포시 보여주지 않도록 처리해야 합니다.**
     /// `@Component` 어노테이션을 대체합니다.
-    /// "prod" 프로필이 아닐 때만 Bean으로 등록해야 합니다.
     @Bean
     DebugTokenHolder debugTokenHolder() {
         // TODO: 배포시 보여주지 않도록 처리 (@Profile("!prod") 추가)
@@ -131,8 +131,8 @@ public class SwaggerConfig {
     }
 
     /// OpenAPI 명세서 전역 설정을 커스터마이징합니다.
+    /// - **배포시 보여주지 않도록 처리해야 합니다.**
     /// @param tokenHolder (debugTokenHolder Bean)
-    /// "prod" 프로필이 아닐 때만 Bean으로 등록해야 합니다.
     @Bean
     OpenApiCustomizer debugTokenCustomizer(DebugTokenHolder tokenHolder) {
         // TODO: 배포시 보여주지 않도록 처리 (@Profile("!prod") 추가)
@@ -144,7 +144,7 @@ public class SwaggerConfig {
                     """
                     
                     ---
-                    ### 🐞 디버그용 액세스 토큰 🐞
+                    ### 디버그용 액세스 토큰
                     (개발 환경에서만 보이며, 서버 재시작 시마다 갱신됩니다)
                     
                     **Admin (관리자):**
