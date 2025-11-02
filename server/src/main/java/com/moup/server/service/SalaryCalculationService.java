@@ -68,7 +68,6 @@ public class SalaryCalculationService {
         Salary salary = salaryRepository.findByWorkerId(workerId)
                 .orElse(null); // Salary 정보가 없으면 기본값(false) 사용
 
-        // --- [수정] ---
         // 고정급(FIXED) 근무자는 이 메서드를 실행할 필요가 없음 (시급 기반 재계산 로직)
         if (salary != null && salary.getSalaryCalculation() == SalaryCalculation.SALARY_CALCULATION_FIXED) {
             return;
@@ -242,7 +241,7 @@ public class SalaryCalculationService {
                 }
             }
         } else {
-            // --- 시급제 (기존 로직) ---
+            // --- 시급제 ---
             if (daysWorked > 0) { // 0으로 나누기 방지
                 estimatedMonthlyIncome = (int) ((double) currentGrossSum / daysWorked * estimatedTotalWorkingDays);
             }
@@ -377,14 +376,13 @@ public class SalaryCalculationService {
                     .sum();
 
 
-            // --- [수정] ---
             // 4-1. 급여 계산 방식(SalaryCalculation)에 따른 세전 총 소득(grossIncome) 계산
             int grossIncome = 0;
             int fixedRate = (salaryInfo.getFixedRate() != null) ? salaryInfo.getFixedRate() : 0;
 
             if (salaryInfo.getSalaryCalculation() == SalaryCalculation.SALARY_CALCULATION_FIXED) {
                 // --- 고정급제 ---
-                // [수정] 고정급이라도 근무 기록(workList)이 없으면 0원
+                // 고정급이라도 근무 기록(workList)이 없으면 0원
                 if (workList.isEmpty()) {
                     grossIncome = 0;
                 } else {
@@ -416,17 +414,11 @@ public class SalaryCalculationService {
                 }
             } else {
                 // --- 시급제 (SALARY_CALCULATION_HOURLY) ---
-                // 기존 로직: Work 레코드에 기록된 모든 세전 일급(grossIncome)을 합산
+                // Work 레코드에 기록된 모든 세전 일급(grossIncome)을 합산
                 grossIncome = workList.stream()
                         .mapToInt(work -> work.getGrossIncome() != null ? work.getGrossIncome() : 0)
                         .sum();
             }
-
-            // --- [수정] ---
-            // 요구사항 1: 알바생 홈에서는 근무 기록이 0이어도 모든 근무지를 보여줘야 함
-            // 따라서 시급제+근무기록 0일 때 'continue' 하던 로직 (삭제)
-            // --- [수정 완료] ---
-
 
             long totalWorkHours = totalWorkMinutes / 60;
 
@@ -577,13 +569,11 @@ public class SalaryCalculationService {
                     continue;
                 }
 
-                // --- [수정] ---
                 // Rule 2: 근무 기록이 있는 모든 근무자에 대한 정보를 보여줘야 함
                 // 따라서 근무 기록(workerWorkList)이 0건이면 제외
                 if (workerWorkList.isEmpty()) {
                     continue;
                 }
-                // --- [수정 완료] ---
 
                 // --- 급여 계산 ---
 
@@ -600,40 +590,36 @@ public class SalaryCalculationService {
 
                 if (salaryInfo.getSalaryCalculation() == SalaryCalculation.SALARY_CALCULATION_FIXED) {
                     // --- 고정급제 ---
-                    // [수정] 고정급이라도 근무 기록(workerWorkList)이 없으면 0원
-                    // (위에서 isEmpty()로 continue 되었으므로, 이 로직은 항상 근무기록 1건 이상일 때만 실행됨)
-                    if (workerWorkList.isEmpty()) {
-                        grossMonthlyIncome = 0;
-                    } else {
-                        switch (salaryInfo.getSalaryType()) {
-                            case SALARY_MONTHLY:
-                                // 월급: 고정급(fixedRate)이 월급 총액
-                                grossMonthlyIncome = fixedRate;
-                                break;
-                            case SALARY_WEEKLY:
-                                // 주급: 고정급(fixedRate) * 해당 월의 주급 지급 횟수
-                                DayOfWeek payDayOfWeek = salaryInfo.getSalaryDay();
-                                int payDayCount = 0;
-                                if (payDayOfWeek != null) {
-                                    LocalDate dateIterator = startDate; // 해당 월의 1일
-                                    while (!dateIterator.isAfter(endDate)) { // 해당 월의 마지막 날까지
-                                        if (dateIterator.getDayOfWeek() == payDayOfWeek) {
-                                            payDayCount++;
-                                        }
-                                        dateIterator = dateIterator.plusDays(1);
+                    // workerWorkList.isEmpty() 확인은 이미 위에서(continue) 처리되었으므로
+                    // 불필요한 if-else 문을 제거하고 switch문만 남깁니다.
+                    switch (salaryInfo.getSalaryType()) {
+                        case SALARY_MONTHLY:
+                            // 월급: 고정급(fixedRate)이 월급 총액
+                            grossMonthlyIncome = fixedRate;
+                            break;
+                        case SALARY_WEEKLY:
+                            // 주급: 고정급(fixedRate) * 해당 월의 주급 지급 횟수
+                            DayOfWeek payDayOfWeek = salaryInfo.getSalaryDay();
+                            int payDayCount = 0;
+                            if (payDayOfWeek != null) {
+                                LocalDate dateIterator = startDate; // 해당 월의 1일
+                                while (!dateIterator.isAfter(endDate)) { // 해당 월의 마지막 날까지
+                                    if (dateIterator.getDayOfWeek() == payDayOfWeek) {
+                                        payDayCount++;
                                     }
+                                    dateIterator = dateIterator.plusDays(1);
                                 }
-                                grossMonthlyIncome = fixedRate * payDayCount;
-                                break;
-                            case SALARY_DAILY:
-                                // 일급: 고정급(fixedRate) * 해당 월의 근무일 수
-                                grossMonthlyIncome = fixedRate * workerWorkList.size();
-                                break;
-                        }
+                            }
+                            grossMonthlyIncome = fixedRate * payDayCount;
+                            break;
+                        case SALARY_DAILY:
+                            // 일급: 고정급(fixedRate) * 해당 월의 근무일 수
+                            grossMonthlyIncome = fixedRate * workerWorkList.size();
+                            break;
                     }
                 } else {
                     // --- 시급제 (SALARY_CALCULATION_HOURLY) ---
-                    // 기존 로직: Work 레코드에 기록된 모든 세전 일급(grossIncome)을 합산
+                    // Work 레코드에 기록된 모든 세전 일급(grossIncome)을 합산
                     grossMonthlyIncome = workerWorkList.stream()
                             .mapToInt(work -> work.getGrossIncome() != null ? work.getGrossIncome() : 0)
                             .sum();
@@ -656,7 +642,7 @@ public class SalaryCalculationService {
                 workerSummaryInfoList.add(workerSummary);
             }
 
-            // [수정] 근무자 리스트가 비어있으면 사업장 자체를 추가하지 않음
+            // 근무자 리스트가 비어있으면 사업장 자체를 추가하지 않음
             if (workerSummaryInfoList.isEmpty()) {
                 continue;
             }
