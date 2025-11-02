@@ -1,8 +1,10 @@
 package com.moup.server.config;
 
 import com.moup.server.common.Role;
+import com.moup.server.model.dto.DebugTokenHolder;
 import com.moup.server.model.dto.TokenCreateRequest;
 import com.moup.server.util.JwtUtil;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
@@ -10,12 +12,11 @@ import org.springframework.context.annotation.Configuration;
 
 @Slf4j
 @Configuration
+@RequiredArgsConstructor
 public class TokenGeneratorConfig {
 
     private final JwtUtil jwtUtil;
-
-    // 생성자 주입
-    public TokenGeneratorConfig(JwtUtil jwtUtil) { this.jwtUtil = jwtUtil; }
+    private final DebugTokenHolder debugTokenHolder;
 
     @Bean
     public CommandLineRunner generateStaticToken() {
@@ -38,6 +39,10 @@ public class TokenGeneratorConfig {
             String staticAdminToken = jwtUtil.createTestToken(adminToken);
             String staticOwnerToken = jwtUtil.createTestToken(ownerToken);
             String staticWorkerToken = jwtUtil.createTestToken(workerToken);
+
+            debugTokenHolder.setAdminToken(staticAdminToken);
+            debugTokenHolder.setOwnerToken(staticOwnerToken);
+            debugTokenHolder.setWorkerToken(staticWorkerToken);
 
             // 토큰을 콘솔에 출력
             log.info("📢📢📢📢📢 Swagger Admin Token Generated: {}", "Bearer " + staticAdminToken);
