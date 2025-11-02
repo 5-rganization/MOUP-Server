@@ -2,6 +2,7 @@ package com.moup.server.service;
 
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.*;
+import com.moup.server.model.enums.SalaryCalculation;
 import com.moup.server.model.enums.SalaryType;
 import com.moup.server.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -66,6 +67,11 @@ public class SalaryCalculationService {
     public void recalculateWorkWeek(Long workerId, LocalDate date) {
         Salary salary = salaryRepository.findByWorkerId(workerId)
                 .orElse(null); // Salary 정보가 없으면 기본값(false) 사용
+
+        // 고정급(FIXED) 근무자는 이 메서드를 실행할 필요가 없음 (시급 기반 재계산 로직)
+        if (salary != null && salary.getSalaryCalculation() == SalaryCalculation.SALARY_CALCULATION_FIXED) {
+            return;
+        }
 
         boolean hasHolidayAllowance = (salary != null) && salary.getHasHolidayAllowance();
         boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
@@ -176,7 +182,8 @@ public class SalaryCalculationService {
         LocalDate endDate = startDate.with(TemporalAdjusters.lastDayOfMonth());
 
         List<Work> monthWorks = workRepository.findAllByWorkerIdAndDateRange(workerId, startDate, endDate);
-        if (monthWorks.isEmpty()) return;
+
+        Salary salaryInfo = salaryRepository.findByWorkerId(workerId).orElse(null);
 
         // 현재까지의 근무 기록을 바탕으로 예상 월급을 추정합니다.
         int currentGrossSum = monthWorks.stream()
@@ -190,17 +197,70 @@ public class SalaryCalculationService {
             passedDays = daysInMonth; // 현재 달이 아니면, 해당 월의 전체 일수를 기준으로 삼음
         }
 
+        if (passedDays == 0) passedDays = 1; // 0으로 나누기 방지
+
         double workDayRatio = (double) daysWorked / passedDays;
         long estimatedTotalWorkingDays = Math.round(workDayRatio * daysInMonth);
-        if (estimatedTotalWorkingDays == 0) estimatedTotalWorkingDays = 1;
+        if (estimatedTotalWorkingDays == 0 && daysWorked > 0) estimatedTotalWorkingDays = daysWorked; // 최소한 일한 날짜만큼은 보장
 
-        int estimatedMonthlyIncome = (int) ((double) currentGrossSum / daysWorked * estimatedTotalWorkingDays);
+        if (daysWorked == 0 && (salaryInfo == null || salaryInfo.getSalaryCalculation() == SalaryCalculation.SALARY_CALCULATION_HOURLY)) {
+            estimatedTotalWorkingDays = 0;
+        }
+
+
+        int estimatedMonthlyIncome = 0;
+
+        if (salaryInfo != null && salaryInfo.getSalaryCalculation() == SalaryCalculation.SALARY_CALCULATION_FIXED) {
+            // --- 고정급제 ---
+            if (estimatedTotalWorkingDays == 0) {
+                estimatedMonthlyIncome = 0;
+            } else {
+                int fixedRate = (salaryInfo.getFixedRate() != null) ? salaryInfo.getFixedRate() : 0;
+                switch (salaryInfo.getSalaryType()) {
+                    case SALARY_MONTHLY:
+                        estimatedMonthlyIncome = fixedRate;
+                        break;
+                    case SALARY_WEEKLY:
+                        DayOfWeek payDayOfWeek = salaryInfo.getSalaryDay();
+                        int payDayCount = 0;
+                        if (payDayOfWeek != null) {
+                            LocalDate dateIterator = startDate;
+                            while (!dateIterator.isAfter(endDate)) {
+                                if (dateIterator.getDayOfWeek() == payDayOfWeek) {
+                                    payDayCount++;
+                                }
+                                dateIterator = dateIterator.plusDays(1);
+                            }
+                        }
+                        estimatedMonthlyIncome = fixedRate * payDayCount;
+                        break;
+                    case SALARY_DAILY:
+                        // 일급: 고정급 * 예상 총 근무일 수
+                        estimatedMonthlyIncome = fixedRate * (int) estimatedTotalWorkingDays;
+                        break;
+                }
+            }
+        } else {
+            // --- 시급제 ---
+            if (daysWorked > 0) { // 0으로 나누기 방지
+                estimatedMonthlyIncome = (int) ((double) currentGrossSum / daysWorked * estimatedTotalWorkingDays);
+            }
+        }
+
 
         long totalMinutesWorked = monthWorks.stream()
                 .filter(work -> work.getEndTime() != null)
                 .mapToLong(work -> Duration.between(work.getStartTime(), work.getEndTime()).toMinutes() - (work.getRestTimeMinutes() != null ? work.getRestTimeMinutes() : 0))
                 .sum();
-        long estimatedTotalHours = (long)((double) totalMinutesWorked / daysWorked * estimatedTotalWorkingDays / 60.0);
+
+        long estimatedTotalHours = 0;
+        if (daysWorked > 0) { // 0으로 나누기 방지
+            estimatedTotalHours = (long)((double) totalMinutesWorked / daysWorked * estimatedTotalWorkingDays / 60.0);
+        }
+
+        if (estimatedTotalWorkingDays == 0) {
+            return;
+        }
 
         // 예상 월급 기준으로 월 총 공제액(4대보험, 소득세)을 추정합니다.
         int estimatedMonthlyDeduction = 0;
@@ -273,7 +333,7 @@ public class SalaryCalculationService {
             Salary salaryInfo = salaryMap.get(workerId);
             if (salaryInfo == null) { continue; }
 
-            // [필터 2] 해당 월에 근무 기록이 없으면 건너뜁니다.
+            // [필터 2] 해당 월에 근무 기록
             List<Work> workList = workMap.getOrDefault(workerId, Collections.emptyList());
 
             // [필터 3] 근무지 정보 조회
@@ -290,6 +350,7 @@ public class SalaryCalculationService {
                     .build();
 
             // 4. 시간 및 수당 계산 (DB에 저장된 값을 합산)
+            // 이 값들은 DTO 표시용으로 '고정급' 여부와 관계없이 항상 계산합니다.
             long totalWorkMinutes = workList.stream() // 순 근무시간 합계
                     .mapToLong(work -> work.getNetWorkMinutes() != null ? work.getNetWorkMinutes() : 0)
                     .sum();
@@ -306,19 +367,58 @@ public class SalaryCalculationService {
                     .mapToInt(work -> work.getHolidayAllowance() != null ? work.getHolidayAllowance() : 0)
                     .sum();
 
-            // --- 총 주간 근무 급여 (기본급) 합계 ---
-            int dayTimeIncome = workList.stream()
+            int dayTimeIncome = workList.stream() // --- 총 주간 근무 급여 (기본급) 합계 ---
                     .mapToInt(work -> work.getBasePay() != null ? work.getBasePay() : 0)
                     .sum();
 
-            // --- 야간수당(원) 합계 계산 ---
-            int totalNightAllowance = workList.stream()
+            int totalNightAllowance = workList.stream() // --- 야간수당(원) 합계 계산 ---
                     .mapToInt(work -> work.getNightAllowance() != null ? work.getNightAllowance() : 0)
                     .sum();
 
-            int grossIncome = workList.stream() // 세전 총 소득 합계
-                    .mapToInt(work -> work.getGrossIncome() != null ? work.getGrossIncome() : 0)
-                    .sum();
+
+            // 4-1. 급여 계산 방식(SalaryCalculation)에 따른 세전 총 소득(grossIncome) 계산
+            int grossIncome = 0;
+            int fixedRate = (salaryInfo.getFixedRate() != null) ? salaryInfo.getFixedRate() : 0;
+
+            if (salaryInfo.getSalaryCalculation() == SalaryCalculation.SALARY_CALCULATION_FIXED) {
+                // --- 고정급제 ---
+                // 고정급이라도 근무 기록(workList)이 없으면 0원
+                if (workList.isEmpty()) {
+                    grossIncome = 0;
+                } else {
+                    switch (salaryInfo.getSalaryType()) {
+                        case SALARY_MONTHLY:
+                            // 월급: 고정급(fixedRate)이 월급 총액
+                            grossIncome = fixedRate;
+                            break;
+                        case SALARY_WEEKLY:
+                            // 주급: 고정급(fixedRate) * 해당 월의 주급 지급 횟수
+                            DayOfWeek payDayOfWeek = salaryInfo.getSalaryDay();
+                            int payDayCount = 0;
+                            if (payDayOfWeek != null) {
+                                LocalDate dateIterator = startDate; // 해당 월의 1일
+                                while (!dateIterator.isAfter(endDate)) { // 해당 월의 마지막 날까지
+                                    if (dateIterator.getDayOfWeek() == payDayOfWeek) {
+                                        payDayCount++;
+                                    }
+                                    dateIterator = dateIterator.plusDays(1);
+                                }
+                            }
+                            grossIncome = fixedRate * payDayCount;
+                            break;
+                        case SALARY_DAILY:
+                            // 일급: 고정급(fixedRate) * 해당 월의 근무일 수 (이미 workList.size() 기반)
+                            grossIncome = fixedRate * workList.size();
+                            break;
+                    }
+                }
+            } else {
+                // --- 시급제 (SALARY_CALCULATION_HOURLY) ---
+                // Work 레코드에 기록된 모든 세전 일급(grossIncome)을 합산
+                grossIncome = workList.stream()
+                        .mapToInt(work -> work.getGrossIncome() != null ? work.getGrossIncome() : 0)
+                        .sum();
+            }
 
             long totalWorkHours = totalWorkMinutes / 60;
 
@@ -462,22 +562,68 @@ public class SalaryCalculationService {
                 Long workerId = worker.getId();
 
                 List<Work> workerWorkList = workListByWorkerId.getOrDefault(workerId, Collections.emptyList());
-                if (workerWorkList.isEmpty()) { continue; }
 
                 Salary salaryInfo = salaryMap.get(workerId);
-                if (salaryInfo == null) { continue; }
+                // Rule 3: 사장님처럼 급여 정보가 없는 근무자는 제외
+                if (salaryInfo == null) {
+                    continue;
+                }
+
+                // Rule 2: 근무 기록이 있는 모든 근무자에 대한 정보를 보여줘야 함
+                // 따라서 근무 기록(workerWorkList)이 0건이면 제외
+                if (workerWorkList.isEmpty()) {
+                    continue;
+                }
 
                 // --- 급여 계산 ---
-                // 세전 총소득은 미리 계산된 값을 합산
-                int grossMonthlyIncome = workerWorkList.stream()
-                        .mapToInt(work -> work.getGrossIncome() != null ? work.getGrossIncome() : 0)
-                        .sum();
 
+                // 1. 근무 시간/분 합산 (표시용)
                 long totalNetWorkMinutes = workerWorkList.stream()
                         .mapToLong(work -> work.getNetWorkMinutes() != null ? work.getNetWorkMinutes() : 0)
                         .sum();
 
                 long totalWorkHours = totalNetWorkMinutes / 60;
+
+                // 2. 급여 계산 방식(SalaryCalculation)에 따른 세전 총 소득(grossMonthlyIncome) 계산
+                int grossMonthlyIncome = 0;
+                int fixedRate = (salaryInfo.getFixedRate() != null) ? salaryInfo.getFixedRate() : 0;
+
+                if (salaryInfo.getSalaryCalculation() == SalaryCalculation.SALARY_CALCULATION_FIXED) {
+                    // --- 고정급제 ---
+                    // workerWorkList.isEmpty() 확인은 이미 위에서(continue) 처리되었으므로
+                    // 불필요한 if-else 문을 제거하고 switch문만 남깁니다.
+                    switch (salaryInfo.getSalaryType()) {
+                        case SALARY_MONTHLY:
+                            // 월급: 고정급(fixedRate)이 월급 총액
+                            grossMonthlyIncome = fixedRate;
+                            break;
+                        case SALARY_WEEKLY:
+                            // 주급: 고정급(fixedRate) * 해당 월의 주급 지급 횟수
+                            DayOfWeek payDayOfWeek = salaryInfo.getSalaryDay();
+                            int payDayCount = 0;
+                            if (payDayOfWeek != null) {
+                                LocalDate dateIterator = startDate; // 해당 월의 1일
+                                while (!dateIterator.isAfter(endDate)) { // 해당 월의 마지막 날까지
+                                    if (dateIterator.getDayOfWeek() == payDayOfWeek) {
+                                        payDayCount++;
+                                    }
+                                    dateIterator = dateIterator.plusDays(1);
+                                }
+                            }
+                            grossMonthlyIncome = fixedRate * payDayCount;
+                            break;
+                        case SALARY_DAILY:
+                            // 일급: 고정급(fixedRate) * 해당 월의 근무일 수
+                            grossMonthlyIncome = fixedRate * workerWorkList.size();
+                            break;
+                    }
+                } else {
+                    // --- 시급제 (SALARY_CALCULATION_HOURLY) ---
+                    // Work 레코드에 기록된 모든 세전 일급(grossIncome)을 합산
+                    grossMonthlyIncome = workerWorkList.stream()
+                            .mapToInt(work -> work.getGrossIncome() != null ? work.getGrossIncome() : 0)
+                            .sum();
+                }
 
                 DeductionDetails deductions = calculateDeductions(grossMonthlyIncome, totalWorkHours, salaryInfo);
 
@@ -494,6 +640,11 @@ public class SalaryCalculationService {
                         .netIncome(netIncome)
                         .build();
                 workerSummaryInfoList.add(workerSummary);
+            }
+
+            // 근무자 리스트가 비어있으면 사업장 자체를 추가하지 않음
+            if (workerSummaryInfoList.isEmpty()) {
+                continue;
             }
 
             OwnerMonthlyWorkplaceSummaryResponse workplaceSummaryResponse = OwnerMonthlyWorkplaceSummaryResponse.builder()
@@ -515,7 +666,7 @@ public class SalaryCalculationService {
         int incomeTax = 0;
         int localIncomeTax = 0;
 
-        if (totalWorkHours >= insuranceMinHours) {
+        if (isInsuranceApplicable(grossIncome, totalWorkHours)) {
             if (Boolean.TRUE.equals(salaryInfo.getHasNationalPension())) {
                 nationalPension = (int) (grossIncome * nationalPensionRate);
             }

@@ -3,6 +3,8 @@ package com.moup.server.service;
 import com.moup.server.exception.*;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.*;
+import com.moup.server.model.entity.Salary;
+import com.moup.server.model.enums.SalaryCalculation;
 import com.moup.server.repository.*;
 import com.moup.server.util.PermissionVerifyUtil;
 import lombok.RequiredArgsConstructor;
@@ -246,6 +248,10 @@ public class WorkService {
     public WorkSummaryResponse getWork(Long userId, Long workId) {
         VerifiedWorkContextForRead context = getVerifiedWorkContextForRead(userId, workId);
 
+        // 고정급 여부를 확인하기 위해 Salary 정보 조회
+        Salary salary = salaryRepository.findByWorkerId(context.worker().getId()).orElse(null);
+        boolean isFixedSalary = (salary != null && salary.getSalaryCalculation() == SalaryCalculation.SALARY_CALCULATION_FIXED);
+
         // 반복 정보 조회 및 변환
         List<DayOfWeek> repeatDays = Collections.emptyList();
         LocalDate repeatEndDate = null;
@@ -254,6 +260,12 @@ public class WorkService {
             repeatDays = repeatInfo.days();
             repeatEndDate = repeatInfo.endDate();
         }
+
+        // netIncome null 처리 로직
+        Integer estimatedNet = context.work().getEstimatedNetIncome();
+        Integer gross = context.work().getGrossIncome();
+        Integer finalNetIncome = (estimatedNet != null) ? estimatedNet : ((gross != null) ? gross : 0);
+
 
         return WorkSummaryResponse.builder()
                 .workId(context.work().getId())
@@ -264,7 +276,8 @@ public class WorkService {
                 .endTime(context.work().getEndTime() != null ? context.work().getEndTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
                 .workMinutes(context.workMinutes())
                 .restTimeMinutes(context.work().getRestTimeMinutes())
-                .estimatedNetIncome(context.work().getEstimatedNetIncome())
+                // 고정급일 경우 estimatedNetIncome을 null로 설정
+                .estimatedNetIncome(isFixedSalary ? null : finalNetIncome)
                 .repeatDays(repeatDays)
                 .repeatEndDate(repeatEndDate)
                 .isMyWork(checkIsMyWork(userId, context.worker().getUserId()))
@@ -289,6 +302,11 @@ public class WorkService {
         List<Long> workerIdList = userWorkerList.stream().map(Worker::getId).toList();
         Map<Long, Workplace> workplaceMap = workplaceRepository.findAllByIdListIn(workplaceIdList).stream().collect(Collectors.toMap(Workplace::getId, w -> w));
 
+        // Salary 정보 미리 로드 (N+1 방지)
+        Map<Long, Salary> salaryMap = salaryRepository.findAllByWorkerIdListIn(workerIdList)
+                .stream()
+                .collect(Collectors.toMap(Salary::getWorkerId, s -> s));
+
         // --- 근무 데이터 및 캐시 로드 ---
         CalendarWorkData calendarData = preloadCalendarWorkData(workerIdList, startDate, endDate);
         Map<Long, List<Work>> workMapByWorker = calendarData.workMapByWorker();
@@ -300,6 +318,10 @@ public class WorkService {
         for (Worker userWorker : userWorkerList) {
             Workplace workplace = workplaceMap.get(userWorker.getWorkplaceId());
             if (workplace == null) continue;
+
+            // 현재 근무자의 Salary 정보
+            Salary salary = salaryMap.get(userWorker.getId());
+
             WorkerSummaryResponse workerSummaryInfo = createWorkerSummary(userWorker, user);
             WorkplaceSummaryResponse workplaceSummaryInfo = WorkplaceSummaryResponse.builder()
                     .workplaceId(workplace.getId()).workplaceName(workplace.getWorkplaceName()).isShared(workplace.isShared()).build();
@@ -307,7 +329,8 @@ public class WorkService {
 
             List<WorkSummaryResponse> workSummaryList = workerWorkList.stream().map(work -> {
                 long workMinutes = work.getNetWorkMinutes() != null ? work.getNetWorkMinutes() : 0;
-                return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummaryInfo, workMinutes, true, true, repeatInfoCache);
+                // 헬퍼 메서드에 salary 전달
+                return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummaryInfo, workMinutes, true, true, repeatInfoCache, salary);
             }).toList();
             userWorkSummaryList.addAll(workSummaryList);
         }
@@ -336,6 +359,11 @@ public class WorkService {
         List<Long> userIdList = workplaceWorkerList.stream().map(Worker::getUserId).filter(Objects::nonNull).distinct().toList();
         Map<Long, User> userMap = userRepository.findAllByIdListIn(userIdList).stream().collect(Collectors.toMap(User::getId, u -> u));
 
+        // Salary 정보 미리 로드 (N+1 방지)
+        Map<Long, Salary> salaryMap = salaryRepository.findAllByWorkerIdListIn(workerIdList)
+                .stream()
+                .collect(Collectors.toMap(Salary::getWorkerId, s -> s));
+
         // --- 근무 데이터 및 캐시 로드 ---
         CalendarWorkData calendarData = preloadCalendarWorkData(workerIdList, startDate, endDate);
         Map<Long, List<Work>> workMapByWorker = calendarData.workMapByWorker();
@@ -347,6 +375,10 @@ public class WorkService {
         for (Worker workplaceWorker : workplaceWorkerList) {
             User workerUser = null;
             if (workplaceWorker.getUserId() != null) { workerUser = userMap.get(workplaceWorker.getUserId()); }
+
+            // 현재 근무자의 Salary 정보
+            Salary salary = salaryMap.get(workplaceWorker.getId());
+
             WorkerSummaryResponse workerSummaryInfo = createWorkerSummary(workplaceWorker, workerUser); // User 객체 전달
             List<Work> workerWorkList = workMapByWorker.getOrDefault(workplaceWorker.getId(), Collections.emptyList());
 
@@ -354,7 +386,8 @@ public class WorkService {
                 long workMinutes = work.getNetWorkMinutes() != null ? work.getNetWorkMinutes() : 0;
                 boolean isMyWork = checkIsMyWork(user.getId(), workplaceWorker.getUserId());
                 boolean isEditable = checkEditable(user.getId(), workplaceWorker.getUserId(), workplace.getOwnerId());
-                return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummaryInfo, workMinutes, isMyWork, isEditable, repeatInfoCache);
+                // 헬퍼 메서드에 salary 전달
+                return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummaryInfo, workMinutes, isMyWork, isEditable, repeatInfoCache, salary);
             }).toList();
             workSummaryInfoList.addAll(workerWorkSummaryList);
         }
@@ -373,6 +406,10 @@ public class WorkService {
         // 관련 정보 로드
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId).orElseThrow(WorkerNotFoundException::new);
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+
+        // Salary 정보 로드
+        Salary salary = salaryRepository.findByWorkerId(userWorker.getId()).orElse(null);
+
         WorkplaceSummaryResponse workplaceSummary = WorkplaceSummaryResponse.builder()
                 .workplaceId(workplace.getId()).workplaceName(workplace.getWorkplaceName()).isShared(workplace.isShared()).build();
         WorkerSummaryResponse userWorkerSummaryInfo = createWorkerSummary(userWorker, user);
@@ -384,8 +421,8 @@ public class WorkService {
         // DTO 변환
         List<WorkSummaryResponse> workSummaryInfoList = userWorkList.stream().map(userWork -> {
             long workMinutes = userWork.getNetWorkMinutes() != null ? userWork.getNetWorkMinutes() : 0;
-            // convertWorkToSummaryResponse 호출 시 캐시 전달
-            return convertWorkToSummaryResponse(userWork, userWorkerSummaryInfo, workplaceSummary, workMinutes, true, true, repeatInfoCache);
+            // 헬퍼 메서드에 salary 전달
+            return convertWorkToSummaryResponse(userWork, userWorkerSummaryInfo, workplaceSummary, workMinutes, true, true, repeatInfoCache, salary);
         }).toList();
         return WorkCalendarListResponse.builder().workSummaryInfoList(workSummaryInfoList).build();
     }
@@ -911,9 +948,11 @@ public class WorkService {
 
     /// Work 엔티티 -> WorkSummaryResponse DTO 변환 헬퍼 (반복 정보 변환 포함)
     /// 목록 조회 시에는 repeatInfoCache를 전달하여 N+1 방지
+    // Salary 객체를 파라미터로 추가
     private WorkSummaryResponse convertWorkToSummaryResponse(
             Work work, WorkerSummaryResponse workerSummaryInfo, WorkplaceSummaryResponse workplaceSummaryInfo,
-            long workMinutes, boolean isMyWork, boolean isEditable, Map<String, RepeatInfo> repeatInfoCache) { // ⬅️ 캐시 파라미터 추가
+            long workMinutes, boolean isMyWork, boolean isEditable, Map<String, RepeatInfo> repeatInfoCache,
+            Salary salary) {
 
         List<DayOfWeek> repeatDays = Collections.emptyList();
         LocalDate repeatEndDate = null;
@@ -929,6 +968,9 @@ public class WorkService {
             repeatDays = repeatInfo.days();
             repeatEndDate = repeatInfo.endDate();
         }
+
+        // 고정급 여부 확인
+        boolean isFixedSalary = (salary != null && salary.getSalaryCalculation() == SalaryCalculation.SALARY_CALCULATION_FIXED);
 
         // --- netIncome이 null일 경우 grossIncome 사용 ---
         Integer estimatedNet = work.getEstimatedNetIncome();
@@ -948,7 +990,8 @@ public class WorkService {
                 .endTime(work.getEndTime() != null ? work.getEndTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
                 .workMinutes(workMinutes)
                 .restTimeMinutes(work.getRestTimeMinutes())
-                .estimatedNetIncome(finalNetIncome)
+                // 고정급일 경우 null, 아닐 경우 계산된 값
+                .estimatedNetIncome(isFixedSalary ? null : finalNetIncome)
                 .repeatDays(repeatDays)
                 .repeatEndDate(repeatEndDate)
                 .isMyWork(isMyWork)
@@ -1034,7 +1077,7 @@ public class WorkService {
                 daysMap.computeIfAbsent(pair.groupId(), k -> new ArrayList<>()).add(dayOfWeek);
             }
         }
-        // (선택적) 각 그룹의 요일 리스트 정렬
+        // 각 그룹의 요일 리스트 정렬
         daysMap.values().forEach(Collections::sort);
 
         // 5. 최종 캐시 Map 생성 (endDateMap과 daysMap 조합)
