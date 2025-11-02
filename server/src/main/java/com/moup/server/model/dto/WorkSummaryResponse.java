@@ -31,7 +31,7 @@ public class WorkSummaryResponse {
     private Long workMinutes;
     @Schema(description = "휴게 시간 (분단위, 없을 경우 0)", example = "15", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer restTimeMinutes;
-    @Schema(description = "추정 세후 일급 (캘린더 표시용)", example = "70210", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "추정 세후 일급 (캘린더 표시용, 고정급은 null)", example = "70210", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Integer estimatedNetIncome;
     @Schema(description = "반복 요일 (없으면 빈 배열)", example = "[\"MONDAY\", \"WEDNESDAY\"]", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<DayOfWeek> repeatDays;
