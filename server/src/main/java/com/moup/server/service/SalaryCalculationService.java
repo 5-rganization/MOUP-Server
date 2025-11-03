@@ -254,18 +254,25 @@ public class SalaryCalculationService {
             estimatedTotalHours = (long)((double) totalMinutesWorked / daysWorked * estimatedTotalWorkingDays / 60.0);
         }
 
+        // 만약 예상 근무일이 0일이면 (예: 해당 월의 모든 근무가 삭제된 경우)
+        // 기존에 계산된 estimatedNetIncome을 0으로 초기화해줍니다.
         if (estimatedTotalWorkingDays == 0) {
-            return;
+            monthWorks.forEach(work -> {
+                Work updatedWork = work.toBuilder()
+                        .estimatedNetIncome(0)
+                        .build();
+                workRepository.update(updatedWork);
+            });
+            return; // 0으로 나누기 오류를 방지하기 위해 여기서 종료
         }
 
         // 예상 월급 기준으로 월 총 공제액(4대보험, 소득세)을 추정합니다.
         int estimatedMonthlyDeduction = 0;
-        if (isInsuranceApplicable(estimatedMonthlyIncome, estimatedTotalHours)) {
-            estimatedMonthlyDeduction += (int) (estimatedMonthlyIncome * nationalPensionRate);
-            estimatedMonthlyDeduction += (int) (estimatedMonthlyIncome * (healthInsuranceRate * (1 + longTermCareInsuranceRate)));
-            estimatedMonthlyDeduction += (int) (estimatedMonthlyIncome * employmentInsuranceRate);
+
+        if (salaryInfo != null) {
+            DeductionDetails deductions = calculateDeductions(estimatedMonthlyIncome, estimatedTotalHours, salaryInfo);
+            estimatedMonthlyDeduction = deductions.totalDeductions();
         }
-        estimatedMonthlyDeduction += (int) ((estimatedMonthlyIncome * incomeTaxRate) * 1.1); // 지방소득세 10% 포함
 
         // 추정된 월 총 공제액을 예상 근무일로 나누어 '일일 추정 공제액'을 구합니다.
         int estimatedDailyDeduction = (int) (estimatedMonthlyDeduction / (double) estimatedTotalWorkingDays);

@@ -109,8 +109,8 @@ public interface WorkSpecification {
                                                 "repeatEndDate": "2025-11-11",
                                                 "isMyWork": true,
                                                 "isEditable": true
-                                        }
-                                        """),
+                                            }
+                                            """),
                             @ExampleObject(name = "요약 정보 조회 (`view=summary`)", summary = "근무 요약 정보",
                                     value = """
                                             {

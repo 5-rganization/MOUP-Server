@@ -16,6 +16,8 @@ public interface WorkRepository {
     record GroupIdAndDate(String groupId, LocalDate lastDate) {}
     // 여러 그룹 ID와 요일 이름을 담을 내부 레코드 (또는 DTO)
     record GroupIdAndDayName(String groupId, String dayName) {}
+    // 쿼리 결과를 매핑할 간단한 DTO
+    record WorkMonthDto(int year, int month) {}
 
     /// 근무를 생성하는 메서드
     ///
@@ -176,7 +178,7 @@ public interface WorkRepository {
     /// (반복 시작일 및 요일 계산 기준 확인용)
     /// @param repeatGroupId 반복 그룹 ID
     /// @return 가장 빠른 근무 Optional
-    @Select("SELECT * FROM works WHERE repeat_group_id = #{repeatGroupId} ORDER BY work_date ASC, start_time ASC LIMIT 1")
+    @Select("SELECT * FROM works WHERE repeat_group_id = #{repeatGroupId} ORDER BY work_date , start_time LIMIT 1")
     Optional<Work> findFirstWorkByRepeatGroupId(@Param("repeatGroupId") String repeatGroupId);
 
     /// 특정 반복 그룹 ID에 해당하는 근무 중 가장 늦은 날짜(반복 종료일)를 조회합니다.
@@ -225,6 +227,21 @@ public interface WorkRepository {
             </script>
             """)
     List<GroupIdAndDayName> findDistinctDayNamesByGroupIdList(@Param("groupIdList") Collection<String> groupIdList);
+
+    /// 특정 근무자의 특정 날짜(startDate) 이후의 '고유한 근무 연/월' 목록을 조회합니다.
+    /// @param workerId 조회할 근무자 ID
+    /// @param startDate 조회를 시작할 날짜
+    @Select("""
+            SELECT DISTINCT YEAR(work_date) AS year, MONTH(work_date) AS month
+            FROM works
+            WHERE worker_id = #{workerId}
+                AND work_date >= #{startDate}
+            ORDER BY year, month
+            """)
+    List<WorkMonthDto> findDistinctWorkMonthsAfter(
+            @Param("workerId") Long workerId,
+            @Param("startDate") LocalDate startDate
+    );
 
     /// 근무 ID와 근무자 ID에 해당하는 근무를 업데이트하는 메서드
     ///
