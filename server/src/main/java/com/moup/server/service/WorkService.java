@@ -403,7 +403,7 @@ public class WorkService {
     /// 사용자가 자신의 '단일' 근무 기록을 수정합니다. (반복 그룹에서 이탈시키지 않음)
     /// DTO의 repeatDays 필드는 무시됩니다.
     @Transactional
-    public UpdateWorkResult updateMySingleWork(Long requesterUserId, Long workId, MyWorkUpdateRequest request) {
+    public void updateMySingleWork(Long requesterUserId, Long workId, MyWorkUpdateRequest request) {
         VerifiedWorkContextForUD context = getVerifiedWorkContextForUD(requesterUserId, workId);
         if (!Objects.equals(context.worker().getUserId(), requesterUserId)) {
             throw new InvalidPermissionAccessException("본인의 근무 기록만 수정할 수 있습니다.");
@@ -427,13 +427,8 @@ public class WorkService {
                 context.work().getRepeatGroupId()
         );
 
-        List<Long> resultingWorkIds = List.of(workId);
-        boolean recurringReplaced = false; // '반복 교체'가 아님
-
         // 루틴 연결 (단일 근무에)
         routineService.saveWorkRoutineMapping(context.worker().getUserId(), request.getRoutineIdList(), workId);
-
-        return new UpdateWorkResult(recurringReplaced, resultingWorkIds);
     }
 
     /// 사용자가 자신의 '반복' 근무 기록을 수정(교체)합니다.
@@ -479,7 +474,7 @@ public class WorkService {
     /// 사장님이 근무자의 '단일' 근무 기록을 수정합니다. (반복 그룹에서 이탈시키지 않음)
     /// DTO의 repeatDays 필드는 무시됩니다.
     @Transactional
-    public UpdateWorkResult updateSingleWorkForWorker(Long requesterUserId, Long workplaceId, Long workerId, Long workId, WorkerWorkUpdateRequest request) {
+    public void updateSingleWorkForWorker(Long requesterUserId, Long workplaceId, Long workerId, Long workId, WorkerWorkUpdateRequest request) {
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
         permissionVerifyUtil.verifyOwnerPermission(requesterUserId, workplace.getOwnerId());
         Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId).orElseThrow(WorkerNotFoundException::new);
@@ -505,11 +500,6 @@ public class WorkService {
                 request.getMemo(),
                 work.getRepeatGroupId()
         );
-
-        List<Long> resultingWorkIds = List.of(workId);
-        boolean recurringReplaced = false;
-
-        return new UpdateWorkResult(recurringReplaced, resultingWorkIds);
     }
 
     /// 사장님이 근무자의 '반복' 근무 기록을 수정(교체)합니다.
