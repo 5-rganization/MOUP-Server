@@ -197,8 +197,6 @@ public class SalaryCalculationService {
             passedDays = daysInMonth; // 현재 달이 아니면, 해당 월의 전체 일수를 기준으로 삼음
         }
 
-        if (passedDays == 0) passedDays = 1; // 0으로 나누기 방지
-
         double workDayRatio = (double) daysWorked / passedDays;
         long estimatedTotalWorkingDays = Math.round(workDayRatio * daysInMonth);
         if (estimatedTotalWorkingDays == 0 && daysWorked > 0) estimatedTotalWorkingDays = daysWorked; // 최소한 일한 날짜만큼은 보장
@@ -212,9 +210,7 @@ public class SalaryCalculationService {
 
         if (salaryInfo != null && salaryInfo.getSalaryCalculation() == SalaryCalculation.SALARY_CALCULATION_FIXED) {
             // --- 고정급제 ---
-            if (estimatedTotalWorkingDays == 0) {
-                estimatedMonthlyIncome = 0;
-            } else {
+            if (estimatedTotalWorkingDays != 0) {
                 int fixedRate = (salaryInfo.getFixedRate() != null) ? salaryInfo.getFixedRate() : 0;
                 switch (salaryInfo.getSalaryType()) {
                     case SALARY_MONTHLY:
@@ -640,11 +636,6 @@ public class SalaryCalculationService {
                         .netIncome(netIncome)
                         .build();
                 workerSummaryInfoList.add(workerSummary);
-            }
-
-            // 근무자 리스트가 비어있으면 사업장 자체를 추가하지 않음
-            if (workerSummaryInfoList.isEmpty()) {
-                continue;
             }
 
             OwnerMonthlyWorkplaceSummaryResponse workplaceSummaryResponse = OwnerMonthlyWorkplaceSummaryResponse.builder()
