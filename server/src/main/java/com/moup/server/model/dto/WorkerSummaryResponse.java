@@ -10,9 +10,9 @@ import lombok.Getter;
 public class WorkerSummaryResponse {
     @Schema(description = "근무자 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long workerId;
-    @Schema(description = "라벨 색상 (알바생 기준)", example = "RED", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "라벨 색상 (알바생 기준)", example = "RED", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String workerBasedLabelColor;
-    @Schema(description = "라벨 색상 (사장님 기준)", example = "BLUE", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "라벨 색상 (사장님 기준)", example = "BLUE", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String ownerBasedLabelColor;
     @Schema(description = "사용자 닉네임", example = "김사장", requiredMode = Schema.RequiredMode.REQUIRED)
     private String nickname;

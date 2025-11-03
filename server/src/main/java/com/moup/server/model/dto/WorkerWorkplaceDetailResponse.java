@@ -10,7 +10,7 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @Schema(description = "알바생 근무지 상세 조회 응답 DTO")
 public class WorkerWorkplaceDetailResponse extends BaseWorkplaceDetailResponse {
-    @Schema(description = "라벨 색상 (알바생 기준)", example = "RED", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "라벨 색상 (알바생 기준)", example = "RED", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String workerBasedLabelColor;
     @Schema(description = "급여 정보", requiredMode = Schema.RequiredMode.REQUIRED)
     private SalaryDetailResponse salaryDetailInfo;
