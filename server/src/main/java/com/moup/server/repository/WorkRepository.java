@@ -16,6 +16,8 @@ public interface WorkRepository {
     record GroupIdAndDate(String groupId, LocalDate lastDate) {}
     // 여러 그룹 ID와 요일 이름을 담을 내부 레코드 (또는 DTO)
     record GroupIdAndDayName(String groupId, String dayName) {}
+    // 쿼리 결과를 매핑할 간단한 DTO
+    record WorkMonthDto(int year, int month) {}
 
     /// 근무를 생성하는 메서드
     ///
@@ -176,7 +178,7 @@ public interface WorkRepository {
     /// (반복 시작일 및 요일 계산 기준 확인용)
     /// @param repeatGroupId 반복 그룹 ID
     /// @return 가장 빠른 근무 Optional
-    @Select("SELECT * FROM works WHERE repeat_group_id = #{repeatGroupId} ORDER BY work_date ASC, start_time ASC LIMIT 1")
+    @Select("SELECT * FROM works WHERE repeat_group_id = #{repeatGroupId} ORDER BY work_date , start_time LIMIT 1")
     Optional<Work> findFirstWorkByRepeatGroupId(@Param("repeatGroupId") String repeatGroupId);
 
     /// 특정 반복 그룹 ID에 해당하는 근무 중 가장 늦은 날짜(반복 종료일)를 조회합니다.
@@ -226,6 +228,21 @@ public interface WorkRepository {
             """)
     List<GroupIdAndDayName> findDistinctDayNamesByGroupIdList(@Param("groupIdList") Collection<String> groupIdList);
 
+    /// 특정 근무자의 특정 날짜(startDate) 이후의 '고유한 근무 연/월' 목록을 조회합니다.
+    /// @param workerId 조회할 근무자 ID
+    /// @param startDate 조회를 시작할 날짜
+    @Select("""
+            SELECT DISTINCT YEAR(work_date) AS year, MONTH(work_date) AS month
+            FROM works
+            WHERE worker_id = #{workerId}
+                AND work_date >= #{startDate}
+            ORDER BY year, month
+            """)
+    List<WorkMonthDto> findDistinctWorkMonthsAfter(
+            @Param("workerId") Long workerId,
+            @Param("startDate") LocalDate startDate
+    );
+
     /// 근무 ID와 근무자 ID에 해당하는 근무를 업데이트하는 메서드
     ///
     /// @param work 업데이트할 Work 객체
@@ -257,6 +274,82 @@ public interface WorkRepository {
     /// @param actualEndTime 업데이트할 실제 퇴근 시간 (LocalDateTime)
     @Update("UPDATE works SET actual_end_time = #{actualEndTime}, end_time = COALESCE(end_time, #{actualEndTime}) WHERE id = #{id}")
     void updateActualEndTimeById(@Param("id") Long id, @Param("actualEndTime") LocalDateTime actualEndTime);
+
+    /// 특정 근무자의 특정 기간 동안의 모든 근무 기록에 대해 '추정 세후 일급(estimated_net_income)'을 0으로 일괄 업데이트합니다.
+    @Update("""
+            UPDATE works
+            SET estimated_net_income = 0
+            WHERE worker_id = #{workerId}
+                AND work_date BETWEEN #{startDate} AND #{endDate}
+            """)
+    void updateEstimatedNetIncomeToZeroByDateRange(
+            @Param("workerId") Long workerId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    /// 특정 근무자의 특정 기간 동안의 모든 근무 기록에 대해
+    /// '일일 추정 공제액'을 바탕으로 '추정 세후 일급'을 일괄 업데이트합니다.
+    /// (GREATEST 함수는 0 미만이 되는 것을 방지합니다)
+    @Update("""
+            UPDATE works
+            SET estimated_net_income = GREATEST(0, gross_income - #{dailyDeduction})
+            WHERE worker_id = #{workerId}
+                AND work_date BETWEEN #{startDate} AND #{endDate}
+            """)
+    void updateAllEstimatedNetIncomesForMonth(
+            @Param("workerId") Long workerId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("dailyDeduction") int dailyDeduction
+    );
+
+    /**
+     * 주휴수당 재계산 등으로 변경된 주(Week) 단위의 근무 상세 내역을
+     * (basePay, nightAllowance 등) '배치 업데이트'합니다.
+     * (MyBatis <foreach>와 SQL CASE 문을 사용)
+     *
+     * @param worksToUpdate 업데이트할 Work 객체 리스트
+     */
+    @Update("""
+            <script>
+                UPDATE works
+                SET
+                    gross_work_minutes =
+                        <foreach item='work' collection='worksToUpdate' open='CASE id' close=' END'>
+                            WHEN #{work.id} THEN #{work.grossWorkMinutes}
+                        </foreach>,
+                    net_work_minutes =
+                        <foreach item='work' collection='worksToUpdate' open='CASE id' close=' END'>
+                            WHEN #{work.id} THEN #{work.netWorkMinutes}
+                        </foreach>,
+                    night_work_minutes =
+                        <foreach item='work' collection='worksToUpdate' open='CASE id' close=' END'>
+                            WHEN #{work.id} THEN #{work.nightWorkMinutes}
+                        </foreach>,
+                    base_pay =
+                        <foreach item='work' collection='worksToUpdate' open='CASE id' close=' END'>
+                            WHEN #{work.id} THEN #{work.basePay}
+                        </foreach>,
+                    night_allowance =
+                        <foreach item='work' collection='worksToUpdate' open='CASE id' close=' END'>
+                            WHEN #{work.id} THEN #{work.nightAllowance}
+                        </foreach>,
+                    holiday_allowance =
+                        <foreach item='work' collection='worksToUpdate' open='CASE id' close=' END'>
+                            WHEN #{work.id} THEN #{work.holidayAllowance}
+                        </foreach>,
+                    gross_income =
+                        <foreach item='work' collection='worksToUpdate' open='CASE id' close=' END'>
+                            WHEN #{work.id} THEN #{work.grossIncome}
+                        </foreach>
+                WHERE id IN
+                    <foreach item='work' collection='worksToUpdate' open='(' separator=',' close=')'>
+                        #{work.id}
+                    </foreach>
+            </script>
+            """)
+    void updateWorkWeekDetailsBatch(@Param("worksToUpdate") List<Work> worksToUpdate);
 
     /// 근무 ID와 근무자 ID에 해당하는 근무를 삭제하는 메서드
     ///
