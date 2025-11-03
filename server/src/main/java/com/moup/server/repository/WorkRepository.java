@@ -288,6 +288,69 @@ public interface WorkRepository {
             @Param("endDate") LocalDate endDate
     );
 
+    /// 특정 근무자의 특정 기간 동안의 모든 근무 기록에 대해
+    /// '일일 추정 공제액'을 바탕으로 '추정 세후 일급'을 일괄 업데이트합니다.
+    /// (GREATEST 함수는 0 미만이 되는 것을 방지합니다)
+    @Update("""
+            UPDATE works
+            SET estimated_net_income = GREATEST(0, gross_income - #{dailyDeduction})
+            WHERE worker_id = #{workerId}
+                AND work_date BETWEEN #{startDate} AND #{endDate}
+            """)
+    void updateAllEstimatedNetIncomesForMonth(
+            @Param("workerId") Long workerId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("dailyDeduction") int dailyDeduction
+    );
+
+    /**
+     * 주휴수당 재계산 등으로 변경된 주(Week) 단위의 근무 상세 내역을
+     * (basePay, nightAllowance 등) '배치 업데이트'합니다.
+     * (MyBatis <foreach>와 SQL CASE 문을 사용)
+     *
+     * @param worksToUpdate 업데이트할 Work 객체 리스트
+     */
+    @Update("""
+            <script>
+                UPDATE works
+                SET
+                    gross_work_minutes =
+                        <foreach item='work' collection='worksToUpdate' open='CASE id' close=' END'>
+                            WHEN #{work.id} THEN #{work.grossWorkMinutes}
+                        </foreach>,
+                    net_work_minutes =
+                        <foreach item='work' collection='worksToUpdate' open='CASE id' close=' END'>
+                            WHEN #{work.id} THEN #{work.netWorkMinutes}
+                        </foreach>,
+                    night_work_minutes =
+                        <foreach item='work' collection='worksToUpdate' open='CASE id' close=' END'>
+                            WHEN #{work.id} THEN #{work.nightWorkMinutes}
+                        </foreach>,
+                    base_pay =
+                        <foreach item='work' collection='worksToUpdate' open='CASE id' close=' END'>
+                            WHEN #{work.id} THEN #{work.basePay}
+                        </foreach>,
+                    night_allowance =
+                        <foreach item='work' collection='worksToUpdate' open='CASE id' close=' END'>
+                            WHEN #{work.id} THEN #{work.nightAllowance}
+                        </foreach>,
+                    holiday_allowance =
+                        <foreach item='work' collection='worksToUpdate' open='CASE id' close=' END'>
+                            WHEN #{work.id} THEN #{work.holidayAllowance}
+                        </foreach>,
+                    gross_income =
+                        <foreach item='work' collection='worksToUpdate' open='CASE id' close=' END'>
+                            WHEN #{work.id} THEN #{work.grossIncome}
+                        </foreach>
+                WHERE id IN
+                    <foreach item='work' collection='worksToUpdate' open='(' separator=',' close=')'>
+                        #{work.id}
+                    </foreach>
+            </script>
+            """)
+    void updateWorkWeekDetailsBatch(@Param("worksToUpdate") List<Work> worksToUpdate);
+
     /// 근무 ID와 근무자 ID에 해당하는 근무를 삭제하는 메서드
     ///
     /// @param id 삭제할 근무의 ID

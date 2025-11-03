@@ -155,8 +155,7 @@ public class WorkerService {
         LocalDate today = LocalDate.now();
         LocalDate startDate = today.withDayOfMonth(1); // 예: 2025-11-01
 
-        // DB에서 'yyyy-MM-01' 이후로 근무가 잡힌
-        //      '모든 고유한 년/월' 목록 조회 (예: [2025-11], [2025-12])
+        // DB에서 'yyyy-MM-01' 이후로 근무가 잡힌 '모든 고유한 년/월' 목록 조회 (예: [2025-11], [2025-12])
         List<WorkRepository.WorkMonthDto> monthsToRecalculate =
                 workRepository.findDistinctWorkMonthsAfter(userWorker.getId(), startDate);
 

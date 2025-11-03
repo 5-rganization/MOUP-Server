@@ -10,6 +10,7 @@ import com.moup.server.model.entity.User;
 import com.moup.server.model.entity.Worker;
 import com.moup.server.model.entity.Workplace;
 import com.moup.server.repository.SalaryRepository;
+import com.moup.server.repository.WorkRepository;
 import com.moup.server.repository.WorkerRepository;
 import com.moup.server.repository.WorkplaceRepository;
 import com.moup.server.util.PermissionVerifyUtil;
@@ -18,6 +19,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -29,13 +31,16 @@ public class WorkplaceService {
   private final WorkplaceRepository workplaceRepository;
   private final WorkerRepository workerRepository;
   private final SalaryRepository salaryRepository;
+  private final WorkRepository workRepository;
+
   private final InviteCodeService inviteCodeService;
+  private final SalaryCalculationService salaryCalculationService;
   private final PermissionVerifyUtil permissionVerifyUtil;
   private final FCMService fcmService;
   @Value("${workplace.creation.limit}")
   private int workplaceCreationLimit;
 
-  // ========== 근무지 메서드 ==========
+    // ========== 근무지 메서드 ==========
 
   @Transactional
   public WorkplaceCreateResponse createWorkplace(User user, BaseWorkplaceCreateRequest request) {
@@ -183,6 +188,24 @@ public class WorkplaceService {
             .orElseThrow(SalaryWorkerNotFoundException::new).getId();
         Salary newSalary = workerRequest.getSalaryUpdateRequest().toEntity(salaryId, workerId);
         salaryRepository.update(newSalary);
+
+        // '현재' 및 '미래'의 모든 근무 월을 재계산합니다.
+
+        // 재계산 기준일 (이번 달 1일)
+        LocalDate today = LocalDate.now();
+        LocalDate startDate = today.withDayOfMonth(1); // 예: 2025-11-01
+
+        // DB에서 'yyyy-MM-01' 이후로 근무가 잡힌 '모든 고유한 년/월' 목록 조회 (예: [2025-11], [2025-12])
+        List<WorkRepository.WorkMonthDto> monthsToRecalculate = workRepository.findDistinctWorkMonthsAfter(workerId, startDate);
+
+        // 각 '연/월'별로 재계산을 실행합니다.
+        for (WorkRepository.WorkMonthDto monthInfo : monthsToRecalculate) {
+            salaryCalculationService.recalculateEstimatedNetIncomeForMonth(
+                    workerId,
+                    monthInfo.year(),
+                    monthInfo.month()
+            );
+        }
       }
       case ROLE_ADMIN -> throw new InvalidPermissionAccessException();
     }

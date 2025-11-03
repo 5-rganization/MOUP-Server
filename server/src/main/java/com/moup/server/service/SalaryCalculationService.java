@@ -80,7 +80,6 @@ public class SalaryCalculationService {
         LocalDate endOfWeek = date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
 
         List<Work> weekWorks = workRepository.findAllByWorkerIdAndDateRange(workerId, startOfWeek, endOfWeek);
-        if (weekWorks.isEmpty()) return;
 
         // 주 총 근무시간을 계산하여 주휴수당 발생 조건(15시간 이상)을 확인합니다.
         long weeklyWorkMinutes = weekWorks.stream()
@@ -90,9 +89,11 @@ public class SalaryCalculationService {
 
         int weeklyHolidayAllowance = 0;
         if (weeklyWorkMinutes >= 15 * 60 && hasHolidayAllowance) {
-            // 주휴수당 발생 시, 주 평균 근무시간을 기준으로 수당을 계산합니다.
-            double avgDailyWorkHours = (weeklyWorkMinutes / 60.0) / weekWorks.size();
-            weeklyHolidayAllowance = (int) (avgDailyWorkHours * weekWorks.get(0).getHourlyRate());
+            if (!weekWorks.isEmpty()) {
+                // 주휴수당 발생 시, 주 평균 근무시간을 기준으로 수당을 계산합니다.
+                double avgDailyWorkHours = (weeklyWorkMinutes / 60.0) / weekWorks.size();
+                weeklyHolidayAllowance = (int) (avgDailyWorkHours * weekWorks.get(0).getHourlyRate());
+            }
         }
 
         // 계산된 주휴수당을 근무일 수로 나누어 일급에 분배합니다.
@@ -104,7 +105,9 @@ public class SalaryCalculationService {
                 .toList();
 
         // 해당 주의 모든 근무일에 대해 일급을 재계산합니다.
-        updatedWorks.forEach(workRepository::update);
+        if (!updatedWorks.isEmpty()) {
+            workRepository.updateWorkWeekDetailsBatch(updatedWorks);
+        }
 
         // 마지막으로, 월 전체의 '추정 세후 일급'을 다시 계산하여 캘린더 표시용 데이터를 업데이트합니다.
         recalculateEstimatedNetIncomeForMonth(workerId, date.getYear(), date.getMonthValue());
@@ -191,26 +194,11 @@ public class SalaryCalculationService {
                 .sum();
         long daysWorked = monthWorks.size();
 
-        long daysInMonth = endDate.getDayOfMonth();
-        long passedDays = LocalDate.now().getDayOfMonth();
-        if (LocalDate.now().getMonthValue() != month || LocalDate.now().getYear() != year) {
-            passedDays = daysInMonth; // 현재 달이 아니면, 해당 월의 전체 일수를 기준으로 삼음
-        }
-
-        double workDayRatio = (double) daysWorked / passedDays;
-        long estimatedTotalWorkingDays = Math.round(workDayRatio * daysInMonth);
-        if (estimatedTotalWorkingDays == 0 && daysWorked > 0) estimatedTotalWorkingDays = daysWorked; // 최소한 일한 날짜만큼은 보장
-
-        if (daysWorked == 0 && (salaryInfo == null || salaryInfo.getSalaryCalculation() == SalaryCalculation.SALARY_CALCULATION_HOURLY)) {
-            estimatedTotalWorkingDays = 0;
-        }
-
-
         int estimatedMonthlyIncome = 0;
 
         if (salaryInfo != null && salaryInfo.getSalaryCalculation() == SalaryCalculation.SALARY_CALCULATION_FIXED) {
             // --- 고정급제 ---
-            if (estimatedTotalWorkingDays != 0) {
+            if (daysWorked != 0) {
                 int fixedRate = (salaryInfo.getFixedRate() != null) ? salaryInfo.getFixedRate() : 0;
                 switch (salaryInfo.getSalaryType()) {
                     case SALARY_MONTHLY:
@@ -232,17 +220,14 @@ public class SalaryCalculationService {
                         break;
                     case SALARY_DAILY:
                         // 일급: 고정급 * 예상 총 근무일 수
-                        estimatedMonthlyIncome = fixedRate * (int) estimatedTotalWorkingDays;
+                        estimatedMonthlyIncome = fixedRate * (int) daysWorked;
                         break;
                 }
             }
         } else {
             // --- 시급제 ---
-            if (daysWorked > 0) { // 0으로 나누기 방지
-                estimatedMonthlyIncome = (int) ((double) currentGrossSum / daysWorked * estimatedTotalWorkingDays);
-            }
+            estimatedMonthlyIncome = currentGrossSum;
         }
-
 
         long totalMinutesWorked = monthWorks.stream()
                 .filter(work -> work.getEndTime() != null)
@@ -251,12 +236,12 @@ public class SalaryCalculationService {
 
         long estimatedTotalHours = 0;
         if (daysWorked > 0) { // 0으로 나누기 방지
-            estimatedTotalHours = (long)((double) totalMinutesWorked / daysWorked * estimatedTotalWorkingDays / 60.0);
+            estimatedTotalHours = totalMinutesWorked / 60;
         }
 
         // 만약 예상 근무일이 0일이면 (예: 해당 월의 모든 근무가 삭제된 경우)
         // 기존에 계산된 estimatedNetIncome을 0으로 초기화해줍니다.
-        if (estimatedTotalWorkingDays == 0) {
+        if (daysWorked == 0) {
             workRepository.updateEstimatedNetIncomeToZeroByDateRange(workerId, startDate, endDate);
             return; // 0으로 나누기 오류를 방지하기 위해 여기서 종료
         }
@@ -270,17 +255,15 @@ public class SalaryCalculationService {
         }
 
         // 추정된 월 총 공제액을 예상 근무일로 나누어 '일일 추정 공제액'을 구합니다.
-        int estimatedDailyDeduction = (int) (estimatedMonthlyDeduction / (double) estimatedTotalWorkingDays);
+        int estimatedDailyDeduction = (int) (estimatedMonthlyDeduction / (double) daysWorked);
 
         // 해당 월의 모든 근무 기록에 '세전 일급 - 일일 추정 공제액'을 하여 '추정 세후 일급'을 업데이트합니다.
-        monthWorks.forEach(work -> {
-            int netIncome = work.getGrossIncome() - estimatedDailyDeduction;
-            Work updatedWork = work.toBuilder()
-                    .estimatedNetIncome(Math.max(netIncome, 0))
-                    .build();
-
-            workRepository.update(updatedWork);
-        });
+        workRepository.updateAllEstimatedNetIncomesForMonth(
+                workerId,
+                startDate,
+                endDate,
+                estimatedDailyDeduction
+        );
     }
 
     /// 보험 적용 대상인지 판단하는 헬퍼 메서드

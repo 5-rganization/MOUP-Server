@@ -254,7 +254,7 @@ public interface WorkSpecification {
     );
 
     @DeleteMapping("/works/{workId}")
-    @Operation(summary = "근무 삭제", description = "근무 ID를 경로로 전달받아 해당하는 근무를 삭제")
+    @Operation(summary = "단일 근무 삭제", description = "근무 ID를 경로로 전달받아 해당하는 단일 근무를 삭제")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "근무 삭제 성공"),
             @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
