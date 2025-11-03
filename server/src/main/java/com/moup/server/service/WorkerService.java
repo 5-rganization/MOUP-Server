@@ -118,9 +118,8 @@ public class WorkerService {
     }
 
     public MyAttendanceInfoResponse getMyAttendanceInfo(Long userId, Long workplaceId) {
-        Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+        if (!workplaceRepository.existsById(workplaceId)) { throw new WorkplaceNotFoundException(); }
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
-        permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplace.getOwnerId());
 
         List<WorkerWorkAttendanceResponse> workerWorkAttendanceInfoList = workRepository.findAllByWorkerId(userWorker.getId()).stream()
                 .map(work -> WorkerWorkAttendanceResponse.builder()
