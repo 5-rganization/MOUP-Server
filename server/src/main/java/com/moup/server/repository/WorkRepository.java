@@ -275,6 +275,19 @@ public interface WorkRepository {
     @Update("UPDATE works SET actual_end_time = #{actualEndTime}, end_time = COALESCE(end_time, #{actualEndTime}) WHERE id = #{id}")
     void updateActualEndTimeById(@Param("id") Long id, @Param("actualEndTime") LocalDateTime actualEndTime);
 
+    /// 특정 근무자의 특정 기간 동안의 모든 근무 기록에 대해 '추정 세후 일급(estimated_net_income)'을 0으로 일괄 업데이트합니다.
+    @Update("""
+            UPDATE works
+            SET estimated_net_income = 0
+            WHERE worker_id = #{workerId}
+                AND work_date BETWEEN #{startDate} AND #{endDate}
+            """)
+    void updateEstimatedNetIncomeToZeroByDateRange(
+            @Param("workerId") Long workerId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
     /// 근무 ID와 근무자 ID에 해당하는 근무를 삭제하는 메서드
     ///
     /// @param id 삭제할 근무의 ID

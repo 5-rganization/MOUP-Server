@@ -257,12 +257,7 @@ public class SalaryCalculationService {
         // 만약 예상 근무일이 0일이면 (예: 해당 월의 모든 근무가 삭제된 경우)
         // 기존에 계산된 estimatedNetIncome을 0으로 초기화해줍니다.
         if (estimatedTotalWorkingDays == 0) {
-            monthWorks.forEach(work -> {
-                Work updatedWork = work.toBuilder()
-                        .estimatedNetIncome(0)
-                        .build();
-                workRepository.update(updatedWork);
-            });
+            workRepository.updateEstimatedNetIncomeToZeroByDateRange(workerId, startDate, endDate);
             return; // 0으로 나누기 오류를 방지하기 위해 여기서 종료
         }
 
