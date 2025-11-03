@@ -67,10 +67,6 @@ public class WorkService {
 
     /// 사용자가 자신의 근무를 생성합니다 (단일 또는 반복).
     /// 반복 근무 생성 시 모든 인스턴스에 루틴을 연결합니다.
-    /// @param userId 요청 사용자 ID
-    /// @param workplaceId 근무지 ID
-    /// @param request 근무 생성 요청 DTO
-    /// @return 생성된 모든 근무 ID 배열 응답 DTO
     @Transactional
     public WorkCreateResponse createMyWork(Long userId, Long workplaceId, MyWorkCreateRequest request) {
         // 근무자 정보 및 권한 확인
@@ -79,15 +75,7 @@ public class WorkService {
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplaceOwnerId);
 
-        // 근무 생성 (단일 또는 반복), 생성된 모든 Work 객체 리스트 반환
         List<Work> createdWorks = createMyWorkHelper(userWorker, request);
-
-        // 모든 생성된 근무에 루틴 연결
-        if (request.getRoutineIdList() != null && !request.getRoutineIdList().isEmpty()) {
-            for (Work work : createdWorks) {
-                routineService.saveWorkRoutineMapping(userId, request.getRoutineIdList(), work.getId());
-            }
-        }
 
         // 생성된 모든 근무 ID 추출
         List<Long> createdWorkIds = createdWorks.stream()
@@ -102,11 +90,6 @@ public class WorkService {
     }
 
     /// 사장님이 '여러 근무자'에게 근무를 '일괄 생성'합니다 (단일 또는 반복).
-    ///
-    /// @param requesterUserId 요청 사장님 ID
-    /// @param workplaceId 근무지 ID
-    /// @param request 근무 일괄 생성 요청 DTO (workerIdList 포함)
-    /// @return 생성된 모든 근무 ID 배열 응답 DTO
     @Transactional
     public WorkersWorkCreateResponse createWorkForWorkerIdList(Long requesterUserId, Long workplaceId, WorkersWorkCreateRequest request) {
 
@@ -202,10 +185,9 @@ public class WorkService {
     // 근무 조회 (Read)
     // =================================================================
 
+    // ... (조회 메서드: getWorkDetail, getWork, getAllMyWork, getAllWorkByWorkplace, getAllMyWorkByWorkplace - 변경 없음, 생략) ...
+
     /// 특정 근무의 상세 정보를 조회합니다.
-    /// @param userId 요청 사용자 ID
-    /// @param workId 조회할 근무 ID
-    /// @return 근무 상세 정보 DTO
     @Transactional(readOnly = true)
     public WorkDetailResponse getWorkDetail(Long userId, Long workId) {
         VerifiedWorkContextForRead context = getVerifiedWorkContextForRead(userId, workId);
@@ -241,9 +223,6 @@ public class WorkService {
     }
 
     /// 특정 근무의 요약 정보를 조회합니다.
-    /// @param userId 요청 사용자 ID
-    /// @param workId 조회할 근무 ID
-    /// @return 근무 요약 정보 DTO
     @Transactional(readOnly = true)
     public WorkSummaryResponse getWork(Long userId, Long workId) {
         VerifiedWorkContextForRead context = getVerifiedWorkContextForRead(userId, workId);
@@ -286,9 +265,6 @@ public class WorkService {
     }
 
     /// 사용자의 모든 근무 기록을 특정 기간 기준으로 조회합니다 (캘린더용).
-    /// @param userId 요청 사용자 ID
-    /// @param baseYearMonth 기준 년월 (이 월의 -6개월 ~ +6개월 범위 조회)
-    /// @return 근무 요약 정보 리스트 DTO
     @Transactional(readOnly = true)
     public WorkCalendarListResponse getAllMyWork(Long userId, YearMonth baseYearMonth) {
         LocalDate startDate = baseYearMonth.minusMonths(6).atDay(1);
@@ -338,10 +314,6 @@ public class WorkService {
     }
 
     /// 특정 근무지의 모든 근무 기록을 특정 기간 기준으로 조회합니다 (캘린더용).
-    /// @param user 요청 사용자 (사장님 또는 해당 근무지 근무자)
-    /// @param workplaceId 조회할 근무지 ID
-    /// @param baseYearMonth 기준 년월
-    /// @return 근무 요약 정보 리스트 DTO
     @Transactional(readOnly = true)
     public WorkCalendarListResponse getAllWorkByWorkplace(User user, Long workplaceId, YearMonth baseYearMonth) {
         LocalDate startDate = baseYearMonth.minusMonths(6).atDay(1);
@@ -395,10 +367,6 @@ public class WorkService {
     }
 
     /// 특정 근무지에서 사용자의 근무 기록만 특정 기간 기준으로 조회합니다 (캘린더용).
-    /// @param user 요청 사용자
-    /// @param workplaceId 조회할 근무지 ID
-    /// @param baseYearMonth 기준 년월
-    /// @return 근무 요약 정보 리스트 DTO
     public WorkCalendarListResponse getAllMyWorkByWorkplace(User user, Long workplaceId, YearMonth baseYearMonth) {
         LocalDate startDate = baseYearMonth.minusMonths(6).atDay(1);
         LocalDate endDate = baseYearMonth.plusMonths(6).atEndOfMonth();
@@ -427,65 +395,74 @@ public class WorkService {
         return WorkCalendarListResponse.builder().workSummaryInfoList(workSummaryInfoList).build();
     }
 
+
     // =================================================================
     // 근무 수정 (Update)
     // =================================================================
 
-    /// 사용자가 자신의 근무 기록을 수정합니다.
-    /// - DTO의 반복 설정에 따라 단일 또는 반복 업데이트를 수행합니다.
-    /// @param requesterUserId 요청 사용자 ID
-    /// @param workId 수정할 근무 ID
-    /// @param request 근무 수정 요청 DTO
-    /// @return UpdateWorkResult (반복 생성 여부 및 결과 ID 리스트 포함)
+    /// 사용자가 자신의 '단일' 근무 기록을 수정합니다. (반복 그룹에서 이탈시키지 않음)
+    /// DTO의 repeatDays 필드는 무시됩니다.
     @Transactional
-    public UpdateWorkResult updateMyWork(Long requesterUserId, Long workId, MyWorkUpdateRequest request) {
+    public void updateMySingleWork(Long requesterUserId, Long workId, MyWorkUpdateRequest request) {
         VerifiedWorkContextForUD context = getVerifiedWorkContextForUD(requesterUserId, workId);
-        if (!Objects.equals(context.worker().getUserId(), requesterUserId)) { throw new InvalidPermissionAccessException("본인의 근무 기록만 수정할 수 있습니다."); }
-
-        List<Work> resultingWorks; // 결과를 담을 리스트
-        boolean recurringReplaced; // 반복 대체 여부 플래그
+        if (!Objects.equals(context.worker().getUserId(), requesterUserId)) {
+            throw new InvalidPermissionAccessException("본인의 근무 기록만 수정할 수 있습니다.");
+        }
 
         LocalDateTime newStartTime = request.getStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime();
         LocalDateTime newEndTime = (request.getEndTime() != null) ? request.getEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
         LocalDateTime newActualStartTime = (request.getActualStartTime() != null) ? request.getActualStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
         LocalDateTime newActualEndTime = (request.getActualEndTime() != null) ? request.getActualEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
 
+        // 'repeatGroupId'를 유지하면서 updateSingleWorkInternal 헬퍼를 직접 호출
+        updateSingleWorkInternal(
+                context.worker(),
+                context.work().getId(), // 수정할 workId
+                newStartTime,
+                newEndTime,
+                newActualStartTime,
+                newActualEndTime,
+                request.getRestTimeMinutes(),
+                request.getMemo(),
+                context.work().getRepeatGroupId()
+        );
+
+        // 루틴 연결 (단일 근무에)
+        routineService.saveWorkRoutineMapping(context.worker().getUserId(), request.getRoutineIdList(), workId);
+    }
+
+    /// 사용자가 자신의 '반복' 근무 기록을 수정(교체)합니다.
+    /// DTO의 repeatDays 필드를 사용하여 새 반복 일정을 생성합니다.
+    @Transactional
+    public UpdateWorkResult updateMyRecurringWork(Long requesterUserId, Long workId, MyWorkUpdateRequest request) {
+        VerifiedWorkContextForUD context = getVerifiedWorkContextForUD(requesterUserId, workId);
+        if (!Objects.equals(context.worker().getUserId(), requesterUserId)) {
+            throw new InvalidPermissionAccessException("본인의 근무 기록만 수정할 수 있습니다.");
+        }
+
+        // DTO의 반복 필드 유효성 검사
         if (request.getRepeatDays() == null || request.getRepeatDays().isEmpty()) {
-            // --- 반복 중단 또는 단일 근무 수정 ---
-            stopRecurrenceAndUpdateSingle(
-                    context.worker(),
-                    context.work(),
-                    newStartTime,
-                    newEndTime,
-                    newActualStartTime,
-                    newActualEndTime,
-                    request.getRestTimeMinutes(),
-                    request.getMemo()
-            );
-            // 단일 업데이트 후에는 해당 workId 하나만 결과로 간주
-            resultingWorks = List.of(context.work().toBuilder().id(workId).build()); // ID만 있는 임시 객체
-            recurringReplaced = false;
-        } else {
-            // --- 새로운 반복 시작 또는 기존 반복 변경 ---
-            resultingWorks = replaceWithNewRecurringWorks(
-                    context.worker(),
-                    context.work(),
-                    newStartTime,
-                    newEndTime,
-                    request.getRestTimeMinutes(),
-                    request.getMemo(),
-                    request.getRepeatDays(),
-                    request.getRepeatEndDate()
-            );
-            recurringReplaced = true;
+            throw new BadRequestException("반복 수정 API는 'repeatDays'가 비어있을 수 없습니다.");
         }
 
-        // 루틴 연결 (첫 근무 또는 단일 근무에)
-        if (!resultingWorks.isEmpty()) {
-            routineService.saveWorkRoutineMapping(context.worker().getUserId(), request.getRoutineIdList(), resultingWorks.get(0).getId());
-        }
+        LocalDateTime newStartTime = request.getStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime();
+        LocalDateTime newEndTime = (request.getEndTime() != null) ? request.getEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
 
-        // 결과 ID 리스트 추출
+        // 새로운 반복으로 교체 헬퍼 호출
+        List<Work> resultingWorks = replaceWithNewRecurringWorks(
+                context.worker(),
+                context.work(),
+                newStartTime,
+                newEndTime,
+                request.getRestTimeMinutes(),
+                request.getMemo(),
+                request.getRepeatDays(),
+                request.getRepeatEndDate(),
+                context.worker().getUserId(),
+                request.getRoutineIdList()
+        );
+        boolean recurringReplaced = true;
+
         List<Long> resultingWorkIds = resultingWorks.stream()
                 .map(Work::getId)
                 .filter(Objects::nonNull)
@@ -494,60 +471,71 @@ public class WorkService {
         return new UpdateWorkResult(recurringReplaced, resultingWorkIds);
     }
 
-    /// 사장님이 특정 근무자의 근무 기록을 수정합니다.
-    /// - DTO의 반복 설정에 따라 단일 또는 반복 업데이트를 수행합니다.
-    /// @param requesterUserId 요청 사장님 ID
-    /// @param workplaceId 근무지 ID
-    /// @param workerId 대상 근무자(Worker) ID
-    /// @param workId 수정할 근무 ID
-    /// @param request 근무 수정 요청 DTO
-    /// @return UpdateWorkResult (반복 생성 여부 및 결과 ID 리스트 포함)
+    /// 사장님이 근무자의 '단일' 근무 기록을 수정합니다. (반복 그룹에서 이탈시키지 않음)
+    /// DTO의 repeatDays 필드는 무시됩니다.
     @Transactional
-    public UpdateWorkResult updateWorkForWorkerId(Long requesterUserId, Long workplaceId, Long workerId, Long workId, WorkerWorkUpdateRequest request) {
+    public void updateSingleWorkForWorker(Long requesterUserId, Long workplaceId, Long workerId, Long workId, WorkerWorkUpdateRequest request) {
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
         permissionVerifyUtil.verifyOwnerPermission(requesterUserId, workplace.getOwnerId());
         Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId).orElseThrow(WorkerNotFoundException::new);
         Work work = workRepository.findById(workId).orElseThrow(WorkNotFoundException::new);
-        if (!work.getWorkerId().equals(worker.getId())) { throw new BadRequestException("해당 근무 기록은 지정된 근무자의 것이 아닙니다."); }
-
-        List<Work> resultingWorks;
-        boolean recurringReplaced;
+        if (!work.getWorkerId().equals(worker.getId())) {
+            throw new BadRequestException("해당 근무 기록은 지정된 근무자의 것이 아닙니다.");
+        }
 
         LocalDateTime newStartTime = request.getStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime();
         LocalDateTime newEndTime = (request.getEndTime() != null) ? request.getEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
         LocalDateTime newActualStartTime = (request.getActualStartTime() != null) ? request.getActualStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
         LocalDateTime newActualEndTime = (request.getActualEndTime() != null) ? request.getActualEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
 
-        if (request.getRepeatDays() == null || request.getRepeatDays().isEmpty()) {
-            // --- 반복 중단 또는 단일 근무 수정 ---
-            stopRecurrenceAndUpdateSingle(
-                    worker,
-                    work,
-                    newStartTime,
-                    newEndTime,
-                    newActualStartTime,
-                    newActualEndTime,
-                    request.getRestTimeMinutes(),
-                    request.getMemo()
-            );
-            resultingWorks = List.of(work.toBuilder().id(workId).build());
-            recurringReplaced = false;
-        } else {
-            // --- 새로운 반복 시작 또는 기존 반복 변경 ---
-            resultingWorks = replaceWithNewRecurringWorks(
-                    worker,
-                    work,
-                    newStartTime,
-                    newEndTime,
-                    request.getRestTimeMinutes(),
-                    request.getMemo(),
-                    request.getRepeatDays(),
-                    request.getRepeatEndDate()
-            );
-            recurringReplaced = true;
+        // 'repeatGroupId'를 유지하면서 updateSingleWorkInternal 헬퍼를 직접 호출
+        updateSingleWorkInternal(
+                worker,
+                work.getId(),
+                newStartTime,
+                newEndTime,
+                newActualStartTime,
+                newActualEndTime,
+                request.getRestTimeMinutes(),
+                request.getMemo(),
+                work.getRepeatGroupId()
+        );
+    }
+
+    /// 사장님이 근무자의 '반복' 근무 기록을 수정(교체)합니다.
+    /// DTO의 repeatDays 필드를 사용하여 새 반복 일정을 생성합니다.
+    @Transactional
+    public UpdateWorkResult updateRecurringWorkForWorker(Long requesterUserId, Long workplaceId, Long workerId, Long workId, WorkerWorkUpdateRequest request) {
+        Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+        permissionVerifyUtil.verifyOwnerPermission(requesterUserId, workplace.getOwnerId());
+        Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId).orElseThrow(WorkerNotFoundException::new);
+        Work work = workRepository.findById(workId).orElseThrow(WorkNotFoundException::new);
+        if (!work.getWorkerId().equals(worker.getId())) {
+            throw new BadRequestException("해당 근무 기록은 지정된 근무자의 것이 아닙니다.");
         }
 
-        // 사장님이 수정 시 루틴 매핑은 건드리지 않음
+        // DTO의 반복 필드 유효성 검사
+        if (request.getRepeatDays() == null || request.getRepeatDays().isEmpty()) {
+            throw new BadRequestException("반복 수정 API는 'repeatDays'가 비어있을 수 없습니다.");
+        }
+
+        LocalDateTime newStartTime = request.getStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime();
+        LocalDateTime newEndTime = (request.getEndTime() != null) ? request.getEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
+
+        // 새로운 반복으로 교체 헬퍼 호출 (사장님은 루틴 미연결)
+        List<Work> resultingWorks = replaceWithNewRecurringWorks(
+                worker,
+                work,
+                newStartTime,
+                newEndTime,
+                request.getRestTimeMinutes(),
+                request.getMemo(),
+                request.getRepeatDays(),
+                request.getRepeatEndDate(),
+                null,
+                null
+        );
+        boolean recurringReplaced = true;
 
         List<Long> resultingWorkIds = resultingWorks.stream()
                 .map(Work::getId)
@@ -558,11 +546,9 @@ public class WorkService {
     }
 
     /// 사용자의 실제 출근 시간을 기록합니다.
-    /// @param userId 요청 사용자 ID
-    /// @param workplaceId 근무지 ID
-    /// @return 출근 기록 대상 근무가 존재하면 true, 없으면 false
     @Transactional
     public boolean updateActualStartTime(Long userId, Long workplaceId) {
+        // ... (생략 - 변경 없음) ...
         // 권한 및 근무 중복 확인
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
@@ -585,10 +571,9 @@ public class WorkService {
     }
 
     /// 사용자의 실제 퇴근 시간을 기록합니다.
-    /// @param userId 요청 사용자 ID
-    /// @param workplaceId 근무지 ID
     @Transactional
     public void updateActualEndTime(Long userId, Long workplaceId) {
+        // ... (생략 - 변경 없음) ...
         // 권한 및 현재 근무 상태 확인
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
@@ -630,10 +615,9 @@ public class WorkService {
     // =================================================================
 
     /// '단일' 근무 기록을 삭제합니다.
-    /// @param requesterUserId 요청 사용자 ID
-    /// @param workId 삭제할 근무 ID
     @Transactional
     public void deleteWork(Long requesterUserId, Long workId) {
+        // ... (생략 - 변경 없음) ...
         // 권한 검증 및 관련 정보 로드
         VerifiedWorkContextForUD context = getVerifiedWorkContextForUD(requesterUserId, workId);
         // 삭제 헬퍼 호출
@@ -641,10 +625,9 @@ public class WorkService {
     }
 
     /// 기준이 되는 반복 근무와 '반복' 근무 그룹의 '미래' 일정을 삭제합니다.
-    /// @param requesterUserId 요청 사용자 ID
-    /// @param workId 기준이 되는 반복 근무 그룹의 근무 ID
     @Transactional
     public void deleteRecurringWorkIncludingDate(Long requesterUserId, Long workId) {
+        // ... (생략 - 변경 없음) ...
         // 권한 검증 및 관련 정보 로드
         VerifiedWorkContextForUD context = getVerifiedWorkContextForUD(requesterUserId, workId);
         Work work = context.work();
@@ -659,17 +642,19 @@ public class WorkService {
         salaryCalculationService.recalculateWorkWeek(context.worker().getId(), work.getWorkDate());
     }
 
+
     // =================================================================
     // 내부 헬퍼 메서드 (Helpers)
     // =================================================================
 
     /// 사용자 근무 생성 헬퍼 (MyWorkCreateRequest 용)
-    /// @return 생성된 근무 리스트 (단일 근무 시 크기 1)
     private List<Work> createMyWorkHelper(Worker worker, MyWorkCreateRequest request) {
         LocalDateTime startTime = request.getStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime();
         LocalDateTime endTime = (request.getEndTime() != null) ? request.getEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
         LocalDateTime actualStartTime = (request.getActualStartTime() != null) ? request.getActualStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
         LocalDateTime actualEndTime = (request.getActualEndTime() != null) ? request.getActualEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
+
+        List<Long> routineIdList = (request.getRoutineIdList() != null) ? request.getRoutineIdList() : Collections.emptyList();
 
         if (request.getRepeatDays() == null || request.getRepeatDays().isEmpty()) {
             Work singleWork = createSingleWork(
@@ -681,6 +666,10 @@ public class WorkService {
                     request.getRestTimeMinutes(),
                     request.getMemo()
             );
+            // 단일 근무에도 루틴 연결
+            if (worker.getUserId() != null && !routineIdList.isEmpty()) {
+                routineService.saveWorkRoutineMapping(worker.getUserId(), routineIdList, singleWork.getId());
+            }
             return Collections.singletonList(singleWork); // 단일 근무도 리스트로 반환
         } else {
             return createRecurringWorks(
@@ -690,13 +679,14 @@ public class WorkService {
                     request.getRestTimeMinutes(),
                     request.getMemo(),
                     request.getRepeatDays(),
-                    request.getRepeatEndDate()
+                    request.getRepeatEndDate(),
+                    worker.getUserId(),
+                    routineIdList
             );
         }
     }
 
     /// 사장님의 알바생 근무 생성 헬퍼 (WorkersWorkCreateRequest 용)
-    /// @return 생성된 근무 리스트 (단일 근무 시 크기 1)
     private List<Work> createWorkForWorkerHelper(Worker worker, WorkersWorkCreateRequest request) {
         LocalDateTime startTime = request.getStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime();
         LocalDateTime endTime = (request.getEndTime() != null) ? request.getEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
@@ -713,6 +703,7 @@ public class WorkService {
                     request.getRestTimeMinutes(),
                     request.getMemo()
             );
+            // (사장님은 루틴을 연결하지 않음)
             return Collections.singletonList(singleWork); // 단일 근무도 리스트로 반환
         } else {
             return createRecurringWorks(
@@ -722,7 +713,10 @@ public class WorkService {
                     request.getRestTimeMinutes(),
                     request.getMemo(),
                     request.getRepeatDays(),
-                    request.getRepeatEndDate());
+                    request.getRepeatEndDate(),
+                    null,
+                    null
+            );
         }
     }
 
@@ -757,7 +751,8 @@ public class WorkService {
     /// 반복 근무 생성 상세 로직
     private List<Work> createRecurringWorks(Worker worker, LocalDateTime startTime, LocalDateTime endTime,
                                             Integer restTimeMinutes, String memo,
-                                            List<DayOfWeek> repeatDays, LocalDate repeatEndDate) {
+                                            List<DayOfWeek> repeatDays, LocalDate repeatEndDate,
+                                            Long userIdForRoutine, List<Long> routineIdList) {
         // 급여 정보 로드 및 유효성 검증
         Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElseThrow(SalaryWorkerNotFoundException::new);
         int hourlyRate = salary.getHourlyRate() != null ? salary.getHourlyRate() : 0;
@@ -809,12 +804,20 @@ public class WorkService {
             salaryCalculationService.recalculateWorkWeek(worker.getId(), weekStartDate);
         }
 
-        // 주급 재계산 후의 '최신' 상태를 반영하기 위해 다시 로드하여 반환
-        // (주의: createBatch 후 ID가 없을 수 있으므로, group ID와 기간으로 조회)
-        return workRepository.findAllByWorkerIdAndDateRange(
+        // 주급 재계산 후의 '최신' 상태를 반영하기 위해 다시 로드
+        List<Work> createdWorks = workRepository.findAllByWorkerIdAndDateRange(
                         worker.getId(), startDate, repeatEndDate).stream()
                 .filter(w -> Objects.equals(repeatGroupId, w.getRepeatGroupId()))
                 .collect(Collectors.toList());
+
+        // 생성된 모든 반복 근무에 루틴 연결
+        if (userIdForRoutine != null && routineIdList != null && !routineIdList.isEmpty()) {
+            for (Work work : createdWorks) {
+                routineService.saveWorkRoutineMapping(userIdForRoutine, routineIdList, work.getId());
+            }
+        }
+
+        return createdWorks;
     }
 
     /// 반복 중단: 미래 반복 삭제 후 현재 근무는 단일로 업데이트
@@ -831,13 +834,14 @@ public class WorkService {
         // 3. 현재 근무는 '단일' 근무로 업데이트 (repeatGroupId = null)
         updateSingleWorkInternal(worker, currentWork.getId(), newStartTime, newEndTime,
                 newActualStartTime, newActualEndTime, newRestTimeMinutes, newMemo,
-                null);
+                null); // repeatGroupId를 null로 설정하여 반복 중단
     }
 
     /// 새로운 반복 시작/변경: 기존 반복 삭제 후 새로운 반복 생성
     private List<Work> replaceWithNewRecurringWorks(Worker worker, Work currentWork, LocalDateTime newStartTime, LocalDateTime newEndTime,
                                                     Integer newRestTimeMinutes, String newMemo,
-                                                    List<DayOfWeek> newRepeatDays, LocalDate newRepeatEndDate) {
+                                                    List<DayOfWeek> newRepeatDays, LocalDate newRepeatEndDate,
+                                                    Long userIdForRoutine, List<Long> routineIdList) {
         // 1. 기존에 반복 그룹이 있었는지 확인
         if (currentWork.getRepeatGroupId() != null) {
             // 2. 현재 근무 '포함'하여 미래 반복 삭제
@@ -845,15 +849,14 @@ public class WorkService {
             log.info("Replacing recurrence: Deleted {} works from {} for group {}", deletedCount, currentWork.getWorkDate(), currentWork.getRepeatGroupId());
         } else {
             // 기존이 단일 근무였다면 해당 근무만 삭제
-            workRepository.delete(currentWork.getId(), worker.getId());
+            deleteWorkHelper(worker, currentWork);
             log.info("Replacing single work with recurrence: Deleted work id {}", currentWork.getId());
         }
 
         // 3. 새로운 반복 근무 생성 및 반환 (createRecurringWorks 헬퍼 재사용)
-        // (주의: createRecurringWorks는 실제 시간(actual)을 null로 생성함)
-        // - 주급 재계산은 createRecurringWorks 내부에서 처리됨
         return createRecurringWorks(worker, newStartTime, newEndTime,
-                newRestTimeMinutes, newMemo, newRepeatDays, newRepeatEndDate);
+                newRestTimeMinutes, newMemo, newRepeatDays, newRepeatEndDate,
+                userIdForRoutine, routineIdList);
     }
 
     /// '단일' 근무 업데이트 공통 로직
@@ -893,6 +896,7 @@ public class WorkService {
         salaryCalculationService.recalculateWorkWeek(worker.getId(), work.getWorkDate());
     }
 
+    /// (이하 나머지 헬퍼 메서드 ... 생략) ...
     /// 근무 조회 시 권한 검증 및 기본 정보 로드 헬퍼
     private VerifiedWorkContextForRead getVerifiedWorkContextForRead(Long requesterUserId, Long workId) {
         // 관련 엔티티 로드
@@ -947,8 +951,6 @@ public class WorkService {
     }
 
     /// Work 엔티티 -> WorkSummaryResponse DTO 변환 헬퍼 (반복 정보 변환 포함)
-    /// 목록 조회 시에는 repeatInfoCache를 전달하여 N+1 방지
-    // Salary 객체를 파라미터로 추가
     private WorkSummaryResponse convertWorkToSummaryResponse(
             Work work, WorkerSummaryResponse workerSummaryInfo, WorkplaceSummaryResponse workplaceSummaryInfo,
             long workMinutes, boolean isMyWork, boolean isEditable, Map<String, RepeatInfo> repeatInfoCache,
@@ -975,10 +977,6 @@ public class WorkService {
         // --- netIncome이 null일 경우 grossIncome 사용 ---
         Integer estimatedNet = work.getEstimatedNetIncome();
         Integer gross = work.getGrossIncome();
-
-        // 1. estimatedNetIncome이 null이 아니면 그 값을 사용
-        // 2. estimatedNetIncome이 null이고 grossIncome이 null이 아니면 grossIncome을 사용
-        // 3. 둘 다 null이면 0을 사용
         Integer finalNetIncome = (estimatedNet != null) ? estimatedNet : ((gross != null) ? gross : 0);
 
         return WorkSummaryResponse.builder()
@@ -990,7 +988,6 @@ public class WorkService {
                 .endTime(work.getEndTime() != null ? work.getEndTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
                 .workMinutes(workMinutes)
                 .restTimeMinutes(work.getRestTimeMinutes())
-                // 고정급일 경우 null, 아닐 경우 계산된 값
                 .estimatedNetIncome(isFixedSalary ? null : finalNetIncome)
                 .repeatDays(repeatDays)
                 .repeatEndDate(repeatEndDate)
@@ -1028,10 +1025,6 @@ public class WorkService {
     }
 
     /// 특정 기간 동안 주어진 근무자 ID 목록에 대한 근무 기록과 반복 정보를 미리 로드합니다.
-    /// @param workerIdList 조회할 Worker ID 목록
-    /// @param startDate 조회 시작일
-    /// @param endDate 조회 종료일
-    /// @return 미리 로드된 근무 데이터 및 반복 정보 캐시 (CalendarWorkData)
     private CalendarWorkData preloadCalendarWorkData(List<Long> workerIdList, LocalDate startDate, LocalDate endDate) {
         // 1. Work 정보 한 번에 조회
         List<Work> allWorks = workRepository.findAllByWorkerIdListInAndDateRange(workerIdList, startDate, endDate);

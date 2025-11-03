@@ -124,30 +124,35 @@ public class WorkController implements WorkSpecification {
 
     @Override
     @PatchMapping("/works/{workId}")
-    public ResponseEntity<?> updateMyWork(
+    public ResponseEntity<?> updateMySingleWork(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
             @RequestBody @Valid MyWorkUpdateRequest request
     ) {
         Long userId = identityService.getCurrentUserId();
 
-        WorkService.UpdateWorkResult result = workService.updateMyWork(userId, workId, request);
+        workService.updateMySingleWork(userId, workId, request);
+        return ResponseEntity.noContent().build();
+    }
 
-        if (result.recurringCreatedOrReplaced()) {
-            // 반복 근무가 생성/대체된 경우: 200 OK + 새 ID 목록 반환
-            WorkCreateResponse response = WorkCreateResponse.builder()
-                    .workIdList(result.resultingWorkIds())
-                    .build();
-            return ResponseEntity.ok().body(response);
-        } else {
-            // 단일 근무만 업데이트된 경우: 204 No Content 반환
-            return ResponseEntity.noContent().build();
-        }
+    @Override
+    @PatchMapping("/works/recurring/{workId}")
+    public ResponseEntity<?> updateMyRecurringWork(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
+            @RequestBody @Valid MyWorkUpdateRequest request
+    ) {
+        Long userId = identityService.getCurrentUserId();
+
+        WorkService.UpdateWorkResult result = workService.updateMyRecurringWork(userId, workId, request);
+        WorkCreateResponse response = WorkCreateResponse.builder()
+                .workIdList(result.resultingWorkIds())
+                .build();
+        return ResponseEntity.ok().body(response);
     }
 
     @Override
     @PatchMapping("/workplaces/{workplaceId}/workers/{workerId}/works/{workId}")
     @PreAuthorize("hasRole('ROLE_OWNER')")
-    public ResponseEntity<?> updateWorkForWorker(
+    public ResponseEntity<?> updateSingleWorkForWorker(
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workerId,
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
@@ -155,18 +160,27 @@ public class WorkController implements WorkSpecification {
     ) {
         Long userId = identityService.getCurrentUserId();
 
-        WorkService.UpdateWorkResult result = workService.updateWorkForWorkerId(userId, workplaceId, workerId, workId, request);
+        workService.updateSingleWorkForWorker(userId, workplaceId, workerId, workId, request);
+        return ResponseEntity.noContent().build();
+    }
 
-        if (result.recurringCreatedOrReplaced()) {
-            // 반복 근무가 생성/대체된 경우: 200 OK + 새 ID 목록 반환
-            WorkCreateResponse response = WorkCreateResponse.builder()
-                    .workIdList(result.resultingWorkIds())
-                    .build();
-            return ResponseEntity.ok().body(response);
-        } else {
-            // 단일 근무만 업데이트된 경우: 204 No Content 반환
-            return ResponseEntity.noContent().build();
-        }
+    @Override
+    @PatchMapping("/workplaces/{workplaceId}/workers/{workerId}/works/recurring/{workId}")
+    @PreAuthorize("hasRole('ROLE_OWNER')")
+    public ResponseEntity<?> updateRecurringWorkForWorker(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId,
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workerId,
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
+            @RequestBody @Valid WorkerWorkUpdateRequest request
+    ) {
+        Long userId = identityService.getCurrentUserId();
+
+        WorkService.UpdateWorkResult result = workService.updateRecurringWorkForWorker(userId, workplaceId, workerId, workId, request);
+
+        WorkCreateResponse response = WorkCreateResponse.builder()
+                .workIdList(result.resultingWorkIds())
+                .build();
+        return ResponseEntity.ok().body(response);
     }
 
     @Override
@@ -201,8 +215,10 @@ public class WorkController implements WorkSpecification {
         Long userId = identityService.getCurrentUserId();
 
         if (workService.updateActualStartTime(userId, workplaceId)) {
+            // API 명세: 204 No Content (업데이트 성공)
             return ResponseEntity.noContent().build();
         } else {
+            // API 명세: 201 Created (근무 생성 성공)
             Instant currentTime = Instant.now();
             MyWorkCreateRequest request = MyWorkCreateRequest.builder()
                     .routineIdList(Collections.emptyList())
@@ -218,7 +234,7 @@ public class WorkController implements WorkSpecification {
 
             WorkCreateResponse response = workService.createMyWork(userId, workplaceId, request);
             workerService.updateWorkerIsNowWorking(userId, workplaceId, true);
-            URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+            URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
                     .path("/works/{id}")
                     .buildAndExpand(response.getWorkIdList().get(0))
                     .toUri();
