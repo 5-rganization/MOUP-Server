@@ -25,6 +25,14 @@ public interface WorkerRepository {
     @Select("SELECT EXISTS(SELECT 1 FROM workers WHERE user_id = #{userId} AND workplace_id = #{workplaceId})")
     boolean existsByUserIdAndWorkplaceId(Long userId, Long workplaceId);
 
+    /// 근무자 ID와 근무지 ID를 통해 해당 근무지에 근무자가 존재하는지 여부를 반환하는 메서드
+    ///
+    /// @param id 조회할 근무자 ID
+    /// @param workplaceId 조회할 근무지 ID
+    /// @return 존재하면 true, 그렇지 않으면 false
+    @Select("SELECT EXISTS(SELECT 1 FROM workers WHERE id = #{id} AND workplace_id = #{workplaceId})")
+    boolean existsByIdAndWorkplaceId(Long id, Long workplaceId);
+
     /// 특정 사용자가 현재 근무 중(`is_now_working = true`)인 근무지(`Worker`)가 하나라도 존재하는지 확인하는 메서드
     ///
     /// @param userId 조회할 사용자 ID

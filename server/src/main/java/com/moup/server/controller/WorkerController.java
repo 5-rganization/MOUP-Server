@@ -5,6 +5,8 @@ import com.moup.server.model.entity.User;
 import com.moup.server.service.IdentityService;
 import com.moup.server.service.UserService;
 import com.moup.server.service.WorkerService;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +39,16 @@ public class WorkerController implements WorkerSpecification {
         } else {
             response = workerService.getWorkerList(userId, workplaceId);
         }
+        return ResponseEntity.ok().body(response);
+    }
+
+    @Override
+    @GetMapping("/me")
+    @PreAuthorize("hasRole('ROLE_WORKER')")
+    public ResponseEntity<?> getMyAttendanceInfo(@PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId) {
+        Long userId = identityService.getCurrentUserId();
+
+        MyAttendanceInfoResponse response = workerService.getMyAttendanceInfo(userId, workplaceId);
         return ResponseEntity.ok().body(response);
     }
 
