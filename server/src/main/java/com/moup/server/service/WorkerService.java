@@ -117,8 +117,30 @@ public class WorkerService {
                 .build();
     }
 
+    public MyAttendanceInfoResponse getMyAttendanceInfo(Long userId, Long workplaceId) {
+        Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+        Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
+        permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplace.getOwnerId());
+
+        List<WorkerWorkAttendanceResponse> workerWorkAttendanceInfoList = workRepository.findAllByWorkerId(userWorker.getId()).stream()
+                .map(work -> WorkerWorkAttendanceResponse.builder()
+                        .workId(work.getId())
+                        .workDate(work.getWorkDate())
+                        .startTime(work.getStartTime().atZone(SEOUL_ZONE_ID).toInstant())
+                        .actualStartTime(work.getActualStartTime() != null ? work.getActualStartTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
+                        .endTime(work.getEndTime() != null ? work.getEndTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
+                        .actualEndTime(work.getActualEndTime() != null ? work.getActualEndTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
+                        .build())
+                .toList();
+
+        return MyAttendanceInfoResponse.builder()
+                .myWorkAttendanceInfoList(workerWorkAttendanceInfoList)
+                .build();
+    }
+
     public WorkerAttendanceInfoResponse getWorkerAttendanceInfo(Long userId, Long workplaceId, Long workerId) {
         Workplace userWorkplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+        if (!workerRepository.existsByIdAndWorkplaceId(workerId, workplaceId)) { throw new WorkerNotFoundException(); }
         permissionVerifyUtil.verifyOwnerPermission(userId, userWorkplace.getOwnerId());
 
         List<WorkerWorkAttendanceResponse> workerWorkAttendanceInfoList = workRepository.findAllByWorkerId(workerId).stream()
@@ -133,6 +155,7 @@ public class WorkerService {
                 .toList();
 
         return WorkerAttendanceInfoResponse.builder()
+                .workplaceId(workplaceId)
                 .workerId(workerId)
                 .workerWorkAttendanceInfoList(workerWorkAttendanceInfoList)
                 .build();
