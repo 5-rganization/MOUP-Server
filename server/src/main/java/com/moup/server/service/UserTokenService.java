@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import static com.moup.server.common.TimeConstants.SEOUL_ZONE_ID;
+
 @Service
 @RequiredArgsConstructor
 public class UserTokenService {
@@ -23,7 +25,7 @@ public class UserTokenService {
 
         // 유저 ID로 토큰이 존재하는지 확인
         Optional<UserToken> existingToken = userTokenRepository.findByUserId(userId);
-        LocalDateTime expiryDate = LocalDateTime.now().plusSeconds(refreshTokenExpiration / 1000);
+        LocalDateTime expiryDate = LocalDateTime.now(SEOUL_ZONE_ID).plusSeconds(refreshTokenExpiration / 1000);
         System.out.println(expiryDate);
         
         // 만약 기존에 토큰이 있으면, 갱신하기
@@ -52,7 +54,7 @@ public class UserTokenService {
             LocalDateTime expiryDate = userToken.getExpiryDate();
 
             boolean isMatch = userToken.getRefreshToken().equals(refreshToken);
-            boolean isExpired = expiryDate.isBefore(LocalDateTime.now());
+            boolean isExpired = expiryDate.isBefore(LocalDateTime.now(SEOUL_ZONE_ID));
 
             return isMatch && !isExpired;
         }

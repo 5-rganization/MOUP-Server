@@ -14,6 +14,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import static com.moup.server.common.TimeConstants.SEOUL_ZONE_ID;
+
 @Service
 @RequiredArgsConstructor
 public class AdminService {
@@ -27,7 +29,7 @@ public class AdminService {
 
   public void hardDeleteOldUsers() {
     // 유예기간이 지난 하드 삭제 대상 유저 목록 조회
-    LocalDateTime threeDaysAgo = LocalDateTime.now().minusDays(gracePeriod);
+    LocalDateTime threeDaysAgo = LocalDateTime.now(SEOUL_ZONE_ID).minusDays(gracePeriod);
     List<User> hardDeleteUsers = userRepository.findAllOldHardDeleteUsers(threeDaysAgo);
 
     for (User user : hardDeleteUsers) {

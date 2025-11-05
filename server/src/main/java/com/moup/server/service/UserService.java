@@ -29,6 +29,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import static com.moup.server.common.TimeConstants.SEOUL_ZONE_ID;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -151,7 +153,7 @@ public class UserService {
 
     return UserDeleteResponse.builder()
         .userId(user.getId())
-        .deletedAt(String.valueOf(LocalDateTime.now())) // 현재 시간을 직접 사용
+        .deletedAt(String.valueOf(LocalDateTime.now(SEOUL_ZONE_ID))) // 현재 시간을 직접 사용
         .isDeleted(true)
         .build();
   }

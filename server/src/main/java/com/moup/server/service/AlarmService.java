@@ -15,6 +15,8 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import static com.moup.server.common.TimeConstants.SEOUL_ZONE_ID;
+
 @Service
 @RequiredArgsConstructor
 public class AlarmService {
@@ -78,7 +80,7 @@ public class AlarmService {
       throw new AlarmAlreadyReadException();
     }
 
-    LocalDateTime readTime = LocalDateTime.now();
+    LocalDateTime readTime = LocalDateTime.now(SEOUL_ZONE_ID);
 
     alarmRepository.updateReadAtById(userId, notificationId, readTime);
 

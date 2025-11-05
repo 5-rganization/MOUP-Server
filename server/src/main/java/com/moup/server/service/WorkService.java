@@ -548,7 +548,6 @@ public class WorkService {
     /// 사용자의 실제 출근 시간을 기록합니다.
     @Transactional
     public boolean updateActualStartTime(Long userId, Long workplaceId) {
-        // ... (생략 - 변경 없음) ...
         // 권한 및 근무 중복 확인
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
@@ -556,7 +555,7 @@ public class WorkService {
         if (workerRepository.existsByUserIdAndIsNowWorking(userId, true)) { throw new WorkerAlreadyWorkingException(); }
 
         // 현재 시간 기준으로 출근 가능한 근무 조회
-        LocalDateTime currentDateTime = LocalDateTime.now();
+        LocalDateTime currentDateTime = LocalDateTime.now(SEOUL_ZONE_ID);
         Optional<Work> optWorkToStart = workRepository.findEligibleWorkForClockIn(userWorker.getId(), currentDateTime);
 
         // 출근 기록 업데이트 및 상태 변경
@@ -573,7 +572,6 @@ public class WorkService {
     /// 사용자의 실제 퇴근 시간을 기록합니다.
     @Transactional
     public void updateActualEndTime(Long userId, Long workplaceId) {
-        // ... (생략 - 변경 없음) ...
         // 권한 및 현재 근무 상태 확인
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
@@ -586,7 +584,7 @@ public class WorkService {
         // 퇴근 기록 업데이트 및 상태 변경
         if (optWorkToEnd.isPresent()) {
             Work workToEnd = optWorkToEnd.get();
-            LocalDateTime currentDateTime = LocalDateTime.now();
+            LocalDateTime currentDateTime = LocalDateTime.now(SEOUL_ZONE_ID);
 
             // 예정된 종료 시간(null 포함)과 실제 종료 시간이 다르면 재계산
             boolean needsRecalculation = !Objects.equals(workToEnd.getEndTime(), currentDateTime);
