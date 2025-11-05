@@ -349,6 +349,7 @@ public class WorkplaceService {
         .hasEmploymentInsurance(salaryInfo.getHasEmploymentInsurance())
         .hasIndustrialAccident(salaryInfo.getHasIndustrialAccident())
         .hasIncomeTax(salaryInfo.getHasIncomeTax())
+        .hasHolidayAllowance(salaryInfo.getHasHolidayAllowance())
         .hasNightAllowance(salaryInfo.getHasNightAllowance())
         .build();
     salaryRepository.create(salary);
