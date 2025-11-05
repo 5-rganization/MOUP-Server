@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -50,7 +51,9 @@ public class WorkerService {
                 .toList();
 
         // 3. User 맵 생성
-        Map<Long, User> userMap = userRepository.findAllByIdListIn(validUserIds).stream()
+        Map<Long, User> userMap = validUserIds.isEmpty()
+                ? Collections.emptyMap()
+                : userRepository.findAllByIdListIn(validUserIds).stream()
                 .collect(Collectors.toMap(User::getId, user -> user));
 
         // 4. 근무자를 필터링하지 않고, map 내부에서 NULL 체크
@@ -90,10 +93,16 @@ public class WorkerService {
         // 2. user_id가 NULL이 아닌 ID 목록만 추출
         List<Long> validUserIds = workerList.stream()
                 .map(Worker::getUserId)
-                .filter(Objects::nonNull) // user_id가 NULL인 worker 제외
+                .filter(Objects::nonNull)
                 .toList();
 
         // 3. 유효한 ID로만 User 맵 생성
+        if (validUserIds.isEmpty()) {
+            return WorkerSummaryListResponse.builder()
+                    .workerSummaryInfoList(Collections.emptyList())
+                    .build();
+        }
+
         Map<Long, User> userMap = userRepository.findAllByIdListIn(validUserIds).stream()
                 .collect(Collectors.toMap(User::getId, user -> user));
 
