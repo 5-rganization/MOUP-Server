@@ -86,11 +86,11 @@ public interface WorkRepository {
     @Select("SELECT * FROM works WHERE id = #{id} AND worker_id = #{workerId}")
     Optional<Work> findByIdAndWorkerId(Long id, Long workerId);
 
-    /// 근무자 ID를 통해 해당 근무자의 모든 근무를 조회하는 메서드 (`work_date` 내림차순)
+    /// 근무자 ID를 통해 해당 근무자의 모든 근무를 조회하는 메서드 (`start_time` 내림차순)
     ///
     /// @param workerId 조회할 근무자 ID
     /// @return 조회된 Work 객체 리스트, 없으면 빈 배열
-    @Select("SELECT * FROM works WHERE worker_id = #{workerId} ORDER BY work_date DESC")
+    @Select("SELECT * FROM works WHERE worker_id = #{workerId} ORDER BY start_time DESC")
     List<Work> findAllByWorkerId(Long workerId);
 
     /// 근무자 ID와 근무 날짜를 통해 해당 날짜의 모든 근무를 조회하는 메서드
