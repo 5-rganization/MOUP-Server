@@ -1,12 +1,14 @@
 # ==================================
 # STAGE 1: Build Stage (빌드 스테이지)
 # ==================================
-# openjdk:17-jdk-slim 사용 (빌드는 성공했었음)
-FROM --platform=linux/arm64 openjdk:17-jdk-slim AS build_stage
+# [수정] openjdk -> eclipse-temurin:17-jdk 로 변경
+# 라즈베리파이에서 직접 빌드하므로 --platform 태그 제거 (자동 감지)
+FROM eclipse-temurin:17-jdk AS build_stage
 
 WORKDIR /app
 
 # 빌드 유틸리티 설치
+# eclipse-temurin 기본 이미지는 Ubuntu/Debian 기반이라 apt-get 사용 가능
 RUN apt-get update && apt-get install -y --no-install-recommends findutils git && \
     rm -rf /var/lib/apt/lists/*
 
@@ -31,13 +33,12 @@ RUN ./gradlew bootJar --no-daemon -x test --build-cache
 # =====================================
 # STAGE 2: Runtime Stage (런타임 스테이지)
 # =====================================
-# [수정] eclipse-temurin의 표준 JRE 버전 사용 (ARM64 지원 확실)
-FROM --platform=linux/arm64 eclipse-temurin:17-jre
+# [수정] 불필요한 --platform 태그 제거
+FROM eclipse-temurin:17-jre
 
 WORKDIR /app
 
 # 한국 시간대(Timezone) 설정
-# eclipse-temurin 표준 이미지는 Debian/Ubuntu 기반이므로 tzdata 사용
 RUN apt-get update && apt-get install -y --no-install-recommends tzdata && \
     ln -snf /usr/share/zoneinfo/Asia/Seoul /etc/localtime && \
     echo "Asia/Seoul" > /etc/timezone && \
