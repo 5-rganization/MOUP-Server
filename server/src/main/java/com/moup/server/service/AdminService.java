@@ -60,6 +60,6 @@ public class AdminService {
 
     fCMService.sendToSingleUser(adminId, adminNotificationRequest.getReceiverId(),
         adminNotificationRequest.getTitle(),
-        adminNotificationRequest.getContent());
+        adminNotificationRequest.getContent(), null);
   }
 }

@@ -169,7 +169,7 @@ class WorkplaceServiceTest {
     when(workplaceRepository.findOwnerId(workplaceId)).thenReturn(ownerId);
 
     // 5. FCMService가 호출되면 아무것도 하지 않음 (성공 시뮬레이션)
-    doNothing().when(fcmService).sendToSingleUser(anyLong(), anyLong(), anyString(), anyString());
+    doNothing().when(fcmService).sendToSingleUser(anyLong(), anyLong(), anyString(), anyString(), null);
 
     // 6. workerRepository.create()가 호출될 때, worker 객체에 ID 설정 시뮬레이션
     doAnswer(invocation -> {
@@ -190,7 +190,8 @@ class WorkplaceServiceTest {
         eq(mockWorkerUser.getId()), // from (알바생)
         eq(ownerId),               // to (사장님)
         titleCaptor.capture(),     // title
-        contentCaptor.capture()    // content
+        contentCaptor.capture(),    // content
+        null
     );
 
     // 2. 전송된 알림 내용 검증
@@ -223,7 +224,7 @@ class WorkplaceServiceTest {
     when(workplaceRepository.findOwnerId(workplaceId)).thenReturn(ownerId);
 
     // 5. FCMService가 호출되면 FirebaseMessagingException 예외를 던지도록 설정
-    fcmService.sendToSingleUser(anyLong(), anyLong(), anyString(), anyString());
+    fcmService.sendToSingleUser(anyLong(), anyLong(), anyString(), anyString(), null);
 
     // when & then
     // 1. CustomFirebaseMessagingException 예외가 발생하는지 검증
