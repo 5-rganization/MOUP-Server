@@ -325,7 +325,7 @@ public class WorkplaceService {
 
       String notificationContent = AlarmContent.ALARM_CONTENT_WORKPLACE_JOIN_REQUEST.getContent(
           user.getUsername());
-      String notificationTitle = AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_REQUEST.toString();
+      String notificationTitle = AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_REQUEST.getTitle();
 
       WorkplaceJoinPayload dataPayload = WorkplaceJoinPayload.builder()
           .content(notificationContent)
