@@ -74,7 +74,7 @@ public class WorkerServiceTest {
     when(workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)).thenReturn(Optional.of(mockWorker));
 
     // 3-4. fCMService.sendToSingleUser(...)는 아무것도 하지 않음 (성공 시)
-    doNothing().when(fCMService).sendToSingleUser(anyLong(), anyLong(), anyString(), anyString());
+    doNothing().when(fCMService).sendToSingleUser(anyLong(), anyLong(), anyString(), anyString(), null);
 
     // when (테스트할 메서드 실제 호출)
     workerService.acceptWorker(ownerUserId, workplaceId, workerId);
@@ -91,7 +91,7 @@ public class WorkerServiceTest {
     //    (정확한 알림 메시지 내용까지 검증)
     String expectedTitle = AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_ACCEPTED.toString();
     String expectedContent = AlarmContent.ALARM_CONTENT_WORKPLACE_JOIN_ACCEPTED.getContent(workplaceName);
-    verify(fCMService, times(1)).sendToSingleUser(ownerUserId, workerUserId, expectedTitle, expectedContent);
+    verify(fCMService, times(1)).sendToSingleUser(ownerUserId, workerUserId, expectedTitle, expectedContent, null);
 
     // 4. workerRepository.updateIsAccepted가 1번 호출되었는지 검증 (가장 중요)
     verify(workerRepository, times(1)).updateIsAccepted(workerId, workerUserId, workplaceId, true);
@@ -137,7 +137,7 @@ public class WorkerServiceTest {
     when(workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)).thenReturn(Optional.of(mockWorker));
 
     // 3-4. fCMService.sendToSingleUser()가 호출되면 FirebaseMessagingException 예외를 던지도록 설정
-    fCMService.sendToSingleUser(anyLong(), anyLong(), anyString(), anyString());
+    fCMService.sendToSingleUser(anyLong(), anyLong(), anyString(), anyString(), null);
 
     // when & then
     // CustomFirebaseMessagingException 예외가 발생하는지 검증

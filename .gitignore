@@ -38,7 +38,7 @@ out/
 .vscode/
 
 ### Custom ###
-docker-compose.override.yml
+docker-compose.dev.yml
 
 # Local Docker files
 mysql-data/

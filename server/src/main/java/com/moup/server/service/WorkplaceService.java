@@ -40,7 +40,7 @@ public class WorkplaceService {
   @Value("${workplace.creation.limit}")
   private int workplaceCreationLimit;
 
-    // ========== 근무지 메서드 ==========
+  // ========== 근무지 메서드 ==========
 
   @Transactional
   public WorkplaceCreateResponse createWorkplace(User user, BaseWorkplaceCreateRequest request) {
@@ -139,30 +139,32 @@ public class WorkplaceService {
 
   @Transactional(readOnly = true)
   public List<WorkplaceSummaryResponse> getAllWorkplace(Long userId, boolean isSharedOnly) {
-      // 1. [쿼리 1] 사용자가 속한 모든 Worker 정보를 가져온다.
-      List<Worker> userAllWorkers = workerRepository.findAllByUserId(userId);
+    // 1. [쿼리 1] 사용자가 속한 모든 Worker 정보를 가져온다.
+    List<Worker> userAllWorkers = workerRepository.findAllByUserId(userId);
 
-      // 2. Worker 정보에서 workplaceId 리스트를 추출한다. (중복 제거)
-      List<Long> workplaceIds = userAllWorkers.stream()
-              .map(Worker::getWorkplaceId)
-              .distinct()
-              .toList();
+    // 2. Worker 정보에서 workplaceId 리스트를 추출한다. (중복 제거)
+    List<Long> workplaceIds = userAllWorkers.stream()
+        .map(Worker::getWorkplaceId)
+        .distinct()
+        .toList();
 
-      if (workplaceIds.isEmpty()) { return Collections.emptyList(); }
+    if (workplaceIds.isEmpty()) {
+      return Collections.emptyList();
+    }
 
-      // 3. [쿼리 2] workplaceId 리스트로 모든 Workplace 정보를 '한 번에' 가져온다.
-      List<Workplace> workplaces = workplaceRepository.findAllByIdListIn(workplaceIds);
+    // 3. [쿼리 2] workplaceId 리스트로 모든 Workplace 정보를 '한 번에' 가져온다.
+    List<Workplace> workplaces = workplaceRepository.findAllByIdListIn(workplaceIds);
 
-      // 4. 이제 DB 조회가 아닌 '메모리'에서 필터링 및 DTO 변환을 수행한다.
-      return workplaces.stream()
-              .filter(workplace -> !isSharedOnly || workplace.isShared())
-              .map(workplace -> WorkplaceSummaryResponse.builder()
-                      .workplaceId(workplace.getId())
-                      .workplaceName(workplace.getWorkplaceName())
-                      .isShared(workplace.isShared())
-                      .build())
-              .sorted(Comparator.comparing(WorkplaceSummaryResponse::getWorkplaceName))
-              .toList();
+    // 4. 이제 DB 조회가 아닌 '메모리'에서 필터링 및 DTO 변환을 수행한다.
+    return workplaces.stream()
+        .filter(workplace -> !isSharedOnly || workplace.isShared())
+        .map(workplace -> WorkplaceSummaryResponse.builder()
+            .workplaceId(workplace.getId())
+            .workplaceName(workplace.getWorkplaceName())
+            .isShared(workplace.isShared())
+            .build())
+        .sorted(Comparator.comparing(WorkplaceSummaryResponse::getWorkplaceName))
+        .toList();
   }
 
   @Transactional
@@ -196,15 +198,16 @@ public class WorkplaceService {
         LocalDate startDate = today.withDayOfMonth(1); // 예: 2025-11-01
 
         // DB에서 'yyyy-MM-01' 이후로 근무가 잡힌 '모든 고유한 년/월' 목록 조회 (예: [2025-11], [2025-12])
-        List<WorkRepository.WorkMonthDto> monthsToRecalculate = workRepository.findDistinctWorkMonthsAfter(workerId, startDate);
+        List<WorkRepository.WorkMonthDto> monthsToRecalculate = workRepository.findDistinctWorkMonthsAfter(
+            workerId, startDate);
 
         // 각 '연/월'별로 재계산을 실행합니다.
         for (WorkRepository.WorkMonthDto monthInfo : monthsToRecalculate) {
-            salaryCalculationService.recalculateEstimatedNetIncomeForMonth(
-                    workerId,
-                    monthInfo.year(),
-                    monthInfo.month()
-            );
+          salaryCalculationService.recalculateEstimatedNetIncomeForMonth(
+              workerId,
+              monthInfo.year(),
+              monthInfo.month()
+          );
         }
       }
       case ROLE_ADMIN -> throw new InvalidPermissionAccessException();
@@ -231,7 +234,6 @@ public class WorkplaceService {
       throw new WorkplaceNameAlreadyUsedException();
     }
 
-    // TODO: JUnit으로 단위 테스트하기
     if (workplaceRepository.getOwnedWorkplaceCountByUserId(userId) >= workplaceCreationLimit) {
       throw new WorkplaceLimitExceededException(ErrorCode.WORKPLACE_LIMIT_EXCEEDED);
     }
@@ -267,7 +269,8 @@ public class WorkplaceService {
   @Transactional
   public InviteCodeGenerateResponse generateInviteCode(User user, Long workplaceId,
       InviteCodeGenerateRequest request) {
-    Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+    Workplace workplace = workplaceRepository.findById(workplaceId)
+        .orElseThrow(WorkplaceNotFoundException::new);
     permissionVerifyUtil.verifyOwnerPermission(user.getId(), workplace.getOwnerId());
 
     boolean returnAlreadyExists =
@@ -315,13 +318,23 @@ public class WorkplaceService {
     Long ownerId = workplaceRepository.findOwnerId(workplaceId);
 
     // 푸시 알림 전달
-    // TODO: JUnit으로 단위 테스트하기
     try {
-      fcmService.sendToSingleUser(user.getId(), ownerId,
-          // 제목: "근무지 참가 요청"
-          // 본문: "{유저 이름}님이 근무지 참가 요청을 보냈습니다."
-          AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_REQUEST.toString(),
-          AlarmContent.ALARM_CONTENT_WORKPLACE_JOIN_REQUEST.getContent(user.getUsername()));
+      // 제목: "근무지 참가 요청"
+      // 본문: "{유저 이름}님이 근무지 참가 요청을 보냈습니다."
+      // data:
+
+      String notificationContent = AlarmContent.ALARM_CONTENT_WORKPLACE_JOIN_REQUEST.getContent(
+          user.getUsername());
+      String notificationTitle = AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_REQUEST.getTitle();
+
+      WorkplaceJoinPayload dataPayload = WorkplaceJoinPayload.builder()
+          .content(notificationContent)
+          .workplaceId(workplaceId)
+          .workerId(user.getId()).build();
+
+      fcmService.sendToSingleUser(
+          user.getId(), ownerId, notificationTitle, notificationContent, dataPayload
+      );
     } catch (FirebaseMessagingException e) {
       throw new CustomFirebaseMessagingException(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
