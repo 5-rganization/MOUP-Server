@@ -311,11 +311,9 @@ public class WorkplaceService {
     if (!workplaceRepository.existsById(workplaceId)) {
       throw new WorkplaceNotFoundException();
     }
-    if (workerRepository.existsByUserIdAndWorkplaceId(user.getId(), workplaceId)) {
-      throw new WorkerAlreadyExistsException();
-    }
-
     Long ownerId = workplaceRepository.findOwnerId(workplaceId);
+
+    Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId).orElseThrow(WorkerNotFoundException::new);
 
     // 푸시 알림 전달
     try {
@@ -330,7 +328,7 @@ public class WorkplaceService {
       WorkplaceJoinPayload dataPayload = WorkplaceJoinPayload.builder()
           .content(notificationContent)
           .workplaceId(workplaceId)
-          .workerId(user.getId()).build();
+          .workerId(userWorker.getId()).build();
 
       fcmService.sendToSingleUser(
           user.getId(), ownerId, notificationTitle, notificationContent, dataPayload
