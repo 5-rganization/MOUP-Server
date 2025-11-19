@@ -305,9 +305,9 @@ public class WorkplaceService {
     @Transactional
     public WorkplaceJoinResponse joinWorkplace(User user, WorkplaceJoinRequest request) {
         Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCode(request.getInviteCode().toUpperCase());
-        if (!workplaceRepository.existsById(workplaceId)) {
-            throw new WorkplaceNotFoundException();
-        }
+        if (!workplaceRepository.existsById(workplaceId)) { throw new WorkplaceNotFoundException(); }
+        if (workerRepository.existsByUserIdAndWorkplaceId(user.getId(), workplaceId)) { throw new WorkerAlreadyExistsException(); }
+
         Long ownerId = workplaceRepository.findOwnerId(workplaceId);
 
         try {
