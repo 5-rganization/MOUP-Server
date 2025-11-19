@@ -1,5 +1,7 @@
 package com.moup.server.model.dto;
 
+import com.moup.server.model.entity.Salary;
+import com.moup.server.model.entity.Worker;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -23,4 +25,33 @@ public class WorkplaceJoinRequest {
     @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "급여 생성 요청 DTO", requiredMode = Schema.RequiredMode.REQUIRED)
     private SalaryCreateRequest salaryCreateRequest;
+
+    public Worker toWorkerEntity(Long userId, Long workplaceId) {
+        return Worker.builder()
+                .userId(userId)
+                .workplaceId(workplaceId)
+                .workerBasedLabelColor(workerBasedLabelColor)
+                .isAccepted(false)
+                .isNowWorking(false)
+                .build();
+    }
+
+    public Salary toSalaryEntity(Long workerId) {
+        return Salary.builder()
+                .workerId(workerId)
+                .salaryType(salaryCreateRequest.getSalaryType())
+                .salaryCalculation(salaryCreateRequest.getSalaryCalculation())
+                .hourlyRate(salaryCreateRequest.getHourlyRate())
+                .fixedRate(salaryCreateRequest.getFixedRate())
+                .salaryDate(salaryCreateRequest.getSalaryDate())
+                .salaryDay(salaryCreateRequest.getSalaryDay())
+                .hasNationalPension(salaryCreateRequest.getHasNationalPension())
+                .hasHealthInsurance(salaryCreateRequest.getHasHealthInsurance())
+                .hasEmploymentInsurance(salaryCreateRequest.getHasEmploymentInsurance())
+                .hasIndustrialAccident(salaryCreateRequest.getHasIndustrialAccident())
+                .hasIncomeTax(salaryCreateRequest.getHasIncomeTax())
+                .hasHolidayAllowance(salaryCreateRequest.getHasHolidayAllowance())
+                .hasNightAllowance(salaryCreateRequest.getHasNightAllowance())
+                .build();
+    }
 }
