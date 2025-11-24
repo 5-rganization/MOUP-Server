@@ -20,12 +20,14 @@ import java.util.List;
 public class SecurityConfig {
 
   private final String[] NO_AUTH_URL = {"/auth/**"};
+  private final String[] HEALTH_CHECK_URL = {"/health"};
   private final String[] USER_AUTH_URL = {"/users/**", "/files/**", "/workplaces/**",
       "/routines/**", "/alarms/**"};
   private final String[] ADMIN_AUTH_URL = {"/admin/**"};
   private final String[] SWAGGER_URL = {"/v3/api-docs/**", "/swagger-ui/**",
       "/swagger-resources/**",
-      "/swagger-ui.html"};
+      "/swagger-ui.html",
+      "/"};
 
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtFilter jwtFilter)
@@ -40,9 +42,10 @@ public class SecurityConfig {
         })).sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
         .formLogin(AbstractHttpConfigurer::disable).authorizeHttpRequests(
-            auth -> auth.requestMatchers(NO_AUTH_URL).permitAll().requestMatchers(USER_AUTH_URL)
-                .hasAnyRole("WORKER", "OWNER", "ADMIN").requestMatchers(SWAGGER_URL)
-                .permitAll()    // TODO: 나중에 swagger 비활성화 하기
+            auth -> auth.requestMatchers(NO_AUTH_URL).permitAll()
+                .requestMatchers(HEALTH_CHECK_URL).permitAll()
+                .requestMatchers(USER_AUTH_URL).hasAnyRole("WORKER", "OWNER", "ADMIN")
+                .requestMatchers(SWAGGER_URL).permitAll()    // TODO: 나중에 swagger 비활성화 하기
                 .requestMatchers(ADMIN_AUTH_URL).hasRole("ADMIN").anyRequest().authenticated())
         .exceptionHandling(ex -> ex.authenticationEntryPoint((req, res, e) -> {
           res.setStatus(401);
