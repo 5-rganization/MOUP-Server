@@ -2,6 +2,7 @@ package com.moup.server.config;
 
 import com.moup.server.model.dto.DebugTokenHolder;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
+import io.swagger.v3.oas.annotations.servers.Server;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import io.swagger.v3.oas.models.info.Info;
 import org.springdoc.core.models.GroupedOpenApi;
@@ -21,13 +22,12 @@ import org.springframework.context.annotation.Configuration;
             
             Swagger에서 테스트 시 우측 Authorize 버튼을 누르고 발급받은 액세스 토큰을 넣어주시면 됩니다.
             """,
-        version = "v1.0.5")
-),
-servers = {
-@Server(url = "/", description = "Default Server URL")
+        version = "v1.0.5"
+    ),
+    servers = {
+        @Server(url = "/", description = "Default Server URL")
     }
-        )
-
+)
 public class SwaggerConfig {
 
 //    @Bean
