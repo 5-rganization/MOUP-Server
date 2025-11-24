@@ -1,76 +1,29 @@
-# ==================================
-# STAGE 1: Build Stage (빌드 스테이지)
-# ==================================
-# [수정] openjdk -> eclipse-temurin:17-jdk 로 변경
-# 라즈베리파이에서 직접 빌드하므로 --platform 태그 제거 (자동 감지)
-FROM eclipse-temurin:17-jdk AS build_stage
+
+# 1. Builder Stage (빌드)
+FROM eclipse-temurin:17-jdk AS builder
 
 WORKDIR /app
 
-# 빌드 유틸리티 설치
-# eclipse-temurin 기본 이미지는 Ubuntu/Debian 기반이라 apt-get 사용 가능
-RUN apt-get update && apt-get install -y --no-install-recommends findutils git && \
-    rm -rf /var/lib/apt/lists/*
+# 프로젝트의 모든 파일을 컨테이너로 복사 (캐싱 레이어 제거)
+COPY . .
 
-# Gradle Wrapper 복사 및 권한 설정
-COPY gradlew ./
-COPY gradle/ ./gradle/
-RUN chmod +x ./gradlew
+# gradlew 실행 권한 부여 및 빌드 (테스트 제외)
+RUN chmod +x ./gradlew && \
+    ./gradlew bootJar -x test --no-daemon
 
-# 의존성 파일 복사
-COPY build.gradle settings.gradle ./
-
-# 의존성 다운로드
-RUN ./gradlew dependencies --no-daemon --build-cache
-
-# 소스 코드 복사
-COPY src/ ./src/
-
-# 애플리케이션 빌드
-RUN ./gradlew bootJar --no-daemon -x test --build-cache
-
-
-# =====================================
-# STAGE 2: Runtime Stage (런타임 스테이지)
-# =====================================
-# [수정] 불필요한 --platform 태그 제거
+# 2. Runtime Stage (실행)
 FROM eclipse-temurin:17-jre
 
 WORKDIR /app
 
-# 한국 시간대(Timezone) 설정
-RUN apt-get update && apt-get install -y --no-install-recommends tzdata && \
+# 한국 시간대(KST) 설정 (필수 설정은 유지)
+RUN apt-get update && apt-get install -y tzdata && \
     ln -snf /usr/share/zoneinfo/Asia/Seoul /etc/localtime && \
     echo "Asia/Seoul" > /etc/timezone && \
-    apt-get purge -y --auto-remove tzdata && \
     rm -rf /var/lib/apt/lists/*
 
-# 빌드 스테이지에서 생성된 JAR 파일 복사
-COPY --from=build_stage /app/build/libs/*.jar app.jar
+# 빌드 스테이지에서 생성된 JAR 파일만 가져오기
+COPY --from=builder /app/build/libs/*.jar app.jar
 
-# .env 파일에서 주입될 환경 변수들 (선언만)
-ENV DATABASE_URL=
-ENV DATABASE_USERNAME=
-ENV DATABASE_PASSWORD=
-ENV DATABASE_NAME=
-ENV JWT_SECRET_KEY=
-ENV KEYSTORE_PASSWORD=
-ENV S3_BUCKET_NAME=
-ENV AWS_ACCESS_KEY=
-ENV AWS_SECRET_KEY=
-ENV GOOGLE_CLIENT_ID=
-ENV GOOGLE_CLIENT_SECRET=
-ENV GOOGLE_REDIRECT_URI=
-ENV APPLE_CLIENT_ID=
-ENV APPLE_TEAM_ID=
-ENV APPLE_KEY_ID=
-ENV APPLE_PRIVATE_KEY=
-ENV APPLE_REDIRECT_URI=
-ENV REDIS_HOST=
-ENV REDIS_PORT=
-ENV REDIS_PASSWORD=
-ENV FIREBASE_ACCOUNT_KEY_PATH=
-ENV SPRING_PROFILES_ACTIVE=
-
-# 컨테이너 시작 시 실행 명령어
+# 실행
 ENTRYPOINT ["java", "-jar", "app.jar"]
