@@ -38,46 +38,49 @@ public class FCMService {
    */
   @Transactional
   public void sendToSingleUser(Long senderId, Long receiverId, String title, String body,
-      Object dataPayload)
-      throws FirebaseMessagingException {
+                               Object dataPayload)
+          throws FirebaseMessagingException {
 
-    User sender = userService.findUserById(senderId);   // 송신자 유저
-    User receiver = userService.findUserById(receiverId);   // 수신자 유저
-    String fcmToken = receiver.getFcmToken();   // 수신자 FCM 토큰
+      User sender = userService.findUserById(senderId);
+      User receiver = userService.findUserById(receiverId);
+      String fcmToken = receiver.getFcmToken();
 
-    Notification notification = Notification.builder()
-        .setTitle(title)
-        .setBody(body)
-        // .setImage("url-to-image") // 이미지 추가 가능
-        .build();
+      // 1. [DB 저장] 토큰 유무와 상관없이 알림 내역은 먼저 저장 (히스토리 보존)
+      alarmRepository.saveNormalAlarm(NormalAlarmRequest.builder()
+              .senderId(senderId)
+              .receiverId(receiverId)
+              .title(title)
+              .content(body)
+              .build());
 
-    Message.Builder messageBuilder = Message.builder()
-        .setToken(fcmToken)
-        .setNotification(notification);
-
-    if (dataPayload != null) {
-      try {
-        Map<String, String> dataMap = objectMapper.convertValue(dataPayload,
-            new TypeReference<Map<String, String>>() {
-            });
-        messageBuilder.putAllData(dataMap);
-      } catch (IllegalArgumentException e) {
-        // DTO 변환 실패 시 예외
-        log.error(e.getMessage());
+      // 2. [토큰 검사] 토큰이 없으면 여기서 종료 (푸시는 안 보냄)
+      if (fcmToken == null || fcmToken.isBlank()) {
+          log.warn("FCM 전송 스킵: 수신자(ID: {})의 FCM 토큰이 없습니다. (DB 저장은 완료)", receiverId);
+          return;
       }
-    }
 
-    Message message = messageBuilder.build();
+      // 3. [FCM 전송] 토큰이 있을 때만 실행
+      Notification notification = Notification.builder()
+              .setTitle(title)
+              .setBody(body)
+              .build();
 
-    alarmRepository.saveNormalAlarm(NormalAlarmRequest.builder()
-        .senderId(senderId)
-        .receiverId(receiverId)
-        .title(title)
-        .content(body)
-        .build());
+      Message.Builder messageBuilder = Message.builder()
+              .setToken(fcmToken)
+              .setNotification(notification);
 
-    String response = FirebaseMessaging.getInstance().send(message);
-    System.out.println("Successfully sent message: " + response);
+      if (dataPayload != null) {
+          try {
+              Map<String, String> dataMap = objectMapper.convertValue(dataPayload,
+                      new TypeReference<Map<String, String>>() {});
+              messageBuilder.putAllData(dataMap);
+          } catch (IllegalArgumentException e) {
+              log.error(e.getMessage());
+          }
+      }
+
+      String response = FirebaseMessaging.getInstance().send(messageBuilder.build());
+      System.out.println("Successfully sent message: " + response);
   }
 
   /**
