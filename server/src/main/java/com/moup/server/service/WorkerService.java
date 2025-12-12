@@ -183,7 +183,7 @@ public class WorkerService {
         // '현재' 및 '미래'의 모든 근무 월을 재계산합니다.
 
         // 재계산 기준일 (이번 달 1일)
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(SEOUL_ZONE_ID);
         LocalDate startDate = today.withDayOfMonth(1); // 예: 2025-11-01
 
         // DB에서 'yyyy-MM-01' 이후로 근무가 잡힌 '모든 고유한 년/월' 목록 조회 (예: [2025-11], [2025-12])
@@ -192,10 +192,12 @@ public class WorkerService {
 
         // 각 '연/월'별로 재계산을 실행합니다.
         for (WorkRepository.WorkMonthDto monthInfo : monthsToRecalculate) {
+            // ⭐️ [수정 포인트] 4번째 인자로 'newSalary'를 전달합니다.
             salaryCalculationService.recalculateEstimatedNetIncomeForMonth(
                     userWorker.getId(),
                     monthInfo.year(),
-                    monthInfo.month()
+                    monthInfo.month(),
+                    newSalary
             );
         }
     }
@@ -213,7 +215,7 @@ public class WorkerService {
         // '현재' 및 '미래'의 모든 근무 월을 재계산합니다.
 
         // 재계산 기준일 (이번 달 1일)
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(SEOUL_ZONE_ID);
         LocalDate startDate = today.withDayOfMonth(1);
 
         // DB에서 '이번 달 1일' 이후의 모든 근무 연/월 조회
@@ -225,7 +227,8 @@ public class WorkerService {
             salaryCalculationService.recalculateEstimatedNetIncomeForMonth(
                     workerId,
                     monthInfo.year(),
-                    monthInfo.month()
+                    monthInfo.month(),
+                    newSalary
             );
         }
     }

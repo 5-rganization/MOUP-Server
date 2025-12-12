@@ -64,11 +64,7 @@ public class SalaryCalculationService {
 
     /// 특정 날짜가 포함된 '주' 단위로 급여(주휴수당 등)를 재계산합니다.
     @Transactional
-    public void recalculateWorkWeek(Long workerId, LocalDate date) {
-        Salary salary = salaryRepository.findByWorkerId(workerId)
-                .orElse(null); // Salary 정보가 없으면 기본값(false) 사용
-
-        // 고정급(FIXED) 근무자는 이 메서드를 실행할 필요가 없음 (시급 기반 재계산 로직)
+    public void recalculateWorkWeek(Long workerId, LocalDate date, Salary salary) {
         if (salary != null && salary.getSalaryCalculation() == SalaryCalculation.SALARY_CALCULATION_FIXED) {
             return;
         }
@@ -110,7 +106,7 @@ public class SalaryCalculationService {
         }
 
         // 마지막으로, 월 전체의 '추정 세후 일급'을 다시 계산하여 캘린더 표시용 데이터를 업데이트합니다.
-        recalculateEstimatedNetIncomeForMonth(workerId, date.getYear(), date.getMonthValue());
+        recalculateEstimatedNetIncomeForMonth(workerId, date.getYear(), date.getMonthValue(), salary);
     }
 
     /// 하루 근무에 대한 세전 일급(각종 수당 포함)을 상세하게 계산합니다.
@@ -180,13 +176,11 @@ public class SalaryCalculationService {
 
     /// 캘린더에 표시될 '추정 세후 일급'을 월 단위로 재계산합니다.
     @Transactional
-    public void recalculateEstimatedNetIncomeForMonth(Long workerId, int year, int month) {
+    public void recalculateEstimatedNetIncomeForMonth(Long workerId, int year, int month, Salary salaryInfo) {
         LocalDate startDate = LocalDate.of(year, month, 1);
         LocalDate endDate = startDate.with(TemporalAdjusters.lastDayOfMonth());
 
         List<Work> monthWorks = workRepository.findAllByWorkerIdAndDateRange(workerId, startDate, endDate);
-
-        Salary salaryInfo = salaryRepository.findByWorkerId(workerId).orElse(null);
 
         // 현재까지의 근무 기록을 바탕으로 예상 월급을 추정합니다.
         int currentGrossSum = monthWorks.stream()

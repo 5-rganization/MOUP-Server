@@ -594,9 +594,10 @@ public class WorkService {
 
             // 급여 재계산 필요 여부 확인 및 실행
             if (needsRecalculation) {
-                // 업데이트 후 work 객체를 다시 로드해서 정확한 정보로 재계산
-                Work updatedWork = workRepository.findById(workToEnd.getId()).orElse(workToEnd); // DB 조회 실패 시 이전 객체 사용 (방어)
-                salaryCalculationService.recalculateWorkWeek(userWorker.getId(), updatedWork.getWorkDate());
+                Salary salary = salaryRepository.findByWorkerId(userWorker.getId()).orElse(null);
+                Work updatedWork = workRepository.findById(workToEnd.getId()).orElse(workToEnd);
+
+                salaryCalculationService.recalculateWorkWeek(userWorker.getId(), updatedWork.getWorkDate(), salary);
             }
 
             // 근무 중 상태 해제
@@ -615,7 +616,6 @@ public class WorkService {
     /// '단일' 근무 기록을 삭제합니다.
     @Transactional
     public void deleteWork(Long requesterUserId, Long workId) {
-        // ... (생략 - 변경 없음) ...
         // 권한 검증 및 관련 정보 로드
         VerifiedWorkContextForUD context = getVerifiedWorkContextForUD(requesterUserId, workId);
         // 삭제 헬퍼 호출
@@ -625,19 +625,18 @@ public class WorkService {
     /// 기준이 되는 반복 근무와 '반복' 근무 그룹의 '미래' 일정을 삭제합니다.
     @Transactional
     public void deleteRecurringWorkIncludingDate(Long requesterUserId, Long workId) {
-        // ... (생략 - 변경 없음) ...
         // 권한 검증 및 관련 정보 로드
         VerifiedWorkContextForUD context = getVerifiedWorkContextForUD(requesterUserId, workId);
         Work work = context.work();
         // 반복 근무인지 확인
         if (work.getRepeatGroupId() == null) { throw new BadRequestException("반복 근무가 아닌 단일 근무입니다."); }
 
-        // 해당 근무일 및 이후 모든 반복 일정 삭제
         long deletedCount = workRepository.deleteRecurringWorkFromDate(work.getRepeatGroupId(), work.getWorkDate());
         log.info("Deleted {} future recurring works for group {}", deletedCount, work.getRepeatGroupId());
 
-        // 삭제된 주의 주휴수당 재계산 필요
-        salaryCalculationService.recalculateWorkWeek(context.worker().getId(), work.getWorkDate());
+        Salary salary = salaryRepository.findByWorkerId(context.worker().getId()).orElse(null);
+
+        salaryCalculationService.recalculateWorkWeek(context.worker().getId(), work.getWorkDate(), salary);
     }
 
 
@@ -722,9 +721,12 @@ public class WorkService {
     private Work createSingleWork(Worker worker, LocalDateTime startTime, LocalDateTime endTime,
                                   LocalDateTime actualStartTime, LocalDateTime actualEndTime,
                                   Integer restTimeMinutes, String memo) {
-        Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElseThrow(SalaryWorkerNotFoundException::new);
-        int hourlyRate = salary.getHourlyRate() != null ? salary.getHourlyRate() : 0;
-        boolean hasNightAllowance = salary.getHasNightAllowance();
+
+        // 1. 여기서 Salary 미리 조회 (orElse(null) 사용)
+        Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElse(null);
+
+        int hourlyRate = (salary != null && salary.getHourlyRate() != null) ? salary.getHourlyRate() : 0;
+        boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
         verifyStartEndTime(startTime, endTime);
 
         Work tempWork = Work.builder().startTime(startTime).endTime(endTime).restTimeMinutes(restTimeMinutes).hourlyRate(hourlyRate).build();
@@ -741,7 +743,8 @@ public class WorkService {
                 .build();
 
         workRepository.create(workToCreate);
-        salaryCalculationService.recalculateWorkWeek(worker.getId(), workToCreate.getWorkDate());
+
+        salaryCalculationService.recalculateWorkWeek(worker.getId(), workToCreate.getWorkDate(), salary);
 
         return workRepository.findById(workToCreate.getId()).orElse(workToCreate);
     }
@@ -751,10 +754,12 @@ public class WorkService {
                                             Integer restTimeMinutes, String memo,
                                             List<DayOfWeek> repeatDays, LocalDate repeatEndDate,
                                             Long userIdForRoutine, List<Long> routineIdList) {
-        // 급여 정보 로드 및 유효성 검증
-        Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElseThrow(SalaryWorkerNotFoundException::new);
-        int hourlyRate = salary.getHourlyRate() != null ? salary.getHourlyRate() : 0;
-        boolean hasNightAllowance = salary.getHasNightAllowance();
+        // 1. 여기서 Salary 미리 조회
+        Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElse(null);
+
+        int hourlyRate = (salary != null && salary.getHourlyRate() != null) ? salary.getHourlyRate() : 0;
+        boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
+
         verifyStartEndTime(startTime, endTime);
         LocalDate startDate = startTime.toLocalDate();
         if (repeatEndDate == null || repeatEndDate.isBefore(startDate)) { throw new InvalidFieldFormatException("반복 종료 날짜는 시작 날짜 이후여야 합니다."); }
@@ -797,9 +802,8 @@ public class WorkService {
         // DB에 배치 삽입
         workRepository.createBatch(worksToCreate);
 
-        // 생성된 근무들의 주급 재계산 (주휴수당 반영)
         for (LocalDate weekStartDate : weeksToRecalculate) {
-            salaryCalculationService.recalculateWorkWeek(worker.getId(), weekStartDate);
+            salaryCalculationService.recalculateWorkWeek(worker.getId(), weekStartDate, salary);
         }
 
         // 주급 재계산 후의 '최신' 상태를 반영하기 위해 다시 로드
@@ -862,9 +866,12 @@ public class WorkService {
                                           LocalDateTime actualStartTime, LocalDateTime actualEndTime,
                                           Integer restTimeMinutes, String memo,
                                           String repeatGroupId) {
-        Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElseThrow(SalaryWorkerNotFoundException::new);
-        int hourlyRate = salary.getHourlyRate() != null ? salary.getHourlyRate() : 0;
-        boolean hasNightAllowance = salary.getHasNightAllowance();
+
+        // 1. 여기서 Salary 미리 조회
+        Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElse(null);
+
+        int hourlyRate = (salary != null && salary.getHourlyRate() != null) ? salary.getHourlyRate() : 0;
+        boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
         verifyStartEndTime(startTime, endTime);
 
         Work tempWork = Work.builder().startTime(startTime).endTime(endTime).restTimeMinutes(restTimeMinutes).hourlyRate(hourlyRate).build();
@@ -881,17 +888,18 @@ public class WorkService {
                 .build();
 
         workRepository.update(workToUpdate);
-        salaryCalculationService.recalculateWorkWeek(worker.getId(), workToUpdate.getWorkDate());
+
+        salaryCalculationService.recalculateWorkWeek(worker.getId(), workToUpdate.getWorkDate(), salary);
     }
 
     /// '단일' 근무 삭제 헬퍼 (루틴 매핑 포함)
     private void deleteWorkHelper(Worker worker, Work work) {
-        // 1. 연결된 루틴 매핑 먼저 삭제
         routineService.deleteWorkRoutineMappingByWorkId(work.getId());
-        // 2. 근무 기록 삭제
         workRepository.delete(work.getId(), worker.getId());
-        // 3. 해당 주의 주급 재계산 (주휴수당 조정)
-        salaryCalculationService.recalculateWorkWeek(worker.getId(), work.getWorkDate());
+
+        Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElse(null);
+
+        salaryCalculationService.recalculateWorkWeek(worker.getId(), work.getWorkDate(), salary);
     }
 
     /// (이하 나머지 헬퍼 메서드 ... 생략) ...
