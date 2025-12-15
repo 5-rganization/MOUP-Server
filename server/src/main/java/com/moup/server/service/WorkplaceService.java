@@ -97,6 +97,7 @@ public class WorkplaceService {
                         .hasEmploymentInsurance(salary.getHasEmploymentInsurance())
                         .hasIndustrialAccident(salary.getHasIndustrialAccident())
                         .hasIncomeTax(salary.getHasIncomeTax())
+                        .hasHolidayAllowance(salary.getHasHolidayAllowance())
                         .hasNightAllowance(salary.getHasNightAllowance())
                         .build();
 
