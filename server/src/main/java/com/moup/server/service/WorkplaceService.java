@@ -24,6 +24,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import static com.moup.server.common.TimeConstants.SEOUL_ZONE_ID;
+
 @Service
 @RequiredArgsConstructor
 public class WorkplaceService {
@@ -95,6 +97,7 @@ public class WorkplaceService {
                         .hasEmploymentInsurance(salary.getHasEmploymentInsurance())
                         .hasIndustrialAccident(salary.getHasIndustrialAccident())
                         .hasIncomeTax(salary.getHasIncomeTax())
+                        .hasHolidayAllowance(salary.getHasHolidayAllowance())
                         .hasNightAllowance(salary.getHasNightAllowance())
                         .build();
 
@@ -193,9 +196,9 @@ public class WorkplaceService {
 
                 // '현재' 및 '미래'의 모든 근무 월을 재계산합니다.
 
-                // 재계산 기준일 (이번 달 1일)
-                LocalDate today = LocalDate.now();
-                LocalDate startDate = today.withDayOfMonth(1); // 예: 2025-11-01
+                // 재계산 기준일 (이번 달 1일) - ⭐️ SEOUL_ZONE_ID 적용
+                LocalDate today = LocalDate.now(SEOUL_ZONE_ID);
+                LocalDate startDate = today.withDayOfMonth(1);
 
                 // DB에서 'yyyy-MM-01' 이후로 근무가 잡힌 '모든 고유한 년/월' 목록 조회 (예: [2025-11], [2025-12])
                 List<WorkRepository.WorkMonthDto> monthsToRecalculate = workRepository.findDistinctWorkMonthsAfter(
@@ -203,10 +206,12 @@ public class WorkplaceService {
 
                 // 각 '연/월'별로 재계산을 실행합니다.
                 for (WorkRepository.WorkMonthDto monthInfo : monthsToRecalculate) {
+                    // ⭐️ [수정 포인트] 4번째 인자로 'newSalary' 전달
                     salaryCalculationService.recalculateEstimatedNetIncomeForMonth(
                             workerId,
                             monthInfo.year(),
-                            monthInfo.month()
+                            monthInfo.month(),
+                            newSalary
                     );
                 }
             }
