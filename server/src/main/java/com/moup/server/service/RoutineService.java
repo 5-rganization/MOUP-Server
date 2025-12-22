@@ -104,7 +104,7 @@ public class RoutineService {
                 .collect(Collectors.toMap(Worker::getId, Worker::getWorkplaceId));
 
         // 3. (쿼리 2) 오늘의 모든 Work 조회
-        List<Work> todayWorkList = workRepository.findAllByWorkerIdListInAndDateRange(userWorkerIdList, LocalDate.now(), LocalDate.now());
+        List<Work> todayWorkList = workRepository.findAllByWorkerIdListInAndDateRange(userWorkerIdList, LocalDate.now(SEOUL_ZONE_ID), LocalDate.now(SEOUL_ZONE_ID));
         if (todayWorkList.isEmpty()) {
             return TodayRoutineResponse.builder()
                     .todayWorkRoutineCountList(Collections.emptyList())

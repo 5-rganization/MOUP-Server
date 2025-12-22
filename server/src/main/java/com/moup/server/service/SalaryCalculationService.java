@@ -21,6 +21,8 @@ import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.moup.server.common.TimeConstants.SEOUL_ZONE_ID;
+
 @Service
 @RequiredArgsConstructor
 public class SalaryCalculationService {
@@ -402,7 +404,7 @@ public class SalaryCalculationService {
 
             // --- 5-1. 급여일 D-day 계산 ---
             Integer daysUntilPayday = null;
-            LocalDate today = LocalDate.now();
+            LocalDate today = LocalDate.now(SEOUL_ZONE_ID);
             SalaryType salaryType = salaryInfo.getSalaryType();
 
             if (salaryType == SalaryType.SALARY_MONTHLY) {
