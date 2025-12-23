@@ -4,9 +4,9 @@ import com.moup.server.exception.*;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.*;
 import com.moup.server.repository.*;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -104,7 +104,7 @@ public class RoutineService {
                 .collect(Collectors.toMap(Worker::getId, Worker::getWorkplaceId));
 
         // 3. (쿼리 2) 오늘의 모든 Work 조회
-        List<Work> todayWorkList = workRepository.findAllByWorkerIdListInAndDateRange(userWorkerIdList, LocalDate.now(), LocalDate.now());
+        List<Work> todayWorkList = workRepository.findAllByWorkerIdListInAndDateRange(userWorkerIdList, LocalDate.now(SEOUL_ZONE_ID), LocalDate.now(SEOUL_ZONE_ID));
         if (todayWorkList.isEmpty()) {
             return TodayRoutineResponse.builder()
                     .todayWorkRoutineCountList(Collections.emptyList())

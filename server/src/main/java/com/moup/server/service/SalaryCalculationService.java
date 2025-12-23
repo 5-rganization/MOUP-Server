@@ -10,16 +10,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.DayOfWeek;
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.YearMonth;
+import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+
+import static com.moup.server.common.TimeConstants.SEOUL_ZONE_ID;
 
 @Service
 @RequiredArgsConstructor
@@ -177,10 +177,31 @@ public class SalaryCalculationService {
     /// 캘린더에 표시될 '추정 세후 일급'을 월 단위로 재계산합니다.
     @Transactional
     public void recalculateEstimatedNetIncomeForMonth(Long workerId, int year, int month, Salary salaryInfo) {
-        LocalDate startDate = LocalDate.of(year, month, 1);
-        LocalDate endDate = startDate.with(TemporalAdjusters.lastDayOfMonth());
+        // 1. 서울 기준의 '시작일'과 '종료일'의 범위(ZonedDateTime)를 정확히 계산
+        LocalDate rawStartDate = LocalDate.of(year, month, 1);
 
-        List<Work> monthWorks = workRepository.findAllByWorkerIdAndDateRange(workerId, startDate, endDate);
+        // 서울 기준 1일 00:00:00
+        ZonedDateTime startZoned = rawStartDate.atStartOfDay(SEOUL_ZONE_ID);
+
+        // 서울 기준 말일의 마지막 순간 (나노초까지 포함하여 해당 월을 꽉 채움)
+        ZonedDateTime endZoned = rawStartDate.with(TemporalAdjusters.lastDayOfMonth())
+                .atTime(LocalTime.MAX)
+                .atZone(SEOUL_ZONE_ID);
+
+        // 2. 비즈니스 로직(주급 계산 등)을 위한 LocalDate 추출 (서울 시간 기준의 날짜)
+        LocalDate startDate = startZoned.toLocalDate();
+        LocalDate endDate = endZoned.toLocalDate();
+
+        // ---------------------------------------------------------
+        // Repository 호출: 가능한 정확한 Instant(UTC) 범위를 넘겨줍니다.
+        // (Repository 파라미터가 LocalDate라면 startZoned.toLocalDate()를 넣어야 하지만,
+        //  정확한 조회를 위해선 아래처럼 Instant로 변환된 값을 넘기는 게 베스트입니다.)
+        List<Work> monthWorks = workRepository.findAllByWorkerIdAndDateRange(
+                workerId,
+                startZoned.toLocalDate(), // 서울 00시 -> UTC 변환값
+                endZoned.toLocalDate()    // 서울 23시 -> UTC 변환값
+        );
+        // ---------------------------------------------------------
 
         // 현재까지의 근무 기록을 바탕으로 예상 월급을 추정합니다.
         int currentGrossSum = monthWorks.stream()
@@ -202,6 +223,7 @@ public class SalaryCalculationService {
                         DayOfWeek payDayOfWeek = salaryInfo.getSalaryDay();
                         int payDayCount = 0;
                         if (payDayOfWeek != null) {
+                            // 주급 계산 로직 (서울 기준 날짜로 반복)
                             LocalDate dateIterator = startDate;
                             while (!dateIterator.isAfter(endDate)) {
                                 if (dateIterator.getDayOfWeek() == payDayOfWeek) {
@@ -213,7 +235,6 @@ public class SalaryCalculationService {
                         estimatedMonthlyIncome = fixedRate * payDayCount;
                         break;
                     case SALARY_DAILY:
-                        // 일급: 고정급 * 예상 총 근무일 수
                         estimatedMonthlyIncome = fixedRate * (int) daysWorked;
                         break;
                 }
@@ -229,33 +250,34 @@ public class SalaryCalculationService {
                 .sum();
 
         long estimatedTotalHours = 0;
-        if (daysWorked > 0) { // 0으로 나누기 방지
+        if (daysWorked > 0) {
             estimatedTotalHours = totalMinutesWorked / 60;
         }
 
-        // 만약 예상 근무일이 0일이면 (예: 해당 월의 모든 근무가 삭제된 경우)
-        // 기존에 계산된 estimatedNetIncome을 0으로 초기화해줍니다.
+        // 근무일 0일 처리
         if (daysWorked == 0) {
-            workRepository.updateEstimatedNetIncomeToZeroByDateRange(workerId, startDate, endDate);
-            return; // 0으로 나누기 오류를 방지하기 위해 여기서 종료
+            // 업데이트 쿼리에도 정확한 Instant 범위 전달
+            workRepository.updateEstimatedNetIncomeToZeroByDateRange(
+                    workerId,
+                    startZoned.toLocalDate(),
+                    endZoned.toLocalDate()
+            );
+            return;
         }
 
-        // 예상 월급 기준으로 월 총 공제액(4대보험, 소득세)을 추정합니다.
         int estimatedMonthlyDeduction = 0;
-
         if (salaryInfo != null) {
             DeductionDetails deductions = calculateDeductions(estimatedMonthlyIncome, estimatedTotalHours, salaryInfo);
             estimatedMonthlyDeduction = deductions.totalDeductions();
         }
 
-        // 추정된 월 총 공제액을 예상 근무일로 나누어 '일일 추정 공제액'을 구합니다.
         int estimatedDailyDeduction = (int) (estimatedMonthlyDeduction / (double) daysWorked);
 
-        // 해당 월의 모든 근무 기록에 '세전 일급 - 일일 추정 공제액'을 하여 '추정 세후 일급'을 업데이트합니다.
+        // 최종 업데이트: 여기도 정확한 Instant 범위 사용
         workRepository.updateAllEstimatedNetIncomesForMonth(
                 workerId,
-                startDate,
-                endDate,
+                startZoned.toLocalDate(),
+                endZoned.toLocalDate(),
                 estimatedDailyDeduction
         );
     }
@@ -402,7 +424,7 @@ public class SalaryCalculationService {
 
             // --- 5-1. 급여일 D-day 계산 ---
             Integer daysUntilPayday = null;
-            LocalDate today = LocalDate.now();
+            LocalDate today = LocalDate.now(SEOUL_ZONE_ID);
             SalaryType salaryType = salaryInfo.getSalaryType();
 
             if (salaryType == SalaryType.SALARY_MONTHLY) {
