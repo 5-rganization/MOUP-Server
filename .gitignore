@@ -44,3 +44,4 @@ docker-compose.dev.yml
 mysql-data/
 redis-data/
 nginx/nginx.dev.conf
+data/*

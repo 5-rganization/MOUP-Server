@@ -21,8 +21,7 @@ services:
 
   # 2. Spring Server (API)
   server:
-    image: neoskycladdocker/moup-server:latest
-    container-name: moup-server
+    image: neoskycladdocker/moup
     env_file:
       - ./.env # 루트의 .env 파일 로드
     expose:
