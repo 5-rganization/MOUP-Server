@@ -19,9 +19,7 @@ services:
 
   # 2. Spring Server (API 서버)
   server:
-    build:
-      context: ./server
-      dockerfile: Dockerfile
+    image: neoskycladdocker/moup
     env_file:
       - ./.env # 루트의 .env 파일 로드
     expose:
