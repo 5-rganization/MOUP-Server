@@ -10,14 +10,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.io.IOException;
-import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 
 @Configuration
 @RequiredArgsConstructor
 public class FCMConfig {
 
-  private final DefaultResourceLoader resourceLoader;
+  private final ResourceLoader resourceLoader;
   @Value("${firebase.account-key.path}")
   private String fireBaseKeyPath;
 

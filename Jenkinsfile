@@ -76,9 +76,6 @@ pipeline {
                             
                             # 4. 컨테이너 재시작
                             docker compose up -d server
-
-                            # 5. 불필요한 이미지 정리
-                            docker image prune -f
                         '
                     """
                 }
