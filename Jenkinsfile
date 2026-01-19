@@ -19,15 +19,17 @@ pipeline {
         stage('Prepare Env') {
             steps {
                 withCredentials([file(credentialsId: 'moup-env-file', variable: 'ENV_FILE')]) {
-                    sh 'cp $ENV_FILE .env'
+                    sh 'cp $ENV_FILE ./server/.env'
                 }
             }
         }
 
         stage('Build Gradle') {
             steps {
-                sh 'chmod +x ./server/gradlew'
-                sh './server/gradlew clean build -x test'   // TODO: 추후에 테스트 포함하기
+                dir('server') {
+                    sh 'chmod +x gradlew'
+                    sh './gradlew clean build -x test'   // TODO: 추후에 테스트 포함하기 -> CI 구현
+                }
             }
         }
 
@@ -35,13 +37,14 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-auth') {
-                        // 태그: develop-빌드번호
-                        def imageTag = "${TARGET_BRANCH}-${env.BUILD_NUMBER}"
-                        def customImage = docker.build("${DOCKER_IMAGE}:${imageTag}")
-                        customImage.push()
-                        
-                        // develop 브랜치는 latest 태그도 업데이트 (선택사항)
-                        customImage.push('latest')
+                        dir('server') {
+                            // 태그: develop-빌드번호
+                            def imageTag = "${TARGET_BRANCH}-${env.BUILD_NUMBER}"
+                            def customImage = docker.build("${DOCKER_IMAGE}:${imageTag}")
+                            customImage.push()
+                            // develop 브랜치는 latest 태그도 업데이트 (선택사항)
+                            customImage.push('latest')
+                        }
                     }
                 }
             }
