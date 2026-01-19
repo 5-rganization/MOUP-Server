@@ -37,11 +37,7 @@ out/
 ### VS Code ###
 .vscode/
 
-### Custom ###
-docker-compose.dev.yml
-
 # Local Docker files
 mysql-data/
 redis-data/
-nginx/nginx.dev.conf
 data/*

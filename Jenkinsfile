@@ -65,17 +65,19 @@ pipeline {
                     sh """
                         ssh -o StrictHostKeyChecking=no -p 11022 ${SSH_USER}@${TEST_SERVER_IP} '
                             # 1. 프로젝트 디렉토리 이동
-                            cd /home/${SSH_USER}/MOUP-Server
+                            cd /home/${SSH_USER}/MOUP-Server || exit 1
 
                             # 2. git pull로 최신화
+                            git fetch origin ${TARGET_BRANCH}
                             git checkout ${TARGET_BRANCH}
                             git pull origin ${TARGET_BRANCH}
 
-                            # 3. 최신 이미지 받기
-                            docker compose pull server
-                            
-                            # 4. 컨테이너 재시작
-                            docker compose up -d server
+                            export TAG=${TARGET_BRANCH}-${env.BUILD_NUMBER}
+
+                            # 3. 서버 배포
+                            docker compose -f docker-compose.dev.yml pull server
+                            docker compose -f docker-compose.dev.yml up -d server
+                            docker image prune -f
                         '
                     """
                 }
