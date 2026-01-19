@@ -38,6 +38,6 @@ out/
 .vscode/
 
 # Local Docker files
+data/
 mysql-data/
 redis-data/
-data/*

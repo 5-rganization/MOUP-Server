@@ -2,11 +2,10 @@ FROM eclipse-temurin:17-jre
 
 WORKDIR /app
 
-# 한국 시간대(Timezone) 설정
-RUN apt-get update && apt-get install -y --no-install-recommends tzdata && \
+# 한국 시간대(KST) 설정 (필수 설정은 유지)
+RUN apt-get update && apt-get install -y tzdata && \
     ln -snf /usr/share/zoneinfo/Asia/Seoul /etc/localtime && \
     echo "Asia/Seoul" > /etc/timezone && \
-    apt-get purge -y --auto-remove tzdata && \
     rm -rf /var/lib/apt/lists/*
 
 # 빌드된 jar 파일을 복사

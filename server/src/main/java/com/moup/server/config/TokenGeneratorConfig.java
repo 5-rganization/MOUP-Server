@@ -16,7 +16,6 @@ import org.springframework.context.annotation.Configuration;
 public class TokenGeneratorConfig {
 
     private final JwtUtil jwtUtil;
-    private final DebugTokenHolder debugTokenHolder;
 
     @Bean
     public CommandLineRunner generateStaticToken() {
@@ -39,10 +38,6 @@ public class TokenGeneratorConfig {
             String staticAdminToken = jwtUtil.createTestToken(adminToken);
             String staticOwnerToken = jwtUtil.createTestToken(ownerToken);
             String staticWorkerToken = jwtUtil.createTestToken(workerToken);
-
-            debugTokenHolder.setAdminToken(staticAdminToken);
-            debugTokenHolder.setOwnerToken(staticOwnerToken);
-            debugTokenHolder.setWorkerToken(staticWorkerToken);
 
             // 토큰을 콘솔에 출력
             log.info("📢📢📢📢📢 Swagger Admin Token Generated: {}", "Bearer " + staticAdminToken);
