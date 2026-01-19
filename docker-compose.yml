@@ -21,15 +21,12 @@ services:
 
   # 2. Spring Server (API)
   server:
-    build:
-      context: ./server
-      dockerfile: Dockerfile
+    image: neoskycladdocker/moup-server:latest
+    container-name: moup-server
     env_file:
       - ./.env # 루트의 .env 파일 로드
     expose:
       - "8080" # 내부 Nginx 연결용 포트
-    volumes:
-      - ./gradle-cache:/home/gradle/.gradle
     depends_on:
       mysql:
         condition: service_healthy # MySQL 준비 완료 후 시작

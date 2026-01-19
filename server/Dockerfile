@@ -1,39 +1,3 @@
-# ==================================
-# STAGE 1: Build Stage (빌드 스테이지)
-# ==================================
-# [수정] openjdk -> eclipse-temurin:17-jdk 로 변경
-# 라즈베리파이에서 직접 빌드하므로 --platform 태그 제거 (자동 감지)
-FROM eclipse-temurin:17-jdk AS build_stage
-
-WORKDIR /app
-
-# 빌드 유틸리티 설치
-# eclipse-temurin 기본 이미지는 Ubuntu/Debian 기반이라 apt-get 사용 가능
-RUN apt-get update && apt-get install -y --no-install-recommends findutils git && \
-    rm -rf /var/lib/apt/lists/*
-
-# Gradle Wrapper 복사 및 권한 설정
-COPY gradlew ./
-COPY gradle/ ./gradle/
-RUN chmod +x ./gradlew
-
-# 의존성 파일 복사
-COPY build.gradle settings.gradle ./
-
-# 의존성 다운로드
-RUN ./gradlew dependencies --no-daemon --build-cache
-
-# 소스 코드 복사
-COPY src/ ./src/
-
-# 애플리케이션 빌드
-RUN ./gradlew bootJar --no-daemon -x test --build-cache
-
-
-# =====================================
-# STAGE 2: Runtime Stage (런타임 스테이지)
-# =====================================
-# [수정] 불필요한 --platform 태그 제거
 FROM eclipse-temurin:17-jre
 
 WORKDIR /app
@@ -45,8 +9,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends tzdata && \
     apt-get purge -y --auto-remove tzdata && \
     rm -rf /var/lib/apt/lists/*
 
-# 빌드 스테이지에서 생성된 JAR 파일 복사
-COPY --from=build_stage /app/build/libs/*.jar app.jar
+# 빌드된 jar 파일을 복사
+COPY build/libs/*.jar app.jar
 
 # .env 파일에서 주입될 환경 변수들 (선언만)
 ENV DATABASE_URL=

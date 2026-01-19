@@ -35,15 +35,25 @@ pipeline {
 
         stage('Build & Push Docker') {
             steps {
-                script {
-                    docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-auth') {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-auth', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    script {
                         dir('server') {
-                            // 태그: develop-빌드번호
+                            // 로그인
+                            sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
+                            
+                            // [중요] Buildx를 사용하여 멀티 플랫폼 빌드 (혹은 arm64 강제 지정)
+                            // 홈서버에 buildx가 설치되어 있어야 함 (최신 도커는 기본 내장)
                             def imageTag = "${TARGET_BRANCH}-${env.BUILD_NUMBER}"
-                            def customImage = docker.build("${DOCKER_IMAGE}:${imageTag}")
-                            customImage.push()
-                            // develop 브랜치는 latest 태그도 업데이트 (선택사항)
-                            customImage.push('latest')
+                            
+                            // --platform linux/arm64 옵션 추가!
+                            // --push 옵션을 쓰면 build와 push를 한 번에 함
+                            sh """
+                                docker buildx create --use || true
+                                docker buildx build --platform linux/arm64,linux/amd64 \
+                                -t ${DOCKER_IMAGE}:${imageTag} \
+                                -t ${DOCKER_IMAGE}:latest \
+                                --push .
+                            """
                         }
                     }
                 }
@@ -55,13 +65,13 @@ pipeline {
                 sshagent(credentials: ['ssh-deploy-key']) {
                     sh """
                         ssh -o StrictHostKeyChecking=no ${SSH_USER}@${TEST_SERVER_IP} '
-                            docker pull ${DOCKER_IMAGE}:${TARGET_BRANCH}-${env.BUILD_NUMBER}
-                            docker stop moup-server || true
-                            docker rm moup-server || true
+                            cd ~/MOUP-Server
+
+                            docker compose pull server
                             
-                            docker run -d --name moup-server \
-                            -p 8080:8080 \
-                            ${DOCKER_IMAGE}:${TARGET_BRANCH}-${env.BUILD_NUMBER}
+                            docker compose up -d server
+
+                            docker image prune -f
                         '
                     """
                 }
