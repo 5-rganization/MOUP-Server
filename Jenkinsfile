@@ -3,10 +3,11 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = "neoskycladdocker/moup"
-        SSH_DEV_USER = "neoskyclad"
-        SSH_PROD_USER = "snmac"
 
+        SSH_DEV_USER = "neoskyclad"
         TEST_SERVER_IP = "test.moup-server.com"
+
+        SSH_PROD_USER = "snmac"
         PROD_SERVER_IP = "home.moup-server.com"
     }
 
@@ -19,8 +20,17 @@ pipeline {
 
         stage('Prepare Env') {
             steps {
-                withCredentials([file(credentialsId: 'moup-env-file', variable: 'ENV_FILE')]) {
-                    sh 'cp $ENV_FILE ./server/.env'
+                script {
+                    // 브랜치 이름에 따라 Credential ID 결정 (삼항 연산자 사용)
+                    def envCredId = (env.BRANCH_NAME == 'main') ? 'moup-env-prod' : 'moup-env-dev'
+                    
+                    echo "Current Branch: ${env.BRANCH_NAME}"
+                    echo "Selected Env Credential: ${envCredId}"
+
+                    // 결정된 ID로 파일 주입
+                    withCredentials([file(credentialsId: envCredId, variable: 'ENV_FILE')]) {
+                        sh 'cp $ENV_FILE ./server/.env'
+                    }
                 }
             }
         }
@@ -39,7 +49,7 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'docker-hub-auth', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     script {
                         dir('server') {
-                            sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
+                            sh 'printf "%s" "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'  
                             
                             // [핵심] 브랜치에 따라 태그 전략 다르게 가져가기
                             // develop -> develop-빌드번호 (latest)
