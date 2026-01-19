@@ -2,13 +2,10 @@ pipeline {
     agent any
 
     environment {
-        // 공통 설정
         DOCKER_IMAGE = "neoskycladdocker/moup"
         TEST_SERVER_IP = "test.moup-server.com"
         SSH_USER = "moup-server"
         
-        // 단일 파이프라인에서는 env.BRANCH_NAME이 자동으로 안 잡힐 수 있습니다.
-        // develop 전용이므로 직접 명시하거나, GIT_BRANCH 변수를 가공해야 합니다.
         TARGET_BRANCH = "develop" 
     }
 
@@ -29,8 +26,8 @@ pipeline {
 
         stage('Build Gradle') {
             steps {
-                sh 'chmod +x gradlew'
-                sh './gradlew clean build -x test'
+                sh 'chmod +x ./server/gradlew'
+                sh './server/gradlew clean build -x test'   // TODO: 추후에 테스트 포함하기
             }
         }
 
