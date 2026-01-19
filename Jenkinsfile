@@ -62,7 +62,7 @@ pipeline {
 
         stage('Deploy to Test Server') {
             steps {
-                sshagent(credentials: ['ssh-deploy-key']) {
+                sshagent(credentials: ['ssh-develop-key']) {
                     sh """
                         ssh -o StrictHostKeyChecking=no ${SSH_USER}@${TEST_SERVER_IP} '
                             cd ~/MOUP-Server
