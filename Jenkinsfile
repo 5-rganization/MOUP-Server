@@ -67,13 +67,17 @@ pipeline {
                             # 1. 프로젝트 디렉토리 이동
                             cd /home/${SSH_USER}/MOUP-Server
 
-                            # 2. 최신 이미지 받기
+                            # 2. git pull로 최신화
+                            git checkout ${TARGET_BRANCH}
+                            git pull origin ${TARGET_BRANCH}
+
+                            # 3. 최신 이미지 받기
                             docker compose pull server
                             
-                            # 3. 컨테이너 재시작
+                            # 4. 컨테이너 재시작
                             docker compose up -d server
 
-                            # 4. 불필요한 이미지 정리
+                            # 5. 불필요한 이미지 정리
                             docker image prune -f
                         '
                     """
