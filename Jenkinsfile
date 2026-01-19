@@ -75,14 +75,6 @@ pipeline {
 
                             # 4. 불필요한 이미지 정리
                             docker image prune -f
-
-                            # 5. Crontab 설정 (사용자 삭제 스크립트)
-                            # echo "Setting up crontab..."
-                            # DELETE_SCRIPT="/home/${SSH_USER}/MOUP-Server/src/main/resources/delete_old_users.sh"
-                            # chmod +x "$DELETE_SCRIPT" # 실행 권한 부여
-                            # # 기존 스케줄 삭제 후 새로 등록 (멱등성 확보)
-                            # (crontab -l 2>/dev/null | grep -v "delete_old_users.sh"; echo "0 0 * * * /bin/bash $DELETE_SCRIPT >> /home/${SSH_USER}/MOUP-Server/delete_old_users.log 2>&1") | crontab -
-                            # echo "Crontab setup complete."
                         '
                     """
                 }
