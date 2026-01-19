@@ -18,7 +18,7 @@ import org.springframework.core.io.ResourceLoader;
 @RequiredArgsConstructor
 public class FCMConfig {
 
-  private final ResourceLoader resourceLoader;
+  private final DefaultResourceLoader resourceLoader;
   @Value("${firebase.account-key.path}")
   private String fireBaseKeyPath;
 
@@ -30,9 +30,7 @@ public class FCMConfig {
     try (InputStream serviceAccount = resource.getInputStream()) {
       FirebaseOptions options = FirebaseOptions.builder()
           .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-          // .setDatabaseUrl(...) // 필요하다면 추가
           .build();
-
       if (FirebaseApp.getApps().isEmpty()) { // 앱이 이미 초기화되지 않았는지 확인
         return FirebaseApp.initializeApp(options);
       } else {
