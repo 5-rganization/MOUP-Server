@@ -62,7 +62,7 @@ pipeline {
                             env.VERSION_TAG = versionTag
 
                             sh """
-                                docker buildx create --use || true
+                                docker buildx use moup-builder || docker buildx create --name moup-builder --use
                                 docker buildx build --platform linux/arm64,linux/amd64 \
                                 -t ${DOCKER_IMAGE}:${versionTag} \
                                 -t ${DOCKER_IMAGE}:${aliasTag} \
