@@ -32,8 +32,6 @@ services:
         condition: service_healthy # MySQL 준비 완료 후 시작
       redis:
         condition: service_started # Redis 시작 후 시작
-    volumes:
-      - ./server/src/main/resources/keys:/app/keys:ro
     restart: unless-stopped # 운영 환경 재시작 정책
 
   # 3. MySQL Database

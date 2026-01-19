@@ -20,18 +20,16 @@ pipeline {
 
         stage('Prepare Env') {
             steps {
-                script {
-                    // 브랜치 이름에 따라 Credential ID 결정 (삼항 연산자 사용)
-                    def envCredId = (env.BRANCH_NAME == 'main') ? 'moup-env-prod' : 'moup-env-dev'
-                    
-                    echo "Current Branch: ${env.BRANCH_NAME}"
-                    echo "Selected Env Credential: ${envCredId}"
-
-                    // 결정된 ID로 파일 주입
-                    withCredentials([file(credentialsId: envCredId, variable: 'ENV_FILE')]) {
-                        sh 'cp $ENV_FILE ./server/.env'
-                    }
+                withCredentials([file(credentialsId: 'moup-env-file', variable: 'ENV_FILE')]) {
+                    sh 'cp $ENV_FILE ./server/.env'
                 }
+                withCredentials([file(credentialsId: 'moup-firebase-key', variable: 'FIRE_KEY')]) {
+                        // (1) 파일을 넣을 디렉토리가 없으면 생성
+                        sh 'mkdir -p ./server/src/main/resources/keys'
+                        
+                        // (2) Jenkins가 준 비밀 파일을 소스 코드 경로로 복사
+                        sh 'cp $FIRE_KEY ./server/src/main/resources/keys/moup-e5326-firebase-adminsdk-fbsvc-6ec6692e3b.json'
+                    }
             }
         }
 
