@@ -41,6 +41,7 @@ out/
 docker-compose.dev.yml
 
 # Local Docker files
+data/
+nginx/nginx.dev.conf
 mysql-data/
 redis-data/
-nginx/nginx.dev.conf
