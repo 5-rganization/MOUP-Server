@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -30,9 +29,7 @@ public class FCMConfig {
     try (InputStream serviceAccount = resource.getInputStream()) {
       FirebaseOptions options = FirebaseOptions.builder()
           .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-          // .setDatabaseUrl(...) // 필요하다면 추가
           .build();
-
       if (FirebaseApp.getApps().isEmpty()) { // 앱이 이미 초기화되지 않았는지 확인
         return FirebaseApp.initializeApp(options);
       } else {
