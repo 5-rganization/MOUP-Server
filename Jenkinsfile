@@ -4,8 +4,7 @@ pipeline {
     environment {
         DOCKER_IMAGE = "neoskycladdocker/moup"
         TEST_SERVER_IP = "test.moup-server.com"
-        SSH_USER = "moup-server"
-        
+        SSH_USER = "neoskyclad"
         TARGET_BRANCH = "develop" 
     }
 
@@ -64,14 +63,26 @@ pipeline {
             steps {
                 sshagent(credentials: ['ssh-develop-key']) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${TEST_SERVER_IP} '
-                            cd ~/MOUP-Server
+                        ssh -o StrictHostKeyChecking=no -p 11022 ${SSH_USER}@${TEST_SERVER_IP} '
+                            # 1. 프로젝트 디렉토리 이동
+                            cd /home/${SSH_USER}/MOUP-Server
 
+                            # 2. 최신 이미지 받기
                             docker compose pull server
                             
+                            # 3. 컨테이너 재시작
                             docker compose up -d server
 
+                            # 4. 불필요한 이미지 정리
                             docker image prune -f
+
+                            # 5. Crontab 설정 (사용자 삭제 스크립트)
+                            # echo "Setting up crontab..."
+                            # DELETE_SCRIPT="/home/${{ secrets.RPI_USER }}/MOUP-Server/src/main/resources/delete_old_users.sh"
+                            # chmod +x "$DELETE_SCRIPT" # 실행 권한 부여
+                            # # 기존 스케줄 삭제 후 새로 등록 (멱등성 확보)
+                            # (crontab -l 2>/dev/null | grep -v "delete_old_users.sh"; echo "0 0 * * * /bin/bash $DELETE_SCRIPT >> /home/${{ secrets.RPI_USER }}/MOUP-Server/delete_old_users.log 2>&1") | crontab -
+                            # echo "Crontab setup complete."
                         '
                     """
                 }
