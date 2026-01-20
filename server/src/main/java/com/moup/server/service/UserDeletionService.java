@@ -24,7 +24,7 @@ public class UserDeletionService {
         try {
             // 비동기 스레드 내부에서 동기적으로 revokeToken 호출 (레이스 컨디션 방지)
             authService.revokeToken(user.getId());
-            // TODO: revokeToken 실패 내역을 별도 테이블에 기록하는 등의 후처리
+            // TODO: revokeToken 실패 내역을 별도 테이블에 기록하는 등의 후처리 -> Retry 정책 및 DLQ
         } catch (AuthException e) {
             log.error("Auth revoke failed for user: {}. Error: {}", user.getId(), e.getMessage());
         }  catch (Exception e) {

@@ -34,24 +34,35 @@ public class RoutineService {
 
     @Transactional
     public RoutineCreateResponse createRoutine(Long userId, RoutineCreateRequest request) {
+
+        // 1. 루틴 초과 개수 확인
         if (routineRepository.countByUserId(userId) >= MAX_ROUTINE_COUNT_PER_USER) {
             throw new DataLimitExceedException("루틴은 사용자당 최대 " + MAX_ROUTINE_COUNT_PER_USER + "개까지 생성할 수 있습니다.");
         }
-        if (routineRepository.existByUserIdAndRoutineName(userId, request.getRoutineName())) { throw new RoutineNameAlreadyUsedException(); }
+
+        // 2. 중복 루틴 이름 방지?
+        if (routineRepository.existByUserIdAndRoutineName(userId, request.getRoutineName())) {
+            throw new RoutineNameAlreadyUsedException();
+        }
 
         List<RoutineTaskCreateRequest> routineTaskCreateRequestList = request.getRoutineTaskList();
         if (routineTaskCreateRequestList.size() >= MAX_TASK_COUNT_PER_ROUTINE) {
             throw new DataLimitExceedException("할 일은 루틴당 최대 " + MAX_TASK_COUNT_PER_ROUTINE + "개까지 생성할 수 있습니다.");
         }
 
+        // 3. DB Insert Transaction
+        // 3-1. 루틴을 먼저 User와 매핑해서 생성
         Routine routineToCreate = request.toEntity(userId);
         routineRepository.create(routineToCreate);
 
+        // 3-2. 생성된 루틴에 루틴 태스크 매핑해서 배치 생성
         List<RoutineTask> taskListToCreate = routineTaskCreateRequestList.stream()
                 .map(taskCreateRequest -> taskCreateRequest.toEntity(routineToCreate.getId()))
                 .toList();
 
-        if (!taskListToCreate.isEmpty()) { routineTaskRepository.createBatch(taskListToCreate); }
+        if (!taskListToCreate.isEmpty()) {
+            routineTaskRepository.createBatch(taskListToCreate);
+        }   // 배치로 DB 호출 한번에 생성
 
         return RoutineCreateResponse.builder()
                 .routineId(routineToCreate.getId())
@@ -66,6 +77,7 @@ public class RoutineService {
                 .routineId(routine.getId())
                 .routineName(routine.getRoutineName())
                 .alarmTime(routine.getAlarmTime())
+                // TODO: 해당 루틴과 연동된 모든 근무지의 repeatDays를 모아서 반환해야 함
                 .build();
     }
 
@@ -77,6 +89,7 @@ public class RoutineService {
                         .routineId(routine.getId())
                         .routineName(routine.getRoutineName())
                         .alarmTime(routine.getAlarmTime())
+                        // TODO: 해당 루틴과 연동된 모든 근무지의 repeatDays를 모아서 반환해야 함
                         .build())
                 .toList();
 
@@ -141,7 +154,9 @@ public class RoutineService {
 
                     // 2. 루틴 개수를 먼저 계산하고 0이면 null 반환
                     int routineCount = routineCountMap.getOrDefault(work.getId(), 0L).intValue();
-                    if (routineCount == 0) { return null; }
+                    if (routineCount == 0) {
+                        return null;
+                    }
 
                     WorkplaceSummaryResponse workplaceSummary = WorkplaceSummaryResponse.builder()
                             .workplaceId(workplace.getId())
@@ -177,7 +192,7 @@ public class RoutineService {
     @Transactional(readOnly = true)
     public RoutineSummaryListResponse getAllRoutineByWork(Long userId, Long workId) {
         List<RoutineSummaryResponse> routineSummaryInfoList = getAllRoutineByWorkRoutineMapping(userId, workId);
-
+        // TODO: 해당 루틴과 연동된 모든 근무지의 repeatDays를 모아서 반환해야 함
         return RoutineSummaryListResponse.builder()
                 .routineSummaryInfoList(routineSummaryInfoList)
                 .build();
@@ -200,6 +215,7 @@ public class RoutineService {
                 .routineId(routine.getId())
                 .routineName(routine.getRoutineName())
                 .alarmTime(routine.getAlarmTime())
+                // TODO: 해당 루틴과 연동된 모든 근무지의 repeatDays를 모아서 반환해야 함
                 .routineTaskList(routineTaskDetailResponseList)
                 .build();
     }
@@ -208,7 +224,9 @@ public class RoutineService {
     public void updateRoutine(Long userId, Long routineId, RoutineUpdateRequest request) {
         Routine oldRoutine = routineRepository.findByIdAndUserId(routineId, userId).orElseThrow(RoutineNotFoundException::new);
         if (!oldRoutine.getRoutineName().equals(request.getRoutineName())
-                && routineRepository.existByUserIdAndRoutineName(userId, request.getRoutineName())) { throw new RoutineNameAlreadyUsedException(); }
+                && routineRepository.existByUserIdAndRoutineName(userId, request.getRoutineName())) {
+            throw new RoutineNameAlreadyUsedException();
+        }
 
         List<RoutineTaskUpdateRequest> routineTaskUpdateRequestList = request.getRoutineTaskList();
         if (routineTaskUpdateRequestList.size() >= MAX_TASK_COUNT_PER_ROUTINE) {
@@ -224,7 +242,9 @@ public class RoutineService {
                 .map(routineTaskUpdateRequest -> routineTaskUpdateRequest.toEntity(routineId))
                 .toList();
 
-        if (!taskListToCreate.isEmpty()) { routineTaskRepository.createBatch(taskListToCreate); }
+        if (!taskListToCreate.isEmpty()) {
+            routineTaskRepository.createBatch(taskListToCreate);
+        }
     }
 
     @Transactional
@@ -248,7 +268,9 @@ public class RoutineService {
         workRoutineMappingRepository.deleteByWorkId(workId);
 
         // 1-1. 만약 연결할 루틴이 없다면 여기서 종료
-        if (routineIdList.isEmpty()) { return; }
+        if (routineIdList.isEmpty()) {
+            return;
+        }
 
         // 2. 루틴 유효성 검증 (쿼리 2)
         List<Routine> validRoutines = routineRepository.findAllByIdListInAndUserId(routineIdList, userId);
@@ -291,7 +313,9 @@ public class RoutineService {
         // 1. 첫 번째 쿼리 (1번 실행)
         List<WorkRoutineMapping> workRoutineMappingList = workRoutineMappingRepository.findAllByWorkId(workId);
 
-        if (workRoutineMappingList.isEmpty()) { return Collections.emptyList(); }
+        if (workRoutineMappingList.isEmpty()) {
+            return Collections.emptyList();
+        }
 
         // 2. 루틴 ID 리스트 추출
         List<Long> routineIdList = workRoutineMappingList.stream()
@@ -299,7 +323,9 @@ public class RoutineService {
                 .distinct()
                 .toList();
 
-        if (routineIdList.isEmpty()) { return Collections.emptyList(); }
+        if (routineIdList.isEmpty()) {
+            return Collections.emptyList();
+        }
 
         // 3. 두 번째 쿼리 (1번 실행) - IN 절을 사용해 한 번에 모든 루틴 조회
         List<Routine> routineList = routineRepository.findAllByIdListInAndUserId(routineIdList, userId);
@@ -310,6 +336,7 @@ public class RoutineService {
                         .routineId(routine.getId())
                         .routineName(routine.getRoutineName())
                         .alarmTime(routine.getAlarmTime())
+                        // TODO: 해당 루틴과 연동된 모든 근무지의 repeatDays를 모아서 반환해야 함
                         .build())
                 .toList();
     }

@@ -5,7 +5,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.DayOfWeek;
 import java.time.LocalTime;
+import java.util.List;
 
 @Getter
 @Builder
@@ -18,4 +20,6 @@ public class RoutineSummaryResponse {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm")
     @Schema(description = "알람 시간", example = "14:30", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private LocalTime alarmTime;
+    @Schema(description = "반복 요일 (없으면 빈 배열)", example = "[\"MONDAY\", \"WEDNESDAY\"]", requiredMode = Schema.RequiredMode.REQUIRED)
+    private List<DayOfWeek> repeatDays;
 }
