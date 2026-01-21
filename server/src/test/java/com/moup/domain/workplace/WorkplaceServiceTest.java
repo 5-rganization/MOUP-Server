@@ -1,4 +1,4 @@
-package com.moup.server.service;
+package com.moup.domain.workplace;
 
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.moup.global.infra.fcm.FCMService;
