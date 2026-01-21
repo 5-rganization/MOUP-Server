@@ -8,6 +8,9 @@ import java.util.List;
 @Mapper
 public interface WorkRoutineMappingRepository {
 
+    @Select("SELECT * FROM work_routine_mappings WHERE routine_id = #{routineId}")
+    List<WorkRoutineMapping> findWorksByRoutineId(Long routineId);
+
     record WorkRoutineCount(Long workId, long count) {}
 
     /// 여러 개의 근무-루틴 매핑을 한 번에 생성하는 메서드 (배치 삽입)
