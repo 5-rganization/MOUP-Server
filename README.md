@@ -3,6 +3,31 @@
 
 ## 패키지 구조
 ```
+📦 com.moup
+ ┣ 📂 domain                    # 비즈니스 도메인 (Domain-Driven Structure)
+ ┃ ┣ 📂 work                    # [Standard Structure Example]
+ ┃ ┃ ┣ 📂 api                   # Presentation Layer (Controller)
+ ┃ ┃ ┣ 📂 application           # Business Layer (Service)
+ ┃ ┃ ┣ 📂 dao                   # Data Access Layer (Mapper/Repository)
+ ┃ ┃ ┣ 📂 domain                # Domain Layer (Entity & Core Logic)
+ ┃ ┃ ┃ ┣ 📜 Work.java           # Entity
+ ┃ ┃ ┃ ┗ 📂 type                # Domain Enums (Status, Type etc.)
+ ┃ ┃ ┣ 📂 dto                   # Data Transfer Objects (Request/Response)
+ ┃ ┃ ┗ 📂 exception             # Domain Specific Exceptions
+ ┃ ┣ 📂 alarm
+ ┃ ┣ 📂 auth
+ ┃ ┣ 📂 routine
+ ┃ ┣ 📂 salary
+ ┃ ┣ 📂 user                    # (Admin, Owner, Worker 통합)
+ ┃ ┗ 📂 workplace
+ ┣ 📂 global                    # 전역 공통 모듈
+ ┃ ┣ 📂 common                  # 공통 DTO(Response), BaseEntity
+ ┃ ┣ 📂 config                  # Spring 설정 (Web, Swagger, Redis, MyBatis)
+ ┃ ┣ 📂 error                   # 전역 예외 핸들링 (Handler, ErrorCode)
+ ┃ ┣ 📂 infra                   # 외부 인프라 연동 (S3, FCM, Mail)
+ ┃ ┣ 📂 security                # 보안 설정 (JWT, Filter, Token)
+ ┃ ┗ 📂 util                    # 정적 유틸리티 (DateUtil, StringUtil)
+ ┗ 📜 MoupServerApplication.java
 ```
 
 ## Git 전략
