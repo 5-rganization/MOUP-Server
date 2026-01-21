@@ -1,21 +1,25 @@
 package com.moup.server.service;
 
 import com.google.firebase.messaging.FirebaseMessagingException;
-import com.moup.server.common.AlarmContent;
-import com.moup.server.common.AlarmTitle;
-import com.moup.server.common.Role;
-import com.moup.server.exception.CustomFirebaseMessagingException;
-import com.moup.server.exception.WorkplaceLimitExceededException;
-import com.moup.server.model.dto.OwnerWorkplaceCreateRequest;
-import com.moup.server.model.dto.SalaryCreateRequest;
-import com.moup.server.model.dto.WorkplaceJoinRequest;
-import com.moup.server.model.entity.User;
-import com.moup.server.model.entity.Workplace;
-import com.moup.server.model.entity.Worker;
-import com.moup.server.repository.SalaryRepository;
-import com.moup.server.repository.WorkplaceRepository;
-import com.moup.server.repository.WorkerRepository;
-import com.moup.server.util.PermissionVerifyUtil;
+import com.moup.global.infra.fcm.FCMService;
+import com.moup.domain.workplace.application.InviteCodeService;
+import com.moup.domain.salary.domain.Salary;
+import com.moup.domain.workplace.application.WorkplaceService;
+import com.moup.domain.alarm.domain.AlarmContent;
+import com.moup.domain.alarm.domain.AlarmTitle;
+import com.moup.global.common.type.Role;
+import com.moup.global.infra.fcm.CustomFirebaseMessagingException;
+import com.moup.domain.workplace.exception.WorkplaceLimitExceededException;
+import com.moup.domain.user.dto.OwnerWorkplaceCreateRequest;
+import com.moup.domain.salary.dto.SalaryCreateRequest;
+import com.moup.domain.workplace.dto.WorkplaceJoinRequest;
+import com.moup.domain.user.domain.User;
+import com.moup.domain.workplace.domain.Workplace;
+import com.moup.domain.user.domain.Worker;
+import com.moup.domain.salary.mapper.SalaryRepository;
+import com.moup.domain.workplace.mapper.WorkplaceRepository;
+import com.moup.domain.user.mapper.WorkerRepository;
+import com.moup.global.util.PermissionVerifyUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -200,7 +204,7 @@ class WorkplaceServiceTest {
 
     // 3. worker와 salary가 생성되었는지 검증
     verify(workerRepository, times(1)).create(any(Worker.class));
-    verify(salaryRepository, times(1)).create(any(com.moup.server.model.entity.Salary.class));
+    verify(salaryRepository, times(1)).create(any(Salary.class));
   }
 
   @Test
@@ -234,6 +238,6 @@ class WorkplaceServiceTest {
 
     // 2. @Transactional에 의해 롤백되어야 하므로, worker와 salary는 생성(create)되면 안 됨
     verify(workerRepository, never()).create(any(Worker.class));
-    verify(salaryRepository, never()).create(any(com.moup.server.model.entity.Salary.class));
+    verify(salaryRepository, never()).create(any(Salary.class));
   }
 }

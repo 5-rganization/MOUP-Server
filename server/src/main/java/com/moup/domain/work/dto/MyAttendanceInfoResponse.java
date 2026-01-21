@@ -1,0 +1,16 @@
+package com.moup.domain.work.dto;
+
+import com.moup.domain.user.dto.WorkerWorkAttendanceResponse;
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Builder;
+import lombok.Getter;
+
+import java.util.List;
+
+@Getter
+@Builder
+@Schema(description = "사용자 근태 정보 응답 DTO")
+public class MyAttendanceInfoResponse {
+    @Schema(description = "사용자 출석 정보 (없으면 빈 배열)", requiredMode = Schema.RequiredMode.REQUIRED)
+    private List<WorkerWorkAttendanceResponse> myWorkAttendanceInfoList;
+}
