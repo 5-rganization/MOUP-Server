@@ -43,6 +43,12 @@ pipeline {
         }
 
         stage('Build & Push Docker') {
+            when {
+                anyOf {
+                    branch 'develop'
+                    branch 'main'
+                }
+            }
             steps {
                 withCredentials([usernamePassword(credentialsId: 'docker-hub-auth', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     script {
@@ -53,9 +59,10 @@ pipeline {
                             // develop -> develop-빌드번호 (latest)
                             // main    -> release-빌드번호 (stable)
                             def branchName = env.BRANCH_NAME
+                            def safeBranchName = branchName.replaceAll("/", "-")
                             def buildNum = env.BUILD_NUMBER
                             
-                            def versionTag = "${branchName}-${buildNum}"
+                            def versionTag = "${safeBranchName}-${buildNum}"
                             def aliasTag = (branchName == 'main') ? 'stable' : 'latest'
                             
                             // 환경변수로 내보내기 (Deploy 스테이지에서 쓰기 위함)
