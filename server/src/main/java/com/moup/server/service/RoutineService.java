@@ -4,6 +4,7 @@ import com.moup.server.exception.*;
 import com.moup.server.model.dto.*;
 import com.moup.server.model.entity.*;
 import com.moup.server.repository.*;
+import com.moup.server.repository.WorkRepository.GroupIdAndDayName;
 import java.time.DayOfWeek;
 import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
@@ -102,7 +103,13 @@ public class RoutineService {
         .distinct()
         .toList();
 
-    Map<String, List<String>> groupDayMap = workRepository.findDayNamesMapByGroupIdsIn(groupIds);
+    List<WorkRepository.GroupIdAndDayName> dtos = new ArrayList<>();
+    if (!groupIds.isEmpty()) {
+      dtos = workRepository.findDayNamesByGroupIdsIn(groupIds);
+    }
+
+    Map<String, List<String>> groupDayMap = dtos.stream()
+        .collect(Collectors.groupingBy(GroupIdAndDayName::groupId, Collectors.mapping(GroupIdAndDayName::dayName, Collectors.toList())));
 
     List<RoutineSummaryResponse.LinkedWorkRoutine> linkedWorks = new ArrayList<>();
 

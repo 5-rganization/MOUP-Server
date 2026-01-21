@@ -2,6 +2,7 @@ package com.moup.server.repository;
 
 import com.moup.server.model.entity.Work;
 import java.util.Map;
+import lombok.Getter;
 import org.apache.ibatis.annotations.*;
 
 import java.time.LocalDate;
@@ -14,15 +15,15 @@ import java.util.Optional;
 public interface WorkRepository {
 
   @Select("""
-      <select id="findAllByWorkIdIn" resultType="Work">
-          SELECT * FROM work
-          WHERE work_id IN
-          <foreach item="id" collection="list" open="(" separator="," close=")">
-              #{id}
-          </foreach>
-      </select>
+          <script>
+              SELECT * FROM work
+              WHERE id IN
+              <foreach item="id" collection="list" open="(" separator="," close=")">
+                  #{id}
+              </foreach>
+          </script>
       """)
-  List<Work> findAllByIdIn(List<Long> workIdList);
+  List<Work> findAllByIdIn(List<Long> list);
 
   /// 근무를 생성하는 메서드
   ///
@@ -391,12 +392,17 @@ public interface WorkRepository {
       @Param("date") LocalDate date);
 
   @Select("""
-          SELECT repeat_group_id, DAYNAME(work_date) as day_name
-          FROM works
-          WHERE repeat_group_id IN #{groupIds}
-          GROUP BY repeat_group_id, day_name
+          <script>
+              SELECT repeat_group_id as groupId, DAYNAME(work_date) as dayName
+              FROM works
+              WHERE repeat_group_id IN
+              <foreach item="id" collection="groupIds" open="(" separator="," close=")">
+                  #{id}
+              </foreach>
+              GROUP BY repeat_group_id, dayName
+          </script>
       """)
-  Map<String, List<String>> findDayNamesMapByGroupIdsIn(List<String> groupIds);
+  List<GroupIdAndDayName> findDayNamesByGroupIdsIn(@Param("groupIds") List<String> groupIds);
 
   // 여러 그룹 ID와 마지막 근무일을 담을 내부 레코드 (또는 DTO)
   record GroupIdAndDate(String groupId, LocalDate lastDate) {
