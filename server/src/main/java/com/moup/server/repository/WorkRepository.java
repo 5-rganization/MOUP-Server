@@ -16,7 +16,7 @@ public interface WorkRepository {
 
   @Select("""
           <script>
-              SELECT * FROM work
+              SELECT * FROM works
               WHERE id IN
               <foreach item="id" collection="list" open="(" separator="," close=")">
                   #{id}

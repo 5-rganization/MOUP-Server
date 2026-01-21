@@ -78,21 +78,31 @@ public class RoutineService {
 
   @Transactional(readOnly = true)
   public RoutineSummaryResponse getRoutine(Long userId, Long routineId) {
-    // 1. 루틴 가져오기
     Routine routine = routineRepository.findByIdAndUserId(routineId, userId)
         .orElseThrow(RoutineNotFoundException::new);
 
-    // 2. 루틴 기준으로 연동된 일 ID 리스트 검색
+    List<RoutineSummaryResponse.LinkedWorkRoutine> linkedWorks = getLinkedWorksFromRoutine(routine.getId());
+
+    return RoutineSummaryResponse.builder()
+        .routineId(routine.getId())
+        .routineName(routine.getRoutineName())
+        .alarmTime(routine.getAlarmTime())
+        .linkedWorks(linkedWorks)
+        .build();
+  }
+
+  private List<RoutineSummaryResponse.LinkedWorkRoutine> getLinkedWorksFromRoutine(Long routineId) {
+    // 1. 루틴 기준으로 연동된 일 ID 리스트 검색
     List<WorkRoutineMapping> workRoutineMappingList = workRoutineMappingRepository.findWorksByRoutineId(
         routineId);
 
-    // 3. 근무에서 요일 추출
-    // 3-1. 매핑 결과에서 근무 ID만 추출
+    // 2. 근무에서 요일 추출
+    // 2-1. 매핑 결과에서 근무 ID만 추출
     List<Long> workIdList = workRoutineMappingList.stream()
         .map(WorkRoutineMapping::getWorkId)
         .toList();
 
-    // 3-2. 근무 ID로 근무 반환
+    // 2-2. 근무 ID로 근무 반환
     List<Work> workList = new ArrayList<>();
     if (!workIdList.isEmpty()) {
       workList = workRepository.findAllByIdIn(workIdList);
@@ -118,9 +128,9 @@ public class RoutineService {
       List<String> dayNames = groupDayMap.getOrDefault(work.getRepeatGroupId(), new ArrayList<>());
       List<DayOfWeek> repeatDays = new ArrayList<>();
       for (String dayName : dayNames) {
-          if (dayName == null) {
-              repeatDays.add(null);
-          }
+        if (dayName == null) {
+          repeatDays.add(null);
+        }
         try {
           // DAYNAME()은 보통 'Monday' 처럼 나오므로 대문자로 변환 필수
           repeatDays.add(DayOfWeek.valueOf(dayName.toUpperCase()));
@@ -130,24 +140,21 @@ public class RoutineService {
       }
       linkedWorks.add(new RoutineSummaryResponse.LinkedWorkRoutine(work.getId(), repeatDays));
     }
-
-    return RoutineSummaryResponse.builder()
-        .routineId(routine.getId())
-        .routineName(routine.getRoutineName())
-        .alarmTime(routine.getAlarmTime())
-        .linkedWorks(linkedWorks)
-        .build();
+    
+    // 3. 요일 정보 반환
+    return linkedWorks;
   }
 
   @Transactional(readOnly = true)
   public RoutineSummaryListResponse getAllRoutine(Long userId) {
     List<Routine> routineList = routineRepository.findAllByUserId(userId);
+
     List<RoutineSummaryResponse> routineSummaryResponseList = routineList.stream()
         .map(routine -> RoutineSummaryResponse.builder()
             .routineId(routine.getId())
             .routineName(routine.getRoutineName())
             .alarmTime(routine.getAlarmTime())
-            // TODO: 해당 루틴과 연동된 모든 근무지의 repeatDays를 모아서 반환해야 함
+            .linkedWorks(getLinkedWorksFromRoutine(routine.getId()))  // N + 1 발생
             .build())
         .toList();
 
@@ -258,7 +265,6 @@ public class RoutineService {
   public RoutineSummaryListResponse getAllRoutineByWork(Long userId, Long workId) {
     List<RoutineSummaryResponse> routineSummaryInfoList = getAllRoutineByWorkRoutineMapping(userId,
         workId);
-    // TODO: 해당 루틴과 연동된 모든 근무지의 repeatDays를 모아서 반환해야 함
     return RoutineSummaryListResponse.builder()
         .routineSummaryInfoList(routineSummaryInfoList)
         .build();
@@ -282,7 +288,7 @@ public class RoutineService {
         .routineId(routine.getId())
         .routineName(routine.getRoutineName())
         .alarmTime(routine.getAlarmTime())
-        // TODO: 해당 루틴과 연동된 모든 근무지의 repeatDays를 모아서 반환해야 함
+        .linkedWorks(getLinkedWorksFromRoutine(routine.getId()))
         .routineTaskList(routineTaskDetailResponseList)
         .build();
   }
@@ -408,7 +414,7 @@ public class RoutineService {
             .routineId(routine.getId())
             .routineName(routine.getRoutineName())
             .alarmTime(routine.getAlarmTime())
-            // TODO: 해당 루틴과 연동된 모든 근무지의 repeatDays를 모아서 반환해야 함
+            .linkedWorks(getLinkedWorksFromRoutine(routine.getId()))
             .build())
         .toList();
   }

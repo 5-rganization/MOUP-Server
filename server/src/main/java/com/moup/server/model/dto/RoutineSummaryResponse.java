@@ -21,7 +21,7 @@ public class RoutineSummaryResponse {
   @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm")
   @Schema(description = "알람 시간", example = "14:30", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
   private LocalTime alarmTime;
-  @Schema(description = "반복 요일 (없으면 빈 배열)", example = "[\"MONDAY\", \"WEDNESDAY\"]", requiredMode = Schema.RequiredMode.REQUIRED)
+  @Schema(description = "반복 요일 (없으면 빈 배열)", example = "[\"MONDAY\", \"WEDNESDAY\"]", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
   private List<LinkedWorkRoutine> linkedWorks;
 
   public record LinkedWorkRoutine(
