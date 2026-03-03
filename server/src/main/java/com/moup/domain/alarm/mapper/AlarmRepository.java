@@ -12,7 +12,7 @@ import com.moup.domain.user.domain.User;
 import org.apache.ibatis.annotations.*;
 
 @Mapper
-public interface AlarmRepository {
+public interface AlarmRepository {  // TODO: 이제 AlarmRepository 지우고 새로 만든 JpaRepository 들로 대체하기
 
     @Insert("INSERT INTO normal_alarms (sender_id, receiver_id, title, content) VALUES (#{senderId}, #{receiverId}, #{title}, #{content})")
     void saveNormalAlarm(NormalAlarmRequest request);

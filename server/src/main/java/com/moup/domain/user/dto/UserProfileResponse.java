@@ -2,6 +2,7 @@ package com.moup.domain.user.dto;
 
 import com.moup.global.common.type.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDateTime;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -20,5 +21,5 @@ public class UserProfileResponse {
     @Schema(description = "유저 역할", example = "ROLE_WORKER")
     private Role role;
     @Schema(description = "생성 일자", example = "2025-01-01 12:34:56")
-    private String createdAt;
+    private LocalDateTime createdAt;
 }

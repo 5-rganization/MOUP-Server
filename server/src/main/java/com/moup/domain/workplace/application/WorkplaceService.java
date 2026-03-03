@@ -51,7 +51,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import static com.moup.global.common.TimeConstants.SEOUL_ZONE_ID;
+import static com.moup.global.common.domain.TimeConstants.SEOUL_ZONE_ID;
 
 @Service
 @RequiredArgsConstructor

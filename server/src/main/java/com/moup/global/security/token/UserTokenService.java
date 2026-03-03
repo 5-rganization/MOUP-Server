@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import static com.moup.global.common.TimeConstants.SEOUL_ZONE_ID;
+import static com.moup.global.common.domain.TimeConstants.SEOUL_ZONE_ID;
 
 @Service
 @RequiredArgsConstructor

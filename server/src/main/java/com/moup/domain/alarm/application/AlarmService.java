@@ -19,7 +19,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import static com.moup.global.common.TimeConstants.SEOUL_ZONE_ID;
+import static com.moup.global.common.domain.TimeConstants.SEOUL_ZONE_ID;
 
 @Service
 @RequiredArgsConstructor
@@ -40,8 +40,8 @@ public class AlarmService {
     for (NormalAlarm normalAlarm : normalAlarms) {
       notifications.add(Notification.builder()
           .id(normalAlarm.getId())
-          .senderId(normalAlarm.getSenderId())
-          .receiverId(normalAlarm.getReceiverId())
+          .senderId(normalAlarm.getSender().getId())
+          .receiverId(normalAlarm.getReceiver().getId())
           .title(normalAlarm.getTitle())
           .content(normalAlarm.getContent())
           .sentAt(normalAlarm.getSentAt())
@@ -65,8 +65,8 @@ public class AlarmService {
 
     return Notification.builder()
         .id(normalAlarm.getId())
-        .senderId(normalAlarm.getSenderId())
-        .receiverId(normalAlarm.getReceiverId())
+        .senderId(normalAlarm.getSender().getId())
+        .receiverId(normalAlarm.getReceiver().getId())
         .title(normalAlarm.getTitle())
         .content(normalAlarm.getContent())
         .sentAt(normalAlarm.getSentAt())
@@ -90,8 +90,8 @@ public class AlarmService {
 
     return Notification.builder()
         .id(normalAlarm.getId())
-        .senderId(normalAlarm.getSenderId())
-        .receiverId(normalAlarm.getReceiverId())
+        .senderId(normalAlarm.getSender().getId())
+        .receiverId(normalAlarm.getReceiver().getId())
         .title(normalAlarm.getTitle())
         .content(normalAlarm.getContent())
         .sentAt(normalAlarm.getSentAt())

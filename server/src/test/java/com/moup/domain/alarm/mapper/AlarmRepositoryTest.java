@@ -50,9 +50,9 @@ class AlarmRepositoryTest {
     saveFakeUser("3", 300L);
 
     List<User> targetUsers = List.of(
-        User.builder().id(100L).build(),
-        User.builder().id(200L).build(),
-        User.builder().id(300L).build()
+//        User.builder().id(100L).build(),
+//        User.builder().id(200L).build(),
+//        User.builder().id(300L).build()
     );
 
     // when
@@ -73,7 +73,7 @@ class AlarmRepositoryTest {
 
     // 매핑에 사용할 유저 리스트 (Builder 사용)
     List<User> userList = List.of(
-        User.builder().id(userId).build()
+//        User.builder().id(userId).build()
     );
 
     // 1. 활성 공지 생성 및 매핑 (Builder 사용)

@@ -12,7 +12,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
-import static com.moup.global.common.TimeConstants.SEOUL_ZONE_ID;
+import static com.moup.global.common.domain.TimeConstants.SEOUL_ZONE_ID;
 
 @Getter
 @Builder

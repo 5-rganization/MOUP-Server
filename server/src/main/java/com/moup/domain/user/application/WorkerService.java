@@ -39,7 +39,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static com.moup.global.common.TimeConstants.SEOUL_ZONE_ID;
+import static com.moup.global.common.domain.TimeConstants.SEOUL_ZONE_ID;
 
 @Service
 @RequiredArgsConstructor

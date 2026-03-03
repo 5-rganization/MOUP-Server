@@ -1,4 +1,4 @@
-package com.moup.global.common;
+package com.moup.global.common.domain;
 
 import java.time.ZoneId;
 

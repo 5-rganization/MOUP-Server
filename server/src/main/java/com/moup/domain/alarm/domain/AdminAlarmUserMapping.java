@@ -2,7 +2,6 @@ package com.moup.domain.alarm.domain;
 
 import com.moup.domain.user.domain.User;
 import com.moup.global.common.domain.BaseTimeEntity;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -13,47 +12,44 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.ToString;
 
 @Entity
 @Getter
-@Table(name = "normal_alarms")
+@Table(name = "admin_alarm_user_mappings")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class NormalAlarm extends BaseTimeEntity {
+public class AdminAlarmUserMapping extends BaseTimeEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "sender_id")
-  private User sender;
+  @JoinColumn(name = "user_id")
+  private User user;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "receiver_id")
-  private User receiver;
-
-  private String title;
-
-  @Column(columnDefinition = "TEXT")
-  private String content;
-
-  private LocalDateTime sentAt;
+  @JoinColumn(name = "alarm_id")
+  private AdminAlarm adminAlarm;
 
   private LocalDateTime readAt;
 
-  public NormalAlarm(User sender, User receiver, String title, String content) {
-    this.sender = sender;
-    this.receiver = receiver;
-    this.title = title;
-    this.content = content;
+  private LocalDateTime deletedAt;
+
+  @Builder
+  public AdminAlarmUserMapping(User user, AdminAlarm adminAlarm) {
+    this.user = user;
+    this.adminAlarm = adminAlarm;
   }
 
   public void read() {
-    this.sentAt = LocalDateTime.now();
+    this.readAt = LocalDateTime.now();
   }
+
+  public void delete() {
+    this.deletedAt = LocalDateTime.now();
+  }
+
 }

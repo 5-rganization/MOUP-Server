@@ -46,7 +46,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.moup.global.common.TimeConstants.SEOUL_ZONE_ID;
+import static com.moup.global.common.domain.TimeConstants.SEOUL_ZONE_ID;
 
 /// 근무(Work) 관련 비즈니스 로직을 처리하는 서비스 클래스
 @Slf4j

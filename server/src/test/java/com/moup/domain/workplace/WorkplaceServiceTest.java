@@ -67,13 +67,13 @@ class WorkplaceServiceTest {
     ReflectionTestUtils.setField(workplaceService, "workplaceCreationLimit", TEST_WORKPLACE_LIMIT);
 
     mockOwner = User.builder()
-        .id(1L)
+//        .id(1L)
         .username("사장님")
         .role(Role.ROLE_OWNER)
         .build();
 
     mockWorkerUser = User.builder()
-        .id(2L)
+//        .id(2L)
         .username("알바생")
         .role(Role.ROLE_WORKER)
         .build();
