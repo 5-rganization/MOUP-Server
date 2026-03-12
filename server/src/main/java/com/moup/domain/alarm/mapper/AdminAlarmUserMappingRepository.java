@@ -22,7 +22,7 @@ public interface AdminAlarmUserMappingRepository extends JpaRepository<AdminAlar
   /*
    * 2. 특정 공지사항 단건 조회 (삭제 안 된 것)
    */
-  @Query("SELECT m FROM AdminAlarmUserMapping m WHERE m.user.id = :userId AND m.adminAlarm.id = :alarmId AND m.deletedAt IS NULL")
+  @Query("SELECT m FROM AdminAlarmUserMapping m JOIN FETCH m.adminAlarm WHERE m.user.id = :userId AND m.adminAlarm.id = :alarmId AND m.deletedAt IS NULL")
   Optional<AdminAlarmUserMapping> findActiveByUserIdAndAlarmId(@Param("userId") Long userId, @Param("alarmId") Long alarmId);
 
   /*
@@ -32,4 +32,13 @@ public interface AdminAlarmUserMappingRepository extends JpaRepository<AdminAlar
   @Modifying(clearAutomatically = true)
   @Query("UPDATE AdminAlarmUserMapping m SET m.deletedAt = CURRENT_TIMESTAMP WHERE m.user.id = :userId AND m.deletedAt IS NULL")
   void softDeleteAllByUserId(@Param("userId") Long userId);
+
+  /**
+   * 대량 읽음 처리
+   *
+   * @param userId
+   */
+  @Modifying(clearAutomatically = true)
+  @Query("UPDATE AdminAlarmUserMapping m SET m.readAt = CURRENT_TIMESTAMP WHERE m.user.id = :userId AND m.readAt IS NULL AND m.deletedAt IS NULL")
+  void markAllAnnouncementsAsReadByUserId(@Param("userId") Long userId);
 }

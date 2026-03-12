@@ -7,10 +7,11 @@ import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
 import com.moup.domain.alarm.application.AlarmService;
-import com.moup.domain.alarm.dto.NormalAlarmRequest;
-import com.moup.domain.alarm.domain.Announcement;
+import com.moup.domain.alarm.domain.AdminAlarm;
+import com.moup.domain.alarm.domain.NormalAlarm;
+import com.moup.domain.alarm.mapper.AdminAlarmRepository;
+import com.moup.domain.alarm.mapper.NormalAlarmRepository;
 import com.moup.domain.user.domain.User;
-import com.moup.domain.alarm.mapper.AlarmRepository;
 import com.moup.domain.user.application.UserService;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -24,9 +25,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class FCMService {
 
   private final UserService userService;
-  private final AlarmRepository alarmRepository;
   private final AlarmService alarmService;
   private final ObjectMapper objectMapper;
+  private final NormalAlarmRepository normalAlarmRepository;
+  private final AdminAlarmRepository adminAlarmRepository;
 
   /**
    * 특정 사용자 한 명에게 알림을 보냅니다. (1대1)
@@ -39,49 +41,45 @@ public class FCMService {
    */
   @Transactional
   public void sendToSingleUser(Long senderId, Long receiverId, String title, String body,
-                               Object dataPayload)
-          throws FirebaseMessagingException {
+      Object dataPayload)
+      throws FirebaseMessagingException {
 
-      User sender = userService.findUserById(senderId);
-      User receiver = userService.findUserById(receiverId);
-      String fcmToken = receiver.getFcmToken();
+    User sender = userService.findUserById(senderId);
+    User receiver = userService.findUserById(receiverId);
+    String fcmToken = receiver.getFcmToken();
 
-      // 1. [DB 저장] 토큰 유무와 상관없이 알림 내역은 먼저 저장 (히스토리 보존)
-      alarmRepository.saveNormalAlarm(NormalAlarmRequest.builder()
-              .senderId(senderId)
-              .receiverId(receiverId)
-              .title(title)
-              .content(body)
-              .build());
+    // 1. [DB 저장] 토큰 유무와 상관없이 알림 내역은 먼저 저장 (히스토리 보존)
+    normalAlarmRepository.save(new NormalAlarm(sender, receiver, title, body));
 
-      // 2. [토큰 검사] 토큰이 없으면 여기서 종료 (푸시는 안 보냄)
-      if (fcmToken == null || fcmToken.isBlank()) {
-          log.warn("FCM 전송 스킵: 수신자(ID: {})의 FCM 토큰이 없습니다. (DB 저장은 완료)", receiverId);
-          return;
+    // 2. [토큰 검사] 토큰이 없으면 여기서 종료 (푸시는 안 보냄)
+    if (fcmToken == null || fcmToken.isBlank()) {
+      log.warn("FCM 전송 스킵: 수신자(ID: {})의 FCM 토큰이 없습니다. (DB 저장은 완료)", receiverId);
+      return;
+    }
+
+    // 3. [FCM 전송] 토큰이 있을 때만 실행
+    Notification notification = Notification.builder()
+        .setTitle(title)
+        .setBody(body)
+        .build();
+
+    Message.Builder messageBuilder = Message.builder()
+        .setToken(fcmToken)
+        .setNotification(notification);
+
+    if (dataPayload != null) {
+      try {
+        Map<String, String> dataMap = objectMapper.convertValue(dataPayload,
+            new TypeReference<Map<String, String>>() {
+            });
+        messageBuilder.putAllData(dataMap);
+      } catch (IllegalArgumentException e) {
+        log.error(e.getMessage());
       }
+    }
 
-      // 3. [FCM 전송] 토큰이 있을 때만 실행
-      Notification notification = Notification.builder()
-              .setTitle(title)
-              .setBody(body)
-              .build();
-
-      Message.Builder messageBuilder = Message.builder()
-              .setToken(fcmToken)
-              .setNotification(notification);
-
-      if (dataPayload != null) {
-          try {
-              Map<String, String> dataMap = objectMapper.convertValue(dataPayload,
-                      new TypeReference<Map<String, String>>() {});
-              messageBuilder.putAllData(dataMap);
-          } catch (IllegalArgumentException e) {
-              log.error(e.getMessage());
-          }
-      }
-
-      String response = FirebaseMessaging.getInstance().send(messageBuilder.build());
-      System.out.println("Successfully sent message: " + response);
+    String response = FirebaseMessaging.getInstance().send(messageBuilder.build());
+    System.out.println("Successfully sent message: " + response);
   }
 
   /**
@@ -108,13 +106,13 @@ public class FCMService {
         // .putData("key", "value") // 데이터 페이로드 추가 가능
         .build();
 
-    Announcement announcement = Announcement.builder()
+    AdminAlarm adminAlarm = AdminAlarm.builder()
         .title(title)
         .content(body)
         .build();
 
-    alarmRepository.saveAdminAlarm(announcement);
-    Long announcementId = announcement.getId();
+    AdminAlarm savedAlarm = adminAlarmRepository.save(adminAlarm);
+    Long announcementId = savedAlarm.getId();
 
     // [3] FCM 서버에 메시지 전송 요청
     String response = FirebaseMessaging.getInstance().send(message);

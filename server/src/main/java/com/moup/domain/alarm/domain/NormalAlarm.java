@@ -46,6 +46,7 @@ public class NormalAlarm extends BaseTimeEntity {
 
   private LocalDateTime readAt;
 
+  @Builder
   public NormalAlarm(User sender, User receiver, String title, String content) {
     this.sender = sender;
     this.receiver = receiver;
@@ -54,6 +55,6 @@ public class NormalAlarm extends BaseTimeEntity {
   }
 
   public void read() {
-    this.sentAt = LocalDateTime.now();
+    this.readAt = LocalDateTime.now();
   }
 }
