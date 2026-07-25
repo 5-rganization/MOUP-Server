@@ -1,7 +1,6 @@
 package com.moup.domain.alarm.domain;
 
 import com.moup.domain.user.domain.User;
-import com.moup.global.common.domain.BaseTimeEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -16,22 +15,24 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import static com.moup.global.common.domain.TimeConstants.SEOUL_ZONE_ID;
+
 @Entity
 @Getter
 @Table(name = "admin_alarm_user_mappings")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class AdminAlarmUserMapping extends BaseTimeEntity {
+public class AdminAlarmUserMapping {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "user_id")
+  @JoinColumn(name = "user_id", nullable = false)
   private User user;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "alarm_id")
+  @JoinColumn(name = "alarm_id", nullable = false)
   private AdminAlarm adminAlarm;
 
   private LocalDateTime readAt;
@@ -45,11 +46,11 @@ public class AdminAlarmUserMapping extends BaseTimeEntity {
   }
 
   public void read() {
-    this.readAt = LocalDateTime.now();
+    this.readAt = LocalDateTime.now(SEOUL_ZONE_ID);
   }
 
   public void delete() {
-    this.deletedAt = LocalDateTime.now();
+    this.deletedAt = LocalDateTime.now(SEOUL_ZONE_ID);
   }
 
 }

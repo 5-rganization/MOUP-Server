@@ -7,17 +7,12 @@ import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
 import com.moup.domain.alarm.application.AlarmService;
-import com.moup.domain.alarm.domain.AdminAlarm;
-import com.moup.domain.alarm.domain.NormalAlarm;
-import com.moup.domain.alarm.mapper.AdminAlarmRepository;
-import com.moup.domain.alarm.mapper.NormalAlarmRepository;
 import com.moup.domain.user.domain.User;
 import com.moup.domain.user.application.UserService;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -27,8 +22,6 @@ public class FCMService {
   private final UserService userService;
   private final AlarmService alarmService;
   private final ObjectMapper objectMapper;
-  private final NormalAlarmRepository normalAlarmRepository;
-  private final AdminAlarmRepository adminAlarmRepository;
 
   /**
    * 특정 사용자 한 명에게 알림을 보냅니다. (1대1)
@@ -39,7 +32,6 @@ public class FCMService {
    * @param body       알림 내용
    * @throws FirebaseMessagingException FCM 전송 실패 시
    */
-  @Transactional
   public void sendToSingleUser(Long senderId, Long receiverId, String title, String body,
       Object dataPayload)
       throws FirebaseMessagingException {
@@ -49,7 +41,7 @@ public class FCMService {
     String fcmToken = receiver.getFcmToken();
 
     // 1. [DB 저장] 토큰 유무와 상관없이 알림 내역은 먼저 저장 (히스토리 보존)
-    normalAlarmRepository.save(new NormalAlarm(sender, receiver, title, body));
+    alarmService.createNotification(sender, receiver, title, body);
 
     // 2. [토큰 검사] 토큰이 없으면 여기서 종료 (푸시는 안 보냄)
     if (fcmToken == null || fcmToken.isBlank()) {
@@ -90,7 +82,6 @@ public class FCMService {
    * @param body  알림 내용
    * @throws FirebaseMessagingException FCM 전송 실패 시
    */
-  @Transactional
   public void sendToTopic(FCMTopic topic, String title, String body)
       throws FirebaseMessagingException {
     // [1] 알림 메시지 본문 구성
@@ -106,18 +97,11 @@ public class FCMService {
         // .putData("key", "value") // 데이터 페이로드 추가 가능
         .build();
 
-    AdminAlarm adminAlarm = AdminAlarm.builder()
-        .title(title)
-        .content(body)
-        .build();
-
-    AdminAlarm savedAlarm = adminAlarmRepository.save(adminAlarm);
-    Long announcementId = savedAlarm.getId();
+    alarmService.createAnnouncement(title, body);
 
     // [3] FCM 서버에 메시지 전송 요청
     String response = FirebaseMessaging.getInstance().send(message);
     System.out.println("Successfully sent topic message: " + response);
 
-    alarmService.createAnnouncementMappingForAllUsers(announcementId);
   }
 }

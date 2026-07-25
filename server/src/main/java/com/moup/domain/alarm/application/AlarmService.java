@@ -1,119 +1,86 @@
 package com.moup.domain.alarm.application;
 
-import com.moup.domain.alarm.domain.AdminAlarmUserMapping;
-import com.moup.domain.alarm.domain.Notification;
 import com.moup.domain.alarm.domain.AdminAlarm;
+import com.moup.domain.alarm.domain.AdminAlarmUserMapping;
 import com.moup.domain.alarm.domain.Announcement;
+import com.moup.domain.alarm.domain.AnnouncementCreatedEvent;
 import com.moup.domain.alarm.domain.NormalAlarm;
+import com.moup.domain.alarm.domain.Notification;
 import com.moup.domain.alarm.exception.AlarmAlreadyReadException;
 import com.moup.domain.alarm.exception.AlarmNotFoundException;
 import com.moup.domain.alarm.mapper.AdminAlarmRepository;
 import com.moup.domain.alarm.mapper.AdminAlarmUserMappingRepository;
 import com.moup.domain.alarm.mapper.NormalAlarmRepository;
 import com.moup.domain.user.domain.User;
-
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
-
-import com.moup.domain.user.mapper.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import static com.moup.global.common.domain.TimeConstants.SEOUL_ZONE_ID;
-
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class AlarmService {
 
-  private static final int BATCH_SIZE = 1000;
-  private final UserRepository userRepository;
   private final NormalAlarmRepository normalAlarmRepository;
   private final AdminAlarmRepository adminAlarmRepository;
   private final AdminAlarmUserMappingRepository adminAlarmUserMappingRepository;
+  private final ApplicationEventPublisher eventPublisher;
+
+  @Transactional
+  public void createNotification(User sender, User receiver, String title, String content) {
+    normalAlarmRepository.save(
+        NormalAlarm.builder()
+            .sender(sender)
+            .receiver(receiver)
+            .title(title)
+            .content(content)
+            .build()
+    );
+  }
+
+  @Transactional
+  public Long createAnnouncement(String title, String content) {
+    AdminAlarm savedAlarm = adminAlarmRepository.save(
+        AdminAlarm.builder()
+            .title(title)
+            .content(content)
+            .build()
+    );
+    eventPublisher.publishEvent(new AnnouncementCreatedEvent(savedAlarm.getId()));
+    return savedAlarm.getId();
+  }
 
   public List<Notification> findAllNotifications(Long userId) {
-      List<NormalAlarm> normalAlarms = normalAlarmRepository.findAllByReceiverId(userId);
-
+    List<NormalAlarm> normalAlarms = normalAlarmRepository.findAllByReceiverId(userId);
     if (normalAlarms.isEmpty()) {
       throw new AlarmNotFoundException();
     }
-
-    List<Notification> notifications = new ArrayList<>();
-    for (NormalAlarm normalAlarm : normalAlarms) {
-      notifications.add(Notification.builder()
-          .id(normalAlarm.getId())
-          .senderId(normalAlarm.getSender().getId())
-          .receiverId(normalAlarm.getReceiver().getId())
-          .title(normalAlarm.getTitle())
-          .content(normalAlarm.getContent())
-          .sentAt(normalAlarm.getSentAt())
-          .readAt(normalAlarm.getReadAt())
-          .build());
-    }
-
-    return notifications;
+    return normalAlarms.stream().map(this::toNotification).toList();
   }
 
-  /**
-   * id 기준으로 normalAlarm 반환, receiverId가 userId에 해당해야 조회 가능.
-   *
-   * @param userId
-   * @param notificationId
-   * @return
-   */
   public Notification findNotificationById(Long userId, Long notificationId) {
     NormalAlarm normalAlarm = normalAlarmRepository.findByIdAndReceiverId(notificationId, userId)
         .orElseThrow(AlarmNotFoundException::new);
-
-    return Notification.builder()
-        .id(normalAlarm.getId())
-        .senderId(normalAlarm.getSender().getId())
-        .receiverId(normalAlarm.getReceiver().getId())
-        .title(normalAlarm.getTitle())
-        .content(normalAlarm.getContent())
-        .sentAt(normalAlarm.getSentAt())
-        .readAt(normalAlarm.getReadAt())
-        .build();
+    return toNotification(normalAlarm);
   }
 
   @Transactional
   public Notification readNotificationById(Long userId, Long notificationId) {
-    // 읽음 여부 확인
     NormalAlarm normalAlarm = normalAlarmRepository.findByIdAndReceiverId(notificationId, userId)
         .orElseThrow(AlarmNotFoundException::new);
-
     if (normalAlarm.getReadAt() != null) {
       throw new AlarmAlreadyReadException();
     }
-
-    LocalDateTime readTime = LocalDateTime.now(SEOUL_ZONE_ID);
     normalAlarm.read();
-
-    return Notification.builder()
-        .id(normalAlarm.getId())
-        .senderId(normalAlarm.getSender().getId())
-        .receiverId(normalAlarm.getReceiver().getId())
-        .title(normalAlarm.getTitle())
-        .content(normalAlarm.getContent())
-        .sentAt(normalAlarm.getSentAt())
-        .readAt(readTime)
-        .build();
+    return toNotification(normalAlarm);
   }
 
-  /**
-   * 일반 알림을 삭제. receiver_id가 본인일 떄 삭제.
-   *
-   * @param userId
-   * @param notificationId
-   */
+  @Transactional
   public void deleteNotificationById(Long userId, Long notificationId) {
-
     normalAlarmRepository.findByIdAndReceiverId(notificationId, userId)
         .orElseThrow(AlarmNotFoundException::new);
-
     normalAlarmRepository.deleteById(notificationId);
   }
 
@@ -127,102 +94,67 @@ public class AlarmService {
     normalAlarmRepository.deleteAllByReceiverId(userId);
   }
 
-  @Async
-  @Transactional
-  public void createAnnouncementMappingForAllUsers(Long announcementId) {
-    System.out.println(Thread.currentThread().getName()
-        + ": Start creating announcement statuses for announcementId: " + announcementId);
-
-    AdminAlarm adminAlarm = adminAlarmRepository.findById(announcementId)
-        .orElseThrow(AlarmNotFoundException::new);
-
-    int page = 0;
-    List<User> users;
-    
-    // 1000명씩 배치 적용
-    do {
-      int offset = page * BATCH_SIZE;
-      users = userRepository.findUsersWithPaging(offset, BATCH_SIZE);
-
-      if (!users.isEmpty()) {
-        List<AdminAlarmUserMapping> mappings = new ArrayList<>();
-
-        for (User user : users) {
-          mappings.add(
-              AdminAlarmUserMapping.builder()
-                  .user(user)
-                  .adminAlarm(adminAlarm)
-                  .build()
-          );
-        }
-
-        adminAlarmUserMappingRepository.saveAll(mappings);
-        page++;
-      }
-    } while (!users.isEmpty());
-
-    System.out.println(Thread.currentThread().getName() + ": Finished creating statuses.");
-  }
-
-  @Transactional
   public List<Announcement> findAllAnnouncements(Long userId) {
-    List<AdminAlarmUserMapping> mappings = adminAlarmUserMappingRepository.findAllActiveByUserId(userId);
-
+    List<AdminAlarmUserMapping> mappings =
+        adminAlarmUserMappingRepository.findAllActiveByUserId(userId);
     if (mappings.isEmpty()) {
       throw new AlarmNotFoundException();
     }
-
-    List<Announcement> announcements = new ArrayList<>();
-
-    for (AdminAlarmUserMapping mapping : mappings) {
-      AdminAlarm adminAlarm = mapping.getAdminAlarm();
-
-      announcements.add(
-          Announcement.builder()
-              .id(adminAlarm.getId())
-              .title(adminAlarm.getTitle())
-              .content(adminAlarm.getContent())
-              .sentAt(adminAlarm.getSentAt())
-              .build());
-    }
-
-    return announcements;
+    return mappings.stream().map(this::toAnnouncement).toList();
   }
 
   public Announcement findAnnouncementById(Long userId, Long announcementId) {
-    AdminAlarmUserMapping mapping = adminAlarmUserMappingRepository.findActiveByUserIdAndAlarmId(userId, announcementId)
-        .orElseThrow(AlarmNotFoundException::new);
-
-    AdminAlarm adminAlarm = mapping.getAdminAlarm();
-
-    return Announcement.builder()
-        .id(adminAlarm.getId())
-        .title(adminAlarm.getTitle())
-        .content(adminAlarm.getContent())
-        .sentAt(adminAlarm.getSentAt())
-        .build();
+    AdminAlarmUserMapping mapping =
+        adminAlarmUserMappingRepository.findActiveByUserIdAndAlarmId(userId, announcementId)
+            .orElseThrow(AlarmNotFoundException::new);
+    return toAnnouncement(mapping);
   }
 
+  @Transactional
   public void readAnnouncementById(Long userId, Long announcementId) {
-    AdminAlarmUserMapping mapping = adminAlarmUserMappingRepository.findActiveByUserIdAndAlarmId(userId, announcementId)
-        .orElseThrow(AlarmNotFoundException::new);
-
+    AdminAlarmUserMapping mapping =
+        adminAlarmUserMappingRepository.findActiveByUserIdAndAlarmId(userId, announcementId)
+            .orElseThrow(AlarmNotFoundException::new);
     mapping.read();
-
   }
 
+  @Transactional
   public void readAllAnnouncements(Long userId) {
     adminAlarmUserMappingRepository.markAllAnnouncementsAsReadByUserId(userId);
   }
 
+  @Transactional
   public void deleteAnnouncementById(Long userId, Long announcementId) {
-    AdminAlarmUserMapping mapping = adminAlarmUserMappingRepository.findActiveByUserIdAndAlarmId(userId, announcementId)
-        .orElseThrow(AlarmNotFoundException::new);
-
+    AdminAlarmUserMapping mapping =
+        adminAlarmUserMappingRepository.findActiveByUserIdAndAlarmId(userId, announcementId)
+            .orElseThrow(AlarmNotFoundException::new);
     mapping.delete();
   }
 
+  @Transactional
   public void deleteAllAnnouncements(Long userId) {
     adminAlarmUserMappingRepository.softDeleteAllByUserId(userId);
+  }
+
+  private Notification toNotification(NormalAlarm alarm) {
+    return Notification.builder()
+        .id(alarm.getId())
+        .senderId(alarm.getSender().getId())
+        .receiverId(alarm.getReceiver().getId())
+        .title(alarm.getTitle())
+        .content(alarm.getContent())
+        .sentAt(alarm.getSentAt())
+        .readAt(alarm.getReadAt())
+        .build();
+  }
+
+  private Announcement toAnnouncement(AdminAlarmUserMapping mapping) {
+    AdminAlarm alarm = mapping.getAdminAlarm();
+    return Announcement.builder()
+        .id(alarm.getId())
+        .title(alarm.getTitle())
+        .content(alarm.getContent())
+        .sentAt(alarm.getSentAt())
+        .build();
   }
 }

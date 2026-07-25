@@ -3,10 +3,10 @@ package com.moup.domain.alarm.mapper;
 import com.moup.domain.alarm.domain.AdminAlarmUserMapping;
 import java.util.List;
 import java.util.Optional;
-import org.apache.ibatis.annotations.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface AdminAlarmUserMappingRepository extends JpaRepository<AdminAlarmUserMapping, Long> {
   /*
@@ -41,4 +41,15 @@ public interface AdminAlarmUserMappingRepository extends JpaRepository<AdminAlar
   @Modifying(clearAutomatically = true)
   @Query("UPDATE AdminAlarmUserMapping m SET m.readAt = CURRENT_TIMESTAMP WHERE m.user.id = :userId AND m.readAt IS NULL AND m.deletedAt IS NULL")
   void markAllAnnouncementsAsReadByUserId(@Param("userId") Long userId);
+
+  @Modifying
+  @Query(
+      value = """
+          INSERT INTO admin_alarm_user_mappings (alarm_id, user_id)
+          SELECT :announcementId, id
+          FROM users
+          """,
+      nativeQuery = true
+  )
+  int createMappingsForAllUsers(@Param("announcementId") Long announcementId);
 }

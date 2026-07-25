@@ -12,8 +12,10 @@ import org.springframework.context.annotation.Configuration;
 import java.io.IOException;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
+import org.springframework.context.annotation.Profile;
 
 @Configuration
+@Profile("!test")
 @RequiredArgsConstructor
 public class FCMConfig {
 

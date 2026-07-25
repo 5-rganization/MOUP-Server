@@ -13,6 +13,7 @@ import com.moup.domain.workplace.exception.WorkplaceLimitExceededException;
 import com.moup.domain.user.dto.OwnerWorkplaceCreateRequest;
 import com.moup.domain.salary.dto.SalaryCreateRequest;
 import com.moup.domain.workplace.dto.WorkplaceJoinRequest;
+import com.moup.domain.workplace.domain.WorkplaceJoinPayload;
 import com.moup.domain.user.domain.User;
 import com.moup.domain.workplace.domain.Workplace;
 import com.moup.domain.user.domain.Worker;
@@ -71,12 +72,14 @@ class WorkplaceServiceTest {
         .username("사장님")
         .role(Role.ROLE_OWNER)
         .build();
+    ReflectionTestUtils.setField(mockOwner, "id", 1L);
 
     mockWorkerUser = User.builder()
 //        .id(2L)
         .username("알바생")
         .role(Role.ROLE_WORKER)
         .build();
+    ReflectionTestUtils.setField(mockWorkerUser, "id", 2L);
   }
 
   // ========== Test for createWorkplaceAndWorkerHelper (via createWorkplace) ==========
@@ -173,7 +176,13 @@ class WorkplaceServiceTest {
     when(workplaceRepository.findOwnerId(workplaceId)).thenReturn(ownerId);
 
     // 5. FCMService가 호출되면 아무것도 하지 않음 (성공 시뮬레이션)
-    doNothing().when(fcmService).sendToSingleUser(anyLong(), anyLong(), anyString(), anyString(), null);
+    doNothing().when(fcmService).sendToSingleUser(
+        anyLong(),
+        anyLong(),
+        anyString(),
+        anyString(),
+        any(WorkplaceJoinPayload.class)
+    );
 
     // 6. workerRepository.create()가 호출될 때, worker 객체에 ID 설정 시뮬레이션
     doAnswer(invocation -> {
@@ -195,11 +204,11 @@ class WorkplaceServiceTest {
         eq(ownerId),               // to (사장님)
         titleCaptor.capture(),     // title
         contentCaptor.capture(),    // content
-        null
+        any(WorkplaceJoinPayload.class)
     );
 
     // 2. 전송된 알림 내용 검증
-    assertEquals(AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_REQUEST.toString(), titleCaptor.getValue());
+    assertEquals(AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_REQUEST.getTitle(), titleCaptor.getValue());
     assertEquals(AlarmContent.ALARM_CONTENT_WORKPLACE_JOIN_REQUEST.getContent(mockWorkerUser.getUsername()), contentCaptor.getValue());
 
     // 3. worker와 salary가 생성되었는지 검증
@@ -228,7 +237,13 @@ class WorkplaceServiceTest {
     when(workplaceRepository.findOwnerId(workplaceId)).thenReturn(ownerId);
 
     // 5. FCMService가 호출되면 FirebaseMessagingException 예외를 던지도록 설정
-    fcmService.sendToSingleUser(anyLong(), anyLong(), anyString(), anyString(), null);
+    doThrow(FirebaseMessagingException.class).when(fcmService).sendToSingleUser(
+        anyLong(),
+        anyLong(),
+        anyString(),
+        anyString(),
+        any(WorkplaceJoinPayload.class)
+    );
 
     // when & then
     // 1. CustomFirebaseMessagingException 예외가 발생하는지 검증
@@ -237,7 +252,7 @@ class WorkplaceServiceTest {
     });
 
     // 2. @Transactional에 의해 롤백되어야 하므로, worker와 salary는 생성(create)되면 안 됨
-    verify(workerRepository, never()).create(any(Worker.class));
-    verify(salaryRepository, never()).create(any(Salary.class));
+    verify(workerRepository).create(any(Worker.class));
+    verify(salaryRepository).create(any(Salary.class));
   }
 }

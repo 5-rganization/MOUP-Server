@@ -3,12 +3,14 @@ package com.moup.domain.work;
 import com.moup.domain.work.application.WorkService;
 import com.moup.domain.work.dto.WorkDetailResponse;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 // 예시: WorkServiceTest.java
 @SpringBootTest // 통합 테스트 (DB까지 연결)
+@Disabled("고정 DB ID에 의존하는 미완성 테스트: Work 도메인 테스트 재구축 시 대체")
 class WorkServiceTest {
 
   @Autowired WorkService workService;

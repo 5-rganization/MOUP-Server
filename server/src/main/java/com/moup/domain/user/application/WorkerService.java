@@ -288,7 +288,7 @@ public class WorkerService {
 
         // 푸시 알림 송신
         try {
-            fCMService.sendToSingleUser(ownerUserId, workerUserId, AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_ACCEPTED.toString(), AlarmContent.ALARM_CONTENT_WORKPLACE_JOIN_ACCEPTED.getContent(workplace.getWorkplaceName()), null);
+            fCMService.sendToSingleUser(ownerUserId, workerUserId, AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_ACCEPTED.getTitle(), AlarmContent.ALARM_CONTENT_WORKPLACE_JOIN_ACCEPTED.getContent(workplace.getWorkplaceName()), null);
         } catch (FirebaseMessagingException e) {
             throw new CustomFirebaseMessagingException(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage());
         }
@@ -305,7 +305,7 @@ public class WorkerService {
 
         // 푸시 알림 송신
         try {
-            fCMService.sendToSingleUser(ownerUserId, workerUserId, AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_REJECTED.toString(), AlarmContent.ALARM_CONTENT_WORKPLACE_JOIN_REJECTED.getContent(workplace.getWorkplaceName()), null);
+            fCMService.sendToSingleUser(ownerUserId, workerUserId, AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_REJECTED.getTitle(), AlarmContent.ALARM_CONTENT_WORKPLACE_JOIN_REJECTED.getContent(workplace.getWorkplaceName()), null);
         } catch (FirebaseMessagingException e) {
             throw new CustomFirebaseMessagingException(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage());
         }
