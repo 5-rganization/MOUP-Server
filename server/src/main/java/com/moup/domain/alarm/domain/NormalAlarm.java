@@ -1,6 +1,7 @@
 package com.moup.domain.alarm.domain;
 
 import com.moup.domain.user.domain.User;
+import com.moup.global.common.domain.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -22,27 +23,25 @@ import static com.moup.global.common.domain.TimeConstants.SEOUL_ZONE_ID;
 @Getter
 @Table(name = "normal_alarms")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class NormalAlarm {
+public class NormalAlarm extends BaseTimeEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "sender_id", nullable = false)
+  @JoinColumn(name = "sender_id")
   private User sender;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "receiver_id", nullable = false)
+  @JoinColumn(name = "receiver_id")
   private User receiver;
 
-  @Column(columnDefinition = "TEXT", nullable = false)
   private String title;
 
   @Column(columnDefinition = "TEXT")
   private String content;
 
-  @Column(nullable = false, updatable = false)
   private LocalDateTime sentAt;
 
   private LocalDateTime readAt;

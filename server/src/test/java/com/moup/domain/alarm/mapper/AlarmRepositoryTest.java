@@ -56,6 +56,8 @@ class AlarmRepositoryTest {
         alarm -> alarm.getReceiver().getId()
     ).containsExactly(saved.getId(), "근무 요청", sender.getId(), receiver.getId());
     assertThat(alarms.get(0).getSentAt()).isNotNull();
+    assertThat(alarms.get(0).getCreatedAt()).isNotNull();
+    assertThat(alarms.get(0).getUpdatedAt()).isNotNull();
   }
 
   @Test
@@ -96,6 +98,8 @@ class AlarmRepositoryTest {
     assertThat(mappings).hasSize(1);
     assertThat(mappings.get(0).getAdminAlarm().getTitle()).isEqualTo("활성 공지");
     assertThat(mappings.get(0).getAdminAlarm().getSentAt()).isNotNull();
+    assertThat(mappings.get(0).getAdminAlarm().getCreatedAt()).isNotNull();
+    assertThat(mappings.get(0).getAdminAlarm().getUpdatedAt()).isNotNull();
   }
 
   @Test
@@ -112,6 +116,11 @@ class AlarmRepositoryTest {
 
     assertThat(createdCount).isEqualTo(3);
     assertThat(mappingRepository.count()).isEqualTo(3);
+    assertThat(mappingRepository.findAll())
+        .allSatisfy(mapping -> {
+          assertThat(mapping.getCreatedAt()).isNotNull();
+          assertThat(mapping.getUpdatedAt()).isNotNull();
+        });
   }
 
   private User persistUser(String username) {

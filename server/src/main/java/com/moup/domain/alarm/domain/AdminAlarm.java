@@ -1,5 +1,6 @@
 package com.moup.domain.alarm.domain;
 
+import com.moup.global.common.domain.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -19,19 +20,17 @@ import static com.moup.global.common.domain.TimeConstants.SEOUL_ZONE_ID;
 @Getter
 @Table(name = "admin_alarms")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class AdminAlarm {
+public class AdminAlarm extends BaseTimeEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(columnDefinition = "TEXT", nullable = false)
   private String title;
 
   @Column(columnDefinition = "TEXT")
   private String content;
 
-  @Column(nullable = false, updatable = false)
   private LocalDateTime sentAt;
 
   @Builder

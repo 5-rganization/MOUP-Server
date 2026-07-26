@@ -13,6 +13,7 @@ CREATE TABLE users
     role        ENUM ('ROLE_WORKER', 'ROLE_OWNER', 'ROLE_ADMIN') DEFAULT 'ROLE_WORKER',
     profile_img VARCHAR(255),
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP,
     deleted_at  TIMESTAMP,
     is_deleted  BOOLEAN DEFAULT FALSE,
     fcm_token   TEXT,
@@ -28,6 +29,8 @@ CREATE TABLE normal_alarms
     content     TEXT,
     sent_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     read_at     DATETIME,
+    created_at  DATETIME,
+    updated_at  DATETIME,
     CONSTRAINT fk_normal_alarm_sender FOREIGN KEY (sender_id) REFERENCES users (id),
     CONSTRAINT fk_normal_alarm_receiver FOREIGN KEY (receiver_id) REFERENCES users (id)
 );
@@ -37,7 +40,9 @@ CREATE TABLE admin_alarms
     id      BIGINT AUTO_INCREMENT PRIMARY KEY,
     title   TEXT NOT NULL,
     content TEXT,
-    sent_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    sent_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME,
+    updated_at DATETIME
 );
 
 CREATE TABLE admin_alarm_user_mappings
@@ -47,6 +52,8 @@ CREATE TABLE admin_alarm_user_mappings
     user_id    BIGINT NOT NULL,
     read_at    DATETIME,
     deleted_at DATETIME,
+    created_at DATETIME,
+    updated_at DATETIME,
     CONSTRAINT fk_admin_alarm_mapping_alarm
         FOREIGN KEY (alarm_id) REFERENCES admin_alarms (id) ON DELETE CASCADE,
     CONSTRAINT fk_admin_alarm_mapping_user

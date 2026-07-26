@@ -45,8 +45,9 @@ public interface AdminAlarmUserMappingRepository extends JpaRepository<AdminAlar
   @Modifying
   @Query(
       value = """
-          INSERT INTO admin_alarm_user_mappings (alarm_id, user_id)
-          SELECT :announcementId, id
+          INSERT INTO admin_alarm_user_mappings
+              (alarm_id, user_id, created_at, updated_at)
+          SELECT :announcementId, id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
           FROM users
           """,
       nativeQuery = true

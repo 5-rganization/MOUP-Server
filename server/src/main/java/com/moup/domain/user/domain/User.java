@@ -1,6 +1,7 @@
 package com.moup.domain.user.domain;
 
 import com.moup.domain.auth.domain.Login;
+import com.moup.global.common.domain.BaseTimeEntity;
 import com.moup.global.common.type.Role;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -17,23 +18,19 @@ import lombok.*;
 @Getter
 @Table(name = "users")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class User {
+public class User extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private Login provider;
 
-    @Column(length = 100, nullable = false)
     private String providerId;
 
-    @Column(length = 20)
     private String username;
 
-    @Column(length = 20)
     private String nickname;
 
     @Enumerated(EnumType.STRING)
@@ -41,15 +38,11 @@ public class User {
 
     private String profileImg;
 
-    @Column(insertable = false, updatable = false)
-    private LocalDateTime createdAt;
-
     private LocalDateTime deletedAt;
 
     @Column(name = "is_deleted")
     private boolean isDeleted = false;
 
-    @Column(columnDefinition = "TEXT")
     private String fcmToken;
 
     @Builder
