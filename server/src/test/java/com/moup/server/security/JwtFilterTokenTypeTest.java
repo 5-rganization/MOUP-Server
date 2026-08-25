@@ -119,6 +119,18 @@ public class JwtFilterTokenTypeTest {
         "typ 없는 토큰을 허용하면 기존 refresh token으로 구멍이 유지된다");
   }
 
+  /// 배치 cron이 `/admin/users`를 호출할 때 쓰는 `ADMIN_AUTH_TOKEN`이
+  /// `createTestToken`으로 발급된다. C1 수정으로 `typ` 없는 토큰이 거부되므로
+  /// 이 메서드도 access 타입을 달아야 cron이 계속 동작한다.
+  @Test
+  @DisplayName("[C1] 장기 토큰(배치 cron용)은 인증에 사용할 수 있다")
+  void 장기_토큰_인증_통과() throws Exception {
+    Authentication authentication = runFilterWith(jwtUtil.createTestToken(tokenRequest()));
+
+    assertNotNull(authentication,
+        "createTestToken으로 발급한 ADMIN_AUTH_TOKEN이 거부되면 배치 cron이 멈춘다");
+  }
+
   @Test
   @DisplayName("[C1] refresh token의 유효 기간이 access token의 504배다")
   void refresh_token_수명이_훨씬_길다() {

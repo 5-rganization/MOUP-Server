@@ -56,6 +56,10 @@ public class JwtUtil {
                 .compact();
     }
 
+    /// 장기 토큰을 발급한다. 배치 cron이 `/admin/users`를 호출할 때 쓰는
+    /// `ADMIN_AUTH_TOKEN`이 이 메서드로 발급된다(런타임 호출자는 없고 수동 발급용이다).
+    ///
+    /// 인증에 쓰이므로 access 타입이어야 한다 — 이 클레임이 없으면 `JwtFilter`가 거부한다.
     public String createTestToken(TokenCreateRequest tokenCreateRequest) {
         long oneYearInMilliseconds = 1000L * 60 * 60 * 24 * 365; // 1년 (밀리초)
 
@@ -63,6 +67,7 @@ public class JwtUtil {
                 .subject(String.valueOf(tokenCreateRequest.getUserId()))
                 .claim("role", tokenCreateRequest.getRole().name())
                 .claim("username", tokenCreateRequest.getUsername())
+                .claim(TOKEN_TYPE_CLAIM, TYPE_ACCESS)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + oneYearInMilliseconds))
                 .signWith(key)
