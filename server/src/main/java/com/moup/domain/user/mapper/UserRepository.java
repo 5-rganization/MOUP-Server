@@ -55,8 +55,15 @@ public interface UserRepository {
     @Select("SELECT * FROM users WHERE is_deleted = 1")
     List<User> findAllHardDeleteUsers();
 
-    @Select("SELECT * FROM users WHERE is_deleted = 1 AND deleted_at < #{threeDaysAgo}")
-    List<User> findAllOldHardDeleteUsers(LocalDateTime threeDaysAgo);
+    /// 유예기간이 지났고 아직 포기 기준에는 도달하지 않은 삭제 대상을 조회한다.
+    /// 소셜 연동 해제를 계속 재시도할 대상이다.
+    @Select("SELECT * FROM users WHERE is_deleted = 1 AND deleted_at < #{graceDeadline} AND deleted_at >= #{giveUpDeadline}")
+    List<User> findAllOldHardDeleteUsers(LocalDateTime graceDeadline, LocalDateTime giveUpDeadline);
+
+    /// 포기 기준을 넘긴 삭제 대상을 조회한다.
+    /// 소셜 연동 해제를 더 시도하지 않고 기록만 남긴 뒤 삭제할 대상이다.
+    @Select("SELECT * FROM users WHERE is_deleted = 1 AND deleted_at < #{giveUpDeadline}")
+    List<User> findAllRevokeGiveUpUsers(LocalDateTime giveUpDeadline);
 
     @Update("UPDATE users SET nickname = #{nickname}, role = #{role} WHERE id = #{id}")
     void updateById(Long id, String nickname, Role role);

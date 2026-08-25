@@ -93,6 +93,16 @@ public class UserDeletionServiceTest {
     verify(userService, times(1)).deleteUserHardlyByUserId(USER_ID);
   }
 
+  @Test
+  @DisplayName("포기 기준을 넘기면 revoke 없이 삭제하고 기록을 남긴다")
+  void 포기_기준_초과시_강제_삭제() throws Exception {
+    userDeletionService.forceDeleteAfterRevokeGiveUp(user(), 30);
+
+    // revoke를 아예 시도하지 않는다 — 이미 30일간 실패했으므로
+    verify(authService, never()).revokeToken(anyLong());
+    verify(userService, times(1)).deleteUserHardlyByUserId(USER_ID);
+  }
+
   private static User user() {
     return User.builder().id(USER_ID).provider(Login.LOGIN_GOOGLE).nickname("테스터").build();
   }

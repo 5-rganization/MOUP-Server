@@ -28,12 +28,22 @@ public class AdminService {
   @Value("${user.delete.grace-period}")
   private int gracePeriod;
 
-  public void hardDeleteOldUsers() {
-    // 유예기간이 지난 하드 삭제 대상 유저 목록 조회
-    LocalDateTime threeDaysAgo = LocalDateTime.now(SEOUL_ZONE_ID).minusDays(gracePeriod);
-    List<User> hardDeleteUsers = userRepository.findAllOldHardDeleteUsers(threeDaysAgo);
+  @Value("${user.delete.revoke-give-up-period}")
+  private int revokeGiveUpPeriod;
 
-    for (User user : hardDeleteUsers) {
+  public void hardDeleteOldUsers() {
+    LocalDateTime now = LocalDateTime.now(SEOUL_ZONE_ID);
+    LocalDateTime graceDeadline = now.minusDays(gracePeriod);
+    LocalDateTime giveUpDeadline = now.minusDays(revokeGiveUpPeriod);
+
+    // 1. 포기 기준을 넘긴 유저: 소셜 연동 해제를 더 시도하지 않고 기록만 남긴 뒤 삭제한다.
+    //    이 상한이 없으면 revoke가 계속 실패하는 계정의 데이터가 영원히 남는다.
+    for (User user : userRepository.findAllRevokeGiveUpUsers(giveUpDeadline)) {
+      userDeletionService.forceDeleteAfterRevokeGiveUp(user, revokeGiveUpPeriod);
+    }
+
+    // 2. 유예기간이 지났고 아직 포기 기준에는 못 미친 유저: 정상 시도
+    for (User user : userRepository.findAllOldHardDeleteUsers(graceDeadline, giveUpDeadline)) {
       userDeletionService.processUserDeletion(user);
     }
   }

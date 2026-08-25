@@ -51,4 +51,18 @@ public class UserDeletionService {
 
         userService.deleteUserHardlyByUserId(user.getId());
     }
+
+    /// 포기 기준을 넘긴 유저를 소셜 연동 해제 없이 삭제한다.
+    ///
+    /// 재시도를 무한정 반복하면 사용자가 탈퇴를 요청했는데도 데이터가 영원히 남는다.
+    /// 상한을 두되, **소셜 연동이 남은 채 삭제됐다는 사실을 로그로 남긴다.**
+    /// 이 로그는 수동 조치의 유일한 단서이므로 알림을 걸어두는 것이 좋다.
+    @Async("taskExecutor")
+    public void forceDeleteAfterRevokeGiveUp(User user, int giveUpPeriodDays) {
+        log.error("소셜 연동 해제를 {}일간 실패해 포기합니다. 이 계정은 소셜 연동이 남은 채 삭제됩니다. "
+                        + "수동 조치가 필요합니다. userId={}, provider={}, deletedAt={}",
+                giveUpPeriodDays, user.getId(), user.getProvider(), user.getDeletedAt());
+
+        userService.deleteUserHardlyByUserId(user.getId());
+    }
 }
