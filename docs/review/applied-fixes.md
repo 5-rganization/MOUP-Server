@@ -18,6 +18,7 @@
 |---|---|---|
 | 1 | **`ADMIN_AUTH_TOKEN` 재발급 후 GitHub secret 갱신** | 배치 cron이 **401을 받고 멈춘다.** 하드 삭제와 소셜 연동 해제가 전부 중단된다 |
 | 2 | 전 사용자 1회 재로그인 안내 | 기존 발급 토큰에 `typ` 클레임이 없어 전부 거부된다 |
+| 🔴 3 | **Firebase 서비스 계정 키 폐기·재발급** — 배포와 무관하게 **지금 당장.** [스코프 7 C7](scope-7-infra.md) | Docker Hub `neoskycladdocker/moup`가 **public**임이 확인됐고(`is_private: False`) 키가 이미지 안에 있다. 누구나 `docker pull`로 꺼낼 수 있다 |
 
 `ADMIN_AUTH_TOKEN`은 `JwtUtil.createTestToken`(1년 만료)으로 발급한다. 이 메서드는 런타임
 호출자가 없어 dead code처럼 보이지만 **cron 크리덴셜의 수동 발급 도구**다

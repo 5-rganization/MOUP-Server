@@ -3,7 +3,7 @@
 - **범위**: `global/config`, `global/error`, `global/common`, `global/util`, `global/infra`,
   빌드·배포 설정, nginx, `db/moup.sql`
 - **판정**: **수정 후** — Critical 1건([C1](applied-fixes.md))은 수정 완료
-- **집계**: Critical 6 (1건 수정 완료) / Important 17 / Minor 20 / 미확인 7
+- **집계**: Critical 7 (1건 수정 완료, **C7은 즉시 조치 필요**) / Important 16 / Minor 20 / 미확인 6
 - **리뷰 격리**: `docs/review/` 차단. 확정 정책 4건 + 이미 검증된 사항(타임존·기존 테스트 실패·
   인증/급여 로직)을 전제로 제공해 재조사를 막았다
 
@@ -182,6 +182,40 @@ FOREIGN KEY (`owner_id`) REFERENCES users (`id`) ON DELETE CASCADE
 ⚠️ **단, cron과 `@Scheduled`를 동시에 두면 이중 실행된다.** 전환 시 Pi의 crontab을
 반드시 제거할 것.
 
+### C7 — Firebase 서비스 계정 키가 **public** Docker 이미지 안에 있다 🔴🔴 (I15에서 격상)
+
+**Q1 확인 완료: `neoskycladdocker/moup`는 public이다.** (`is_private: False`, pull 1,461회,
+최종 갱신 2026-08-25. 대조군으로 존재하지 않는 이름·계정은 HTTP 404 + 필드 부재를 확인해
+검사 자체의 유효성도 검증했다.)
+
+경로: `Jenkinsfile:26-32`가 빌드 **전에** 키를 소스 트리에 복사
+→ Gradle이 jar에 패키징(`FIREBASE_ACCOUNT_KEY_PATH=classpath:keys/...`)
+→ `Dockerfile:12`가 jar를 이미지에 복사 → `Jenkinsfile:76`이 `--push`로 public 업로드.
+
+```bash
+# 누구나 가능
+docker pull neoskycladdocker/moup:latest
+docker run --rm --entrypoint sh neoskycladdocker/moup -c \
+  'cd /tmp && unzip -o /app/app.jar "BOOT-INF/classes/keys/*" && cat BOOT-INF/classes/keys/*.json'
+```
+
+Firebase 서비스 계정 키는 해당 프로젝트의 **FCM 전송 · Firestore · Auth 관리 권한**을 가진다.
+
+**조치 순서 (① 최우선):**
+1. **키 폐기 및 재발급.** 이미 노출됐으므로 리포지토리를 private으로 바꿔도 무의미하다 —
+   이미 pull한 주체가 있다면 키는 이미 외부에 있다
+2. 새 키는 **런타임 마운트**로. 코드 변경 0줄이다 —
+   `volumes: [~/moup-secrets/firebase-key.json:/app/keys/firebase.json:ro]` +
+   `FIREBASE_ACCOUNT_KEY_PATH=file:/app/keys/firebase.json`.
+   `FCMConfig:27`의 `resourceLoader.getResource(...)`가 `file:` 스킴을 그대로 처리한다.
+   그리고 `Jenkinsfile:26-32`를 삭제한다
+3. Docker Hub 리포지토리를 **private으로**
+4. Firebase 프로젝트 **감사 로그 확인** — 그 키로 비정상 접근이 있었는지
+
+**다른 시크릿은 새지 않았다 (확인).** `.env`는 `Jenkinsfile:23-25`가 복사하지만 `Dockerfile`이
+jar만 복사하므로 이미지에 포함되지 않는다(M10의 죽은 스테이지 덕). `application.properties`는
+jar에 들어가나 값이 전부 `${...}` 플레이스홀더다. **노출된 것은 Firebase 키 하나다.**
+
 ### C6 — 프로덕션이 develop 이미지를 가져간다
 
 `Jenkinsfile:66`이 `main` → `stable`, 그 외 → `latest`로 태깅한다.
@@ -214,7 +248,7 @@ FOREIGN KEY (`owner_id`) REFERENCES users (`id`) ON DELETE CASCADE
 | **I12** | CORS가 `SecurityConfig`와 `WebConfig` 두 곳에 다르게 정의. **Security 쪽이 이기는데 거기에 PATCH가 빠져 있다** → 웹 클라이언트를 붙이는 순간 PATCH 엔드포인트 전부 죽음 |
 | **I13** | `/health`가 `return "OK"`뿐 — DB·Redis 미확인. compose의 server에 `healthcheck:` 블록도 없다. `spring-boot-starter-actuator`가 이미 있으므로 `/actuator/health`로 대체 |
 | **I14** | `salaries`에 조합 제약 없음 — `HOURLY`인데 `hourly_rate IS NULL`인 행이 표현 가능 |
-| **I15** | **Firebase 서비스 계정 키가 Docker 이미지 안에.** `Jenkinsfile:26-32` → jar → Docker Hub push. **리포지토리가 public이면 Critical로 격상, 키 즉시 폐기·재발급 필요** |
+
 | **I16** | `ErrorCode.INVALID_TOKEN`이 401이 아니라 **400** → 클라이언트의 "401이면 갱신 후 재시도" 인터셉터가 동작하지 않는다 |
 | **I17** | **레이트 리밋이 코드에도 nginx에도 없다.** `/auth/**`가 permitAll이라 무인증으로 소셜 검증 아웃바운드 호출을 무제한 유발 가능. **스코프 5 C-3 확증** |
 
@@ -284,7 +318,7 @@ Flyway도 Liquibase도 없다.
 
 | # | 질문 | 확인 방법 |
 |---|---|---|
-| **Q1** | **`neoskycladdocker/moup`가 public인가?** public이면 I15가 Critical — Firebase 키 즉시 폐기·재발급 | `curl -s https://hub.docker.com/v2/repositories/neoskycladdocker/moup/ \| grep -o '"is_private":[^,]*'` |
+| ~~**Q1**~~ | **확인 완료 → public이다.** `is_private: False`, pull 1,461회. 대조군(존재하지 않는 이름/계정)은 HTTP 404로 필드 자체가 없음을 확인해 검사의 유효성도 검증했다. **→ C7로 격상** | 해소 |
 | **Q2** | `secrets.REDIS_HOST`가 `redis`인가? (로컬 `.env`는 `localhost`) | Pi에서 `grep REDIS_HOST ~/MOUP-Server/.env` |
 | **Q3** | `secrets.DATABASE_USERNAME`이 `root`인가? root면 **앱이 DB root 권한으로 동작 중** | 위와 동일 |
 | **Q4** | `secrets.DATABASE_NAME`이 `moup`인가? (`db/moup.sql:2`가 하드코딩) | 위와 동일 |
@@ -309,6 +343,6 @@ Flyway도 Liquibase도 없다.
 그 실패를 증언하며 커밋되어 있는 로그 파일. 다섯 가지 모두 "일단 돌아가게 해놓고 나중에"의
 흔적이고, 지금이 그 나중이다.
 
-**권장 수정 순서**: ~~C1~~(완료) → **C2 → C3 → C5** → C4 → C6 → I1 → I3 → I2.
+**권장 수정 순서**: **C7(키 폐기 — 코드가 아니라 지금 당장의 운영 조치)** → ~~C1~~(완료) → **C2 → C3 → C5** → C4 → C6 → I1 → I3 → I2.
 앞의 넷은 서로 의존한다(C2는 C3 수정 후 `owner_id` NULL을 올바르게 다루기 위해 필요하고,
 C3는 C5보다 반드시 먼저다). I1은 프로퍼티 두 줄이라 언제든 즉시 가능하다.
