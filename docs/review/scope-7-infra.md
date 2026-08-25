@@ -2,8 +2,8 @@
 
 - **범위**: `global/config`, `global/error`, `global/common`, `global/util`, `global/infra`,
   빌드·배포 설정, nginx, `db/moup.sql`
-- **판정**: **수정 후**
-- **집계**: Critical 6 / Important 17 / Minor 20 / 미확인 7
+- **판정**: **수정 후** — Critical 1건([C1](applied-fixes.md))은 수정 완료
+- **집계**: Critical 6 (1건 수정 완료) / Important 17 / Minor 20 / 미확인 7
 - **리뷰 격리**: `docs/review/` 차단. 확정 정책 4건 + 이미 검증된 사항(타임존·기존 테스트 실패·
   인증/급여 로직)을 전제로 제공해 재조사를 막았다
 
@@ -100,7 +100,7 @@ develop 푸시 한 번에 두 파이프라인이 동시에 git 조작을 한다.
 
 ## Critical
 
-### C1 — `@PreAuthorize` 인가 실패가 403이 아니라 500 (18개 엔드포인트) 🔴
+### C1 — `@PreAuthorize` 인가 실패가 403이 아니라 500 ✅ **수정 완료** (`1008aea`)
 
 ```java
 // GlobalExceptionHandler:113 — 확인 완료. AccessDeniedException 핸들러 없음
@@ -309,6 +309,6 @@ Flyway도 Liquibase도 없다.
 그 실패를 증언하며 커밋되어 있는 로그 파일. 다섯 가지 모두 "일단 돌아가게 해놓고 나중에"의
 흔적이고, 지금이 그 나중이다.
 
-**권장 수정 순서**: C1 → C2 → C3 → C5 → C4 → C6 → I1 → I3 → I2.
+**권장 수정 순서**: ~~C1~~(완료) → **C2 → C3 → C5** → C4 → C6 → I1 → I3 → I2.
 앞의 넷은 서로 의존한다(C2는 C3 수정 후 `owner_id` NULL을 올바르게 다루기 위해 필요하고,
 C3는 C5보다 반드시 먼저다). I1은 프로퍼티 두 줄이라 언제든 즉시 가능하다.

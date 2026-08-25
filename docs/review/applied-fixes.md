@@ -101,9 +101,21 @@
 포기 시 `ERROR` 로그만 남긴다 — **이 로그가 수동 조치의 유일한 단서이므로 알림 권장.**
 별도 기록 테이블은 가명처리 작업 때 함께 검토한다.
 
+### `1008aea` — `@PreAuthorize` 인가 거부가 403으로
+
+**스코프 7 C1.** `GlobalExceptionHandler`에 catch-all `RuntimeException` 핸들러만 있고
+`AccessDeniedException` 핸들러가 없었다. Spring Security 6의 메서드 보안이 던지는
+`AuthorizationDeniedException`은 `AccessDeniedException` → `RuntimeException` 하위이고
+컨트롤러 프록시 안에서 발생하므로, catch-all이 먼저 잡아 **500을 반환하고 정상 종료**했다.
+그래서 `SecurityConfig`의 `accessDeniedHandler`는 예외를 보지도 못했다.
+
+`@PreAuthorize`가 걸린 **18개 엔드포인트**의 인가 거부가 전부 서버 오류로 위장되고 있었고
+각 컨트롤러의 `@ApiResponse(responseCode = "403")` 문서와도 어긋났다.
+→ `AccessDeniedException` 핸들러 추가(catch-all보다 구체적이므로 우선 매칭).
+
 ---
 
-## 추가된 테스트 (26건)
+## 추가된 테스트 (29건)
 
 | 파일 | 건수 | 목적 |
 |---|---|---|
@@ -111,6 +123,7 @@
 | `JwtFilterTokenTypeTest` | 7 | C1 — 실제 필터에 실제 토큰을 통과시켜 검증 |
 | `CustomUserDetailsServiceTest` | 3 | C2 — 탈퇴 유저 차단 |
 | `UserDeletionServiceTest` | 5 | revoke 성공/실패/네트워크오류/공급자없음/포기 |
+| `GlobalExceptionHandlerTest` | 3 | C1 — 인가 거부 403, 그 외 RuntimeException 500 |
 
 **변이 테스트로 실효성 확인**: 야간 경계에서 `equals(22:00)` 제거 → 5건 실패,
 `grossIncome` 누적으로 변경 → 멱등성 2건 실패. C1은 수정 전 실제로 통과함을 확인한 뒤
@@ -142,8 +155,13 @@ INF-1·2·5는 C5, INF-3은 Minor, INF-4는 `.env` 소비처 분석에서.
 리뷰 완료 후 파일 단위로 묶어 `fix/code-review-findings`에서 처리한다.
 각 스코프 문서의 finding 목록 참조.
 
+**🔴 최우선 — 순서 의존**: 스코프 7 **C2(`Objects.equals`) → C3(`owner_id` SET NULL)**.
+cron이 돌고 있으므로 C3는 **이미 발현 중**이며 사장님 탈퇴 시 알바생 근무·급여가 삭제된다.
+C2가 선행되어야 `owner_id` NULL 상태에서 403이 정상 반환된다.
+
 **설계 작업이 필요한 것**: 스코프 4 C3(`is_accepted` 게이트) · C4(가명처리) ·
-스코프 3 C-1(주휴수당 산식) · C-6(범위 재계산 API) · 스코프 5 C-1/C-2/C-3
+스코프 3 C-1(주휴수당 산식) · C-6(범위 재계산 API) · 스코프 5 C-1/C-2/C-3 ·
+**스코프 7의 마이그레이션 절차 부재**(가명처리·`withdrawn_at` 작업을 직접 막는다)
 
 **한 줄~몇 줄이지만 아직 안 한 것**: 스코프 1 M1(`log.debug(secretKey)`) ·
 I1(Swagger 프로덕션 노출) · I6(`user_tokens` UNIQUE) · 스코프 5 I-4(`SecureRandom`) ·
