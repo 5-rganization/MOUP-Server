@@ -21,7 +21,7 @@
 
 | # | 스코프 | 범위 | LOC | 상태 |
 |---|---|---|---|---|
-| 1 | 인증·토큰·시큐리티 | `domain/auth/`, `global/security/`, `JwtUtil`, `AppleJwtUtil`, `SecurityConfig` | ~1,450 | 대기 |
+| 1 | 인증·토큰·시큐리티 | `domain/auth/`, `global/security/`, `JwtUtil`, `AppleJwtUtil`, `SecurityConfig` | ~1,450 | **완료** → [scope-1-auth.md](scope-1-auth.md) |
 | 2 | 근무(Work) | `domain/work/` | 2,600 | **완료** → [scope-2-work.md](scope-2-work.md) |
 | 3 | 급여 계산 | `domain/salary/` | 1,059 | **완료** → [scope-3-salary.md](scope-3-salary.md) |
 | 4 | 사용자·알바생 | `domain/user/` | ~2,590 | **완료** → [scope-4-user.md](scope-4-user.md) ⚠️ **병합 불가** |
