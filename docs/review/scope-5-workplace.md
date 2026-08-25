@@ -106,6 +106,99 @@ if (Boolean.TRUE.equals(owner.getIsDeleted())) throw new InvalidPermissionAccess
 
 ---
 
+## 확정 정책 6 — 승인 대기 가시 범위 (Q1 답변)
+
+| 항목 | 승인 대기 중 | 승인 후 |
+|---|---|---|
+| (a) 근무지 이름·주소 | **허용** | 허용 |
+| (b) 자기 급여 설정 | **허용** | 허용 |
+| (c) 근무 등록·출퇴근 | **차단** | 허용 |
+| (d) 근무지 목록 표시 | **차단** | 허용 |
+
+⚠️ **확인 필요 — (d) 차단이 (a)의 진입점을 없앤다.** 근무지 목록에 뜨지 않으면 대기 중인
+알바생은 상세 화면으로 갈 경로가 없다. 참여 직후에는 `WorkplaceJoinResponse`의
+`workplaceId`로 이동할 수 있지만, 앱을 껐다 켜면 자신이 어디에 승인 대기 중인지조차
+알 수 없다.
+
+**권고**: (d)를 "목록에 없음"이 아니라 **"목록에 `PENDING_APPROVAL` 상태로 표시"** 로
+해석하고, 프론트가 별도 섹션이나 배지로 구분한다. C-1 수정으로 어차피 상태 필드를
+추가하므로 추가 비용이 없다. 이 해석이 맞는지 확인 필요.
+
+---
+
+## 확정 정책 7 — 가명처리 구현 명세 (Q2 답변)
+
+`UserDeletionService.processUserDeletion`의 `deleteUserHardlyByUserId`를 아래로 교체한다.
+
+### 1. `users` 행 — 유지하되 개인정보 제거
+
+```sql
+UPDATE users
+SET username    = NULL,
+    nickname    = '탈퇴한 사용자',
+    profile_img = NULL,
+    fcm_token   = NULL,
+    provider_id = CONCAT('withdrawn_', UUID()),
+    is_deleted  = 1,
+    deleted_at  = CURRENT_TIMESTAMP()
+WHERE id = #{id}
+```
+
+**유지**: `id`(FK 무결성), `provider`, `role`(사장이었는지 판정에 필요), `created_at`
+
+`provider_id`를 난수로 치환하는 이유: 그대로 두면 같은 소셜 계정으로 재가입할 때
+`UNIQUE (provider, provider_id)`(`db/moup.sql:18`)가 충돌한다. 치환하면 재가입 시 새
+계정이 생기고 과거 이력과 연결되지 않는다 — 삭제 요청의 정상적 결과다.
+
+`nickname`을 NULL이 아니라 리터럴로 두는 이유는 아래 함정 1 참조.
+
+### 2. 명시적으로 삭제해야 하는 것
+
+하드 삭제를 없애면 **CASCADE가 더 이상 발화하지 않으므로** 지워야 할 것을 직접 지워야 한다.
+
+```sql
+DELETE FROM social_tokens WHERE user_id = #{id};              -- 소셜 자격증명
+DELETE FROM user_tokens   WHERE user_id = #{id};              -- refresh 토큰
+DELETE FROM routines      WHERE user_id = #{id};              -- routine_tasks는 CASCADE로 따라감
+DELETE FROM admin_alarm_user_mappings WHERE user_id = #{id};
+```
+
+**보존**: `workplaces`(이 정책의 목적), `workers`, `works`, `salaries`
+
+**S3 프로필 이미지**: 현재 하드 삭제도 S3 객체를 지우지 않는다(기존 결함).
+가명처리로 바꾸는 김에 `s3Service` 삭제 호출을 함께 넣을 것.
+
+### 함정 1 — `"탈퇴한 근무자"` 폴백이 죽는다
+
+4곳이 전부 `user == null`을 탈퇴 신호로 쓴다:
+`WorkerService.java:86`, `SalaryCalculationService.java:640`,
+`WorkService.java:172`, `WorkService.java:979`.
+
+행이 살아남으면 **이 폴백은 절대 발화하지 않고** `nickname`이 그대로 노출된다.
+→ `nickname = '탈퇴한 사용자'`로 설정하면 **코드 변경 0줄**로 해결된다.
+(과거 하드 삭제로 생긴 `workers.user_id IS NULL` 행이 남아 있으므로 폴백 자체는 유지할 것.)
+
+### 함정 2 — 탈퇴 판정이 조용히 깨진다 ⚠️ 이쪽이 중요
+
+```java
+// WorkService.java:181-183
+// 3-2. 검증: 탈퇴한 근무자
+if (worker.getUserId() == null) {
+    throw new WorkerNotFoundException("요청한 근무자(ID: " + workerId + ")는 탈퇴했거나 존재하지 않는 근무자입니다.");
+}
+```
+
+지금은 하드 삭제 → `workers.user_id = NULL`(`ON DELETE SET NULL`)이 **탈퇴 신호**다.
+가명처리하면 `user_id`가 살아 있으므로 **이 검사가 통과하고, 사장님이 탈퇴한 알바생에게
+근무를 배정할 수 있게 된다.**
+
+→ 탈퇴 판정을 `user_id IS NULL`에서 **`users.is_deleted = 1`** 로 바꿔야 한다.
+C-1의 승인 검사, Q2의 사장님 탈퇴 차단과 **같은 축**이므로 함께 처리한다.
+
+`user_id IS NULL`을 탈퇴 신호로 쓰는 다른 지점이 있는지 스코프 4 리뷰에서 전수 확인할 것.
+
+---
+
 ## 잘 된 점
 
 - **초대코드 저장소 설계가 견고하다.** Redis 양방향 매핑(`inviteCode:` ↔ `workplaceId:`)을
@@ -478,9 +571,9 @@ CASCADE가 실제로 발화한다: `users` → `workplaces` → `workers` 전원
 
 | # | 질문 | 블로킹 |
 |---|---|---|
-| **Q1** | 승인 대기 상태의 가시 범위. **현재 동작은 아래 "Q1 현재 상태 조사" 참조 — (a)(b)(c)(d) 전부 가능하고 승인 여부가 응답 DTO에 노출조차 안 된다.** 목표 상태는 미정 | **C-1 수정 방향** |
+| ~~**Q1**~~ | **답변 완료 → 승인 대기 중에는 (a) 근무지 이름·주소, (b) 자기 급여 설정만 허용. (c) 근무 등록·출퇴근과 (d) 근무지 목록 표시는 차단.** 단 (d) 차단은 (a)로 가는 진입점을 없앤다 — 아래 확인 필요 참조 | 해소(1건 확인 필요) |
 | ~~**Q2**~~ | **답변 완료 → 데이터는 DB 보존, 관련 사용자는 접근 차단, 프론트는 미표시 또는 별도 표시.** 아래 "확정 정책 5" 참조 | 해소 |
-| **Q3** | 클라이언트가 `PATCH /workplaces/{id}`를 부분 갱신으로 쓰고 있는가? | **I-1 수정 방향** |
+| ~~**Q3**~~ | **답변 완료 → 클라이언트는 전체 필드를 다 채워 보낸다.** I-1 수정은 `@NotBlank` 추가 + `@PutMapping`으로 확정(전체 치환임을 명시). MyBatis `<set>`/`<if>` 부분 갱신은 불필요 | 해소 |
 | **Q4** | 사용자 역할이 `ROLE_WORKER` → `ROLE_OWNER`로 변경될 수 있는가? 가능하면 알바생 시절 만든 개인 근무지(`is_shared=false`)가 초대코드 발급 대상이 되는데 `is_shared`가 갱신되지 않는다. 역할 변경 API가 없다면 무시 가능 | — |
 | **Q5** | `worker_based_label_color` / `ownerBasedLabelColor`가 고정 집합인가? enum이면 `@Pattern`, 자유 입력이면 최소 `@Size(max=10)` | I-3 |
 
