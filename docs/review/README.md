@@ -25,7 +25,7 @@
 | 2 | 근무(Work) | `domain/work/` | 2,600 | **완료** → [scope-2-work.md](scope-2-work.md) |
 | 3 | 급여 계산 | `domain/salary/` | 1,059 | **완료** → [scope-3-salary.md](scope-3-salary.md) |
 | 4 | 사용자·알바생 | `domain/user/` | ~2,590 | 대기 |
-| 5 | 근무지·초대코드 | `domain/workplace/` | ~1,460 | 대기 |
+| 5 | 근무지·초대코드 | `domain/workplace/` | ~1,460 | **완료** → [scope-5-workplace.md](scope-5-workplace.md) |
 | 6 | 루틴·알람·FCM | `domain/routine/`, `domain/alarm/`, `global/infra/fcm/` | ~1,970 | 대기 |
 | 7 | 횡단 관심사·인프라 | `global/config/`, `global/error/`, `global/common/`, `global/infra/`, `global/util/`, 빌드·배포 설정, `db/moup.sql` | ~1,050+ | 대기 |
 
@@ -37,6 +37,11 @@
 ## 리뷰어에게 기존 findings를 주지 않는 이유
 
 독립적으로 같은 것을 짚으면 그것이 확증이고, 반박하면 그것이 더 값진 정보다.
+
+**스코프 5에서도 확증이 나왔다.** `docs/review/`를 차단한 상태에서 스코프 2의
+I2(`is_accepted` 미검사)를 독립적으로 짚었고, 스코프 2가 "근무 도메인이 검사하지
+않는다"까지였던 것을 **전체 코드베이스에 읽는 곳이 0건**임을 확인하고 스키마 결함까지
+확장해 Important → **Critical**로 올렸다.
 
 **스코프 3에서 이 방식이 실증됐다.** 리뷰어에게 `docs/review/`를 열지 말라고
 지시했는데, 스코프 2의 findings 7건을 독립적으로 동일하게 짚었다(I8→C-2,
