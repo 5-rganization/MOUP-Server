@@ -1,7 +1,7 @@
 # 스코프 4 — 사용자(User) · 알바생(Worker) 도메인
 
 - **범위**: `server/src/main/java/com/moup/domain/user/` 전체 ~2,590 LOC (DTO 42개 포함)
-- **판정**: **아니오** — 리뷰 전체에서 유일하게 "병합 불가"
+- **판정**: **아니오** — 리뷰 전체에서 유일하게 "병합 불가". Critical 2건은 [수정 완료](applied-fixes.md)이나 C3·C4·C5가 남았다
 - **집계**: Critical 5 / Important 10 / Minor 11 / 확인 질문 5
 - **리뷰 격리**: `docs/review/` 차단, 확정 정책 4건만 전제로 제공
 
@@ -110,7 +110,7 @@ SQL 3값 논리상 `NULL != 5` → `NULL` → 필터링된다. **탈퇴자 행�
 
 ## Critical
 
-### C1 — 신규 가입자가 스스로 `ROLE_ADMIN`을 부여할 수 있음 (권한 상승) 🔴
+### C1 — 신규 가입자가 스스로 `ROLE_ADMIN`을 부여할 수 있음 ✅ **수정 완료** (`d2a6021`)
 
 ```java
 // AuthController.java:199-204
@@ -135,7 +135,7 @@ if (role != Role.ROLE_WORKER && role != Role.ROLE_OWNER) throw new InvalidArgume
 ```
 추가로 `RegisterRequest.role`에 `@Pattern(regexp="ROLE_WORKER|ROLE_OWNER")` + `@Valid`.
 
-### C2 — 사장님이 남의 근무지 알바생 급여를 덮어쓸 수 있음 (교차 테넌트 쓰기) 🔴
+### C2 — 사장님이 남의 근무지 알바생 급여를 덮어쓸 수 있음 ✅ **수정 완료** (`d2a6021`)
 
 ```java
 // WorkerService.java:225-233
@@ -206,13 +206,13 @@ if (!workerRepository.existsByIdAndWorkplaceId(workerId, workplaceId)) throw new
 
 | # | 내용 |
 |---|---|
-| **I1** | **소프트 삭제 유저가 그대로 인증·행위 가능.** `CustomUserDetailsService:29-32`가 `is_deleted` 미검사. `WorkerController`의 7개 엔드포인트가 `getCurrentUserId()`만 쓴다 → 탈퇴 신청자가 유예 3일간 승인/거절·근무자 삭제·근무 생성 수행 후 하드 삭제됨 |
+| **I1** ✅ `f5bb991` | **소프트 삭제 유저가 그대로 인증·행위 가능.** `CustomUserDetailsService:29-32`가 `is_deleted` 미검사. `WorkerController`의 7개 엔드포인트가 `getCurrentUserId()`만 쓴다 → 탈퇴 신청자가 유예 3일간 승인/거절·근무자 삭제·근무 생성 수행 후 하드 삭제됨 |
 | **I2** | **3일 유예 후 하드 삭제가 자동 실행되지 않음.** `@Scheduled`/`@EnableScheduling`이 코드베이스에 **없다.** `hardDeleteOldUsers`의 유일한 호출자가 수동 API. `deleted_at`이 쌓이기만 함 |
 | **I3** | **사장님의 라벨 색상 수정이 조용히 무동작.** `WorkerRepository:155`의 `WHERE ... AND user_id = #{userId}`에 **사장님 id**가 들어가는데 대상 행의 `user_id`는 **알바생 id** → 절대 매치 안 함. 서버는 204, 앱 재진입 시 원복. 급여는 같은 요청에서 성공하므로 "일부만 반영" |
 | **I4** | **`acceptWorker`/`rejectWorker` 멱등성 없음.** 재승인 시 푸시 스팸. **더 심각: 이미 승인된 근무자에게 `DELETE .../accept` 호출 → `workers` 행 삭제 → CASCADE로 그 알바생의 근무·급여 전체 영구 삭제.** "거절" API가 "재직자 이력 전체 삭제"로 동작 |
 | **I5** | 알바생이 같은 근무지 동료의 일별 `estimatedNetIncome` 조회 가능 (스코프 2 I1 확증). C3과 결합하면 **미승인자도** 획득 |
 | **I6** | `Worker`/`Workplace`/`Salary`/`Work` 4개에 `@NoArgsConstructor` 없음 → MyBatis 위치 기반 생성자 매핑. `User`만 안전. **C4 수정으로 `withdrawn_at` 컬럼을 추가하는 작업 자체가 이걸 터뜨린다** |
-| **I7** | `UserService:62-63`의 `socialRefreshToken.isEmpty()` NPE. Google이 refresh token을 안 줄 때 **최초 가입 500**. 같은 저자가 기존 유저 분기(`AuthController:121`)에는 null 가드를 넣었다 |
+| **I7** ✅ `f5bb991` | `UserService:62-63`의 `socialRefreshToken.isEmpty()` NPE. Google이 refresh token을 안 줄 때 **최초 가입 500**. 같은 저자가 기존 유저 분기(`AuthController:121`)에는 null 가드를 넣었다 |
 | **I8** | 트랜잭션 내 외부 호출 — `acceptWorker`가 **FCM을 DB 업데이트보다 먼저** 수행, `updateProfileImage`가 **S3 삭제를 업로드보다 먼저** 수행(실패 시 죽은 URL), `updateMyWorker`/`updateWorkerForOwner`/`deleteMyWorker`/`deleteWorkerForOwner`에 **`@Transactional` 없음** |
 | **I9** | DTO 검증 vs 스키마 — 라벨색 6곳 `@Size(max=10)` 누락, `memo` `@Size(max=200)` 누락, `LoginRequest.username` 검증·`@Valid` 모두 없음 |
 | **I10** | 사장님 홈 "인건비"가 **세후 실지급액**(`netIncome`) 합산. 세전 200만원 기준 실제 사업주 부담 약 219만원 대비 **약 17% 과소 표시**. `grossIncome` 필드가 이미 있는데 안 쓴다 |

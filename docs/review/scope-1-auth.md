@@ -1,8 +1,8 @@
 # 스코프 1 — 인증 · 토큰 · 시큐리티
 
 - **범위**: `domain/auth/`, `global/security/`, `JwtUtil`, `AppleJwtUtil`, `SecurityConfig` (~1,450 LOC)
-- **판정**: **수정 후**
-- **집계**: Critical 2 / Important 7 / Minor 10 / 확인 질문 4
+- **판정**: **수정 후** — Critical 2건은 [수정 완료](applied-fixes.md)
+- **집계**: Critical 2 (2건 수정 완료) / Important 7 (4건 수정 완료) / Minor 10 / 확인 질문 3 (전부 답변)
 - **리뷰 격리**: `docs/review/` 차단, 확정 정책 4건만 전제로 제공
 - **특기**: 리뷰어가 라이브러리 동작을 **jar 바이트코드(`javap`)로 직접 검증**했고,
   그 과정에서 **자신의 오탐 1건을 스스로 기각**했다
@@ -174,7 +174,7 @@ revoke 실패 시 하드 삭제를 보류하고 재시도해야 한다. 다만 �
 
 ## Critical
 
-### C1 — Refresh token이 Access token으로 그대로 통용 · 서버 측 토큰 무효화 수단 부재 🔴
+### C1 — Refresh token이 Access token으로 그대로 통용 ✅ **수정 완료** (`f5bb991` + `f990d5b`)
 
 **원장 관리자 직접 확인 완료.**
 
@@ -215,7 +215,7 @@ if (jwtUtil.isValidToken(token)) {
 `JwtFilter`에서 `"access"`가 아니면 거부, `/auth/token/refresh`는 `"refresh"`만 수용.
 기존 토큰 호환이 필요하면 access 클레임을 먼저 배포하고 필터 가드를 나중에 켠다.
 
-### C2 — Soft-delete 유저가 인증을 그대로 통과 (스코프 4 I1 독립 확증)
+### C2 — Soft-delete 유저가 인증을 그대로 통과 ✅ **수정 완료** (`f5bb991`)
 
 ```java
 // UserRepository:19-20 — is_deleted 조건 없음
@@ -245,10 +245,10 @@ return new CustomUserDetails(user);
 | # | 내용 |
 |---|---|
 | **I1** | **Swagger/OpenAPI가 프로덕션에 무인증 노출.** `SecurityConfig:27-30,48` + `// TODO: 나중에 swagger 비활성화 하기`. `resources/`에 `application.properties` 하나뿐이고 프로파일 분리 없음. 익명으로 `GET /v3/api-docs` 한 방에 전체 API 표면·관리자 경로·역할 체계 획득 → 이후 모든 공격의 정찰 비용 0 |
-| **I2** | **로그아웃이 서버 상태를 무효화하지 않는다.** `UserService:204-208`이 FCM 토큰만 지움. `user_tokens` 행이 남아 refresh가 **로그아웃 후에도 7일 유효**하고 C1으로 access처럼 쓰인다. **수정**: `logout`에서 `user_tokens` 삭제 — 실질 노출 창이 7일 → 20분으로 |
-| **I3** | **인증 실패가 401이 아니라 500.** (a) `UserTokenService:45-46`의 `getUserId`가 예외를 삼키지 않아 만료·변조 refresh → 500 + `logger.error`. 익명 공격자가 쓰레기 토큰으로 ERROR 로그 무제한 생성 가능. (b) `AuthController:96-97`이 `throws AuthException`(**checked**)인데 `GlobalExceptionHandler`는 `RuntimeException`만 처리 → 잘못된 `authCode` → 500 |
-| **I4** | **`startCreateUser` NPE — 재가입 경로가 500으로 막힘.** `UserService:64-68`의 `socialRefreshToken.isEmpty()`에 null 체크 없음. 같은 흐름의 로그인 분기(`AuthController:122`)는 **제대로 막고 있다** — 신규 가입만 누락. Google은 `refresh_token`을 최초 동의 시에만 발급하므로 **"탈퇴 후 재가입"에서 정통으로 터진다. 확정 정책 5의 선행 조건** |
-| **I5** | **소셜 revoke 실패가 조용히 삼켜짐.** `UserDeletionService:26-37`이 `finally`에서 성공 여부 무관하게 하드 삭제 → 재시도 근거가 CASCADE로 소멸 → **소셜 grant 영구 잔존.** 사용자는 탈퇴했다고 믿지만 Apple/Google에는 연동이 남는다. `@Retryable`이 `IOException`만 잡아 HTTP 4xx는 재시도조차 안 됨 |
+| **I2** ✅ `f5bb991` | **로그아웃이 서버 상태를 무효화하지 않는다.** `UserService:204-208`이 FCM 토큰만 지움. `user_tokens` 행이 남아 refresh가 **로그아웃 후에도 7일 유효**하고 C1으로 access처럼 쓰인다. **수정**: `logout`에서 `user_tokens` 삭제 — 실질 노출 창이 7일 → 20분으로 |
+| **I3** ⚠️ 부분 `f5bb991` | (a)는 재발급 타입 가드로 해소됨. (b) `AuthException` 500은 미수정. **인증 실패가 401이 아니라 500.** (a) `UserTokenService:45-46`의 `getUserId`가 예외를 삼키지 않아 만료·변조 refresh → 500 + `logger.error`. 익명 공격자가 쓰레기 토큰으로 ERROR 로그 무제한 생성 가능. (b) `AuthController:96-97`이 `throws AuthException`(**checked**)인데 `GlobalExceptionHandler`는 `RuntimeException`만 처리 → 잘못된 `authCode` → 500 |
+| **I4** ✅ `f5bb991` | **`startCreateUser` NPE — 재가입 경로가 500으로 막힘.** `UserService:64-68`의 `socialRefreshToken.isEmpty()`에 null 체크 없음. 같은 흐름의 로그인 분기(`AuthController:122`)는 **제대로 막고 있다** — 신규 가입만 누락. Google은 `refresh_token`을 최초 동의 시에만 발급하므로 **"탈퇴 후 재가입"에서 정통으로 터진다. 확정 정책 5의 선행 조건** |
+| **I5** ✅ `7706fe4`+`58dae8a` | **소셜 revoke 실패가 조용히 삼켜짐.** `UserDeletionService:26-37`이 `finally`에서 성공 여부 무관하게 하드 삭제 → 재시도 근거가 CASCADE로 소멸 → **소셜 grant 영구 잔존.** 사용자는 탈퇴했다고 믿지만 Apple/Google에는 연동이 남는다. `@Retryable`이 `IOException`만 잡아 HTTP 4xx는 재시도조차 안 됨 |
 | **I6** | **`user_tokens`/`social_tokens`에 `UNIQUE (user_id)` 없음.** read-then-write 패턴이라 동시 로그인 시 행 2개 → `Optional<UserToken>`에 2행 → `TooManyResultsException` → **해당 유저 로그인·재발급 영구 500.** 스코프 5 C-2와 동일한 결함 유형 |
 | **I7** | **Refresh token과 소셜 refresh token이 DB 평문 저장.** 자체 refresh는 C1 때문에 전권 크리덴셜이라 DB 읽기 권한만으로 전 사용자 로그인 가능. **수정**: 자체 refresh는 SHA-256 해시 저장 후 비교(검증이 `.equals()` 한 줄이라 변경 폭 작음), 소셜은 AES-GCM |
 

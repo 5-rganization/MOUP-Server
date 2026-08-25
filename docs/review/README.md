@@ -1,5 +1,8 @@
 # 코드 리뷰 원장
 
+> **📌 [적용된 수정 이력 및 배포 체크리스트](applied-fixes.md)** — develop에 직접 반영한
+> 보안 수정 6건과 **배포 전 필수 조치**(`ADMIN_AUTH_TOKEN` 재발급)가 정리돼 있다.
+
 전체 코드베이스를 7개 스코프로 나눠 순차 리뷰하고, findings를 여기에 적재한다.
 **리뷰가 전부 끝난 뒤 파일 단위로 묶어서 한 번에 수정한다.**
 
@@ -27,7 +30,7 @@
 | 4 | 사용자·알바생 | `domain/user/` | ~2,590 | **완료** → [scope-4-user.md](scope-4-user.md) ⚠️ **병합 불가** |
 | 5 | 근무지·초대코드 | `domain/workplace/` | ~1,460 | **완료** → [scope-5-workplace.md](scope-5-workplace.md) |
 | 6 | 루틴·알람·FCM | `domain/routine/`, `domain/alarm/`, `global/infra/fcm/` | ~1,970 | 대기 |
-| 7 | 횡단 관심사·인프라 | `global/config/`, `global/error/`, `global/common/`, `global/infra/`, `global/util/`, 빌드·배포 설정, `db/moup.sql` | ~1,050+ | 대기 |
+| 7 | 횡단 관심사·인프라 (+ [applied-fixes.md](applied-fixes.md)의 INF-1~5) | `global/config/`, `global/error/`, `global/common/`, `global/infra/`, `global/util/`, 빌드·배포 설정, `db/moup.sql` | ~1,050+ | 대기 |
 
 진행 순서: **1 → 2 → 3 → 5 → 4 → 6 → 7** (보안 먼저, 금전 계산 다음, 나머지는 위험도 순)
 
