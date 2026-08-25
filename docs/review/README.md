@@ -24,7 +24,7 @@
 | 1 | 인증·토큰·시큐리티 | `domain/auth/`, `global/security/`, `JwtUtil`, `AppleJwtUtil`, `SecurityConfig` | ~1,450 | 대기 |
 | 2 | 근무(Work) | `domain/work/` | 2,600 | **완료** → [scope-2-work.md](scope-2-work.md) |
 | 3 | 급여 계산 | `domain/salary/` | 1,059 | **완료** → [scope-3-salary.md](scope-3-salary.md) |
-| 4 | 사용자·알바생 | `domain/user/` | ~2,590 | 대기 |
+| 4 | 사용자·알바생 | `domain/user/` | ~2,590 | **완료** → [scope-4-user.md](scope-4-user.md) ⚠️ **병합 불가** |
 | 5 | 근무지·초대코드 | `domain/workplace/` | ~1,460 | **완료** → [scope-5-workplace.md](scope-5-workplace.md) |
 | 6 | 루틴·알람·FCM | `domain/routine/`, `domain/alarm/`, `global/infra/fcm/` | ~1,970 | 대기 |
 | 7 | 횡단 관심사·인프라 | `global/config/`, `global/error/`, `global/common/`, `global/infra/`, `global/util/`, 빌드·배포 설정, `db/moup.sql` | ~1,050+ | 대기 |
