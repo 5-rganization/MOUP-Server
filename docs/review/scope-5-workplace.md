@@ -25,6 +25,87 @@
 
 ---
 
+## Q1 현재 상태 조사 (원장 관리자 직접 확인)
+
+승인 대기(`is_accepted = false`) 상태에서 **실제로 무엇이 되는가**:
+
+| 항목 | 현재 동작 | 근거 |
+|---|---|---|
+| (a) 근무지 이름·주소·GPS | **보임** | `WorkplaceService.getWorkplaceDetail:110` — 행 존재만 확인 |
+| (b) 자기 급여 설정 | **보임** | 참여 시 `salaries` 행 생성 + `WorkplaceService:113-129`가 `ROLE_WORKER`에 반환 |
+| (c) 근무 등록·출퇴근 | **가능** | `WorkService:102-106, 582, 606` — `findByUserIdAndWorkplaceId`만 확인 |
+| (d) 근무지 목록 표시 | **보임** | `getAllWorkplace:171-198`의 필터는 `isShared`뿐 |
+
+**승인 여부와 무관하게 전부 된다.** C-1의 직접적 귀결이다.
+
+### 추가 발견 — 승인 여부가 응답 DTO에 노출조차 되지 않는다
+
+| DTO | 필드 | 승인 여부 |
+|---|---|---|
+| `WorkplaceSummaryResponse` | `workplaceId`, `workplaceName`, `isShared` | **없음** — 알바생이 자신이 "대기 중"인지 알 수 없다 |
+| `WorkerSummaryResponse` | `workerId`, 라벨색 2, `nickname`, `profileImg` | **없음** — **사장님도 누가 대기자인지 알 수 없다** |
+
+사장님이 승인 버튼을 어디에 띄워야 하는지 **서버가 알려주지 않는다.** 따라서 C-1
+수정은 권한 검증 추가만으로 끝나지 않고 **두 응답 DTO에 상태 필드 추가**가 함께 필요하다.
+
+---
+
+## 확정 정책 5 — 사장님 탈퇴 시 데이터 보존 (Q2 답변)
+
+> **사장님이 탈퇴해도 DB에는 데이터를 남긴다. 관련 사용자(그 근무지의 알바생)는 해당
+> 근무지에 접근이 차단되고, 프론트에서는 아예 보이지 않게 하거나 별도로 표시한다.**
+
+### 구현 방향 — FK를 바꾸지 말고 하드 삭제를 없앤다
+
+I-8은 `owner_id ON DELETE SET NULL`로의 FK 변경을 제안했으나 **더 짧고 안전한 길이 있다.**
+`users`에 이미 소프트 삭제가 있고(`is_deleted`, `deleted_at`, `db/moup.sql:14-15`),
+CASCADE를 발화시키는 것은 **하드 삭제뿐**이다:
+
+```java
+// UserDeletionService.processUserDeletion — finally 블록
+userService.deleteUserHardlyByUserId(user.getId());   // ← CASCADE 방아쇠
+```
+
+이것을 **가명처리(pseudonymization)** 로 바꾼다. 행은 남기고 개인정보만 지운다:
+`nickname`, `username`, `profile_img`, `fcm_token`을 비우고, `provider_id`는 재가입 시
+`UNIQUE (provider, provider_id)` 충돌이 나지 않도록 난수 토큰으로 치환. `is_deleted = 1` 유지.
+
+| | FK를 `SET NULL`로 | 하드 삭제 → 가명처리 |
+|---|---|---|
+| DDL | 필요 | **불필요** |
+| `owner_id` NULL NPE 정리 | 필요 (`WorkplaceService:253`, `PermissionVerifyUtil:17`, `:343`, `:368`) | **불필요** — NULL이 되지 않는다 |
+| 사장님 신원 보존 | **소실** (임금대장 사용자 식별 불가) | **보존** |
+| 기존 인프라 | 새로 만듦 | 소프트 삭제가 이미 있음 |
+
+⚠️ 개인정보보호법상 파기 의무와 근로기준법상 임금대장 보존 의무(3년)가 충돌하는
+지점이므로 **가명처리 범위는 법무 확인이 필요하다.**
+
+### 접근 차단 지점 — C-1과 같은 곳으로 수렴
+
+```java
+// PermissionVerifyUtil.verifyWorkerPermission
+if (Boolean.TRUE.equals(owner.getIsDeleted())) throw new InvalidPermissionAccessException();
+```
+
+### 프론트 표시 — C-1과 같은 DTO로 수렴
+
+`WorkplaceSummaryResponse`에 상태 필드를 추가한다. C-1이 요구하는 "승인 대기" 표시와
+같은 자리다. `status` 열거형(`ACTIVE` / `PENDING_APPROVAL` / `OWNER_WITHDRAWN`) 하나로
+두 요구를 함께 만족시킬 수 있다.
+
+**→ C-1과 Q2의 수정 지점이 `PermissionVerifyUtil` 한 곳 + 응답 DTO 두 개로 겹친다.**
+
+### 남은 결정 2건 (블로킹 아님)
+
+1. **알바생이 자기 과거 근무·급여를 조회할 수 있어야 하는가?** "접근 차단"을 문자 그대로
+   적용하면 알바생은 그 근무지에서의 자기 근무 이력도 못 본다. 보존이 법적 목적만
+   위한 것인지, 알바생의 읽기 전용 아카이브도 겸하는지에 따라 갈린다.
+2. **소프트 삭제 유예 3일 동안의 동작.** 현재는 아무도 소유자의 `is_deleted`를 보지
+   않으므로 유예 기간 중에도 근무지가 정상 동작한다. 복구 가능성을 고려하면 그대로 두는
+   것이 자연스럽지만 명시적으로 정할 것.
+
+---
+
 ## 잘 된 점
 
 - **초대코드 저장소 설계가 견고하다.** Redis 양방향 매핑(`inviteCode:` ↔ `workplaceId:`)을
@@ -397,8 +478,8 @@ CASCADE가 실제로 발화한다: `users` → `workplaces` → `workers` 전원
 
 | # | 질문 | 블로킹 |
 |---|---|---|
-| **Q1** | 승인 대기(`is_accepted = false`) 상태에서 알바생이 무엇을 볼 수 있어야 하는가? (a) 근무지 이름/주소 (b) 자기 급여 설정 (c) 자기 근무 등록 (d) 근무지 목록 표시. 리뷰어 의견은 (a)(d)는 "대기 중" 배지와 함께 허용, (b)(c)는 차단 — **추측이므로 미구현** | **C-1 수정 방향** |
-| **Q2** | 사장님 탈퇴 시 그 매장과 알바생들의 근무·급여 이력은? 현재 스키마는 "전부 삭제", 알바생 탈퇴는 보존 — 두 정책이 모순. 근로기준법 임금대장 보존 의무(3년) 관련 법무 확인 필요 | **I-8 수정 방향** |
+| **Q1** | 승인 대기 상태의 가시 범위. **현재 동작은 아래 "Q1 현재 상태 조사" 참조 — (a)(b)(c)(d) 전부 가능하고 승인 여부가 응답 DTO에 노출조차 안 된다.** 목표 상태는 미정 | **C-1 수정 방향** |
+| ~~**Q2**~~ | **답변 완료 → 데이터는 DB 보존, 관련 사용자는 접근 차단, 프론트는 미표시 또는 별도 표시.** 아래 "확정 정책 5" 참조 | 해소 |
 | **Q3** | 클라이언트가 `PATCH /workplaces/{id}`를 부분 갱신으로 쓰고 있는가? | **I-1 수정 방향** |
 | **Q4** | 사용자 역할이 `ROLE_WORKER` → `ROLE_OWNER`로 변경될 수 있는가? 가능하면 알바생 시절 만든 개인 근무지(`is_shared=false`)가 초대코드 발급 대상이 되는데 `is_shared`가 갱신되지 않는다. 역할 변경 API가 없다면 무시 가능 | — |
 | **Q5** | `worker_based_label_color` / `ownerBasedLabelColor`가 고정 집합인가? enum이면 `@Pattern`, 자유 입력이면 최소 `@Size(max=10)` | I-3 |
