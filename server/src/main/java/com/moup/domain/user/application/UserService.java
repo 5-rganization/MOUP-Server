@@ -60,8 +60,10 @@ public class UserService {
 
       // 1. 토큰 관리
       // 1-1. 소셜 토큰 관리
+      // Google은 최초 동의 시에만 refresh token을 발급하므로 재가입 시 null로 올 수 있다.
+      // 로그인 분기(AuthController)와 동일하게 null을 허용한다.
       String socialRefreshToken = userCreateRequest.getSocialRefreshToken();
-      if (!socialRefreshToken.isEmpty()) {
+      if (socialRefreshToken != null && !socialRefreshToken.isEmpty()) {
         // Revoke를 위한 Social Refresh Token 저장
         socialTokenService.saveOrUpdateToken(userId, socialRefreshToken);
       }
@@ -163,6 +165,10 @@ public class UserService {
 
     userRepository.softDeleteUserById(userId);
 
+    // 탈퇴 신청 즉시 refresh token을 폐기한다. 유예기간 동안 토큰이 살아 있으면
+    // 계정 탈취 시 "탈퇴"라는 자구책이 무력화된다.
+    userTokenService.deleteToken(userId);
+
     return UserDeleteResponse.builder()
         .userId(user.getId())
         .deletedAt(String.valueOf(LocalDateTime.now(SEOUL_ZONE_ID))) // 현재 시간을 직접 사용
@@ -205,6 +211,9 @@ public class UserService {
   public void logout(Long userId) {
     // 1. FCM 토큰 초기화
     fcmTokenService.deleteUserFCMToken(userId);
+
+    // 2. refresh token 폐기. 이걸 지우지 않으면 로그아웃해도 최대 7일간 재발급이 가능하다.
+    userTokenService.deleteToken(userId);
   }
 
   public void updateFCMTokenByUserId(Long userId, String fcmToken) {

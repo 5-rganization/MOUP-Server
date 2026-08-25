@@ -29,6 +29,13 @@ public class CustomUserDetailsService implements UserDetailsService {
         User user = userRepository.findById(userId)
                 .orElseThrow(UserNotFoundException::new);
 
+        // 3. 탈퇴 신청한 유저는 인증 경계에서 차단한다.
+        // 도메인 서비스마다 검사를 다는 대신 여기서 한 번에 막는다. 복구는 /auth/** 로그인
+        // 경로에서 이루어지므로 이 차단에 영향받지 않는다.
+        if (user.isDeleted()) {
+            throw new UsernameNotFoundException("Withdrawn user: " + userId);
+        }
+
         return new CustomUserDetails(user);
     }
 }

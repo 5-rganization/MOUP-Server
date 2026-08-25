@@ -42,7 +42,19 @@ public class UserTokenService {
         }
     }
 
+    /// 해당 유저의 refresh token을 폐기한다. 로그아웃·탈퇴 신청 시 호출한다.
+    @Transactional
+    public void deleteToken(Long userId) {
+        userTokenRepository.deleteByUserId(userId);
+    }
+
     public boolean isValidRefreshToken(String refreshToken) {
+        // 서명·만료·용도를 먼저 확인한다. 이 가드가 없으면 access token으로 재발급을 받을 수
+        // 있고, 만료·변조 토큰이 아래 getUserId에서 예외를 던져 500이 된다.
+        if (!jwtUtil.isValidRefreshTokenType(refreshToken)) {
+            return false;
+        }
+
         Long userId = jwtUtil.getUserId(refreshToken);
 
         Optional<UserToken> existingToken = userTokenRepository.findByUserId(userId);

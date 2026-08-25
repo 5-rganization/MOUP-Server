@@ -41,7 +41,9 @@ public class JwtFilter extends OncePerRequestFilter {
             try {
                 String token = authHeader.substring(7);
 
-                if (jwtUtil.isValidToken(token)) {
+                // access token만 인증에 사용한다. refresh token은 /auth/token/refresh 전용이며,
+                // 여기서 막지 않으면 7일짜리 전권 크리덴셜이 된다.
+                if (jwtUtil.isValidAccessToken(token)) {
                     Long userId = jwtUtil.getUserId(token);
 
                     // UserDetails 생성

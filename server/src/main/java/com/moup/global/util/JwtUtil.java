@@ -22,6 +22,11 @@ public class JwtUtil {
     @Value("${jwt.refresh.token.expiration}")
     private long refreshTokenExpiration;
 
+    /// 토큰 용도 구분 클레임. 이 값이 없으면 refresh token을 access token으로 쓸 수 있다.
+    public static final String TOKEN_TYPE_CLAIM = "typ";
+    public static final String TYPE_ACCESS = "access";
+    public static final String TYPE_REFRESH = "refresh";
+
     private final Key key;
 
     public JwtUtil(@Value("${jwt.secret.key}") String secretKey) {
@@ -34,6 +39,7 @@ public class JwtUtil {
                 .subject(String.valueOf(tokenCreateRequest.getUserId()))
                 .claim("role", tokenCreateRequest.getRole().name())
                 .claim("username", tokenCreateRequest.getUsername())
+                .claim(TOKEN_TYPE_CLAIM, TYPE_ACCESS)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
                 .signWith(key)
@@ -43,6 +49,7 @@ public class JwtUtil {
     public String createRefreshToken(TokenCreateRequest tokenCreateRequest) {
         return Jwts.builder()
                 .subject(String.valueOf(tokenCreateRequest.getUserId()))
+                .claim(TOKEN_TYPE_CLAIM, TYPE_REFRESH)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + refreshTokenExpiration))
                 .signWith(key)
@@ -91,6 +98,26 @@ public class JwtUtil {
 
     public Long getRefreshTokenExpiration() {
         return refreshTokenExpiration;
+    }
+
+    /// 토큰의 용도(`typ`)를 반환한다. 클레임이 없으면 null.
+    public String getTokenType(String token) {
+        return (String) Jwts.parser()
+                .verifyWith((SecretKey) key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .get(TOKEN_TYPE_CLAIM);
+    }
+
+    /// 서명·만료가 유효하면서 용도가 access인지 확인한다.
+    public boolean isValidAccessToken(String token) {
+        return isValidToken(token) && TYPE_ACCESS.equals(getTokenType(token));
+    }
+
+    /// 서명·만료가 유효하면서 용도가 refresh인지 확인한다.
+    public boolean isValidRefreshTokenType(String token) {
+        return isValidToken(token) && TYPE_REFRESH.equals(getTokenType(token));
     }
 
     public boolean isValidToken(String token) {
