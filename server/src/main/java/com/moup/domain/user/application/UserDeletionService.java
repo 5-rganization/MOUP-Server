@@ -18,22 +18,37 @@ public class UserDeletionService {
     private final UserService userService;
     private final AuthServiceFactory authServiceFactory;
 
+    /// 탈퇴 확정 처리. **소셜 연동 해제에 성공했을 때만** 유저를 삭제한다.
+    ///
+    /// 실패했는데도 삭제하면 재시도 근거(`social_tokens`)가 CASCADE로 함께 사라져
+    /// 소셜 연동이 영구히 남는다. 삭제를 보류하면 유저가 `is_deleted = 1`로 남아
+    /// 다음 배치가 다시 집어 재시도한다.
     @Async("taskExecutor")
     public void processUserDeletion(User user) {
         Login provider = user.getProvider();
         AuthService authService = authServiceFactory.getService(provider);
 
+        // 해당 공급자의 서비스가 없으면 재시도해도 소용없는 영구 실패다. 삭제는 진행한다.
+        if (authService == null) {
+            log.error("소셜 연동 해제 불가 - 지원하지 않는 공급자입니다. 삭제를 진행합니다. userId={}, provider={}",
+                    user.getId(), provider);
+            userService.deleteUserHardlyByUserId(user.getId());
+            return;
+        }
+
         try {
             // 비동기 스레드 내부에서 동기적으로 revokeToken 호출 (레이스 컨디션 방지)
             authService.revokeToken(user.getId());
-            // TODO: revokeToken 실패 내역을 별도 테이블에 기록하는 등의 후처리 -> Retry 정책 및 DLQ
         } catch (AuthException e) {
-            log.error("Auth revoke failed for user: {}. Error: {}", user.getId(), e.getMessage());
-        }  catch (Exception e) {
-            log.error("Unexpected error while deleting user: {}. Error: {}", user.getId(), e.getMessage());
-        } finally {
-            // revokeToken 성공 여부와 관계 없이, DB에서 유저를 삭제
-            userService.deleteUserHardlyByUserId(user.getId());
+            log.error("소셜 연동 해제 실패 - 삭제를 보류하고 다음 배치에서 재시도합니다. userId={}, provider={}, error={}",
+                    user.getId(), provider, e.getMessage());
+            return;
+        } catch (Exception e) {
+            log.error("소셜 연동 해제 중 예상치 못한 오류 - 삭제를 보류합니다. userId={}, provider={}",
+                    user.getId(), provider, e);
+            return;
         }
+
+        userService.deleteUserHardlyByUserId(user.getId());
     }
 }
