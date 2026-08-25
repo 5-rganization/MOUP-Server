@@ -21,11 +21,12 @@ jobs:
             cd /home/${{ secrets.RPI_USER }}/MOUP-Server
             # 2. 최신 코드 받기 (SSH 키 설정 포함)
             echo "Pulling latest code from Git..."
-            # (선택) SSH 에이전트 시작 및 키 추가 (Private Repo인 경우 필요)
             eval "$(ssh-agent -s)"
             echo "${{ secrets.RPI_DEPLOY_KEY }}" | ssh-add -
-            git pull origin main
-            ssh-agent -k # 에이전트 종료
+            git fetch origin develop
+            git checkout develop
+            git reset --hard origin/develop
+            ssh-agent -k
             # 3. .env 파일 생성 (Secrets -> .env)
             echo "Creating .env file..."
             # [중요] Docker 내부 통신용 주소로 설정
