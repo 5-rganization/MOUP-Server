@@ -41,6 +41,63 @@
 
 ---
 
+## 확정 요건 1 — 탈퇴 시 소셜 연동 해제가 반드시 성공해야 한다
+
+> **제품 요건**: 사용자가 탈퇴하면 Google/Apple 쪽 앱 연동도 실제로 해제되어야 한다.
+
+### 현재 상태: **요건 미충족** ⚠️
+
+I4 수정(`socialRefreshToken` null 허용)은 **NPE만 없앴을 뿐 이 요건을 만족시키지 못한다.**
+오히려 실패가 더 조용해졌다 — 이전에는 가입 시점에 500으로 시끄럽게 터졌지만,
+이제는 가입이 성공하고 **며칠 뒤 탈퇴 시점의 로그 한 줄로만** 드러난다.
+
+**실패 연쇄 (확인 완료):**
+
+1. Google 재가입 → `refresh_token` 없음 → `socialTokenService.saveOrUpdateToken` 미호출
+   → **`social_tokens` 행 없음**
+2. 탈퇴 → `BaseAuthService.revokeToken:43-44`
+   ```java
+   SocialToken socialToken = socialTokenRepository.findByUserId(userId)
+           .orElseThrow(() -> new AuthException("... 소셜 리프레시 토큰이 없습니다."));
+   ```
+3. `UserDeletionService:31-37`
+   ```java
+   catch (AuthException e) { log.error(...); }
+   finally { userService.deleteUserHardlyByUserId(user.getId()); }   // ← 무조건 삭제
+   ```
+4. **유저는 삭제되고 소셜 연동은 영구히 남는다.** 재시도 근거(`user_id`, refresh token)도
+   CASCADE로 함께 소멸해 복구 불가.
+
+`@Retryable`은 `IOException`만 잡으므로 이 경로는 **재시도조차 되지 않는다.**
+
+### 수정 A — 클라이언트 (근본 원인, 서버에서 해결 불가)
+
+Q1 답변으로 **offline access는 이미 지정돼 있음이 확인됐다**(최초 가입이 정상 동작하므로).
+남은 문제는 **재동의**다: Google은 이미 동의한 계정에 대해 명시적 재동의 요청 없이는
+`refresh_token`을 다시 주지 않는다.
+
+→ 클라이언트가 `serverAuthCode`를 요청할 때 **강제 재동의 옵션**을 켜야 한다
+(웹/서버 흐름의 `prompt=consent`에 해당하는 SDK 플래그).
+**Apple은 code exchange마다 refresh token을 발급하므로 영향 없다 — Google 전용 문제다.**
+
+### 수정 B — 서버 (I5, 안전망)
+
+revoke 실패 시 하드 삭제를 보류하고 재시도해야 한다. 다만 무한 재시도를 막으려면
+시도 횟수/최종 시각을 기록할 컬럼이 필요하고, 이는 **확정 정책 5(가명처리)가 요구하는
+"처리 완료 플래그"(스코프 1 ⑤)와 같은 컬럼**이다.
+
+→ **확정 정책 5 작업에 포함시킨다.** 확정 정책 5가 `deleteUserHardlyByUserId` 자체를
+가명처리로 교체하므로, 지금 손대면 같은 코드를 두 번 건드리게 된다.
+
+**실패 종류를 구분할 것:**
+- `social_tokens` 행 없음 = **영구 실패**. 재시도해도 소용없으므로 삭제를 진행하되
+  별도 기록을 남긴다
+- HTTP/네트워크 실패 = **일시 실패**. 삭제를 보류하고 다음 배치에서 재시도
+
+현재는 둘 다 `AuthException`이라 구분되지 않는다 — 별도 예외 타입이 필요하다.
+
+---
+
 ## 잘 된 점
 
 1. **`JwtFilter`가 토큰의 `role` 클레임을 신뢰하지 않는다.** `JwtFilter:45-51`이 `subject`만
@@ -214,9 +271,9 @@ C2 때문에 `id`만 맞으면 `CustomUserDetails`가 만들어진다. 게다가
 
 | # | 질문 |
 |---|---|
-| **Q1** | 클라이언트의 Google Sign-In이 `serverAuthCode` 요청 시 **offline access를 지정**하는가? I4의 심각도가 여기 달려 있다. 지정하지 않는다면 최초 가입조차 NPE가 나야 하므로 아마 지정 중일 것이고, 그렇다면 I4는 "재가입 시 재동의 없이는 미발급" 케이스로 한정된다 |
-| **Q2** | `GoogleAuthService:50`의 `redirect_uri`가 **빈 문자열**이다. 설정에 `google.redirect.uri`가 있는데 미사용(`:29-30`). 의도적인가, 누락인가? |
-| **Q3** | `hardDeleteOldUsers`를 호출하는 스케줄러가 없다(`@Scheduled` 0건 — 스코프 4 I2와 동일 확인). 외부 cron이 `/admin/users`를 호출하는 구조인가? 그렇다면 그 호출자의 ADMIN 토큰 관리 방식이 별도 리뷰 대상이다 |
+| ~~**Q1**~~ | **답변 완료.** 최초 가입이 정상 동작하므로 offline access는 **이미 지정돼 있다.** 문제는 **재동의**로 한정된다 — Google은 이미 동의한 계정에 `prompt=consent` 없이는 `refresh_token`을 재발급하지 않는다. 아래 "확정 요건 1" 참조 |
+| ~~**Q2**~~ | **답변 완료 → 빈 값으로 정상 동작 확인됨.** 네이티브 앱 코드 흐름에서 Google이 `redirect_uri` 검증을 요구하지 않는 클라이언트 타입. **보안 이슈 없음으로 종결.** 다만 `application.properties`의 `google.redirect.uri`는 미사용 설정이므로 제거 권장 |
+| **Q3** | `hardDeleteOldUsers`를 호출하는 스케줄러가 없다(`@Scheduled` 0건). **라즈베리 파이에 cron이 설정돼 있을 가능성** — 확인 필요(`crontab -l`). 있다면 그 cron이 쓰는 **ADMIN 토큰의 저장 위치와 갱신 방식**이 검토 대상이다. C1 수정으로 `typ` 없는 기존 토큰이 거부되므로 **cron의 토큰도 재발급이 필요할 수 있다** → 스코프 7에서 배포 스크립트와 함께 확인 |
 
 ---
 
