@@ -7,6 +7,7 @@ import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -105,6 +106,24 @@ public class GlobalExceptionHandler {
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .errorCode(errorCode.getCode())
                 .errorMessage(e.getMessage())
+                .build();
+
+        return new ResponseEntity<>(errorResponse, errorCode.getHttpStatus());
+    }
+
+    /// `@PreAuthorize` 등 메서드 보안의 인가 거부를 403으로 변환한다.
+    ///
+    /// `AuthorizationDeniedException`은 `AccessDeniedException`(→ `RuntimeException`) 하위이고
+    /// 컨트롤러 프록시 안에서 발생하므로, 이 핸들러가 없으면 아래 catch-all이 먼저 잡아
+    /// **500을 반환하고 정상 종료한다.** 그러면 `SecurityConfig`에 등록한 `accessDeniedHandler`가
+    /// 있는 `ExceptionTranslationFilter`는 예외를 보지도 못한다.
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<?> handleAccessDenied(AccessDeniedException e) {
+        logger.warn("Access denied: {}", e.getMessage());
+        ErrorCode errorCode = ErrorCode.INVALID_PERMISSION_ACCESS;
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .errorCode(errorCode.getCode())
+                .errorMessage(errorCode.getMessage())
                 .build();
 
         return new ResponseEntity<>(errorResponse, errorCode.getHttpStatus());
