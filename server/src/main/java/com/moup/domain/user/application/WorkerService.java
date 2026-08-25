@@ -225,6 +225,8 @@ public class WorkerService {
     public void updateWorkerForOwner(User user, Long workplaceId, Long workerId, OwnerWorkerUpdateRequest request) {
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyOwnerPermission(user.getId(), workplaceOwnerId);
+        // 권한 검증 후 대상 근무자가 이 근무지 소속인지 확인한다. 없으면 남의 근무지 근무자의 급여를 덮어쓸 수 있다.
+        if (!workerRepository.existsByIdAndWorkplaceId(workerId, workplaceId)) { throw new WorkerNotFoundException(); }
         workerRepository.updateOwnerBasedLabelColor(workerId, user.getId(), workplaceId, request.getOwnerBasedLabelColor());
 
         Long salaryId = salaryRepository.findByWorkerId(workerId).orElseThrow(SalaryWorkerNotFoundException::new).getId();

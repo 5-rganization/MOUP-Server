@@ -17,6 +17,7 @@ import com.moup.global.infra.file.File;
 import com.moup.domain.auth.domain.Login;
 import com.moup.global.common.type.Role;
 import com.moup.global.error.AlreadyDeletedException;
+import com.moup.global.error.InvalidArgumentException;
 import com.moup.domain.auth.dto.LoginResponse;
 import com.moup.domain.auth.dto.RegisterResponse;
 import com.moup.global.security.token.TokenCreateRequest;
@@ -95,6 +96,12 @@ public class UserService {
     User userToUpdate = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
     if (userToUpdate.getNickname() != null) {
       throw new UserAlreadyExistsException();
+    }
+
+    // 가입 시 스스로 부여할 수 있는 역할은 근무자/사장님뿐이다. ROLE_ADMIN은 허용하지 않는다.
+    Role role = userRegisterRequest.getRole();
+    if (role != Role.ROLE_WORKER && role != Role.ROLE_OWNER) {
+      throw new InvalidArgumentException("허용되지 않는 역할입니다.");
     }
 
         String nickname = userRegisterRequest.getNickname();
