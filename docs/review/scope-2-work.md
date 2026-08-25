@@ -3,6 +3,7 @@
 - **범위**: `server/src/main/java/com/moup/domain/work/` 전체 2,600 LOC
 - **기준 커밋**: `1172a1d`
 - **판정**: 수정 후 병합 가능
+- **집계**: Critical 5 (C2 수정 완료) / Important 10 / Minor 12 / 미확인 0
 - **테스트 현황**: Work 도메인 테스트 0건
 
 ## 잘 된 점
@@ -237,21 +238,46 @@ catch하고 그 외는 전체 롤백.
 **수정 방향**: `Duration.between(start, end).toHours() <= 24` 검증. 계산도 루프 대신
 구간 교차 산술로 O(1) 처리 가능.
 
-### I8 — 주휴수당 배분의 분모/분자 불일치로 금액 누락
+### I8 — 주휴수당 배분의 분모/분자 불일치로 금액 누락 · 정책 확정됨
 
 **스코프 3.**
 
+> **정책 확정**: 실제 퇴근 기록이 없으면 **근무 시간대(예정)** 기준으로 배분한다.
+
+**리뷰어 서술 정정.** 리뷰어는 이 필터를 "퇴근 미기록(진행 중)"이라고 설명했으나
+부정확하다. `:94`, `:111`의 `work.getEndTime()`은 **예정 종료 시각**(`end_time`)이며,
+실제 퇴근 시각(`actual_end_time`)은 이 계산에 아예 등장하지 않는다. 즉 코드는
+이미 확정된 정책대로 예정 시간대로 계산하고 있다. `end_time`이 null인 경우는
+출근 API로 생성된 근무뿐이고(`WorkController.java:239`가 `endTime(null)`),
+퇴근 시 `COALESCE(end_time, #{actualEndTime})`(`WorkRepository.java:281`)로
+채워진다. 따라서 `end_time == null`은 "아직 근무 중이라 측정할 시간대가 없음"을
+뜻하며, 배분 대상에서 빠지는 것이 맞다.
+
+**남는 결함은 분모다.** 실제로 두 번 희석된다:
+
 ```java
-// SalaryCalculationService.java:108 — 분모는 endTime null 근무 포함
+// :94-96  분자: end_time != null 인 근무만 합산
+long weeklyWorkMinutes = weekWorks.stream().filter(w -> w.getEndTime() != null)...sum();
+// :103   분모는 weekWorks.size() (전체)  ← 1차 희석
+double avgDailyWorkHours = (weeklyWorkMinutes / 60.0) / weekWorks.size();
+// :108   또 weekWorks.size()로 나눔      ← 2차 희석
 int dailyHolidayAllowance = weekWorks.isEmpty() ? 0 : weeklyHolidayAllowance / weekWorks.size();
-// :110-113 — 적용 대상은 endTime != null 인 근무만
+// :110-113  적용 대상은 다시 end_time != null 인 근무만
 ```
 
-주 5건 중 1건이 퇴근 미기록(진행 중)이면 주휴수당을 5로 나눠 4건에만 지급 →
-20% 누락. 정수 나눗셈 나머지도 버려진다.
+주 5건 중 1건이 `end_time == null`이면 실제 배분 총액이
+`weeklyHolidayAllowance × 4/5` → **20% 누락**. 정수 나눗셈 나머지도 버려진다.
+
+**수정 방향**: `:103`과 `:108`의 분모를 `end_time != null` 건수로 통일하고,
+정수 나눗셈 나머지를 마지막 근무에 몰아준다.
 
 추가로 `:93-96`의 `weeklyWorkMinutes`는 clamp가 없어 C1의 음수 rest가 주 합계를
 **감소**시킨다 — `:164-165`의 clamp와 동작이 불일치한다.
+
+**스코프 3 리뷰어가 별도 판정할 것**: `:103`의 주휴수당 산식
+(`주 근무시간 / 근무일수 × 시급`)이 근로기준법의
+`(1주 소정근로시간 / 40) × 8 × 시급` 또는 주 40시간 미만자의 `주 근무시간 / 5 × 시급`과
+어떻게 대응하는지. 분모가 "실제 근무일수"인 것이 의도인지 확인 필요.
 
 ### I9 — 반복 생성 시 루틴 매핑이 근무 건수만큼 반복 쿼리 (쓰기 N+1)
 
@@ -263,7 +289,20 @@ SELECT(`:379`) + 배치 INSERT = 3쿼리다. 365일 주5일 반복이면 약 260
 **수정 방향**: 루틴 유효성 검증을 1회만 하고 전체 매핑을
 `WorkRoutineMappingRepository.createBatch` 한 번으로 삽입.
 
-### I10 — Owner의 삭제 권한이 수정 권한과 불일치, 경로 우회 가능 ⚠️ 의도 확인 필요
+### ~~I10~~ → M12 — Owner의 삭제 권한 (의도 확인 완료, Minor로 강등)
+
+> **의도 확정**: 사장님은 알바생 근무를 **삭제할 수 있어야 한다.** 따라서 현재
+> 동작은 정상이며 권한 버그가 아니다. `getVerifiedWorkContextForUD`가 worker →
+> workplace를 타고 `ownerId`를 검증하므로 스코핑도 안전하다(경로에 `workplaceId`가
+> 없어도 우회가 아니다).
+>
+> **남는 작업은 문서화뿐이다.** `WorkSpecification.java:266-278`, `280-292`에
+> "근무자 본인 또는 해당 근무지 사장님"을 명시한다. 사장님의 수정 경로는
+> `PATCH /workplaces/{id}/workers/{workerId}/works/{workId}`(`WorkController.java:165`, `180`)로
+> 이미 존재하므로 기능 격차는 없고 URL 형태만 다르다.
+
+<details>
+<summary>원래 지적 (참고용)</summary>
 
 `updateMySingleWork`(`WorkService.java:438-440`)와 `updateMyRecurringWork`(`469-471`)는
 "본인 근무만"을 명시적으로 강제한다. 반면 `deleteWork`(`648-653`)와
@@ -275,6 +314,8 @@ SELECT(`:379`) + 배치 INSERT = 3쿼리다. 365일 주5일 반복이면 약 260
 `workplaceId`/`workerId`를 경로에 요구하는데(`WorkController.java:165`, `180`)
 삭제만 `workId` 하나로 그 스코핑을 우회한다.
 `WorkSpecification.java:266-278`, `280-292`는 이 차이를 문서화하지 않는다.
+
+</details>
 
 ### I11 — 1,137줄 서비스의 책임 분리 (두 덩어리만)
 
@@ -308,16 +349,20 @@ SELECT(`:379`) + 배치 INSERT = 3쿼리다. 365일 주5일 반복이면 약 260
 
 ---
 
-## 미확인 — 확인 필요
+## 미확인 — 확인 완료 (종결)
 
-**JDBC 커넥터 타임존 옵션.** `spring.datasource.url=${DATABASE_URL}`이라 실제
-URL을 확인하지 못했다. `LocalDateTime` ↔ `DATETIME`은 Connector/J 기본 설정에서
-TZ 변환이 없어 현재 설계가 안전하지만, URL에
-`connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true` 류가 붙어 있으면
-저장 값이 9시간 밀린다.
+**JDBC 커넥터 타임존 옵션 — 확인 완료, 안전.** 리뷰어가 확인하지 못한
+`${DATABASE_URL}`의 실제 값은 `.github/workflows/deploy.yml:32`에서 조립된다:
 
-> **질문**: 운영 `DATABASE_URL`에 `connectionTimeZone` / `serverTimezone` /
-> `preserveInstants` 파라미터가 붙어 있는가?
+```
+jdbc:mysql://mysql:3306/${DATABASE_NAME}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
+```
+
+`serverTimezone`이 붙어 있으나 **무해하다.** MySQL 컨테이너의
+`TZ: Asia/Seoul`(`docker-compose.prod.yml:45`) 및
+`--default-time-zone=Asia/Seoul`(`:49`)과 값이 일치하므로, 변환이 적용되더라도
+출발지 = 도착지라 no-op다. 상세 근거와 잔여 리스크(앱 컨테이너 `TZ` 미설정)는
+[README.md의 타임존 판정](README.md#타임존-판정-종결) 참조.
 
 ---
 
@@ -350,3 +395,11 @@ Work 도메인 테스트는 현재 0건이다. 1~5번만 붙여도 Critical 4건
 C3(반복 수정 시 근무 중복 생성), C4(삭제 후 주휴수당 stale)는 **금전 데이터가
 틀어지는 버그**이고, C2(사장님 상세 조회 404)는 기능 파손이었다(수정 완료).
 C5와 I2·I3는 각각 복구 불가 상태 고착과 500/무권한 접근이라 함께 처리를 권한다.
+
+---
+
+## 스코프 7로 이관
+
+| 항목 | 내용 |
+|---|---|
+| TZ-1 | dev·prod 모두 **server(앱) 컨테이너에 `TZ` 미설정** (mysql에만 있음). 현재는 코드가 항상 `SEOUL_ZONE_ID`를 명시해 무해하나, JVM 기본 존이 이미지 기본값(대개 UTC)이라 존 없는 `now()`가 하나만 들어와도 날짜가 어긋난다. `docker-compose.*.yml`의 server 서비스에 `TZ: Asia/Seoul` 한 줄 추가. |

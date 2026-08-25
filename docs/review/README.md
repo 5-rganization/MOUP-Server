@@ -49,12 +49,44 @@
 3. 심각도 순으로 수정 + 각 Critical에 회귀 테스트 1개
 4. 이 브랜치(`fix/code-review-findings`)에서 작업
 
-## 미해결 확인 질문
+## 확인 질문 — 답변 완료
 
-수정 방향이 이 답변에 달려 있는 항목. 답을 얻는 대로 해당 파일에 반영한다.
+| 출처 | 질문 | 답변 | 반영 |
+|---|---|---|---|
+| 스코프 2 · 미확인 | 운영 `DATABASE_URL`에 타임존 파라미터가 붙어 있는가? | **붙어 있으나 무해** — 아래 참조 | 종결 |
+| 스코프 2 · I10 | 사장님이 알바생 근무를 **삭제**할 수 있어야 하는가? | **예, 삭제 가능해야 함** | 현재 동작이 정상. Spec 문서화만 필요 → Minor로 강등 |
+| 스코프 2 · I8 | 퇴근 미기록 근무의 주휴수당 배분 방식은? | **실제 퇴근 기록이 없으면 근무 시간대(예정)로 배분** | 현재 분자 방식이 정책과 일치. 분모만 수정 |
 
-| 출처 | 질문 |
+### 타임존 판정 (종결)
+
+**안전하다.** 세 값이 전부 일치한다:
+
+| 위치 | 값 |
 |---|---|
-| 스코프 2 · 미확인 | 운영 `DATABASE_URL`에 `connectionTimeZone` / `serverTimezone` / `preserveInstants` 파라미터가 붙어 있는가? 붙어 있으면 `LocalDateTime` ↔ `DATETIME` 저장 시각이 9시간 밀린다. |
-| 스코프 2 · I10 | 사장님이 알바생 근무를 **삭제**할 수 있어야 하는가? 현재 삭제는 허용되고 수정은 403이라 비대칭이다. |
-| 스코프 2 · I8 | 퇴근 미기록(진행 중) 근무에도 주휴수당을 배분해야 하는가? 분모 산정 방식이 여기에 달려 있다. |
+| `.github/workflows/deploy.yml:32` | `serverTimezone=Asia/Seoul` |
+| `docker-compose.prod.yml:45` | mysql 컨테이너 `TZ: Asia/Seoul` |
+| `docker-compose.prod.yml:49` | `--default-time-zone=Asia/Seoul` |
+
+`docker-compose.dev.yml:43`, `:48`도 동일해 dev/prod 불일치가 없다.
+
+근거 두 겹:
+
+1. **출발지 = 도착지.** 드라이버가 변환을 적용하더라도 소스와 타깃 존이 같아
+   no-op다. 이 논거는 아래 2번의 세부 동작과 무관하게 성립한다.
+2. **엔티티가 timezone-free 타입이다.** `Work.java:14-18`이
+   `LocalDate`/`LocalDateTime`이며, Connector/J(9.2.0, `build.gradle:49`)는
+   이 타입들을 리터럴로 전송하고 `connectionTimeZone`/`serverTimezone`을
+   적용하지 않는다.
+   *(주의: 이 항목은 Connector/J 매뉴얼로 재확인하지 못했다 — Context7의
+   dev.mysql.com 코퍼스에 서버 내부 doxygen만 색인돼 있다. 1번 논거만으로
+   결론이 서므로 추가 확인은 하지 않았다.)*
+
+**부수 검증**: 전체 코드베이스에 존 없는 `LocalDate.now()` /
+`LocalDateTime.now()` / `LocalTime.now()`가 **0건**이다. `new Date()` 4건은
+전부 `JwtUtil`/`AppleJwtUtil`의 `issuedAt`으로, 절대 시각이므로 올바른 사용이다.
+
+**잔여 리스크 (스코프 7에 적재)**: dev·prod 모두 **server(앱) 컨테이너에는 `TZ`가
+없다** — mysql에만 있다. 코드가 항상 `SEOUL_ZONE_ID`를 명시해서 지금은 무해하지만,
+JVM 기본 존이 이미지 기본값(대개 UTC)이라 존 없는 `now()`가 하나만 들어와도
+날짜가 어긋난다. `docker-compose.*.yml`의 server 서비스에 `TZ: Asia/Seoul`
+한 줄을 추가하는 무료 방어다.
