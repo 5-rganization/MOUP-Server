@@ -30,9 +30,25 @@
 | 4 | 사용자·알바생 | `domain/user/` | ~2,590 | **완료** → [scope-4-user.md](scope-4-user.md) ⚠️ **병합 불가** |
 | 5 | 근무지·초대코드 | `domain/workplace/` | ~1,460 | **완료** → [scope-5-workplace.md](scope-5-workplace.md) |
 | 6 | 루틴·알람·FCM | `domain/routine/`, `domain/alarm/`, `global/infra/fcm/` | ~1,970 | 대기 |
-| 7 | 횡단 관심사·인프라 (+ [applied-fixes.md](applied-fixes.md)의 INF-1~5) | `global/config/`, `global/error/`, `global/common/`, `global/infra/`, `global/util/`, 빌드·배포 설정, `db/moup.sql` | ~1,050+ | 대기 |
+| 7 | 횡단 관심사·인프라 | `global/config/`, `global/error/`, `global/common/`, `global/infra/`, `global/util/`, 빌드·배포 설정, `db/moup.sql` | ~1,050+ | **완료** → [scope-7-infra.md](scope-7-infra.md) |
 
-진행 순서: **1 → 2 → 3 → 5 → 4 → 6 → 7** (보안 먼저, 금전 계산 다음, 나머지는 위험도 순)
+### ✅ 7개 스코프 리뷰 전부 완료
+
+| 스코프 | 판정 |
+|---|---|
+| 1 인증·시큐리티 | 수정 후 (Critical 2건 수정 완료) |
+| 2 근무 | 수정 후 (Critical 1건 수정 완료) |
+| 3 급여 계산 | **아니오 — 수정 후** |
+| 4 사용자·알바생 | **아니오** (Critical 2건 수정 완료) |
+| 5 근무지·초대코드 | 수정 후 |
+| 6 루틴·알람·FCM | **미리뷰** — 아래 참조 |
+| 7 횡단 관심사·인프라 | 수정 후 |
+
+> ⚠️ **스코프 6(루틴·알람·FCM)은 별도 리뷰를 돌리지 않았다.** 스코프 2에서 C2(`RoutineService`)와
+> I9, 스코프 7에서 FCM 관련 I3·I4·I5를 다뤘으나 `domain/routine/`·`domain/alarm/` 전체를
+> 훑은 리뷰는 없다. 필요하면 추가로 돌릴 것.
+
+원 진행 순서: **1 → 2 → 3 → 5 → 4 → 6 → 7** (보안 먼저, 금전 계산 다음, 나머지는 위험도 순)
 
 선택 사항으로 축을 바꾼 8번 패스: MyBatis Repository 12개 전수 (SQL 인젝션,
 동적 SQL 빈 컬렉션, `SELECT *`, 인덱스, N+1을 한 번에 대조).
