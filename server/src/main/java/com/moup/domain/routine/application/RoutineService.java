@@ -403,7 +403,7 @@ public class RoutineService {
     Work work = workRepository.findById(workId)
         .orElseThrow(WorkNotFoundException::new);
 
-    Worker worker = workerRepository.findByIdAndUserId(work.getWorkerId(), userId)
+    Worker worker = workerRepository.findById(work.getWorkerId())
         .orElseThrow(WorkerNotFoundException::new);
 
     Workplace workplace = workplaceRepository.findById(worker.getWorkplaceId())
