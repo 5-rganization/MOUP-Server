@@ -244,19 +244,19 @@ return new CustomUserDetails(user);
 
 | # | 내용 |
 |---|---|
-| **I1** | **Swagger/OpenAPI가 프로덕션에 무인증 노출.** `SecurityConfig:27-30,48` + `// TODO: 나중에 swagger 비활성화 하기`. `resources/`에 `application.properties` 하나뿐이고 프로파일 분리 없음. 익명으로 `GET /v3/api-docs` 한 방에 전체 API 표면·관리자 경로·역할 체계 획득 → 이후 모든 공격의 정찰 비용 0 |
+| **I1** ✅ `2deff42` | **Swagger/OpenAPI가 프로덕션에 무인증 노출.** `SecurityConfig:27-30,48` + `// TODO: 나중에 swagger 비활성화 하기`. `resources/`에 `application.properties` 하나뿐이고 프로파일 분리 없음. 익명으로 `GET /v3/api-docs` 한 방에 전체 API 표면·관리자 경로·역할 체계 획득 → 이후 모든 공격의 정찰 비용 0 |
 | **I2** ✅ `f5bb991` | **로그아웃이 서버 상태를 무효화하지 않는다.** `UserService:204-208`이 FCM 토큰만 지움. `user_tokens` 행이 남아 refresh가 **로그아웃 후에도 7일 유효**하고 C1으로 access처럼 쓰인다. **수정**: `logout`에서 `user_tokens` 삭제 — 실질 노출 창이 7일 → 20분으로 |
 | **I3** ⚠️ 부분 `f5bb991` | (a)는 재발급 타입 가드로 해소됨. (b) `AuthException` 500은 미수정. **인증 실패가 401이 아니라 500.** (a) `UserTokenService:45-46`의 `getUserId`가 예외를 삼키지 않아 만료·변조 refresh → 500 + `logger.error`. 익명 공격자가 쓰레기 토큰으로 ERROR 로그 무제한 생성 가능. (b) `AuthController:96-97`이 `throws AuthException`(**checked**)인데 `GlobalExceptionHandler`는 `RuntimeException`만 처리 → 잘못된 `authCode` → 500 |
 | **I4** ✅ `f5bb991` | **`startCreateUser` NPE — 재가입 경로가 500으로 막힘.** `UserService:64-68`의 `socialRefreshToken.isEmpty()`에 null 체크 없음. 같은 흐름의 로그인 분기(`AuthController:122`)는 **제대로 막고 있다** — 신규 가입만 누락. Google은 `refresh_token`을 최초 동의 시에만 발급하므로 **"탈퇴 후 재가입"에서 정통으로 터진다. 확정 정책 5의 선행 조건** |
 | **I5** ✅ `7706fe4`+`58dae8a` | **소셜 revoke 실패가 조용히 삼켜짐.** `UserDeletionService:26-37`이 `finally`에서 성공 여부 무관하게 하드 삭제 → 재시도 근거가 CASCADE로 소멸 → **소셜 grant 영구 잔존.** 사용자는 탈퇴했다고 믿지만 Apple/Google에는 연동이 남는다. `@Retryable`이 `IOException`만 잡아 HTTP 4xx는 재시도조차 안 됨 |
-| **I6** | **`user_tokens`/`social_tokens`에 `UNIQUE (user_id)` 없음.** read-then-write 패턴이라 동시 로그인 시 행 2개 → `Optional<UserToken>`에 2행 → `TooManyResultsException` → **해당 유저 로그인·재발급 영구 500.** 스코프 5 C-2와 동일한 결함 유형 |
+| **I6** ✅ `ebb9525` | **`user_tokens`/`social_tokens`에 `UNIQUE (user_id)` 없음.** read-then-write 패턴이라 동시 로그인 시 행 2개 → `Optional<UserToken>`에 2행 → `TooManyResultsException` → **해당 유저 로그인·재발급 영구 500.** 스코프 5 C-2와 동일한 결함 유형 |
 | **I7** | **Refresh token과 소셜 refresh token이 DB 평문 저장.** 자체 refresh는 C1 때문에 전권 크리덴셜이라 DB 읽기 권한만으로 전 사용자 로그인 가능. **수정**: 자체 refresh는 SHA-256 해시 저장 후 비교(검증이 `.equals()` 한 줄이라 변경 폭 작음), 소셜은 AES-GCM |
 
 ---
 
 ## Minor (요약)
 
-**M1 — `JwtUtil:28`의 `log.debug(secretKey)`.** 현재 root INFO라 출력되지 않지만
+**M1 ✅ `f7a4031` — `JwtUtil:28`의 `log.debug(secretKey)`.** 현재 root INFO라 출력되지 않지만
 `logging.level.com.moup=DEBUG` 한 줄이면 **전 사용자 위조 가능한 키가 로그에 박힌다.**
 제거 1줄, 리스크는 시스템 전체. **즉시 삭제 권장.**
 

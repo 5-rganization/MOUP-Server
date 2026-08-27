@@ -422,7 +422,7 @@ diff가 짧고 현재 동작과 일치. ② MyBatis `<set>` + `<if>`로 진짜 P
 `GlobalExceptionHandler:71-85`가 이미 `MethodArgumentNotValidException`을 필드명까지 담은
 422로 잘 변환하므로 **애노테이션만 붙이면 그 경로를 탄다.**
 
-### I-4 — 초대코드 난수원이 CSPRNG가 아니다 (`ThreadLocalRandom`)
+### I-4 — 초대코드 난수원이 CSPRNG가 아니다 (`ThreadLocalRandom`) ✅ **수정 완료** (`647ae67`)
 
 `InviteCodeService.java:22-24`가 `.usingRandom(...)`을 호출하지 않는다.
 리뷰어가 commons-text **1.14.0** jar를 `unzip` + `javap -c`로 열어 바이트코드에서 확인:

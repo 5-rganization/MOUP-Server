@@ -20,6 +20,7 @@
 | 2 | 전 사용자 1회 재로그인 안내 | 기존 발급 토큰에 `typ` 클레임이 없어 전부 거부된다 |
 | 🔴 3 | **Firebase 서비스 계정 키 폐기·재발급** — 배포와 무관하게 **지금 당장.** [스코프 7 C7](scope-7-infra.md) | Docker Hub `neoskycladdocker/moup`가 **public**임이 확인됐고(`is_private: False`) 키가 이미지 안에 있다. 누구나 `docker pull`로 꺼낼 수 있다 |
 | 4 | **`db/migrations/2026-08-27-workplaces-owner-set-null.sql`를 운영 DB에 수동 적용** (앱 배포 **후**) | 스키마 파일만 고쳐서는 기존 DB가 그대로다. 사장님 탈퇴 시 알바생 근무·급여가 계속 CASCADE 삭제된다 |
+| 5 | **`db/migrations/2026-08-27-token-tables-unique-user.sql`를 운영 DB에 수동 적용** (앱 배포와 **함께**) | UNIQUE 없이 upsert만 나가면 `ON DUPLICATE KEY`가 발동하지 않아 동시 로그인 시 여전히 행이 2개가 된다. 이미 중복 행이 있으면 `ALTER`가 실패하므로 파일 안의 정리 `DELETE`가 선행돼 있다 |
 
 `ADMIN_AUTH_TOKEN`은 `JwtUtil.createTestToken`(1년 만료)으로 발급한다. 이 메서드는 런타임
 호출자가 없어 dead code처럼 보이지만 **cron 크리덴셜의 수동 발급 도구**다
@@ -149,6 +150,25 @@
 ⚠️ **기존 FK 이름이 스키마에 없어 MySQL이 자동 생성했다.** 마이그레이션 파일은
 `workplaces_ibfk_1`을 가정하며, 실행 전 `information_schema`로 확인하는 쿼리를
 주석으로 함께 담았다.
+
+---
+
+### `f7a4031` ~ `59fe709` — 한 줄~몇 줄짜리 잔여 건 5개 일괄
+
+리뷰 완료 후 "설계 없이 바로 고칠 수 있는 것"만 모아 처리했다.
+
+| 커밋 | 출처 | 내용 |
+|---|---|---|
+| `f7a4031` | 스코프 1 M1 | `JwtUtil` 생성자의 `log.debug(secretKey)` 제거. 지금은 root INFO라 안 찍히지만 디버깅하려고 레벨을 낮추는 순간 서명 키가 로그로 나간다 |
+| `2deff42` | 스코프 1 I1 | Swagger를 `${SWAGGER_ENABLED:false}`로 기본 비활성화하고 `docker-compose.dev.yml`에만 `true` 주입. springdoc이 꺼지면 경로가 404가 되므로 `SecurityConfig`는 손대지 않았다 |
+| `ebb9525` | 스코프 1 I6 | `user_tokens`/`social_tokens`에 `UNIQUE (user_id)` + `save()`를 upsert로. **둘은 반드시 함께 나가야 한다** — UNIQUE만 추가하면 경합이 `TooManyResultsException`에서 `DuplicateKeyException`으로 바뀔 뿐이다 |
+| `647ae67` | 스코프 5 I-4 | `RandomStringGenerator`에 `.usingRandom(SECURE_RANDOM::nextInt)` |
+| `59fe709` | 스코프 4 I3 | `updateOwnerBasedLabelColor`의 `WHERE`에서 `user_id` 조건 제거 |
+
+**I3 판정 근거**: 호출자 2곳을 모두 확인했다. `WorkerService:230`은 사장님 id를 넘기는데
+대상 행의 `user_id`는 알바생 id라 **깨져 있었고**, `WorkplaceService:209`는
+`findByUserIdAndWorkplaceId(owner, ...)`로 **사장님 본인의 근무자 행**을 찾아 넘기므로
+원래 동작했다. `user_id` 조건 제거는 후자를 깨뜨리지 않는다.
 
 ---
 

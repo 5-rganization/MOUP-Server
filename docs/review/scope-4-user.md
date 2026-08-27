@@ -208,7 +208,7 @@ if (!workerRepository.existsByIdAndWorkplaceId(workerId, workplaceId)) throw new
 |---|---|
 | **I1** ✅ `f5bb991` | **소프트 삭제 유저가 그대로 인증·행위 가능.** `CustomUserDetailsService:29-32`가 `is_deleted` 미검사. `WorkerController`의 7개 엔드포인트가 `getCurrentUserId()`만 쓴다 → 탈퇴 신청자가 유예 3일간 승인/거절·근무자 삭제·근무 생성 수행 후 하드 삭제됨 |
 | **I2** | **3일 유예 후 하드 삭제가 자동 실행되지 않음.** `@Scheduled`/`@EnableScheduling`이 코드베이스에 **없다.** `hardDeleteOldUsers`의 유일한 호출자가 수동 API. `deleted_at`이 쌓이기만 함 |
-| **I3** | **사장님의 라벨 색상 수정이 조용히 무동작.** `WorkerRepository:155`의 `WHERE ... AND user_id = #{userId}`에 **사장님 id**가 들어가는데 대상 행의 `user_id`는 **알바생 id** → 절대 매치 안 함. 서버는 204, 앱 재진입 시 원복. 급여는 같은 요청에서 성공하므로 "일부만 반영" |
+| **I3** ✅ `59fe709` | **사장님의 라벨 색상 수정이 조용히 무동작.** `WorkerRepository:155`의 `WHERE ... AND user_id = #{userId}`에 **사장님 id**가 들어가는데 대상 행의 `user_id`는 **알바생 id** → 절대 매치 안 함. 서버는 204, 앱 재진입 시 원복. 급여는 같은 요청에서 성공하므로 "일부만 반영" |
 | **I4** | **`acceptWorker`/`rejectWorker` 멱등성 없음.** 재승인 시 푸시 스팸. **더 심각: 이미 승인된 근무자에게 `DELETE .../accept` 호출 → `workers` 행 삭제 → CASCADE로 그 알바생의 근무·급여 전체 영구 삭제.** "거절" API가 "재직자 이력 전체 삭제"로 동작 |
 | **I5** | 알바생이 같은 근무지 동료의 일별 `estimatedNetIncome` 조회 가능 (스코프 2 I1 확증). C3과 결합하면 **미승인자도** 획득 |
 | **I6** | `Worker`/`Workplace`/`Salary`/`Work` 4개에 `@NoArgsConstructor` 없음 → MyBatis 위치 기반 생성자 매핑. `User`만 안전. **C4 수정으로 `withdrawn_at` 컬럼을 추가하는 작업 자체가 이걸 터뜨린다** |
