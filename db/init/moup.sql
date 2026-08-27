@@ -99,7 +99,7 @@ CREATE TABLE `workplaces`
     `address`        VARCHAR(100)          NULL,
     `latitude`       DECIMAL(9, 6)         NULL,
     `longitude`      DECIMAL(9, 6)         NULL,
-    FOREIGN KEY (`owner_id`) REFERENCES users (`id`) ON DELETE CASCADE
+    CONSTRAINT `fk_workplaces_owner` FOREIGN KEY (`owner_id`) REFERENCES users (`id`) ON DELETE SET NULL
 );
 
 CREATE TABLE `workers`
