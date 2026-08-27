@@ -448,6 +448,7 @@ public class WorkService {
         updateSingleWorkInternal(
                 context.worker(),
                 context.work().getId(), // 수정할 workId
+                context.work().getWorkDate(), // 수정 전 근무일 (주 경계 이동 대비)
                 newStartTime,
                 newEndTime,
                 newActualStartTime,
@@ -522,6 +523,7 @@ public class WorkService {
         updateSingleWorkInternal(
                 worker,
                 work.getId(),
+                work.getWorkDate(), // 수정 전 근무일 (주 경계 이동 대비)
                 newStartTime,
                 newEndTime,
                 newActualStartTime,
@@ -661,18 +663,40 @@ public class WorkService {
         // 반복 근무인지 확인
         if (work.getRepeatGroupId() == null) { throw new BadRequestException("반복 근무가 아닌 단일 근무입니다."); }
 
+        // 삭제 전에 그룹의 마지막 근무일을 잡아둔다. 지우고 나면 알 수 없다.
+        LocalDate lastDate = workRepository.findLastWorkDateByRepeatGroupId(work.getRepeatGroupId())
+                .orElse(work.getWorkDate());
+
         long deletedCount = workRepository.deleteRecurringWorkFromDate(work.getRepeatGroupId(), work.getWorkDate());
         log.info("Deleted {} future recurring works for group {}", deletedCount, work.getRepeatGroupId());
 
         Salary salary = salaryRepository.findByWorkerId(context.worker().getId()).orElse(null);
 
-        salaryCalculationService.recalculateWorkWeek(context.worker().getId(), work.getWorkDate(), salary);
+        recalculateWeeksInRange(context.worker().getId(), salary, work.getWorkDate(), lastDate);
     }
 
 
     // =================================================================
     // 내부 헬퍼 메서드 (Helpers)
     // =================================================================
+
+    /// `from`~`to` 사이에 걸친 **모든 주**를 재계산한다.
+    ///
+    /// `recalculateWorkWeek`은 인자로 받은 날짜가 속한 한 주만 다시 계산한다.
+    /// 반복 근무 삭제·교체는 최대 365일치를 건드리는데 재계산은 1주만 하고 있어,
+    /// 나머지 주의 `holiday_allowance`/`gross_income`이 삭제 전 값 그대로 남았다.
+    /// 주휴수당은 주 15시간·40시간 임계에 걸리므로 근무가 사라지면 그 주 전체가 달라진다.
+    private void recalculateWeeksInRange(Long workerId, Salary salary, LocalDate from, LocalDate to) {
+        if (from == null || to == null) {
+            return;
+        }
+        LocalDate cursor = (from.isBefore(to) ? from : to).with(DayOfWeek.MONDAY);
+        LocalDate last = (from.isBefore(to) ? to : from).with(DayOfWeek.MONDAY);
+        while (!cursor.isAfter(last)) {
+            salaryCalculationService.recalculateWorkWeek(workerId, cursor, salary);
+            cursor = cursor.plusWeeks(1);
+        }
+    }
 
     /// 사용자 근무 생성 헬퍼 (MyWorkCreateRequest 용)
     private List<Work> createMyWorkHelper(Worker worker, MyWorkCreateRequest request) {
@@ -852,30 +876,31 @@ public class WorkService {
         return createdWorks;
     }
 
-    /// 반복 중단: 미래 반복 삭제 후 현재 근무는 단일로 업데이트
-    private void stopRecurrenceAndUpdateSingle(Worker worker, Work currentWork, LocalDateTime newStartTime, LocalDateTime newEndTime,
-                                               LocalDateTime newActualStartTime, LocalDateTime newActualEndTime,
-                                               Integer newRestTimeMinutes, String newMemo) {
-        // 1. 기존에 반복 그룹이 있었는지 확인
-        if (currentWork.getRepeatGroupId() != null) {
-            // 2. 현재 근무의 '다음 날'부터 미래 반복 삭제
-            long deletedCount = workRepository.deleteRecurringWorkAfterDate(currentWork.getRepeatGroupId(), currentWork.getWorkDate());
-            log.info("Stopped recurrence: Deleted {} future works after {} for group {}", deletedCount, currentWork.getWorkDate(), currentWork.getRepeatGroupId());
-        }
-
-        // 3. 현재 근무는 '단일' 근무로 업데이트 (repeatGroupId = null)
-        updateSingleWorkInternal(worker, currentWork.getId(), newStartTime, newEndTime,
-                newActualStartTime, newActualEndTime, newRestTimeMinutes, newMemo,
-                null); // repeatGroupId를 null로 설정하여 반복 중단
-    }
-
     /// 새로운 반복 시작/변경: 기존 반복 삭제 후 새로운 반복 생성
     private List<Work> replaceWithNewRecurringWorks(Worker worker, Work currentWork, LocalDateTime newStartTime, LocalDateTime newEndTime,
                                                     Integer newRestTimeMinutes, String newMemo,
                                                     List<DayOfWeek> newRepeatDays, LocalDate newRepeatEndDate,
                                                     Long userIdForRoutine, List<Long> routineIdList) {
+        // 삭제는 기준 근무일 "이후"만, 생성은 요청의 startTime부터 한다.
+        // 새 시작일이 기준 근무일보다 앞서면 그 사이 구간에 근무가 **두 벌** 만들어져
+        // 주 근무시간이 2배로 집계되고 주휴수당·gross_income이 함께 틀어진다.
+        //
+        // 삭제 기준일을 앞당기는 방법도 있으나, 그러면 사용자가 요청하지 않은
+        // **과거 근무를 조용히 지우게 된다.** 명시적으로 거부한다.
+        LocalDate newStartDate = newStartTime.toLocalDate();
+        if (newStartDate.isBefore(currentWork.getWorkDate())) {
+            throw new InvalidFieldFormatException(
+                    "반복 시작 날짜는 수정 기준 근무일(" + currentWork.getWorkDate() + ") 이후여야 합니다.");
+        }
+
+        Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElse(null);
+        LocalDate deletedRangeEnd = null;
+
         // 1. 기존에 반복 그룹이 있었는지 확인
         if (currentWork.getRepeatGroupId() != null) {
+            // 삭제 전에 그룹의 마지막 근무일을 잡아둔다.
+            deletedRangeEnd = workRepository.findLastWorkDateByRepeatGroupId(currentWork.getRepeatGroupId())
+                    .orElse(currentWork.getWorkDate());
             // 2. 현재 근무 '포함'하여 미래 반복 삭제
             long deletedCount = workRepository.deleteRecurringWorkFromDate(currentWork.getRepeatGroupId(), currentWork.getWorkDate());
             log.info("Replacing recurrence: Deleted {} works from {} for group {}", deletedCount, currentWork.getWorkDate(), currentWork.getRepeatGroupId());
@@ -885,14 +910,23 @@ public class WorkService {
             log.info("Replacing single work with recurrence: Deleted work id {}", currentWork.getId());
         }
 
-        // 3. 새로운 반복 근무 생성 및 반환 (createRecurringWorks 헬퍼 재사용)
-        return createRecurringWorks(worker, newStartTime, newEndTime,
+        // 3. 새로운 반복 근무 생성 (createRecurringWorks가 자기 범위의 주는 스스로 재계산한다)
+        List<Work> created = createRecurringWorks(worker, newStartTime, newEndTime,
                 newRestTimeMinutes, newMemo, newRepeatDays, newRepeatEndDate,
                 userIdForRoutine, routineIdList);
+
+        // 4. 새 반복이 더 짧아졌다면 그 뒤 구간은 아무도 재계산하지 않는다. 여기서 채운다.
+        if (deletedRangeEnd != null) {
+            recalculateWeeksInRange(worker.getId(), salary, currentWork.getWorkDate(), deletedRangeEnd);
+        }
+        return created;
     }
 
     /// '단일' 근무 업데이트 공통 로직
-    private void updateSingleWorkInternal(Worker worker, Long workId, LocalDateTime startTime, LocalDateTime endTime,
+    /// `previousWorkDate`는 수정 **전**의 근무일이다. 근무일이 주 경계를 넘어 이동하면
+    /// (예: 금요일 → 다음 주 월요일) 원래 주의 주휴수당이 재계산되지 않고 그대로 남는다.
+    private void updateSingleWorkInternal(Worker worker, Long workId, LocalDate previousWorkDate,
+                                          LocalDateTime startTime, LocalDateTime endTime,
                                           LocalDateTime actualStartTime, LocalDateTime actualEndTime,
                                           Integer restTimeMinutes, String memo,
                                           String repeatGroupId) {
@@ -919,7 +953,9 @@ public class WorkService {
 
         workRepository.update(workToUpdate);
 
-        salaryCalculationService.recalculateWorkWeek(worker.getId(), workToUpdate.getWorkDate(), salary);
+        recalculateWeeksInRange(worker.getId(), salary,
+                previousWorkDate != null ? previousWorkDate : workToUpdate.getWorkDate(),
+                workToUpdate.getWorkDate());
     }
 
     /// '단일' 근무 삭제 헬퍼 (루틴 매핑 포함)
