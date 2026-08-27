@@ -110,9 +110,10 @@ public class FCMService {
     /// 기기별로 하나씩 보낸다.
     ///
     /// ponytail: 토큰 수만큼 HTTP 호출이 나간다. 사용자당 기기는 보통 1~3대라 문제가 없다.
-    /// 대량 발송이 필요해지면 firebase-admin을 9.2.0 이상으로 올리고
-    /// `sendEachForMulticast`로 바꿀 것. 현재 8.1.0의 `sendMulticast`/`sendAll`은
-    /// 2024년 6월에 종료된 레거시 batch 엔드포인트를 쓰므로 대안이 되지 못한다.
+    /// firebase-admin을 9.9.0으로 올렸으므로 `sendEachForMulticast`(호출 1회당 최대
+    /// 500토큰, 토큰별 결과를 그대로 돌려주어 죽은 토큰 정리도 유지된다)를 쓸 수 있다.
+    /// 지금은 N이 작아 이득이 없어 그대로 둔다. 한 번에 수십 대 이상으로 나가는
+    /// 경로가 생기면 그때 바꿀 것.
     private void push(List<String> tokens, String title, String body, Map<String, String> data) {
         Notification notification = Notification.builder().setTitle(title).setBody(body).build();
         for (String token : tokens) {
