@@ -1,7 +1,7 @@
 # 스코프 4 — 사용자(User) · 알바생(Worker) 도메인
 
 - **범위**: `server/src/main/java/com/moup/domain/user/` 전체 ~2,590 LOC (DTO 42개 포함)
-- **판정**: **아니오** — 리뷰 전체에서 유일하게 "병합 불가". Critical 2건은 [수정 완료](applied-fixes.md)이나 C3·C4·C5가 남았다
+- **판정**: ~~**아니오** — 리뷰 전체에서 유일하게 "병합 불가"~~ → **해소.** C3(`is_accepted` 미검사)는 [Phase 2](fix-plan.md#-phase-2--완료-f5f8cba), C4(사장님 탈퇴 시 데이터 보존)는 [Phase 6](fix-plan.md#-phase-6--완료-abf48ee), C5(휴게시간 하한)는 [Phase 0-2](fix-plan.md#0-2-음수-resttimeminutes-하한-2-c1--3-c-5--4-c5--135b966)에서 수정됐다
 - **집계**: Critical 5 / Important 10 / Minor 11 / 확인 질문 5
 - **리뷰 격리**: `docs/review/` 차단, 확정 정책 4건만 전제로 제공
 
@@ -250,8 +250,8 @@ if (!workerRepository.existsByIdAndWorkplaceId(workerId, workplaceId)) throw new
 | **Q1** | 급여 설정 변경 시 **당월 이미 지난 근무일의 `estimated_net_income`**이 새 공제 기준으로 갱신되는 것이 의도인가? 월 단위 공제를 일별 N등분하는 구조상 갱신하지 않으면 당월 합계가 안 맞는다 | 확정 정책 2 해석 |
 | ~~**Q2**~~ | **답변 완료 → [확정 정책 16](../review/README.md#확정-정책-색인). 재로그인 전까지 전면 차단.** 탈퇴 신청 즉시 401이며, 유예기간 3일 내 소셜 재로그인 시 자동 복구된다. `f5bb991`의 C2 수정이 이 동작이다 | 해소 |
 | **Q3** | 사장님 홈 "인건비"에 사업주 부담 4대보험을 포함할 것인가? (I10) | I10 수정 방향 |
-| **Q4** | `is_now_working` 해제 경로 — 퇴근 시 플래그가 실제로 해제되는지 스코프 확인 필요 (`updateWorkerIsNowWorking(..., false)` 호출자를 찾지 못함) | — |
-| **Q5** | `normal_alarms`에 FK가 없다(`moup.sql:62-70`). 의도된 이력 보존인가 누락인가? | — |
+| ~~**Q4**~~ | **오탐 — 해제는 정상 동작한다.** `updateActualEndTime`이 `workerRepository.updateIsNowWorking(..., false)`를 직접 호출하고(`WorkService:692`), 진행 중 근무가 없는데 플래그만 true인 비정상 상태를 복구하는 분기까지 있다(`:695`). 서비스 래퍼 `updateWorkerIsNowWorking`의 호출자만 찾아 실제 경로를 놓친 것이다. 그 래퍼는 호출자가 0건이라 `c8109f4`에서 제거했다 | 해소 |
+| ~~**Q5**~~ | **누락이었다.** [Phase 1](fix-plan.md#-phase-1--완료)에서 `receiver_id` CASCADE · `sender_id` SET NULL FK를 추가했다 | 해소 |
 
 **역할 전환은 불가능함이 확인됐다** — `role` 변경 경로는 `UserRepository.updateById` 하나뿐이고
 호출자는 `completeCreateUser`(닉네임 null일 때만)뿐. 스코프 5 Q4는 **해소**.
