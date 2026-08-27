@@ -220,9 +220,9 @@ public void updateUserFCMToken(Long userId, String fcmToken) {
 
 ---
 
-## 확정 정책 6~9 (Q12~Q16 답변)
+## 확정 정책 14·15·8·9 (Q12~Q16 답변)
 
-### 확정 정책 6 — 루틴 가시성 (Q12 답변)
+### 확정 정책 14 — 루틴 가시성 (Q12 답변)
 
 **루틴은 알바생 개인의 것이다.** 사장님은 알바생 근무에 연결된 루틴의 **제목만** 볼 수 있고
 내용(할 일 목록)은 볼 수 없다.
@@ -246,7 +246,7 @@ public void updateUserFCMToken(Long userId, String fcmToken) {
 사장님이면 `findAllByIdListIn(routineIdList)`(소유자 무관)로 분기하고, 사장님 응답은
 `routineName`만 담은 축소 DTO로 반환한다. `:412`의 권한 검증은 그대로 둔다.
 
-### 확정 정책 7 — 미승인 근무자의 루틴 연결 금지 (Q13 답변)
+### 확정 정책 15 — 미승인 근무자의 루틴 연결 금지 (Q13 답변)
 
 `is_accepted = false`인 근무자의 근무에는 루틴을 연결할 수 없다.
 `saveWorkRoutineMapping`(`RoutineService:364`)과 `getAllRoutineByWorkRoutineMapping`(`:401`)에
@@ -282,7 +282,7 @@ public void updateUserFCMToken(Long userId, String fcmToken) {
 | # | 질문 | 관련 |
 |---|---|---|
 | **Q12** ✅ [정책 6](#확정-정책-6--루틴-가시성적용-범위-q12-답변) | **사장님이 알바생의 루틴을 볼 수 있어야 하는가?** (a) 열람 가능 → `findAllByIdListIn`(소유자 무관)으로 바꾼다, (b) 알바생만 본다 → `:412`에서 사장님을 막는다. 지금은 **권한은 통과시키고 데이터는 안 주는** 어중간한 상태다 | I1 |
-| **Q13** ✅ [정책 7](#확정-정책-7--미승인-근무자의-루틴-연결-금지-q13-답변) | **미승인 근무자(`is_accepted = false`)의 루틴 연결을 허용하는가?** `saveWorkRoutineMapping`(`:364`), `getAllRoutineByWorkRoutineMapping`(`:401`) 어디에도 `is_accepted` 확인이 없다 | 스코프 2 I2·스코프 5의 `is_accepted` 결함군 |
+| **Q13** ✅ [정책 7](#확정-정책-15--미승인-근무자의-루틴-연결-금지-q13-답변) | **미승인 근무자(`is_accepted = false`)의 루틴 연결을 허용하는가?** `saveWorkRoutineMapping`(`:364`), `getAllRoutineByWorkRoutineMapping`(`:401`) 어디에도 `is_accepted` 확인이 없다 | 스코프 2 I2·스코프 5의 `is_accepted` 결함군 |
 | **Q14** ✅ [정책 8](#확정-정책-8--다기기-푸시-지원-q14-답변) | **다기기 푸시를 지원해야 하는가?** 현재 `users.fcm_token` 단일 컬럼이라 마지막 로그인 기기만 받는다. 더 나쁜 것은 `logout`이 컬럼을 통째로 비워 **폰에서 로그아웃하면 태블릿 푸시도 죽는다** | C2 |
 | **Q15** ✅ [정책 9](#확정-정책-9--푸시는-best-effort-탈퇴자-관리는-제3자에게-열어둔다-q15q16-답변) | **푸시 전송 실패를 사용자 에러로 보여야 하는가?** 원장 관리자 의견은 **아니오** — 푸시는 best-effort이고 `normal_alarms` 히스토리가 남아 앱 내 알림함에서 확인 가능하다. "승인은 되었으나 알림 발송 실패"가 맞다 | C1 |
 | **Q16** ✅ [정책 9](#확정-정책-9--푸시는-best-effort-탈퇴자-관리는-제3자에게-열어둔다-q15q16-답변) | **탈퇴 신청 중인 알바생을 사장님이 근무지에서 뺄 수 있어야 하는가?** 확정 정책("탈퇴 유예 중 전면 차단")은 **본인** 기능을 막는 취지였는데, 코드가 **제3자(사장님)** 기능까지 막고 있다 | C1 시나리오 B |
