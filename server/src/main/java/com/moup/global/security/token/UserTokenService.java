@@ -1,6 +1,10 @@
 package com.moup.global.security.token;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.HexFormat;
 import java.util.Optional;
 
 import com.moup.global.util.JwtUtil;
@@ -24,18 +28,18 @@ public class UserTokenService {
         // 유저 ID로 토큰이 존재하는지 확인
         Optional<UserToken> existingToken = userTokenRepository.findByUserId(userId);
         LocalDateTime expiryDate = LocalDateTime.now(SEOUL_ZONE_ID).plusSeconds(refreshTokenExpiration / 1000);
-        System.out.println(expiryDate);
+        String tokenHash = hash(refreshToken);
         
         // 만약 기존에 토큰이 있으면, 갱신하기
         if (existingToken.isPresent()) {
             // 이상 탐지?
-            userTokenRepository.updateById(existingToken.get().getId(), refreshToken, String.valueOf(expiryDate));
+            userTokenRepository.updateById(existingToken.get().getId(), tokenHash, String.valueOf(expiryDate));
         }
         // 만약 기존에 토큰이 없으면, 저장하기
         else {
             UserToken newToken = UserToken.builder()
                     .userId(userId)
-                    .refreshToken(refreshToken)
+                    .refreshToken(tokenHash)
                     .expiryDate(expiryDate)
                     .build();
             userTokenRepository.save(newToken);
@@ -46,6 +50,23 @@ public class UserTokenService {
     @Transactional
     public void deleteToken(Long userId) {
         userTokenRepository.deleteByUserId(userId);
+    }
+
+    /// refresh token은 **해시로만** 저장한다.
+    ///
+    /// 이 토큰은 유효기간 7일짜리 전권 크리덴셜이라, 평문으로 두면
+    /// **DB 읽기 권한만으로 전 사용자 계정에 로그인할 수 있다.**
+    /// 검증이 문자열 비교 한 줄이라 해시로 바꾸는 비용이 거의 없다.
+    ///
+    /// JWT는 이미 고엔트로피라 salt·work factor가 필요 없다. 세션 토큰 저장과 같은 이유다.
+    private static String hash(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(token.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            // SHA-256은 모든 JVM이 제공한다. 여기 오면 런타임이 깨진 것이다.
+            throw new IllegalStateException("SHA-256 미지원", e);
+        }
     }
 
     public boolean isValidRefreshToken(String refreshToken) {
@@ -63,7 +84,9 @@ public class UserTokenService {
             UserToken userToken = existingToken.get();
             LocalDateTime expiryDate = userToken.getExpiryDate();
 
-            boolean isMatch = userToken.getRefreshToken().equals(refreshToken);
+            boolean isMatch = MessageDigest.isEqual(
+                    userToken.getRefreshToken().getBytes(StandardCharsets.UTF_8),
+                    hash(refreshToken).getBytes(StandardCharsets.UTF_8));
             boolean isExpired = expiryDate.isBefore(LocalDateTime.now(SEOUL_ZONE_ID));
 
             return isMatch && !isExpired;

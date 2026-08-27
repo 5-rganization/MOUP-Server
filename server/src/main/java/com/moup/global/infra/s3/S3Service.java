@@ -22,7 +22,9 @@ public class S3Service {
     @Value("${cloud.aws.s3.bucket}")
     private String bucket;
 
-    public String saveFile(MultipartFile file) throws IOException, NoSuchAlgorithmException {
+    /// `extension`은 파일 내용으로 판별한 값을 받는다.
+    /// 원본 파일명의 확장자를 그대로 쓰면 클라이언트가 저장 경로의 확장자를 마음대로 정하게 된다.
+    public String saveFile(MultipartFile file, String extension) throws IOException, NoSuchAlgorithmException {
         String originalFileName = file.getOriginalFilename();
         String dataToHash = originalFileName + System.currentTimeMillis();
 
@@ -33,12 +35,6 @@ public class S3Service {
         StringBuilder sb = new StringBuilder();
         for (byte b : hashBytes) {
             sb.append(String.format("%02x", b));
-        }
-
-        // 확장자 유지
-        String extension = "";
-        if (originalFileName != null && originalFileName.contains(".")) {
-            extension = originalFileName.substring(originalFileName.lastIndexOf("."));
         }
 
         String fileName = sb.toString() + extension;

@@ -13,7 +13,6 @@ import com.moup.global.infra.fcm.FCMTokenService;
 import com.moup.global.infra.file.FileService;
 import com.moup.global.security.token.SocialTokenService;
 import com.moup.global.infra.s3.S3Service;
-import com.moup.global.infra.file.File;
 import com.moup.domain.auth.domain.Login;
 import com.moup.global.common.type.Role;
 import com.moup.global.error.AlreadyDeletedException;
@@ -138,14 +137,14 @@ public class UserService {
       throws FileUploadException {
     User user = findUserById(userId);
 
-    // 이미지 타입인지 파일 검증
-    fileService.verifyFileExtension(profileImage, File.IMAGE);
+    // 이미지 타입인지 **파일 내용으로** 검증하고 저장에 쓸 확장자를 받는다.
+    String extension = fileService.verifyImageAndResolveExtension(profileImage);
 
     // 업로드가 먼저다. 예전에는 기존 파일을 지운 뒤 업로드해서, 업로드가 실패하면
     // S3에 파일이 없는데 DB는 죽은 URL을 가리키는 상태로 남았다. 자가 복구가 안 된다.
     String imageUrl;
     try {
-      imageUrl = s3Service.saveFile(profileImage);
+      imageUrl = s3Service.saveFile(profileImage, extension);
     } catch (IOException | NoSuchAlgorithmException e) {
       throw new FileUploadException("파일명 해싱 실패");
     }
