@@ -47,6 +47,7 @@ CREATE TABLE `routines`
     `user_id`      BIGINT                NOT NULL,
     `routine_name` VARCHAR(20)           NOT NULL,
     `alarm_time`   TIME                  NULL,
+    UNIQUE KEY `uk_routines_user_name` (`user_id`, `routine_name`),
     FOREIGN KEY (`user_id`) REFERENCES users (`id`) ON DELETE CASCADE
 );
 
@@ -63,12 +64,18 @@ CREATE TABLE `routine_tasks`
 CREATE TABLE `normal_alarms`
 (
     `id`          BIGINT AUTO_INCREMENT                                                                             NOT NULL PRIMARY KEY,
-    `sender_id`   BIGINT                                                                                            NOT NULL,
+    `sender_id`   BIGINT                                                                                            NULL,
     `receiver_id` BIGINT                                                                                            NOT NULL,
     `title`       TEXT                                                                                              NOT NULL,
     `content`     TEXT                                                                                              NULL,
     `sent_at`     DATETIME                                                                                          NOT NULL DEFAULT CURRENT_TIMESTAMP(),
-    `read_at`     DATETIME                                                                                          NULL
+    `read_at`     DATETIME                                                                                          NULL,
+    -- 모든 조회가 receiver_id 기준이다. 인덱스가 없어 매번 풀스캔이었다.
+    INDEX `idx_normal_alarms_receiver` (`receiver_id`, `sent_at`),
+    -- FK가 없어 유저를 하드 삭제해도 알림이 고아 행으로 영구 잔존했다.
+    -- 수신자가 사라지면 그 사람의 알림함도 사라진다. 발신자만 사라진 경우는 알림을 남긴다.
+    FOREIGN KEY (`receiver_id`) REFERENCES users (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`sender_id`) REFERENCES users (`id`) ON DELETE SET NULL
 );
 
 CREATE TABLE `admin_alarms`
@@ -85,6 +92,7 @@ CREATE TABLE `admin_alarm_user_mappings` (
     `user_id` BIGINT NOT NULL,
     `read_at` DATETIME NULL,
     `deleted_at` DATETIME NULL,
+    UNIQUE KEY `uk_admin_alarm_user` (`alarm_id`, `user_id`),
     FOREIGN KEY (`alarm_id`) REFERENCES admin_alarms(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`user_id`) REFERENCES users(`id`) ON DELETE CASCADE
 );
@@ -101,6 +109,7 @@ CREATE TABLE `workplaces`
     `address`        VARCHAR(100)          NULL,
     `latitude`       DECIMAL(9, 6)         NULL,
     `longitude`      DECIMAL(9, 6)         NULL,
+    UNIQUE KEY `uk_workplaces_owner_name` (`owner_id`, `workplace_name`),
     CONSTRAINT `fk_workplaces_owner` FOREIGN KEY (`owner_id`) REFERENCES users (`id`) ON DELETE SET NULL
 );
 
@@ -111,8 +120,12 @@ CREATE TABLE `workers`
     `workplace_id`             BIGINT                NOT NULL,
     `worker_based_label_color` VARCHAR(10)           NULL,
     `owner_based_label_color`  VARCHAR(10)           NULL,
-    `is_accepted`              TINYINT(1)            NULL,
+    -- 승인 게이트의 전제. NULL을 허용하면 "미검사"와 "미승인"이 구분되지 않는다.
+    `is_accepted`              TINYINT(1)            NOT NULL DEFAULT 0,
     `is_now_working`           TINYINT(1)            NULL,
+    -- 참여는 check-then-insert였다. 동시 요청 두 건이면 같은 근무지에 행이 2개 생기고
+    -- findByUserIdAndWorkplaceId가 TooManyResultsException으로 터져 해당 근무지가 영구 500이 된다.
+    UNIQUE KEY `uk_workers_workplace_user` (`workplace_id`, `user_id`),
     FOREIGN KEY (`user_id`) REFERENCES users (`id`) ON DELETE SET NULL,
     FOREIGN KEY (`workplace_id`) REFERENCES workplaces (`id`) ON DELETE CASCADE
 );
@@ -139,7 +152,9 @@ CREATE TABLE `works`
     `estimated_net_income`    INT                   DEFAULT 0,  -- 추정 세후 일급 (캘린더 표시용)
     `repeat_group_id`         VARCHAR(36)           NULL,
     FOREIGN KEY (`worker_id`) REFERENCES workers (`id`) ON DELETE CASCADE,
-    INDEX `idx_repeat_group_id` (`repeat_group_id`)
+    INDEX `idx_repeat_group_id` (`repeat_group_id`),
+    -- 조회는 거의 전부 worker_id + work_date 범위다. FK가 만드는 단일 인덱스로는 filesort가 남는다.
+    INDEX `idx_works_worker_date` (`worker_id`, `work_date`)
 );
 
 CREATE TABLE `work_routine_mappings`
@@ -168,6 +183,11 @@ CREATE TABLE `salaries`
     `has_income_tax`           TINYINT(1)                                                                          NOT NULL,
     `has_holiday_allowance`    TINYINT(1)                                                                          NOT NULL,
     `has_night_allowance`      TINYINT(1)                                                                          NOT NULL,
+    -- 시급제인데 hourly_rate가 NULL이면 급여 전체가 0원이 되거나 언박싱 NPE로 500이 난다.
+    CONSTRAINT `ck_salaries_rate` CHECK (
+        (`salary_calculation` = 'SALARY_CALCULATION_HOURLY' AND `hourly_rate` IS NOT NULL)
+     OR (`salary_calculation` = 'SALARY_CALCULATION_FIXED'  AND `fixed_rate`  IS NOT NULL)
+    ),
     FOREIGN KEY (`worker_id`) REFERENCES workers (`id`) ON DELETE CASCADE
 );
 --
