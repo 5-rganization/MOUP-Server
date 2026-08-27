@@ -211,6 +211,52 @@ FK는 이미 `SET NULL`로 고쳤으므로(`98ac8e9`) 데이터 소실은 멈췄
 
 ---
 
+## Phase 10 — 신규 개발 (리뷰 findings 아님)
+
+리뷰 과정에서 **미구현임이 드러난 것**들. 결함 수정이 아니라 개발이므로 Phase 0~9와 분리한다.
+
+### 10-1. 루틴 완료(체크) 상태 서버 보관 ✅ 진행 결정 (D4 답변)
+
+`db/moup.sql` 전체에 `is_done`/`completed`/`checked` 계열 컬럼이 **0건**이다.
+"오늘 이 근무의 이 할 일을 완료했다"를 서버가 보관하지 않아 **기기를 바꾸면 사라진다.**
+
+```sql
+CREATE TABLE `routine_task_completions` (
+    `id`              BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+    `work_id`         BIGINT   NOT NULL,
+    `routine_task_id` BIGINT   NOT NULL,
+    `completed_at`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    UNIQUE KEY `uk_completion` (`work_id`, `routine_task_id`),
+    FOREIGN KEY (`work_id`)         REFERENCES works (`id`)         ON DELETE CASCADE,
+    FOREIGN KEY (`routine_task_id`) REFERENCES routine_tasks (`id`) ON DELETE CASCADE
+);
+```
+
+**규모는 작다.** 테이블 1개 + 토글 API 1개 + 조회 응답에 필드 추가.
+
+⚠️ **Phase 0-1 필수 전제** — 신규 테이블이고 기존 엔티티에 필드가 추가되므로,
+위치 기반 매핑 상태에서 하면 조용히 어긋난다.
+
+⚠️ **`updateMyRecurringWork`가 근무를 삭제·재생성한다.** 지금은 잃을 상태가 없어서
+무해했지만, 완료 상태가 생기면 `work_id` CASCADE로 **근무 수정 시 체크가 전부 날아간다.**
+Phase 5(반복 근무 C3)와 함께 설계해야 한다.
+
+### 10-2. 루틴 알람 서버 발송 ❓ D3 확인 대기
+
+`alarm_time` 참조를 전수 확인했다 — **INSERT · ORDER BY · UPDATE · 조회 응답 채우기가 전부이고
+발송 경로가 없다.** `@Scheduled`/`@EnableScheduling`도 코드베이스에 0건이다.
+
+> **개발 중 받아본 FCM 알림과는 다른 경로다.** 서버의 푸시 발송은 5곳뿐이며
+> 그중 4곳이 토큰 기반 개별 발송(참가 요청·승인·거부·관리자 개별)이고 정상 동작한다.
+> 루틴 알람은 그 어느 것도 아니다.
+
+서버 발송이 요구사항이면 필요한 것:
+- 스케줄러(`@Scheduled` 또는 Pi cron) — 분 단위로 `alarm_time` 스캔
+- **중복 발송 방지** — 서버가 2대 이상이면 같은 알람을 여러 번 쏜다
+- 사용자 타임존은 `Asia/Seoul` 고정이므로 이 부분은 단순하다
+
+---
+
 ## 확정 정책 10~12 (Q5·Q9·D1 답변)
 
 ### 확정 정책 10 — 알바생 소득은 **근로소득** (Q5 답변)
@@ -302,9 +348,9 @@ UPDATE workers SET is_accepted = 0 WHERE is_accepted IS NULL;
 
 | # | 질문 | 막고 있는 것 |
 |---|---|---|
-| **D2** | 클라이언트가 `ADMIN_ALARM` 토픽을 구독하는가? 서버에 `subscribeToTopic`이 **0건**이라, 앱이 구독하지 않으면 **전체 공지 푸시가 아무에게도 안 간다** (FCM은 성공을 반환) | 7 I5 |
-| **D3** | 루틴 알람을 **서버가 발송**한다면 스케줄러가 필요하다 — `@Scheduled`/`@EnableScheduling`이 **0건**이다. 신규 개발 | 6 미확인2 |
-| **D4** | 루틴 완료(체크) 상태 보관 — 신규 테이블 1개. 규모는 작다 | 6 미확인3 |
+| **D2** | 앱에 `subscribeToTopic("ADMIN_ALARM")`이 있는가? 서버에는 **0건**. 없으면 **관리자 공지 푸시가 아무에게도 안 간다**(FCM은 성공 반환, 인앱 목록에는 뜸). **토큰 기반 개별 알림 4곳과는 무관하며 그쪽은 정상 동작한다** | 7 I5 |
+| **D3** | 루틴 알람 서버 발송 — 앱이 로컬 알림으로 처리 중인지 확인 필요. 아니라면 지금 아무도 못 받고 있다 → [10-2](#10-2-루틴-알람-서버-발송--d3-확인-대기) |
+| ~~D4~~ | ~~루틴 완료 상태 보관~~ → **보관하기로 확정.** [10-1](#10-1-루틴-완료체크-상태-서버-보관--진행-결정-d4-답변) |
 | **D5** | 근로소득세 구현 방식 (정책 10의 a/b/c 중) | Phase 3 세금 |
 
 ## 지금 바로 착수 가능한 것
