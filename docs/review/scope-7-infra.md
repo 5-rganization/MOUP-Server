@@ -2,8 +2,8 @@
 
 - **범위**: `global/config`, `global/error`, `global/common`, `global/util`, `global/infra`,
   빌드·배포 설정, nginx, `db/moup.sql`
-- **판정**: **수정 후** — Critical 1건([C1](applied-fixes.md))은 수정 완료
-- **집계**: Critical 7 (1건 수정 완료, **C7은 즉시 조치 필요**) / Important 16 / Minor 20 / 미확인 6
+- **판정**: **수정 후** — Critical 3건(C1·C2·C3) 수정 완료. **C7은 미조치(운영)**
+- **집계**: Critical 7 (3건 수정 완료, **C7은 즉시 조치 필요**) / Important 16 / Minor 20 / 미확인 6
 - **리뷰 격리**: `docs/review/` 차단. 확정 정책 4건 + 이미 검증된 사항(타임존·기존 테스트 실패·
   인증/급여 로직)을 전제로 제공해 재조사를 막았다
 
@@ -122,7 +122,7 @@ public ResponseEntity<?> handleException(RuntimeException e) {
 **수정**: `@ExceptionHandler(AccessDeniedException.class)` 추가. catch-all보다 구체적이므로
 우선 매칭된다. **투입 대비 효과가 가장 좋은 수정.**
 
-### C2 — `PermissionVerifyUtil` NULL 역참조 (3번째 독립 확증)
+### C2 — `PermissionVerifyUtil` NULL 역참조 (3번째 독립 확증) ✅ **수정 완료** (`f3feff7`)
 
 `PermissionVerifyUtil:10,17`. 스키마에서 `owner_id BIGINT NULL`(`:95`),
 `user_id BIGINT NULL`(`:108`) + `ON DELETE SET NULL`(`:114`) 확인.
@@ -131,8 +131,9 @@ public ResponseEntity<?> handleException(RuntimeException e) {
 스코프 2 I3, 스코프 4 #12에 이어 **세 번째 독립 확증.**
 
 **수정**: `Objects.equals(...)` — null을 "불일치"로 취급(fail-closed).
+같은 결함을 `WorkplaceService:253`, `WorkService:355`에서도 발견해 함께 고쳤다.
 
-### C3 — `workplaces.owner_id ON DELETE CASCADE` 🔴 **이미 발현 중**
+### C3 — `workplaces.owner_id ON DELETE CASCADE` ✅ **수정 완료** (`98ac8e9`) — ⚠️ 운영 DB 마이그레이션 필요
 
 ```sql
 -- db/moup.sql:102 (확인 완료)
@@ -148,6 +149,11 @@ FOREIGN KEY (`owner_id`) REFERENCES users (`id`) ON DELETE CASCADE
 **확정 정책 3과 정면 충돌.** 스코프 4 C4, 스코프 5 I-8과 동일 결함의 세 번째 확증.
 
 **수정 순서 주의**: C2 수정이 선행되어야 `owner_id`가 NULL인 상태에서 403이 정상 반환된다.
+→ C2를 먼저 커밋(`f3feff7`)한 뒤 C3(`98ac8e9`)를 커밋했다.
+
+**스키마 파일 수정만으로는 운영 DB가 바뀌지 않는다.** 마이그레이션 도구가 없어
+`db/migrations/2026-08-27-workplaces-owner-set-null.sql`을 수동 적용해야 한다
+([배포 체크리스트 #4](applied-fixes.md#배포-체크리스트-)).
 
 ### C4 — `manual-db-init.yml`이 확인 절차 없이 프로덕션 DB를 날린다
 

@@ -19,6 +19,7 @@
 | 1 | **`ADMIN_AUTH_TOKEN` 재발급 후 GitHub secret 갱신** | 배치 cron이 **401을 받고 멈춘다.** 하드 삭제와 소셜 연동 해제가 전부 중단된다 |
 | 2 | 전 사용자 1회 재로그인 안내 | 기존 발급 토큰에 `typ` 클레임이 없어 전부 거부된다 |
 | 🔴 3 | **Firebase 서비스 계정 키 폐기·재발급** — 배포와 무관하게 **지금 당장.** [스코프 7 C7](scope-7-infra.md) | Docker Hub `neoskycladdocker/moup`가 **public**임이 확인됐고(`is_private: False`) 키가 이미지 안에 있다. 누구나 `docker pull`로 꺼낼 수 있다 |
+| 4 | **`db/migrations/2026-08-27-workplaces-owner-set-null.sql`를 운영 DB에 수동 적용** (앱 배포 **후**) | 스키마 파일만 고쳐서는 기존 DB가 그대로다. 사장님 탈퇴 시 알바생 근무·급여가 계속 CASCADE 삭제된다 |
 
 `ADMIN_AUTH_TOKEN`은 `JwtUtil.createTestToken`(1년 만료)으로 발급한다. 이 메서드는 런타임
 호출자가 없어 dead code처럼 보이지만 **cron 크리덴셜의 수동 발급 도구**다
@@ -116,7 +117,42 @@
 
 ---
 
-## 추가된 테스트 (29건)
+### `f3feff7` — 탈퇴로 NULL이 된 ID 비교 시 500 → 403
+
+**스코프 7 C2 (스코프 2 I3 · 스코프 4 #12의 세 번째 독립 확증).**
+`workplaces.owner_id`와 `workers.user_id`는 스키마상 NULL을 허용하고
+`workers.user_id`는 `ON DELETE SET NULL`이다. 탈퇴한 사용자의 행에서
+`Long.equals()`를 직접 호출하면 NPE가 나고 catch-all이 500을 반환했다.
+
+`Objects.equals`로 바꿔 NULL을 "불일치"로 취급(fail-closed)한다.
+
+| 위치 | 비고 |
+|---|---|
+| `PermissionVerifyUtil:10,17` | 호출자 17곳의 공통 경로 |
+| `WorkplaceService:253` `deleteWorkplace` | 원장에 없던 신규 발견 |
+| `WorkService:355` `getAllWorkByWorkplace` | 원장에 없던 신규 발견 |
+
+> `RoutineService:412`는 `userId.equals(...)` 형태로 **요청자 ID가 좌변**이라
+> NPE가 나지 않는다. 수정 대상이 아니다.
+
+### `98ac8e9` — `workplaces.owner_id` CASCADE → SET NULL
+
+**스코프 7 C3 (스코프 4 C4 · 스코프 5 I-8의 세 번째 독립 확증).**
+사장님이 하드 삭제되면 `users` → `workplaces` → `workers` →
+`works`/`salaries`/`work_routine_mappings`가 연쇄 삭제됐다. cron이 프로덕션에서
+실제로 돌고 있으므로 **이미 발현 중인 결함**이었다.
+
+- `db/moup.sql`, `db/init/moup.sql` — FK에 `fk_workplaces_owner` 이름을 부여하고
+  `SET NULL`로 변경. **신규 설치용이며 기존 DB에는 적용되지 않는다.**
+- `db/migrations/2026-08-27-workplaces-owner-set-null.sql` — 운영 DB에 수동 적용할 `ALTER`.
+
+⚠️ **기존 FK 이름이 스키마에 없어 MySQL이 자동 생성했다.** 마이그레이션 파일은
+`workplaces_ibfk_1`을 가정하며, 실행 전 `information_schema`로 확인하는 쿼리를
+주석으로 함께 담았다.
+
+---
+
+## 추가된 테스트 (34건)
 
 | 파일 | 건수 | 목적 |
 |---|---|---|
@@ -125,6 +161,7 @@
 | `CustomUserDetailsServiceTest` | 3 | C2 — 탈퇴 유저 차단 |
 | `UserDeletionServiceTest` | 5 | revoke 성공/실패/네트워크오류/공급자없음/포기 |
 | `GlobalExceptionHandlerTest` | 3 | C1 — 인가 거부 403, 그 외 RuntimeException 500 |
+| `PermissionVerifyUtilTest` | 5 | C2 — owner_id/user_id가 NULL일 때 NPE 대신 403 |
 
 **변이 테스트로 실효성 확인**: 야간 경계에서 `equals(22:00)` 제거 → 5건 실패,
 `grossIncome` 누적으로 변경 → 멱등성 2건 실패. C1은 수정 전 실제로 통과함을 확인한 뒤
@@ -156,9 +193,8 @@ INF-1·2·5는 C5, INF-3은 Minor, INF-4는 `.env` 소비처 분석에서.
 리뷰 완료 후 파일 단위로 묶어 `fix/code-review-findings`에서 처리한다.
 각 스코프 문서의 finding 목록 참조.
 
-**🔴 최우선 — 순서 의존**: 스코프 7 **C2(`Objects.equals`) → C3(`owner_id` SET NULL)**.
-cron이 돌고 있으므로 C3는 **이미 발현 중**이며 사장님 탈퇴 시 알바생 근무·급여가 삭제된다.
-C2가 선행되어야 `owner_id` NULL 상태에서 403이 정상 반환된다.
+**🔴 남은 최우선은 C7(Firebase 키 회전)뿐이다** — 코드가 아니라 운영 조치.
+Docker Hub `neoskycladdocker/moup`가 public이고 키가 jar 안에 들어간다.
 
 **설계 작업이 필요한 것**: 스코프 4 C3(`is_accepted` 게이트) · C4(가명처리) ·
 스코프 3 C-1(주휴수당 산식) · C-6(범위 재계산 API) · 스코프 5 C-1/C-2/C-3 ·
