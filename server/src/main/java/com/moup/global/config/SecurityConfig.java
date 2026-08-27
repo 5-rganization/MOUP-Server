@@ -35,7 +35,9 @@ public class SecurityConfig {
     http.csrf(AbstractHttpConfigurer::disable).cors(cors -> cors.configurationSource(request -> {
           var corsConfig = new CorsConfiguration();
           corsConfig.setAllowedOriginPatterns(List.of("*"));
-          corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+          // PATCH가 빠져 있었다. 스프링 시큐리티의 CORS가 WebMvc 쪽보다 먼저 동작하므로
+          // WebConfig에 PATCH가 있어도 preflight가 여기서 막혔다.
+          corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
           corsConfig.setAllowedHeaders(List.of("*"));
           corsConfig.setAllowCredentials(true);
           return corsConfig;

@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -65,7 +66,7 @@ public class UserController {
             @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "409", description = "이미 삭제 처리된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    public ResponseEntity<?> updateNickname(@RequestBody UserUpdateNicknameRequest userUpdateNicknameRequest) {
+    public ResponseEntity<?> updateNickname(@RequestBody @Valid UserUpdateNicknameRequest userUpdateNicknameRequest) {
         Long userId = identityService.getCurrentUserId();
 
         UserUpdateNicknameResponse userUpdateNicknameResponse = userService.updateNicknameByUserId(userId, userUpdateNicknameRequest.getNickname());
@@ -81,7 +82,7 @@ public class UserController {
         @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "409", description = "이미 삭제 처리된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    public ResponseEntity<?> updateFCMToken(@RequestBody UserUpdateFCMTokenRequest userUpdateFCMTokenRequest) {
+    public ResponseEntity<?> updateFCMToken(@RequestBody @Valid UserUpdateFCMTokenRequest userUpdateFCMTokenRequest) {
         Long userId = identityService.getCurrentUserId();
 
         userService.updateFCMTokenByUserId(userId, userUpdateFCMTokenRequest.getFcmToken());

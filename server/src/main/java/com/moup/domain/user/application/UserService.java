@@ -29,6 +29,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.tomcat.util.http.fileupload.FileUploadException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -37,6 +38,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import static com.moup.global.common.TimeConstants.SEOUL_ZONE_ID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -139,20 +141,32 @@ public class UserService {
     // 이미지 타입인지 파일 검증
     fileService.verifyFileExtension(profileImage, File.IMAGE);
 
-    // 기존 이미지가 있다면 해당 파일 삭제
-    if (user.getProfileImg() != null && s3Service.doesFileExist(user.getProfileImg())) {
-      s3Service.deleteFile(user.getProfileImg());
-    }
-
-    // 새 이미지 업로드하기
+    // 업로드가 먼저다. 예전에는 기존 파일을 지운 뒤 업로드해서, 업로드가 실패하면
+    // S3에 파일이 없는데 DB는 죽은 URL을 가리키는 상태로 남았다. 자가 복구가 안 된다.
+    String imageUrl;
     try {
-      String imageUrl = s3Service.saveFile(profileImage);
-      userRepository.updateProfileImg(userId, imageUrl);
-
-      return UserProfileImageResponse.builder().userId(userId).imageUrl(imageUrl).build();
+      imageUrl = s3Service.saveFile(profileImage);
     } catch (IOException | NoSuchAlgorithmException e) {
       throw new FileUploadException("파일명 해싱 실패");
     }
+
+    userRepository.updateProfileImg(userId, imageUrl);
+
+    // 새 URL이 확정된 뒤에야 옛 파일을 지운다.
+    // 삭제 실패는 고아 파일 하나로 끝나므로 요청을 실패시키지 않는다.
+    String previousImage = user.getProfileImg();
+    if (previousImage != null && !previousImage.equals(imageUrl)) {
+      try {
+        if (s3Service.doesFileExist(previousImage)) {
+          s3Service.deleteFile(previousImage);
+        }
+      } catch (RuntimeException e) {
+        log.warn("이전 프로필 이미지 삭제 실패 - 고아 파일이 남습니다. userId={}, url={}",
+            userId, previousImage, e);
+      }
+    }
+
+    return UserProfileImageResponse.builder().userId(userId).imageUrl(imageUrl).build();
   }
 
   @Transactional

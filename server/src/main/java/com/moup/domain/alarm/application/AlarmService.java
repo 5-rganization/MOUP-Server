@@ -34,9 +34,8 @@ public class AlarmService {
   public List<Notification> findAllNotifications(Long userId) {
     List<NormalAlarm> normalAlarms = alarmRepository.findAllNormalAlarmsByUserId(userId);
 
-    if (normalAlarms.isEmpty()) {
-      throw new AlarmNotFoundException();
-    }
+    // 빈 알림함은 오류가 아니다. 404를 주면 클라이언트가 "서버 오류"와 "알림 없음"을
+    // 구분할 수 없고, 신규 가입자는 알림함을 열자마자 에러를 본다.
 
     List<Notification> notifications = new ArrayList<>();
     for (NormalAlarm normalAlarm : normalAlarms) {
@@ -156,9 +155,7 @@ public class AlarmService {
   public List<Announcement> findAllAnnouncements(Long userId) {
     List<AdminAlarm> adminAlarms = alarmRepository.findAllAdminAlarmsByUserId(userId);
 
-    if (adminAlarms.isEmpty()) {
-      throw new AlarmNotFoundException();
-    }
+    // 빈 공지함도 마찬가지다. 목록 조회는 빈 배열 + 200이어야 한다.
 
     List<Announcement> announcements = new ArrayList<>();
     for (AdminAlarm adminAlarm : adminAlarms) {

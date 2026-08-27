@@ -54,6 +54,21 @@ public class SalaryCreateRequest {
     @Schema(description = "야간수당 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean hasNightAllowance;
 
+    /// 스키마의 조합 제약(`ck_salaries_rate`)을 요청 단계에서 잡는다.
+    /// 없으면 시급제인데 `hourlyRate`가 비어도 통과해 급여가 통째로 0원이 되거나,
+    /// DB 제약에 걸려 422가 아니라 **500**이 나간다.
+    @AssertTrue(message = "시급제는 시급을, 고정급제는 고정급을 입력해야 합니다.")
+    @Schema(hidden = true)
+    public boolean isRateConsistentWithCalculation() {
+        if (salaryCalculation == null) {
+            return true;   // @NotNull이 따로 잡는다
+        }
+        return switch (salaryCalculation) {
+            case SALARY_CALCULATION_HOURLY -> hourlyRate != null;
+            case SALARY_CALCULATION_FIXED -> fixedRate != null;
+        };
+    }
+
     public Salary toEntity(Long workerId) {
         return Salary.builder()
                 .id(null)

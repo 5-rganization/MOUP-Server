@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -60,7 +61,7 @@ public class AdminController {
         @ApiResponse(responseCode = "403", description = "권한 없음"),
         @ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    public ResponseEntity<?> announce(@RequestBody AdminAnnouncementRequest adminAnnouncementRequest)
+    public ResponseEntity<?> announce(@RequestBody @Valid AdminAnnouncementRequest adminAnnouncementRequest)
         throws FirebaseMessagingException {
         adminService.announce(adminAnnouncementRequest);
         return ResponseEntity.noContent().build();
@@ -75,7 +76,7 @@ public class AdminController {
         @ApiResponse(responseCode = "404", description = "유저 찾을 수 없음"),
         @ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    public ResponseEntity<?> notify(@RequestBody AdminNotificationRequest adminNotificationRequest)
+    public ResponseEntity<?> notify(@RequestBody @Valid AdminNotificationRequest adminNotificationRequest)
         throws FirebaseMessagingException {
         Long userId = identityService.getCurrentUserId();
 

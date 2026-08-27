@@ -56,4 +56,45 @@ public class GlobalExceptionHandlerTest {
 
     assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
   }
+
+  // ================= Phase 8 =================
+
+  @Test
+  @DisplayName("[I3(b)] 소셜 인증 실패가 500이 아니라 401로 나간다")
+  void 소셜_인증_실패는_401() {
+    // AuthException은 checked라 catch-all(RuntimeException)에 걸리지 않았고,
+    // 핸들러도 없어 스프링 부트 기본 /error 응답으로 500이 나갔다.
+    ResponseEntity<?> response = handler.handleAuthException(
+        new jakarta.security.auth.message.AuthException("invalid authorization code"));
+
+    assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+  }
+
+  @Test
+  @DisplayName("[I6] 그 외 checked 예외도 ErrorResponse 형태로 나간다")
+  void checked_예외도_ErrorResponse() {
+    ResponseEntity<?> response = handler.handleCheckedException(new Exception("boom"));
+
+    assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+    // 형태가 중요하다. 부트 기본 /error로 나가면 클라이언트의 에러 파싱이 깨진다.
+    assertEquals(ErrorCode.INTERNAL_SERVER_ERROR.getCode(),
+        ((ErrorResponse) response.getBody()).getErrorCode());
+  }
+
+  @Test
+  @DisplayName("[I6] 업로드 용량 초과는 500이 아니라 413")
+  void 업로드_용량_초과는_413() {
+    ResponseEntity<?> response = handler.handleMaxUploadSize(
+        new org.springframework.web.multipart.MaxUploadSizeExceededException(1024L));
+
+    assertEquals(HttpStatus.PAYLOAD_TOO_LARGE, response.getStatusCode());
+  }
+
+  @Test
+  @DisplayName("[I16] INVALID_TOKEN은 401이어야 한다")
+  void 유효하지_않은_토큰은_401() {
+    // 400이면 클라이언트의 "401이면 토큰 갱신 후 재시도" 인터셉터가 동작하지 않아
+    // 액세스 토큰이 만료될 때마다 사용자가 그냥 실패를 본다.
+    assertEquals(HttpStatus.UNAUTHORIZED, ErrorCode.INVALID_TOKEN.getHttpStatus());
+  }
 }

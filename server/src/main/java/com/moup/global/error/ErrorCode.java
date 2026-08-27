@@ -13,7 +13,9 @@ public enum ErrorCode {
     INVALID_FILE_EXTENSION(HttpStatus.BAD_REQUEST, "FILE_400", "잘못된 파일 형식입니다."),
     INVALID_VARIABLE_FORMAT(HttpStatus.BAD_REQUEST, "VARIABLE_400", "유효하지 않은 경로/매개변수 형식입니다."),
     INVALID_FIELD_FORMAT(HttpStatus.UNPROCESSABLE_ENTITY, "FIELD_422", "유효하지 않은 필드 형식입니다."),
-    INVALID_TOKEN(HttpStatus.BAD_REQUEST, "AUTH_400", "유효하지 않은 토큰입니다."),
+    /// 401이어야 한다. 400이면 클라이언트의 "401이면 토큰 갱신 후 재시도" 인터셉터가
+    /// 동작하지 않아, 액세스 토큰이 만료될 때마다 사용자가 그냥 실패를 본다.
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_401_INVALID", "유효하지 않은 토큰입니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH_401", "인증되지 않은 사용자입니다."),
     INVALID_ARGUMENT(HttpStatus.BAD_REQUEST, "ARGUMENT_400", "유효하지 않은 인수입니다."),
     INVALID_PERMISSION_ACCESS(HttpStatus.FORBIDDEN, "PERMISSION_403", "권한이 없는 접근입니다."),

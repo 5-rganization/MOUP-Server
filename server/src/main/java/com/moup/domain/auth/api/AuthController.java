@@ -30,6 +30,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.security.auth.message.AuthException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -93,7 +94,7 @@ public class AuthController {
       @ApiResponse(responseCode = "409", description = "이미 가입된 유저 (처리 중 오류)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
       @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
   @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "로그인을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginRequest.class)))
-  public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest)
+  public ResponseEntity<?> login(@RequestBody @Valid LoginRequest loginRequest)
       throws AuthException, InvalidNameException {
     Login provider = loginRequest.getProvider();
     String authCode = loginRequest.getAuthCode();
@@ -192,7 +193,7 @@ public class AuthController {
       @ApiResponse(responseCode = "422", description = "유효하지 않은 필드 형식", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
       @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
   @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "회원가입을 위한 요청 데이터", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RegisterRequest.class)))
-  public ResponseEntity<?> register(@RequestBody RegisterRequest registerRequest) {
+  public ResponseEntity<?> register(@RequestBody @Valid RegisterRequest registerRequest) {
     Long userId = identityService.getCurrentUserId();
 
     try {
@@ -220,7 +221,7 @@ public class AuthController {
       @ApiResponse(responseCode = "409", description = "삭제 처리된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
       @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
   @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "액세스 토큰 재발급을 위한 요청 DTO", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = RefreshTokenRequest.class)))
-  public ResponseEntity<?> refreshToken(@RequestBody RefreshTokenRequest refreshTokenRequest) {
+  public ResponseEntity<?> refreshToken(@RequestBody @Valid RefreshTokenRequest refreshTokenRequest) {
     String refreshToken = refreshTokenRequest.getRefreshToken();
 
     if (!userTokenService.isValidRefreshToken(refreshToken)) {
