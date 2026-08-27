@@ -142,23 +142,47 @@ Q5는 [정책 10](#확정-정책-10--알바생-소득은-근로소득-q5-답변)
 
 ---
 
-## Phase 4 — FCM 재설계 (6 C1·C2·C3 + 정책 8·9)
+## ✅ Phase 4 — 완료 (`899855c` · `2695f69`)
 
 ```
-4-1  fcm_tokens(user_id, token, device_id, updated_at) 테이블 분리   ← 정책 8
-     UNIQUE (token) → C2(오배달) 자동 해소
-     logout이 기기별 행만 삭제 → "폰 로그아웃하면 태블릿도 죽는" 문제 해소
-4-2  FCMTokenService에 null/blank 가드 한 줄                          ← C3
-4-3  sendToSingleUser에서 @Transactional 제거 · afterCommit 전송      ← C1 1단계
-     호출부 3곳의 catch→throw 제거 (푸시는 best-effort)               ← C1 2단계, 정책 9
-     FCMService:45의 미사용 sender 조회 삭제 → 탈퇴자 관리 차단 해소   ← C1 4단계, 정책 9/Q16
-4-4  UNREGISTERED/INVALID_ARGUMENT/SENDER_ID_MISMATCH 시 토큰 행 삭제  ← C1 3단계
-4-5  sendEachForMulticast 전환
-4-6  I2 공지 발송 순서 (커밋 전 푸시 · @Async가 미커밋 FK 참조)
-4-7  토큰 등록 시 서버에서 ADMIN_ALARM 토픽 구독              ← D2 확인 결과
-     앱에 subscribeToTopic이 없어 지금 공지 푸시가 0명에게 간다.
-     서버 측 subscribeToTopic(tokens, topic)이면 앱 수정 없이 해결된다.
+4-1 ✅ fcm_tokens(user_id, token, updated_at) 분리 · users.fcm_token 제거
+       UNIQUE (token) + upsert → 기기 재사용 시 토큰 소유자가 새 유저로 넘어간다
+       로그아웃에 선택 fcmToken → 해당 기기만 끊는다
+4-2 ✅ FCMTokenService 빈 값 가드
+4-3 ✅ @Transactional 제거 · afterCommit 전송 · 호출부 3곳 catch→throw 제거
+       미사용 sender 조회 제거 (탈퇴자 관리 차단 해소)
+4-4 ✅ UNREGISTERED/INVALID_ARGUMENT/SENDER_ID_MISMATCH → 토큰 행 삭제
+4-5 ⚠️ 멀티캐스트 대신 기기별 send() 루프 — 아래 참조
+4-6 ✅ 공지 매핑을 푸시보다 먼저, 같은 트랜잭션에서 (@Async 제거)
+4-7 ✅ 토큰 등록 시 서버가 ADMIN_ALARM 토픽 구독
 ```
+
+### 4-5 정정 — `sendEachForMulticast`를 쓸 수 없다
+
+`build.gradle:44`가 **firebase-admin 8.1.0**이다. 이 버전에는 `sendEachForMulticast`가 없고,
+있는 `sendMulticast`/`sendAll`은 **2024년 6월에 종료된 레거시 batch 엔드포인트**를 쓴다.
+
+→ 기기별 `send()` 루프로 구현했다. 사용자당 기기가 1~3대라 실무상 문제가 없고,
+개별 오류 코드를 그대로 받아 죽은 토큰 정리가 오히려 단순해진다.
+코드에 `ponytail:` 주석으로 상한과 업그레이드 경로를 남겼다.
+
+> **신규 인프라 항목**: firebase-admin 8.1.0은 2021년 버전이다. 업그레이드 검토가 필요하다.
+> Phase 9에 추가.
+
+### 부수 발견 — 승인·거부 알림 제목이 enum 이름 그대로 나가고 있었다
+
+`WorkerService`가 `AlarmTitle.X.toString()`을 써서 푸시 제목과 앱 내 알림 목록에
+`ALARM_TITLE_WORKPLACE_JOIN_ACCEPTED`가 그대로 노출됐다. 같은 enum을
+`WorkplaceService:356`은 `.getTitle()`로 쓴다. `getTitle()`로 통일했다.
+**리뷰 7개 스코프 어디에도 없던 건이다.**
+
+### 테스트 — 세션 시작 이래 처음으로 전체 초록
+
+기존 실패 6건은 전부 **매처와 생 `null`을 섞어** `InvalidUseOfMatchersException`이 난 것이었고,
+미완성 스텁이 다음 테스트로 새어 관계없는 케이스까지 무너뜨리고 있었다.
+FCM 실패 시 롤백을 검증하던 2건은 계약이 바뀌었으므로
+**"승인·참가가 푸시보다 먼저 확정된다"** 는 순서 검증(`InOrder`)으로 다시 썼다.
+**51건 전부 통과.**
 
 **4-1이 4-4보다 먼저**여야 한다 — 단일 컬럼 구조에서는 "죽은 토큰만 삭제"가 불가능하다.
 
@@ -218,6 +242,7 @@ FK는 이미 `SET NULL`로 고쳤으므로(`98ac8e9`) 데이터 소실은 멈췄
 | 프로덕션이 develop 이미지를 가져감 | 7 C6 | 태그 분리 |
 | 프로파일 분리 부재 · Docker 로그 로테이션 없음 | 7 I2 | SD 카드가 찰 때까지 자란다 |
 | `/health`가 DB·Redis 미확인 | 7 I13 | `/actuator/health`로 대체 |
+| **firebase-admin 8.1.0 업그레이드 검토** | Phase 4에서 발견 | 2021년 버전. `sendMulticast`/`sendAll`이 종료된 엔드포인트를 쓴다 |
 
 ---
 
