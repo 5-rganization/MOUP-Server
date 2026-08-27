@@ -8,6 +8,9 @@
         <foreach collection="users" item="user" separator=",">
             (#{announcementId}, #{user.id})
         </foreach>
+        <!-- admin_alarm_user_mappings의 UNIQUE (alarm_id, user_id)와 짝이다.
+             공지 발송이 재시도되어도 중복 행을 만들지 않고 조용히 넘어간다. -->
+        ON DUPLICATE KEY UPDATE alarm_id = VALUES(alarm_id)
     </insert>
 
 </mapper>
