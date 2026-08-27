@@ -250,7 +250,7 @@ return new CustomUserDetails(user);
 | **I4** ✅ `f5bb991` | **`startCreateUser` NPE — 재가입 경로가 500으로 막힘.** `UserService:64-68`의 `socialRefreshToken.isEmpty()`에 null 체크 없음. 같은 흐름의 로그인 분기(`AuthController:122`)는 **제대로 막고 있다** — 신규 가입만 누락. Google은 `refresh_token`을 최초 동의 시에만 발급하므로 **"탈퇴 후 재가입"에서 정통으로 터진다. 확정 정책 5의 선행 조건** |
 | **I5** ✅ `7706fe4`+`58dae8a` | **소셜 revoke 실패가 조용히 삼켜짐.** `UserDeletionService:26-37`이 `finally`에서 성공 여부 무관하게 하드 삭제 → 재시도 근거가 CASCADE로 소멸 → **소셜 grant 영구 잔존.** 사용자는 탈퇴했다고 믿지만 Apple/Google에는 연동이 남는다. `@Retryable`이 `IOException`만 잡아 HTTP 4xx는 재시도조차 안 됨 |
 | **I6** ✅ `ebb9525` | **`user_tokens`/`social_tokens`에 `UNIQUE (user_id)` 없음.** read-then-write 패턴이라 동시 로그인 시 행 2개 → `Optional<UserToken>`에 2행 → `TooManyResultsException` → **해당 유저 로그인·재발급 영구 500.** 스코프 5 C-2와 동일한 결함 유형 |
-| **I7** | **Refresh token과 소셜 refresh token이 DB 평문 저장.** 자체 refresh는 C1 때문에 전권 크리덴셜이라 DB 읽기 권한만으로 전 사용자 로그인 가능. **수정**: 자체 refresh는 SHA-256 해시 저장 후 비교(검증이 `.equals()` 한 줄이라 변경 폭 작음), 소셜은 AES-GCM |
+| **I7** 🔶 | **Refresh token과 소셜 refresh token이 DB 평문 저장.** 자체 refresh는 ✅ `545eb30`에서 SHA-256 해시 저장으로 수정. **소셜 토큰의 AES-GCM은 하지 않기로 결정** → [아래 사유](#i7-후속--소셜-토큰-암호화는-하지-않는다) |
 
 ---
 
@@ -358,3 +358,65 @@ JWKS + RS256 고정 + 클레임 전수 검증, Google은 서명 검증 + `aud` �
 
 **두 이슈 모두 수정은 작다** — 클레임 1줄 + 필터 가드 1개, `is_deleted` 체크 1줄.
 진짜 비용은 코드가 아니라 "고쳐야 한다는 사실을 아는 것"이었다.
+
+---
+
+## I7 후속 — 소셜 토큰 암호화는 하지 않는다
+
+자체 refresh token은 SHA-256으로 해결됐다(`545eb30`). 소셜 refresh token은 프로바이더
+호출에 원본이 필요해 해시할 수 없고, 남은 선택지는 AES-GCM 암호화였다.
+**검토 끝에 하지 않기로 했다.**
+
+### 1. 덤프에서 가장 쓸모없는 한 칸만 잠그는 셈이다
+
+암호화가 막아주는 유일한 시나리오는 **DB 덤프만 따로 새는 경우**다. 호스트가 뚫리면
+`.env`에 든 키도 함께 털리므로 아무것도 막지 못한다.
+
+그런데 그 덤프에는 이미 이런 것이 평문으로 들어 있다 — 닉네임, `provider_id`(소셜 계정
+식별자), **근무 기록 전체**(언제 어디서 몇 시간 일했는지), 급여·시급·4대보험 설정,
+근무지 주소와 GPS 좌표.
+
+반면 훔친 refresh token으로 할 수 있는 것은 **Google 연동 해제(훼방)뿐**이다.
+access token을 발급받으려면 `client_secret`이 필요한데 그건 `.env`에 있고,
+Apple은 개인키 서명까지 필요하다.
+
+### 2. 스코프가 실제로 좁다 (추정이 아니라 확인함)
+
+`MOUP-iOS`에서 실측했다:
+
+| 프로바이더 | 요청 스코프 |
+|---|---|
+| Apple | `request.requestedScopes = [.fullName]` — **이름만.** 이메일도 안 받는다 |
+| Google | `GIDSignIn.sharedInstance.signIn(withPresenting:)` 만 호출. `addScopes` 계열 **0건** → 기본(`openid`/`email`/`profile`) |
+
+토큰을 완전히 장악해도 얻는 것이 이름·이메일이고, 그건 덤프에 이미 평문으로 있다.
+
+### 3. "40줄"이 실제 비용이 아니다
+
+`SOCIAL_TOKEN_KEY`가 `.env` · GitHub secret · 배포 스크립트에서 **전부 일치해야 하는
+항목이 하나 늘어난다.** 이 리뷰에서 정확히 그 실패 유형을 봤다 —
+[`delete_old_users.sh`](fix-plan.md#c5--배치가-한-번도-돈-적이-없었다)는 스크립트 위치 ·
+crontab · 토큰 · URL 넷이 일치해야 했고, 셋이 어긋나 **배치가 한 번도 돈 적이 없었다.**
+아무도 몰랐다.
+
+키를 하나 더 얹으면 잘못됐을 때 증상이 "탈퇴자의 소셜 연동이 조용히 안 풀림"이다.
+지금과 똑같이 조용하다.
+
+### 4. 실질적 완화는 이미 됐다 — 노출 창을 줄였다
+
+[Phase 6](fix-plan.md#-phase-6--완료-abf48ee)에서 가명처리 시
+`socialTokenRepository.deleteByUserId(userId)`를 넣어 **토큰 수명을 계정 수명에 묶었다.**
+탈퇴한 사람의 토큰은 더 이상 DB에 남지 않는다. 예전에는 CASCADE에 의존했고, 하드 삭제를
+없애면서 그게 안 돌게 될 뻔한 것을 직접 삭제로 고친 부분이다.
+
+노출 창을 줄이는 쪽이 암호화보다 실제로 값어치가 컸고, 그건 끝났다.
+
+> 삭제 시점은 [위 명세](#️-확정-정책-5-명세-수정--social_tokens-삭제-시점)를 지킨다 —
+> `anonymizeUserByUserId`는 revoke가 성공한 뒤(또는 30일 포기 후)에만 호출되므로,
+> 일시적 revoke 실패 시에는 행이 남아 다음 배치가 재시도한다.
+
+### 재검토 조건
+
+이 판단은 **스코프가 좁다**는 전제에 기대고 있다. Google Calendar·Drive처럼 넓은 스코프를
+요청하게 되면 refresh token 자체가 값어치 있는 물건이 되므로 그때는 암호화가 정당해진다.
+`MOUP-iOS`의 로그인 스코프를 넓히는 변경이 생기면 이 결정을 다시 볼 것.
