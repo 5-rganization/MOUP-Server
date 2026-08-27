@@ -80,7 +80,7 @@ Phase 0에 넣는 이유는 **다른 것과 충돌하지 않고 지금 안 하�
 
 ---
 
-## Phase 1 — 스키마 제약 일괄 (마이그레이션 1회)
+## ✅ Phase 1 — 완료 (`f5f8cba`와 함께 `db/moup.sql`·`db/init/moup.sql`에 반영)
 
 Phase 0-1 완료가 **전제**다. 흩어서 하면 운영 DB에 `ALTER`를 여러 번 치게 되니 묶는다.
 
@@ -264,36 +264,124 @@ Phase 9로 이관.
 
 ---
 
-## Phase 8 — 검증·에러 처리 잔여 (Important 다수)
+## ✅ Phase 8 — 완료 (`9de4ea6` · `545eb30` · `400cc16` · `ec114cc`)
 
-독립적이라 언제든 가능. 묶어서 한 번에:
+| 항목 | 출처 | 커밋 |
+|---|---|---|
+| checked 예외가 핸들러를 통과해 Boot 기본 `/error`로 나감 | 7 I6 | `9de4ea6` |
+| `ErrorCode.INVALID_TOKEN`이 401이 아니라 400 | 7 I16 | `9de4ea6` |
+| CORS 두 곳에 다르게 정의 · Security 쪽에 PATCH 누락 | 7 I12 | `9de4ea6` |
+| DTO 검증이 스키마 제약 미반영 (422여야 할 것이 500) | 5 I-3 · 3 I-3 · I-4 · 4 I9 | `9de4ea6` |
+| 빈 알림함에 404 | 6 I3 | `9de4ea6` |
+| 인증 실패가 401이 아니라 500 | 1 I3(b) | `9de4ea6` |
+| 파일 업로드가 클라이언트 `Content-Type`만 신뢰 | 7 I7 | `545eb30` |
+| 프로필 이미지 교체 시 삭제가 업로드보다 먼저 | 7 I8 · 4 I8 | `545eb30` |
+| refresh token 평문 저장 | 1 I7 | `545eb30` |
+| 알바생 경로가 0행 갱신 후 204 반환 | 5 I-2 | `400cc16` |
+| `PATCH`가 전체 치환으로 동작해 주소·좌표를 지움 | 5 I-1 | `ec114cc` |
 
-| 항목 | 출처 |
-|---|---|
-| checked 예외가 핸들러를 통과해 Boot 기본 `/error`로 나감 | 7 I6 |
-| `ErrorCode.INVALID_TOKEN`이 401이 아니라 400 | 7 I16 |
-| CORS 두 곳에 다르게 정의 · Security 쪽에 PATCH 누락 | 7 I12 |
-| `PATCH`가 전체 치환으로 동작해 주소·좌표를 지움 | 5 I-1 |
-| DTO 검증이 스키마 제약 미반영 (422여야 할 것이 500) | 5 I-3 · 3 I-3 · I-4 · 4 I9 |
-| 빈 알림함에 404 | 6 I3 |
-| 파일 업로드가 클라이언트 `Content-Type`만 신뢰 | 7 I7 |
-| 프로필 이미지 교체 시 삭제가 업로드보다 먼저 | 7 I8 · 4 I8 |
-| refresh token 평문 저장 | 1 I7 |
-| 인증 실패가 401이 아니라 500 | 1 I3(b) |
+### I-1 — 부분 갱신으로 갈지 PUT으로 이름만 바꿀지
+
+클라이언트를 확인한 결과 5개 필드를 **항상 전송**하고 있었다(타입이 non-optional).
+누락 경로가 없으니 NULL 파괴는 일어나지 않았지만, 대신 `"기본 주소"`/`0.0`이라는
+더미 값이 나가고 있었다 — NULL보다 나쁘다. nullable 체크로 안 걸러지고 유효해 보인다.
+
+**PUT으로 이름만 바꾸는 안을 버렸다.** `address`/`latitude`/`longitude`는 스키마상
+NULL 허용이고 생성 시에도 선택이라 "값 없는 근무지"가 정당한 상태다. 필수로 만들 수
+없으니 PUT으로 바꿔도 누락 → NULL 경로가 그대로 남는다. 이름만 정직해지고 안전해지지
+않는다.
+
+부분 갱신의 실제 값어치는 미래 방어가 아니라 **지금 클라이언트의 타입 문제 해결**이다.
+클라이언트가 `address: String`(non-optional)이라 서버의 nil을 표현할 수 없어 뭔가
+지어내야 했고, 그게 `"기본 주소"`가 태어난 이유다. 부분 갱신이면 `String?` + 키 생략으로
+"건드리지 않음"을 표현할 수 있다. 어느 쪽이든 클라이언트를 고쳐야 하는데, 부분 갱신에서만
+그 자연스러운 수정이 안전하다.
+
+### 부수 발견 — `@JsonTypeInfo(DEDUCTION)`은 판별 키 충돌 시 키 순서로 결정한다
+
+`ownerBasedLabelColor`와 `workerBasedLabelColor`가 **둘 다 존재하면 예외가 아니라
+JSON에서 먼저 나온 키**로 서브타입이 정해진다. 클라이언트가 `null`을 명시 출력하는
+인코더로 바뀌면 요청이 엉뚱한 타입으로 역직렬화된다.
+
+`updateWorkplace`가 `user.getRole()`과 판별된 타입을 교차 검증하므로 오판별은 403으로
+드러나고 실害는 없다. `WorkplaceUpdateDeductionTest`로 이 동작을 고정했다.
 
 ---
 
-## Phase 9 — 인프라 운영 (코드 아님)
+## 🔶 Phase 9 — 코드 작업 완료, Firebase 키만 남음
 
-| 항목 | 출처 | 성격 |
+인프라·배포를 건드리므로 `develop` 직접 커밋이 아니라 이 브랜치에 쌓았다
+(라이브러리 버전 업그레이드만 서버 코드로 보아 `develop`에 넣었다).
+**`deploy.yml`이 develop push에 트리거되므로, 배포 파이프라인 자체를 바꾸는
+변경을 자동 배포시키지 않기 위해서다.**
+
+| 항목 | 출처 | 커밋 |
 |---|---|---|
-| 🔴 **Firebase 키 폐기·재발급** | 7 C7 | **지금 당장.** 코드 아님 |
-| `manual-db-init.yml`이 확인 절차 없이 프로덕션 DB를 날림 | 7 C4 | 워크플로 수정 |
-| 배치 실행 경로가 버전 관리 밖 | 7 C5 · INF-1·2 | `delete_old_users.sh`를 리포지토리로 |
-| 프로덕션이 develop 이미지를 가져감 | 7 C6 | 태그 분리 |
-| 프로파일 분리 부재 · Docker 로그 로테이션 없음 | 7 I2 | SD 카드가 찰 때까지 자란다 |
-| `/health`가 DB·Redis 미확인 | 7 I13 | `/actuator/health`로 대체 |
-| **firebase-admin 8.1.0 업그레이드 검토** | Phase 4에서 발견 | 2021년 버전. `sendMulticast`/`sendAll`이 종료된 엔드포인트를 쓴다 |
+| 🔴 **Firebase 키 폐기·재발급** | 7 C7 | ⬜ **미결 — 코드 아님. 사용자 작업** |
+| `manual-db-init.yml`이 확인 절차 없이 프로덕션 DB를 날림 | 7 C4 | ✅ `1c09428` |
+| 프로덕션이 develop 이미지를 가져감 | 7 C6 | ✅ `575b780` |
+| 프로파일 분리 부재 · Docker 로그 로테이션 없음 | 7 I2 | ✅ `575b780` |
+| `/health`가 DB·Redis 미확인 | 7 I13 | ✅ `3c08fcd` |
+| 배치 실행 경로가 버전 관리 밖 | 7 C5 · INF-1·2 | ✅ `3827543` |
+| `/auth/**` IP 단위 제한 (Phase 7에서 이관) | 7 I17 | ✅ `61e273b` |
+| firebase-admin 8.1.0 업그레이드 | Phase 4에서 발견 | ✅ `b68fe44` (develop) |
+
+### C4 — 문서보다 심각했다
+
+`db/moup.sql`의 첫 줄이 `DROP SCHEMA IF EXISTS moup;`다. 이 워크플로는 DB를 통째로
+날리는데 확인 절차가 하나도 없었고 더미 데이터 삽입이 기본값 `true`였다. 저장소 쓰기
+권한만 있으면 두 번의 클릭으로 프로덕션 DB가 사라졌다.
+
+확인 문구 입력(러너에서 먼저 검사 — 틀리면 서버 접속조차 안 한다)과 DROP 직전
+mysqldump 백업(실패하거나 결과가 비면 중단)으로 막았다. 실수뿐 아니라 고의로 눌러도
+복구된다.
+
+### C5 — 배치가 한 번도 돈 적이 없었다
+
+`delete_old_users.log`에 남은 건 이것뿐이다:
+
+```
+/bin/bash: /home/neoskyclad/MOUP-Server/src/main/resources/delete_old_users.sh:
+No such file or directory
+```
+
+cron이 가리키는 경로에 스크립트가 없고(경로도 틀렸다 — `server/`가 빠져 있다), 그
+crontab을 등록하는 `deploy.yml` 블록마저 통째로 주석 처리돼 있었다. **탈퇴한 사용자의
+데이터가 유예기간이 지나도 계속 남아 있었다.**
+
+계획은 스크립트를 버전 관리에 넣는 것이었으나 **`@Scheduled`로 앱 안에 옮겼다.**
+기존 구조는 스크립트 위치 · crontab 등록 · `ADMIN_AUTH_TOKEN` 유효성 · 서버 URL
+네 가지가 모두 일치해야 동작하고 하나만 어긋나도 조용히 멈춘다. 실제로 셋이 어긋나
+있었다. 앱 안에서는 넷 다 필요 없고, 배포 전제조건이던 "`ADMIN_AUTH_TOKEN` 재발급
+안 하면 cron이 401"도 사라진다.
+
+### C6 — `export TAG`가 죽은 코드였다
+
+Jenkinsfile은 develop → `develop-N`+`latest`, main → `main-N`+`stable`로 태그를
+나눠 붙이고 배포 직전에 `export TAG=...`까지 한다. 그런데 두 compose 파일 모두
+`image: neoskycladdocker/moup`(태그 없음)이라 항상 `:latest`를 당겼다.
+**main 배포가 develop 빌드를 가져갔다.**
+
+### I17 — real_ip 없이 레이트 리밋을 걸면 자폭이다
+
+prod nginx는 NPM 뒤에 있어 `$remote_addr`이 항상 NPM의 컨테이너 IP다. real_ip 설정
+없이 IP 단위 제한만 걸면 전체 사용자가 버킷 하나를 공유해 서비스가 통째로 막힌다.
+사설 대역만 신뢰하면 되는 이유는 이 서버가 호스트에 포트를 열지 않아 `proxy-net`
+밖에서는 접속 자체가 불가능하기 때문이다.
+
+함께 수정 — prod의 `client_max_body_size`가 `0`(무제한)이었다. 스프링이 10MB에서
+거부해도 nginx가 본문을 전부 받아 버퍼링한 뒤라, 거부되기 전에 SD 카드가 먼저 찬다.
+
+### 배포 시 눈으로 확인할 것
+
+1. `/health` 응답 본문이 `"OK"` → `{"status":"UP"}`으로 바뀐다. 본문 문자열을 검사하는
+   모니터가 있다면 상태 코드 검사로 바꿔야 한다.
+2. compose가 `${TAG}`를 읽게 됐다. 의도한 태그의 이미지가 실제로 당겨지는지.
+3. 기동 로그에 Firebase 초기화 성공 — 메이저 버전 점프라 컴파일 통과가 런타임 호환을
+   보장하지 않는다. `FCMConfig`는 모든 테스트가 Mockito라 한 번도 실행되지 않는다.
+4. `nginx -t` — 로컬에 docker·nginx가 없어 crossplane(nginx 공식 파서)으로 문법과
+   지시자 컨텍스트만 확인했다.
+5. `@Scheduled` 배치 등록 (매일 04:00 KST).
 
 ---
 
