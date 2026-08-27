@@ -46,6 +46,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.moup.global.common.TimeConstants.SEOUL_ZONE_ID;
@@ -65,6 +66,7 @@ public class RoutineService {
   private final WorkRepository workRepository;
   private final WorkerRepository workerRepository;
   private final WorkplaceRepository workplaceRepository;
+  private final com.moup.domain.routine.mapper.RoutineTaskCompletionRepository routineTaskCompletionRepository;
 
   @Transactional
   public RoutineCreateResponse createRoutine(Long userId, RoutineCreateRequest request) {
@@ -437,15 +439,67 @@ public class RoutineService {
     // 3. 두 번째 쿼리 (1번 실행) - IN 절을 사용해 한 번에 모든 루틴 조회
     List<Routine> routineList = routineRepository.findAllByIdListInAndUserId(routineIdList, userId);
 
-    // 4. (쿼리 없음) 가져온 데이터를 메모리에서 매핑
+    // 4. [쿼리 1회] 이 근무에서 완료된 할 일. 근무 하나당 한 번이면 충분하다.
+    Set<Long> completedTaskIds =
+        Set.copyOf(routineTaskCompletionRepository.findCompletedTaskIdsByWorkId(workId));
+
+    // 5. 가져온 데이터를 매핑. 할 일과 완료 여부를 함께 내려준다 —
+    //    루틴 상세 조회는 근무를 모르므로 체크 상태를 줄 수 없고,
+    //    이 화면이 체크박스를 그릴 수 있는 유일한 지점이다.
     return routineList.stream()
         .map(routine -> RoutineSummaryResponse.builder()
             .routineId(routine.getId())
             .routineName(routine.getRoutineName())
             .alarmTime(routine.getAlarmTime())
             .linkedWorks(getLinkedWorksFromRoutine(routine.getId()))
+            .routineTaskList(routineTaskRepository.findAllByRoutineId(routine.getId()).stream()
+                .map(task -> RoutineTaskDetailResponse.builder()
+                    .taskId(task.getId())
+                    .routineId(task.getRoutineId())
+                    .content(task.getContent())
+                    .orderIndex(task.getOrderIndex())
+                    .isCompleted(completedTaskIds.contains(task.getId()))
+                    .build())
+                .toList())
             .build())
         .toList();
+  }
+
+  /// 근무별 할 일 체크/해제.
+  ///
+  /// 완료는 (근무, 할 일) 쌍이다. 같은 루틴이 여러 근무에 연결되므로 할 일 하나에
+  /// 플래그를 두면 어제 근무의 체크가 오늘 근무에 그대로 비친다.
+  ///
+  /// 저장소의 UNIQUE와 `ON DUPLICATE KEY UPDATE` 덕에 멱등하다 — 더블탭이나
+  /// 네트워크 재시도로 같은 요청이 두 번 와도 상태가 어긋나지 않는다.
+  @Transactional
+  public void setRoutineTaskCompletion(Long userId, Long workId, Long taskId, boolean completed) {
+    Work work = workRepository.findById(workId).orElseThrow(WorkNotFoundException::new);
+    Worker worker = workerRepository.findById(work.getWorkerId())
+        .orElseThrow(WorkerNotFoundException::new);
+    Workplace workplace = workplaceRepository.findById(worker.getWorkplaceId())
+        .orElseThrow(WorkplaceNotFoundException::new);
+
+    permissionVerifyUtil.verifyWorkerPermission(userId, worker, workplace.getOwnerId());
+    // 체크도 근무 기록이다. 사장님이 탈퇴한 근무지에서는 막는다 (확정 정책 5).
+    permissionVerifyUtil.verifyWorkplaceIsWritable(workplace.getOwnerId());
+
+    // 이 근무에 연결되지 않은 루틴의 할 일은 체크할 수 없다.
+    // FK는 "그 할 일이 존재하는가"만 보장할 뿐, 남의 루틴 할 일 id를 넣는 것을 막지 못한다.
+    Set<Long> linkedRoutineIds = workRoutineMappingRepository.findAllByWorkId(workId).stream()
+        .map(WorkRoutineMapping::getRoutineId)
+        .collect(Collectors.toSet());
+    RoutineTask task = routineTaskRepository.findById(taskId)
+        .orElseThrow(RoutineNotFoundException::new);
+    if (!linkedRoutineIds.contains(task.getRoutineId())) {
+      throw new InvalidPermissionAccessException("이 근무에 연결되지 않은 루틴의 할 일입니다.");
+    }
+
+    if (completed) {
+      routineTaskCompletionRepository.complete(workId, taskId);
+    } else {
+      routineTaskCompletionRepository.uncomplete(workId, taskId);
+    }
   }
 
   @Transactional

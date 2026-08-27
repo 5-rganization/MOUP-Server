@@ -193,6 +193,26 @@ CREATE TABLE `work_routine_mappings`
     FOREIGN KEY (`routine_id`) REFERENCES routines (`id`) ON DELETE CASCADE
 );
 
+-- 근무별 할 일 완료(체크) 상태.
+--
+-- 예전에는 `is_done`/`completed`/`checked` 계열 컬럼이 스키마 전체에 0건이었다.
+-- "오늘 이 근무의 이 할 일을 완료했다"를 서버가 보관하지 않아 기기를 바꾸면 사라졌다.
+--
+-- 같은 루틴이 여러 근무에 연결되므로 완료는 반드시 (근무, 할 일) 쌍이다.
+-- routine_task_id 하나로는 "어느 날 근무에서 했는지"를 구분할 수 없다.
+--
+-- UNIQUE가 토글의 멱등성을 보장한다. 더블탭이나 재시도로 중복 행이 생기지 않는다.
+CREATE TABLE `routine_task_completions`
+(
+    `id`              BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+    `work_id`         BIGINT                NOT NULL,
+    `routine_task_id` BIGINT                NOT NULL,
+    `completed_at`    DATETIME              NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    UNIQUE KEY `uk_routine_task_completion` (`work_id`, `routine_task_id`),
+    FOREIGN KEY (`work_id`) REFERENCES works (`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`routine_task_id`) REFERENCES routine_tasks (`id`) ON DELETE CASCADE
+);
+
 CREATE TABLE `salaries`
 (
     `id`                       BIGINT AUTO_INCREMENT PRIMARY KEY,

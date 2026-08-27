@@ -14,6 +14,7 @@ import com.moup.domain.user.dto.WorkerWorkUpdateRequest;
 import com.moup.domain.user.dto.WorkersWorkCreateRequest;
 import com.moup.domain.user.dto.WorkersWorkCreateResponse;
 import com.moup.domain.work.dto.WorkSummaryResponse;
+import com.moup.domain.routine.mapper.RoutineTaskCompletionRepository;
 import com.moup.domain.work.domain.Work;
 import com.moup.domain.work.domain.WorkCalendarListResponse;
 import com.moup.domain.work.dto.MyWorkCreateRequest;
@@ -63,6 +64,7 @@ public class WorkService {
     private final RoutineService routineService;
     private final SalaryCalculationService salaryCalculationService;
     private final PermissionVerifyUtil permissionVerifyUtil;
+    private final com.moup.domain.routine.mapper.RoutineTaskCompletionRepository routineTaskCompletionRepository;
 
     // --- 상수 ---
     private static final long MAX_REPEAT_DAYS_LIMIT = 365L; // 반복 생성 최대 기간
@@ -958,6 +960,16 @@ public class WorkService {
         Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElse(null);
         LocalDate deletedRangeEnd = null;
 
+        // 지워질 근무들의 할 일 체크 상태를 먼저 뜬다.
+        // 아래에서 근무를 지우면 `routine_task_completions`가 work_id CASCADE로 함께 사라진다.
+        // 근무를 실제로 없앤 게 아니라 같은 날 근무를 다시 만드는 것뿐인데도 그렇다.
+        // 오늘 근무를 편집하면 오늘 체크해 둔 항목이 조용히 전부 풀린다.
+        List<RoutineTaskCompletionRepository.CompletionSnapshot> completionSnapshots =
+                currentWork.getRepeatGroupId() != null
+                        ? routineTaskCompletionRepository.findSnapshotsByRepeatGroupFrom(
+                                currentWork.getRepeatGroupId(), currentWork.getWorkDate())
+                        : routineTaskCompletionRepository.findSnapshotsByWorkId(currentWork.getId());
+
         // 1. 기존에 반복 그룹이 있었는지 확인
         if (currentWork.getRepeatGroupId() != null) {
             // 삭제 전에 그룹의 마지막 근무일을 잡아둔다.
@@ -977,11 +989,34 @@ public class WorkService {
                 newRestTimeMinutes, newMemo, newRepeatDays, newRepeatEndDate,
                 userIdForRoutine, routineIdList);
 
+        // 3-1. 체크 상태를 같은 날짜의 새 근무에 되붙인다.
+        // 새 반복에 그 요일이 없으면 매칭되는 근무가 없어 버려진다 — 근무 자체가 사라졌으니 맞다.
+        restoreCompletions(completionSnapshots, created);
+
         // 4. 새 반복이 더 짧아졌다면 그 뒤 구간은 아무도 재계산하지 않는다. 여기서 채운다.
         if (deletedRangeEnd != null) {
             recalculateWeeksInRange(worker.getId(), salary, currentWork.getWorkDate(), deletedRangeEnd);
         }
         return created;
+    }
+
+    /// 반복 교체로 다시 만들어진 근무에 이전 체크 상태를 되붙인다.
+    /// 날짜로 매칭한다 — 사용자에게 "같은 근무"는 같은 날의 근무이지 같은 행이 아니다.
+    private void restoreCompletions(List<RoutineTaskCompletionRepository.CompletionSnapshot> snapshots,
+                                    List<Work> created) {
+        if (snapshots.isEmpty()) {
+            return;
+        }
+        Map<LocalDate, Long> newWorkIdByDate = created.stream()
+                .filter(w -> w.getId() != null)
+                .collect(Collectors.toMap(Work::getWorkDate, Work::getId, (a, b) -> a));
+
+        for (RoutineTaskCompletionRepository.CompletionSnapshot snapshot : snapshots) {
+            Long newWorkId = newWorkIdByDate.get(snapshot.workDate());
+            if (newWorkId != null) {
+                routineTaskCompletionRepository.complete(newWorkId, snapshot.routineTaskId());
+            }
+        }
     }
 
     /// '단일' 근무 업데이트 공통 로직

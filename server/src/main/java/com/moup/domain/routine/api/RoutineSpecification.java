@@ -2,6 +2,7 @@ package com.moup.domain.routine.api;
 
 import com.moup.domain.routine.dto.RoutineSummaryListResponse;
 import com.moup.domain.routine.dto.RoutineSummaryResponse;
+import com.moup.domain.routine.dto.RoutineTaskCompletionRequest;
 import com.moup.domain.routine.dto.RoutineUpdateRequest;
 import com.moup.domain.routine.dto.TodayRoutineResponse;
 import com.moup.domain.routine.dto.RoutineCreateRequest;
@@ -124,5 +125,23 @@ public interface RoutineSpecification {
     ResponseEntity<?> getWorkAllRoutine(
             @Parameter(name = "workId", description = "루틴을 조회할 근무 ID", example = "1", required = true, in = ParameterIn.PATH)
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId
+    );
+
+    @PutMapping("/works/{workId}/tasks/{taskId}/completion")
+    @Operation(summary = "근무별 할 일 체크/해제",
+            description = "완료는 (근무, 할 일) 쌍이다. 같은 루틴이 여러 근무에 연결되므로 "
+                    + "할 일 하나에 플래그를 두면 어제 근무의 체크가 오늘 근무에 그대로 비친다. "
+                    + "원하는 상태를 그대로 보내는 방식이라 멱등하다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "반영 성공", content = @Content(mediaType = "application/json")),
+            @ApiResponse(responseCode = "403", description = "권한 없음 · 이 근무에 연결되지 않은 루틴의 할 일 · 사장님이 탈퇴한 근무지", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 근무 또는 할 일", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    ResponseEntity<?> setRoutineTaskCompletion(
+            @Parameter(name = "workId", description = "근무 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
+            @Parameter(name = "taskId", description = "할 일 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long taskId,
+            @RequestBody @Valid RoutineTaskCompletionRequest request
     );
 }

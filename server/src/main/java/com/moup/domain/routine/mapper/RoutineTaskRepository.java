@@ -4,6 +4,7 @@ import com.moup.domain.routine.domain.RoutineTask;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @Mapper
 public interface RoutineTaskRepository {
@@ -26,6 +27,10 @@ public interface RoutineTaskRepository {
     ///
     /// @param routineId 조회할 할 일의 루틴 ID
     /// @return 조회된 RoutineTask 객체 리스트, 없으면 빈 배열
+    /// 할 일 하나를 조회한다. 체크 요청이 이 근무에 연결된 루틴의 할 일인지 확인할 때 쓴다.
+    @Select("SELECT * FROM routine_tasks WHERE id = #{id}")
+    Optional<RoutineTask> findById(Long id);
+
     @Select("SELECT * FROM routine_tasks WHERE routine_id = #{routineId} ORDER BY order_index")
     List<RoutineTask> findAllByRoutineId(Long routineId);
 

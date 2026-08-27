@@ -6,6 +6,7 @@ import com.moup.domain.routine.dto.RoutineDetailResponse;
 import com.moup.domain.routine.application.RoutineService;
 import com.moup.domain.routine.dto.RoutineSummaryListResponse;
 import com.moup.domain.routine.dto.RoutineSummaryResponse;
+import com.moup.domain.routine.dto.RoutineTaskCompletionRequest;
 import com.moup.domain.routine.dto.RoutineUpdateRequest;
 import com.moup.domain.routine.dto.TodayRoutineResponse;
 import com.moup.global.common.type.ViewType;
@@ -107,5 +108,17 @@ public class RoutineController implements RoutineSpecification {
 
         RoutineSummaryListResponse response = routineService.getAllRoutineByWork(userId, workId);
         return ResponseEntity.ok().body(response);
+    }
+
+    @Override
+    @PutMapping("/works/{workId}/tasks/{taskId}/completion")
+    public ResponseEntity<?> setRoutineTaskCompletion(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long taskId,
+            @RequestBody @Valid RoutineTaskCompletionRequest request) {
+        Long userId = identityService.getCurrentUserId();
+
+        routineService.setRoutineTaskCompletion(userId, workId, taskId, request.getCompleted());
+        return ResponseEntity.noContent().build();
     }
 }

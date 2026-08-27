@@ -54,6 +54,7 @@ class RecurringWorkRecalculationTest {
     @Mock private UserRepository userRepository;
     @Mock private RoutineService routineService;
     @Mock private SalaryCalculationService salaryCalculationService;
+    @Mock private com.moup.domain.routine.mapper.RoutineTaskCompletionRepository routineTaskCompletionRepository;
 
     // 실제 구현을 쓴다. 권한 검증까지 함께 통과해야 의미가 있다.
     // userRepository는 @Mock이라 isWithdrawn이 기본값 false를 돌려준다 = 소유자 정상.
@@ -66,7 +67,7 @@ class RecurringWorkRecalculationTest {
             permissionVerifyUtil = new PermissionVerifyUtil(userRepository);
             workService = new WorkService(workRepository, salaryRepository, workerRepository,
                     workplaceRepository, userRepository, routineService,
-                    salaryCalculationService, permissionVerifyUtil);
+                    salaryCalculationService, permissionVerifyUtil, routineTaskCompletionRepository);
         }
         return workService;
     }
