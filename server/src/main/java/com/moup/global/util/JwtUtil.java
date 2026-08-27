@@ -30,7 +30,6 @@ public class JwtUtil {
     private final Key key;
 
     public JwtUtil(@Value("${jwt.secret.key}") String secretKey) {
-        log.debug(secretKey);
         this.key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
 
