@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.text.RandomStringGenerator;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
 import java.util.Optional;
 
 @Service
@@ -15,12 +16,18 @@ public class InviteCodeService {
     private final InviteCodeRepository inviteCodeRepository;
     private RandomStringGenerator inviteCodeGenerator;
 
+    /// 초대코드는 근무지 참여 자격이므로 예측 불가능해야 한다.
+    /// `RandomStringGenerator`는 `usingRandom`을 주지 않으면 `ThreadLocalRandom`(비 CSPRNG)으로
+    /// 폴백한다 — commons-text 1.14.0 바이트코드에서 확인.
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     @PostConstruct
     public void init() {
         // 0, O, 1, I를 제외한 숫자와 대문자 알파벳 조합
         String baseCharacters = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
         this.inviteCodeGenerator = new RandomStringGenerator.Builder()
                 .selectFrom(baseCharacters.toCharArray())
+                .usingRandom(SECURE_RANDOM::nextInt)
                 .get();
     }
 
