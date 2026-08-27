@@ -49,6 +49,10 @@ jobs:
 
             cd /home/${{ secrets.RPI_USER }}/MOUP-Server
 
+            # 저장소에 기본 docker-compose.yml이 없다. -f 없이 `docker compose`를 부르면
+            # "no configuration file provided"로 실패한다. deploy.yml과 같은 파일을 쓴다.
+            COMPOSE="docker compose -f docker-compose.dev.yml"
+
             SCHEMA_SQL="db/moup.sql"
             DUMMY_DATA_SQL="db/moup_dummy_data.sql"
             BACKUP_DIR="/home/${{ secrets.RPI_USER }}/moup-db-backups"
@@ -58,7 +62,7 @@ jobs:
             #    이게 없으면 잘못 누른 순간 끝이다.
             mkdir -p "$BACKUP_DIR"
             echo "Backing up current schema to $BACKUP_FILE ..."
-            docker compose exec -T \
+            $COMPOSE exec -T \
               -e MYSQL_PWD="${{ secrets.DATABASE_PASSWORD }}" \
               mysql mysqldump --default-character-set=utf8mb4 --single-transaction \
               -u root "${{ secrets.DATABASE_NAME }}" | gzip > "$BACKUP_FILE"
@@ -75,18 +79,18 @@ jobs:
 
             # 2. 여기서부터 파괴적이다.
             echo "Executing schema script ($SCHEMA_SQL) — this DROPs the database..."
-            docker compose exec -T \
+            $COMPOSE exec -T \
               -e MYSQL_PWD="${{ secrets.DATABASE_PASSWORD }}" \
               mysql mysql --default-character-set=utf8mb4 -u root "${{ secrets.DATABASE_NAME }}" < "$SCHEMA_SQL"
 
             if [[ "${{ inputs.insert_dummy_data }}" == "true" ]]; then
               echo "Inserting dummy data from $DUMMY_DATA_SQL..."
-              docker compose exec -T \
+              $COMPOSE exec -T \
                 -e MYSQL_PWD="${{ secrets.DATABASE_PASSWORD }}" \
                 mysql mysql --default-character-set=utf8mb4 -u root "${{ secrets.DATABASE_NAME }}" < "$DUMMY_DATA_SQL"
             else
               echo "Skipping dummy data insertion."
             fi
 
-            echo "Done. Rollback: gunzip -c $BACKUP_FILE | docker compose exec -T mysql mysql -u root ${{ secrets.DATABASE_NAME }}"
+            echo "Done. Rollback: gunzip -c $BACKUP_FILE | $COMPOSE exec -T mysql mysql -u root ${{ secrets.DATABASE_NAME }}"
           EOF
