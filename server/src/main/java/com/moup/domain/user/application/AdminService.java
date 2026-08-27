@@ -1,6 +1,5 @@
 package com.moup.domain.user.application;
 
-import com.google.firebase.messaging.FirebaseMessagingException;
 import com.moup.global.infra.fcm.FCMTopic;
 import com.moup.domain.user.exception.UserNotFoundException;
 import com.moup.domain.alarm.dto.AdminAnnouncementRequest;
@@ -57,17 +56,16 @@ public class AdminService {
     }
   }
 
-  public void announce(AdminAnnouncementRequest adminAnnouncementRequest)
-      throws FirebaseMessagingException {
+  public void announce(AdminAnnouncementRequest adminAnnouncementRequest) {
     fCMService.sendToTopic(FCMTopic.ADMIN_ALARM, adminAnnouncementRequest.getTitle(),
         adminAnnouncementRequest.getContent());
   }
 
   @Transactional
-  public void notify(Long adminId, AdminNotificationRequest adminNotificationRequest)
-      throws FirebaseMessagingException {
-    User receiver = userRepository.findById(adminNotificationRequest.getReceiverId()).orElseThrow(
-        UserNotFoundException::new);
+  public void notify(Long adminId, AdminNotificationRequest adminNotificationRequest) {
+    // 존재하지 않는 수신자에게 보내려 하면 404를 준다. 알림 내역의 FK 위반을 미리 막는다.
+    userRepository.findById(adminNotificationRequest.getReceiverId())
+        .orElseThrow(UserNotFoundException::new);
 
     fCMService.sendToSingleUser(adminId, adminNotificationRequest.getReceiverId(),
         adminNotificationRequest.getTitle(),

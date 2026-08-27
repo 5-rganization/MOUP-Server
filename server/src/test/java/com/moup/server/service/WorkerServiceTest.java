@@ -1,11 +1,9 @@
 package com.moup.server.service;
 
-import com.google.firebase.messaging.FirebaseMessagingException;
 import com.moup.global.infra.fcm.FCMService;
 import com.moup.domain.user.application.WorkerService;
 import com.moup.domain.alarm.domain.AlarmContent;
 import com.moup.domain.alarm.domain.AlarmTitle;
-import com.moup.global.infra.fcm.CustomFirebaseMessagingException;
 import com.moup.domain.workplace.exception.WorkplaceNotFoundException;
 import com.moup.domain.user.domain.Worker;
 import com.moup.domain.workplace.domain.Workplace;
@@ -16,6 +14,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.ArgumentMatchers.*;
@@ -43,7 +42,7 @@ public class WorkerServiceTest {
 
   @Test
   @DisplayName("근무자 참여 승인 - 성공")
-  void acceptWorker_Success() throws FirebaseMessagingException {
+  void acceptWorker_Success() {
     // given (테스트 데이터 및 Mock 객체 행동 정의)
     Long ownerUserId = 1L;
     Long workplaceId = 10L;
@@ -75,8 +74,9 @@ public class WorkerServiceTest {
     // 3-3. workerRepository.findByIdAndWorkplaceId(...)가 호출되면, mockWorker를 포함한 Optional 반환
     when(workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)).thenReturn(Optional.of(mockWorker));
 
-    // 3-4. fCMService.sendToSingleUser(...)는 아무것도 하지 않음 (성공 시)
-    doNothing().when(fCMService).sendToSingleUser(anyLong(), anyLong(), anyString(), anyString(), null);
+    // fCMService.sendToSingleUser는 void mock이라 기본이 no-op이다. 스텁이 필요 없다.
+    // (예전 코드의 doNothing().when(...)은 매처와 생 null을 섞어 InvalidUseOfMatchersException을 냈고,
+    //  그 미완성 스텁이 다음 테스트로 새어 UnfinishedStubbingException까지 일으켰다.)
 
     // when (테스트할 메서드 실제 호출)
     workerService.acceptWorker(ownerUserId, workplaceId, workerId);
@@ -91,7 +91,7 @@ public class WorkerServiceTest {
 
     // 3. fCMService.sendToSingleUser가 1번 호출되었는지 검증
     //    (정확한 알림 메시지 내용까지 검증)
-    String expectedTitle = AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_ACCEPTED.toString();
+    String expectedTitle = AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_ACCEPTED.getTitle();
     String expectedContent = AlarmContent.ALARM_CONTENT_WORKPLACE_JOIN_ACCEPTED.getContent(workplaceName);
     verify(fCMService, times(1)).sendToSingleUser(ownerUserId, workerUserId, expectedTitle, expectedContent, null);
 
@@ -121,10 +121,9 @@ public class WorkerServiceTest {
   }
 
   @Test
-  @DisplayName("근무자 참여 승인 - 실패 (FCM 전송 실패)")
-  void acceptWorker_Fail_FCMSendError() throws FirebaseMessagingException {
+  @DisplayName("승인은 푸시보다 먼저 확정된다 — 푸시 실패가 승인을 되돌리지 않는다")
+  void acceptWorker_ConfirmsBeforePush() {
     // given
-    // (Success 케이스와 동일하게 mockWorkplace, mockWorker 설정 ...)
     Long ownerUserId = 1L;
     Long workplaceId = 10L;
     Long workerId = 100L;
@@ -138,17 +137,19 @@ public class WorkerServiceTest {
     doNothing().when(permissionVerifyUtil).verifyOwnerPermission(ownerUserId, ownerUserId);
     when(workerRepository.findByIdAndWorkplaceId(workerId, workplaceId)).thenReturn(Optional.of(mockWorker));
 
-    // 3-4. fCMService.sendToSingleUser()가 호출되면 FirebaseMessagingException 예외를 던지도록 설정
-    fCMService.sendToSingleUser(anyLong(), anyLong(), anyString(), anyString(), null);
+    // when
+    workerService.acceptWorker(ownerUserId, workplaceId, workerId);
 
-    // when & then
-    // CustomFirebaseMessagingException 예외가 발생하는지 검증
-    assertThrows(CustomFirebaseMessagingException.class, () -> {
-      workerService.acceptWorker(ownerUserId, workplaceId, workerId);
-    });
-
-    // FCM 전송에 실패했으므로 updateIsAccepted는 절대 호출되면 안 됨
-    verify(workerRepository, never()).updateIsAccepted(anyLong(), anyLong(), anyLong(), anyBoolean());
+    // then — 순서가 핵심이다.
+    //
+    // 예전에는 푸시를 **먼저** 보내고 실패 시 예외를 다시 던져 트랜잭션을 롤백시켰다.
+    // 알바생이 앱을 지워 토큰이 죽으면(UNREGISTERED) 사장님이 승인을 누를 때마다 500이 났고,
+    // 죽은 토큰을 정리하는 코드가 없어 **영구히 승인 불가**였다.
+    //
+    // 이제 승인을 먼저 확정하고 푸시는 커밋 이후 best-effort로 나간다.
+    InOrder inOrder = inOrder(workerRepository, fCMService);
+    inOrder.verify(workerRepository).updateIsAccepted(workerId, workerUserId, workplaceId, true);
+    inOrder.verify(fCMService).sendToSingleUser(eq(ownerUserId), eq(workerUserId), anyString(), anyString(), isNull());
   }
 
 }

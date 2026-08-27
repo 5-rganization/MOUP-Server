@@ -207,19 +207,21 @@ public class UserService {
         .build();
   }
 
+  /// 로그아웃.
+  ///
+  /// `fcmToken`을 주면 **그 기기 하나만** 푸시를 끊는다. 예전에는 유저의 토큰 컬럼을
+  /// 통째로 비워, 폰에서 로그아웃하면 태블릿 푸시까지 죽었다.
+  /// 토큰을 모르면(구버전 클라이언트) 안전하게 전 기기를 끊는다.
   @Transactional
-  public void logout(Long userId) {
-    // 1. FCM 토큰 초기화
-    fcmTokenService.deleteUserFCMToken(userId);
+  public void logout(Long userId, String fcmToken) {
+    // 1. 해당 기기의 FCM 토큰 제거
+    fcmTokenService.deleteUserFCMToken(userId, fcmToken);
 
     // 2. refresh token 폐기. 이걸 지우지 않으면 로그아웃해도 최대 7일간 재발급이 가능하다.
     userTokenService.deleteToken(userId);
   }
 
   public void updateFCMTokenByUserId(Long userId, String fcmToken) {
-
-    
-
     fcmTokenService.updateUserFCMToken(userId, fcmToken);
   }
 }

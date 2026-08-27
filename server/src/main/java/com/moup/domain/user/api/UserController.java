@@ -4,6 +4,7 @@ import com.moup.domain.user.dto.UserDeleteResponse;
 import com.moup.domain.user.dto.UserLogoutResponse;
 import com.moup.domain.user.dto.UserProfileResponse;
 import com.moup.domain.user.application.UserService;
+import com.moup.global.security.token.UserLogoutRequest;
 import com.moup.global.security.token.UserUpdateFCMTokenRequest;
 import com.moup.global.security.token.UserUpdateFCMTokenResponse;
 import com.moup.domain.user.dto.UserUpdateNicknameRequest;
@@ -96,10 +97,10 @@ public class UserController {
         @ApiResponse(responseCode = "404", description = "존재하지 않는 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "409", description = "이미 삭제 처리된 유저", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
         @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
-    public ResponseEntity<?> logout() {
+    public ResponseEntity<?> logout(@RequestBody(required = false) UserLogoutRequest request) {
         Long userId = identityService.getCurrentUserId();
 
-        userService.logout(userId);
+        userService.logout(userId, request == null ? null : request.getFcmToken());
 
         return ResponseEntity.ok().body(UserLogoutResponse.builder().userId(userId).build());
     }

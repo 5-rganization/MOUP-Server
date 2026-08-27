@@ -1,6 +1,5 @@
 package com.moup.server.service;
 
-import com.google.firebase.messaging.FirebaseMessagingException;
 import com.moup.global.infra.fcm.FCMService;
 import com.moup.domain.workplace.application.InviteCodeService;
 import com.moup.domain.salary.domain.Salary;
@@ -8,7 +7,6 @@ import com.moup.domain.workplace.application.WorkplaceService;
 import com.moup.domain.alarm.domain.AlarmContent;
 import com.moup.domain.alarm.domain.AlarmTitle;
 import com.moup.global.common.type.Role;
-import com.moup.global.infra.fcm.CustomFirebaseMessagingException;
 import com.moup.domain.workplace.exception.WorkplaceLimitExceededException;
 import com.moup.domain.user.dto.OwnerWorkplaceCreateRequest;
 import com.moup.domain.salary.dto.SalaryCreateRequest;
@@ -25,6 +23,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -150,7 +149,7 @@ class WorkplaceServiceTest {
 
   @Test
   @DisplayName("TODO 테스트: 근무지 참가 신청 - FCM 알림 발송 성공")
-  void joinWorkplace_Success_FCMSend() throws FirebaseMessagingException {
+  void joinWorkplace_Success_FCMSend() {
     // given
     String inviteCode = "TESTCODE";
     Long workplaceId = 10L;
@@ -173,7 +172,8 @@ class WorkplaceServiceTest {
     when(workplaceRepository.findOwnerId(workplaceId)).thenReturn(ownerId);
 
     // 5. FCMService가 호출되면 아무것도 하지 않음 (성공 시뮬레이션)
-    doNothing().when(fcmService).sendToSingleUser(anyLong(), anyLong(), anyString(), anyString(), null);
+    // void mock은 기본이 no-op이라 스텁이 필요 없다.
+    // 예전 코드는 매처(anyLong 등)와 생 null을 섞어 InvalidUseOfMatchersException을 냈다.
 
     // 6. workerRepository.create()가 호출될 때, worker 객체에 ID 설정 시뮬레이션
     doAnswer(invocation -> {
@@ -194,12 +194,14 @@ class WorkplaceServiceTest {
         eq(mockWorkerUser.getId()), // from (알바생)
         eq(ownerId),               // to (사장님)
         titleCaptor.capture(),     // title
-        contentCaptor.capture(),    // content
-        null
+        contentCaptor.capture(),   // content
+        // 매처를 쓰는 호출에는 생 null을 섞을 수 없다(InvalidUseOfMatchersException).
+        // joinWorkplace는 실제로 WorkplaceJoinPayload를 넘기므로 null 자체가 틀린 기대값이었다.
+        any()
     );
 
     // 2. 전송된 알림 내용 검증
-    assertEquals(AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_REQUEST.toString(), titleCaptor.getValue());
+    assertEquals(AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_REQUEST.getTitle(), titleCaptor.getValue());
     assertEquals(AlarmContent.ALARM_CONTENT_WORKPLACE_JOIN_REQUEST.getContent(mockWorkerUser.getUsername()), contentCaptor.getValue());
 
     // 3. worker와 salary가 생성되었는지 검증
@@ -208,8 +210,8 @@ class WorkplaceServiceTest {
   }
 
   @Test
-  @DisplayName("TODO 테스트: 근무지 참가 신청 - FCM 알림 발송 실패")
-  void joinWorkplace_Fail_FCMSendError() throws FirebaseMessagingException {
+  @DisplayName("참가 처리는 푸시보다 먼저 확정된다 — 푸시 실패가 참가를 되돌리지 않는다")
+  void joinWorkplace_ConfirmsBeforePush() {
     // given
     String inviteCode = "TESTCODE";
     Long workplaceId = 10L;
@@ -217,27 +219,22 @@ class WorkplaceServiceTest {
 
     WorkplaceJoinRequest request = WorkplaceJoinRequest.builder()
         .inviteCode(inviteCode)
-        // 2. SalaryCreateRequest를 Builder로 생성 (NoArgsConstructor 사용 X)
         .salaryCreateRequest(SalaryCreateRequest.builder().build())
         .build();
 
-    // (필수 Mocking 설정)
     when(inviteCodeService.findWorkplaceIdByInviteCode(inviteCode.toUpperCase())).thenReturn(workplaceId);
     when(workplaceRepository.existsById(workplaceId)).thenReturn(true);
     when(workerRepository.existsByUserIdAndWorkplaceId(mockWorkerUser.getId(), workplaceId)).thenReturn(false);
     when(workplaceRepository.findOwnerId(workplaceId)).thenReturn(ownerId);
 
-    // 5. FCMService가 호출되면 FirebaseMessagingException 예외를 던지도록 설정
-    fcmService.sendToSingleUser(anyLong(), anyLong(), anyString(), anyString(), null);
+    // when
+    workplaceService.joinWorkplace(mockWorkerUser, request);
 
-    // when & then
-    // 1. CustomFirebaseMessagingException 예외가 발생하는지 검증
-    assertThrows(CustomFirebaseMessagingException.class, () -> {
-      workplaceService.joinWorkplace(mockWorkerUser, request);
-    });
-
-    // 2. @Transactional에 의해 롤백되어야 하므로, worker와 salary는 생성(create)되면 안 됨
-    verify(workerRepository, never()).create(any(Worker.class));
-    verify(salaryRepository, never()).create(any(Salary.class));
+    // then — 예전에는 푸시 실패가 트랜잭션을 롤백시켜 **참가 자체가 무산**됐다.
+    // 이제 worker·salary를 먼저 만들고 푸시는 커밋 이후 best-effort로 나간다.
+    InOrder inOrder = inOrder(workerRepository, salaryRepository, fcmService);
+    inOrder.verify(workerRepository).create(any(Worker.class));
+    inOrder.verify(salaryRepository).create(any(Salary.class));
+    inOrder.verify(fcmService).sendToSingleUser(anyLong(), eq(ownerId), anyString(), anyString(), any());
   }
 }

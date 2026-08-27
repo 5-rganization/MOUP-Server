@@ -20,7 +20,6 @@ import com.moup.domain.workplace.mapper.WorkplaceRepository;
 import com.moup.domain.alarm.domain.AlarmContent;
 import com.moup.domain.alarm.domain.AlarmTitle;
 import com.moup.global.error.CannotDeleteDataException;
-import com.moup.global.infra.fcm.CustomFirebaseMessagingException;
 import com.moup.global.error.ErrorCode;
 import com.moup.domain.salary.exception.SalaryWorkerNotFoundException;
 import com.moup.domain.workplace.exception.WorkplaceNotFoundException;
@@ -288,14 +287,10 @@ public class WorkerService {
         permissionVerifyUtil.verifyOwnerPermission(ownerUserId, workplaceOwnerId);
         Long workerUserId = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId).orElseThrow(WorkerNotFoundException::new).getUserId();
 
-        // 푸시 알림 송신
-        try {
-            fCMService.sendToSingleUser(ownerUserId, workerUserId, AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_ACCEPTED.toString(), AlarmContent.ALARM_CONTENT_WORKPLACE_JOIN_ACCEPTED.getContent(workplace.getWorkplaceName()), null);
-        } catch (FirebaseMessagingException e) {
-            throw new CustomFirebaseMessagingException(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage());
-        }
-
+        // 승인을 먼저 확정한다. 푸시는 best-effort이며 커밋 이후에 나간다.
         workerRepository.updateIsAccepted(workerId, workerUserId, workplaceId, true);
+
+        fCMService.sendToSingleUser(ownerUserId, workerUserId, AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_ACCEPTED.getTitle(), AlarmContent.ALARM_CONTENT_WORKPLACE_JOIN_ACCEPTED.getContent(workplace.getWorkplaceName()), null);
     }
 
     @Transactional
@@ -305,11 +300,7 @@ public class WorkerService {
 
         deleteWorkerForOwner(ownerUserId, workplaceId, workerId);
 
-        // 푸시 알림 송신
-        try {
-            fCMService.sendToSingleUser(ownerUserId, workerUserId, AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_REJECTED.toString(), AlarmContent.ALARM_CONTENT_WORKPLACE_JOIN_REJECTED.getContent(workplace.getWorkplaceName()), null);
-        } catch (FirebaseMessagingException e) {
-            throw new CustomFirebaseMessagingException(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage());
-        }
+        // 푸시 알림 송신 (best-effort, 커밋 이후 발송)
+        fCMService.sendToSingleUser(ownerUserId, workerUserId, AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_REJECTED.getTitle(), AlarmContent.ALARM_CONTENT_WORKPLACE_JOIN_REJECTED.getContent(workplace.getWorkplaceName()), null);
     }
 }

@@ -28,7 +28,6 @@ import com.moup.domain.user.dto.WorkerWorkplaceDetailResponse;
 import com.moup.domain.user.dto.WorkerWorkplaceUpdateRequest;
 import com.moup.domain.alarm.domain.AlarmContent;
 import com.moup.domain.alarm.domain.AlarmTitle;
-import com.moup.global.infra.fcm.CustomFirebaseMessagingException;
 import com.moup.global.error.ErrorCode;
 import com.moup.global.error.InvalidPermissionAccessException;
 import com.moup.domain.salary.exception.SalaryWorkerNotFoundException;
@@ -343,37 +342,28 @@ public class WorkplaceService {
 
         Long ownerId = workplaceRepository.findOwnerId(workplaceId);
 
-        try {
-            // 근무자 정보 생성
-            Worker worker = request.toWorkerEntity(user.getId(), workplaceId);
-            workerRepository.create(worker);
+        // 근무자 정보 생성
+        Worker worker = request.toWorkerEntity(user.getId(), workplaceId);
+        workerRepository.create(worker);
 
-            // 급여 정보 생성
-            Salary salary = request.toSalaryEntity(worker.getId());
-            salaryRepository.create(salary);
+        // 급여 정보 생성
+        Salary salary = request.toSalaryEntity(worker.getId());
+        salaryRepository.create(salary);
 
-            String notificationContent = AlarmContent.ALARM_CONTENT_WORKPLACE_JOIN_REQUEST.getContent(user.getUsername());
-            String notificationTitle = AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_REQUEST.getTitle();
+        // 푸시 알림 전달 (best-effort, 커밋 이후 발송)
+        // 제목: "근무지 참가 요청" / 본문: "{유저 이름}님이 근무지 참가 요청을 보냈습니다."
+        String notificationContent = AlarmContent.ALARM_CONTENT_WORKPLACE_JOIN_REQUEST.getContent(user.getUsername());
+        String notificationTitle = AlarmTitle.ALARM_TITLE_WORKPLACE_JOIN_REQUEST.getTitle();
+        WorkplaceJoinPayload dataPayload = WorkplaceJoinPayload.builder()
+                .content(notificationContent)
+                .workplaceId(workplaceId)
+                .workerId(worker.getId()).build();
 
+        fcmService.sendToSingleUser(user.getId(), ownerId, notificationTitle, notificationContent, dataPayload);
 
-            // 푸시 알림 전달
-
-            // 제목: "근무지 참가 요청"
-            // 본문: "{유저 이름}님이 근무지 참가 요청을 보냈습니다."
-            // data:
-            WorkplaceJoinPayload dataPayload = WorkplaceJoinPayload.builder()
-                    .content(notificationContent)
-                    .workplaceId(workplaceId)
-                    .workerId(worker.getId()).build();
-
-            fcmService.sendToSingleUser(user.getId(), ownerId, notificationTitle, notificationContent, dataPayload);
-
-            return WorkplaceJoinResponse.builder()
-                    .workplaceId(workplaceId)
-                    .workerId(worker.getId())
-                    .build();
-        } catch (FirebaseMessagingException e) {
-            throw new CustomFirebaseMessagingException(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage());
-        }
+        return WorkplaceJoinResponse.builder()
+                .workplaceId(workplaceId)
+                .workerId(worker.getId())
+                .build();
     }
 }

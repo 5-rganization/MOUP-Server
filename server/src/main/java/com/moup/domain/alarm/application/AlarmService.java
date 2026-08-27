@@ -15,12 +15,14 @@ import java.util.List;
 
 import com.moup.domain.user.mapper.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import static com.moup.global.common.TimeConstants.SEOUL_ZONE_ID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AlarmService {
@@ -123,11 +125,16 @@ public class AlarmService {
     alarmRepository.deleteAllNormalAlarmByUserId(userId);
   }
 
-  @Async
+  /// 공지 대상 매핑 생성.
+  ///
+  /// **`@Async`를 떼고 호출자 트랜잭션에 참여시킨다.** 비동기로 돌면 아직 커밋되지 않은
+  /// `admin_alarms` 행을 FK로 참조해 잠금 대기에 걸리고, 실패해도 `void`라 예외가 삼켜졌다.
+  ///
+  /// ponytail: 전 사용자를 한 트랜잭션에 담는다. 사용자가 수만 명을 넘어 요청이 길어지면
+  /// 배치별 REQUIRES_NEW로 쪼개고 커밋 이후 비동기 실행으로 옮길 것.
   @Transactional
   public void createAnnouncementMappingForAllUsers(Long announcementId) {
-    System.out.println(Thread.currentThread().getName()
-        + ": Start creating announcement statuses for announcementId: " + announcementId);
+    log.info("공지 대상 매핑 생성 시작 announcementId={}", announcementId);
 
     int page = 0;
     List<User> users;
@@ -142,7 +149,7 @@ public class AlarmService {
       }
     } while (!users.isEmpty());
 
-    System.out.println(Thread.currentThread().getName() + ": Finished creating statuses.");
+    log.info("공지 대상 매핑 생성 완료 announcementId={}", announcementId);
   }
 
   @Transactional
