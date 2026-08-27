@@ -14,11 +14,27 @@ CREATE TABLE `users`
     `created_at`  TIMESTAMP                                                          DEFAULT CURRENT_TIMESTAMP(),
     `deleted_at`  TIMESTAMP,
     `is_deleted`  TINYINT(1)                                                         DEFAULT 0,
-    `fcm_token`   TEXT,
     UNIQUE KEY `unique_provider` (`provider`, `provider_id`)
 );
 
 -- 토큰 DB --
+-- FCM 등록 토큰은 users의 단일 컬럼이었다. 그래서 세 가지 문제가 있었다:
+--   1) 같은 기기에서 계정을 바꿔 로그인하면 두 유저 행이 동일한 토큰을 갖고,
+--      먼저 쓰던 사람의 알림이 지금 쓰는 사람 폰에 배달됐다 (실명 포함).
+--   2) 기기를 여러 대 쓰면 마지막 로그인 기기만 푸시를 받았다.
+--   3) 로그아웃이 컬럼을 통째로 비워, 폰에서 로그아웃하면 태블릿 푸시도 죽었다.
+-- 토큰 자체가 앱 설치 단위 식별자이므로 UNIQUE (token)이 1)을 구조적으로 막는다.
+CREATE TABLE `fcm_tokens`
+(
+    `id`         BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+    `user_id`    BIGINT                NOT NULL,
+    `token`      VARCHAR(512)          NOT NULL,
+    `updated_at` DATETIME              NOT NULL DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
+    UNIQUE KEY `uk_fcm_tokens_token` (`token`),
+    INDEX `idx_fcm_tokens_user` (`user_id`),
+    FOREIGN KEY (`user_id`) REFERENCES users (`id`) ON DELETE CASCADE
+);
+
 CREATE TABLE `social_tokens`
 (
     `id`            BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
