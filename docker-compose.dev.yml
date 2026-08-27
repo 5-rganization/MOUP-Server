@@ -25,6 +25,8 @@ services:
     container_name: moup-server-dev
     env_file:
       - ./.env # 루트의 .env 파일 로드
+    environment:
+      SWAGGER_ENABLED: "true" # 개발 서버에서만 Swagger 노출 (prod는 기본값 false)
     expose:
       - "8080" # 내부 Nginx 연결용 포트
     depends_on:
