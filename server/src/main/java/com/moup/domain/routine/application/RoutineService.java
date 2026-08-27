@@ -79,7 +79,7 @@ public class RoutineService {
     }
 
     List<RoutineTaskCreateRequest> routineTaskCreateRequestList = request.getRoutineTaskList();
-    if (routineTaskCreateRequestList.size() >= MAX_TASK_COUNT_PER_ROUTINE) {
+    if (routineTaskCreateRequestList.size() > MAX_TASK_COUNT_PER_ROUTINE) {
       throw new DataLimitExceedException(
           "할 일은 루틴당 최대 " + MAX_TASK_COUNT_PER_ROUTINE + "개까지 생성할 수 있습니다.");
     }
@@ -330,7 +330,7 @@ public class RoutineService {
     }
 
     List<RoutineTaskUpdateRequest> routineTaskUpdateRequestList = request.getRoutineTaskList();
-    if (routineTaskUpdateRequestList.size() >= MAX_TASK_COUNT_PER_ROUTINE) {
+    if (routineTaskUpdateRequestList.size() > MAX_TASK_COUNT_PER_ROUTINE) {
       throw new DataLimitExceedException(
           "할 일은 루틴당 최대 " + MAX_TASK_COUNT_PER_ROUTINE + "개까지 생성할 수 있습니다.");
     }
@@ -362,7 +362,7 @@ public class RoutineService {
 
   @Transactional
   public void saveWorkRoutineMapping(Long userId, List<Long> routineIdList, Long workId) {
-    if (routineIdList.size() >= MAX_ROUTINE_COUNT_PER_WORK) {
+    if (routineIdList.size() > MAX_ROUTINE_COUNT_PER_WORK) {
       throw new DataLimitExceedException(
           "루틴은 한 근무당 최대 " + MAX_ROUTINE_COUNT_PER_WORK + "개까지 연결할 수 있습니다.");
     }
