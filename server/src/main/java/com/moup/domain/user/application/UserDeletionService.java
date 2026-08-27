@@ -18,9 +18,9 @@ public class UserDeletionService {
     private final UserService userService;
     private final AuthServiceFactory authServiceFactory;
 
-    /// 탈퇴 확정 처리. **소셜 연동 해제에 성공했을 때만** 유저를 삭제한다.
+    /// 탈퇴 확정 처리. **소셜 연동 해제에 성공했을 때만** 유저를 가명처리한다.
     ///
-    /// 실패했는데도 삭제하면 재시도 근거(`social_tokens`)가 CASCADE로 함께 사라져
+    /// 실패했는데도 처리하면 재시도 근거(`social_tokens`)가 함께 사라져
     /// 소셜 연동이 영구히 남는다. 삭제를 보류하면 유저가 `is_deleted = 1`로 남아
     /// 다음 배치가 다시 집어 재시도한다.
     @Async("taskExecutor")
@@ -32,7 +32,7 @@ public class UserDeletionService {
         if (authService == null) {
             log.error("소셜 연동 해제 불가 - 지원하지 않는 공급자입니다. 삭제를 진행합니다. userId={}, provider={}",
                     user.getId(), provider);
-            userService.deleteUserHardlyByUserId(user.getId());
+            userService.anonymizeUserByUserId(user.getId());
             return;
         }
 
@@ -49,7 +49,7 @@ public class UserDeletionService {
             return;
         }
 
-        userService.deleteUserHardlyByUserId(user.getId());
+        userService.anonymizeUserByUserId(user.getId());
     }
 
     /// 포기 기준을 넘긴 유저를 소셜 연동 해제 없이 삭제한다.
@@ -63,6 +63,6 @@ public class UserDeletionService {
                         + "수동 조치가 필요합니다. userId={}, provider={}, deletedAt={}",
                 giveUpPeriodDays, user.getId(), user.getProvider(), user.getDeletedAt());
 
-        userService.deleteUserHardlyByUserId(user.getId());
+        userService.anonymizeUserByUserId(user.getId());
     }
 }

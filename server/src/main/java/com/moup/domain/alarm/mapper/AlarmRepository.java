@@ -36,6 +36,12 @@ public interface AlarmRepository {
     @Delete("DELETE FROM normal_alarms WHERE id = #{notificationId}")
     void deleteNormalAlarmById(Long notificationId);
 
+    /// 탈퇴 확정 시 공지 수신 매핑을 지운다. 소프트 삭제(deleted_at)가 아니라 실제 삭제다 —
+    /// 탈퇴한 사용자의 알림함을 남겨둘 이유가 없다.
+    /// 하드 삭제를 없앴으므로 users CASCADE가 더 이상 발화하지 않는다.
+    @Delete("DELETE FROM admin_alarm_user_mappings WHERE user_id = #{userId}")
+    void deleteAllAdminAlarmMappingsByUserId(Long userId);
+
     @Delete("DELETE FROM normal_alarms WHERE receiver_id = #{userId}")
     void deleteAllNormalAlarmByUserId(Long userId);
 

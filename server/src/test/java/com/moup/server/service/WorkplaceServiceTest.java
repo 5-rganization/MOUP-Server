@@ -62,6 +62,8 @@ class WorkplaceServiceTest {
   private com.moup.domain.work.mapper.WorkRepository workRepository;
   @Mock
   private com.moup.domain.salary.application.SalaryCalculationService salaryCalculationService;
+  @Mock
+  private com.moup.domain.user.mapper.UserRepository userRepository;
 
   @InjectMocks
   private WorkplaceService workplaceService;
@@ -372,5 +374,47 @@ class WorkplaceServiceTest {
     verify(workplaceRepository).update(captor.capture());
     assertEquals("주소만 변경", captor.getValue().getAddress());
     assertNull(captor.getValue().getWorkplaceName());
+  }
+
+  // ========== 확정 정책 5 — 사장님 탈퇴 근무지 ==========
+
+  /// 탈퇴가 하드 삭제였을 때는 `owner_id IS NULL`이 곧 "사장님 탈퇴"였다.
+  /// 가명처리로 바꾸면 `owner_id`가 살아남으므로, 그 검사만 남겨두면
+  /// **OWNER_WITHDRAWN이 영영 뜨지 않는다.** 알바생은 사장님이 사라진 것을 알 수 없다.
+  @Test
+  @DisplayName("사장님이 가명처리돼도 근무지 상태가 OWNER_WITHDRAWN으로 뜬다")
+  void getWorkplace_OwnerWithdrawn() {
+    Long workplaceId = 10L;
+    Long ownerId = mockOwner.getId();
+
+    when(workplaceRepository.findById(workplaceId)).thenReturn(java.util.Optional.of(
+        Workplace.builder().id(workplaceId).ownerId(ownerId).workplaceName("편의점").build()));
+    when(workerRepository.findByUserIdAndWorkplaceId(mockWorkerUser.getId(), workplaceId))
+        .thenReturn(java.util.Optional.of(
+            Worker.builder().id(100L).userId(mockWorkerUser.getId()).isAccepted(true).build()));
+    // owner_id는 살아 있지만 그 사용자는 탈퇴했다
+    when(userRepository.findWithdrawnIdsIn(java.util.List.of(ownerId)))
+        .thenReturn(java.util.List.of(ownerId));
+
+    assertEquals(com.moup.domain.workplace.domain.WorkplaceStatus.OWNER_WITHDRAWN,
+        workplaceService.getWorkplace(mockWorkerUser.getId(), workplaceId).getStatus());
+  }
+
+  @Test
+  @DisplayName("사장님이 정상이면 ACTIVE다")
+  void getWorkplace_Active() {
+    Long workplaceId = 10L;
+    Long ownerId = mockOwner.getId();
+
+    when(workplaceRepository.findById(workplaceId)).thenReturn(java.util.Optional.of(
+        Workplace.builder().id(workplaceId).ownerId(ownerId).workplaceName("편의점").build()));
+    when(workerRepository.findByUserIdAndWorkplaceId(mockWorkerUser.getId(), workplaceId))
+        .thenReturn(java.util.Optional.of(
+            Worker.builder().id(100L).userId(mockWorkerUser.getId()).isAccepted(true).build()));
+    when(userRepository.findWithdrawnIdsIn(java.util.List.of(ownerId)))
+        .thenReturn(java.util.List.of());
+
+    assertEquals(com.moup.domain.workplace.domain.WorkplaceStatus.ACTIVE,
+        workplaceService.getWorkplace(mockWorkerUser.getId(), workplaceId).getStatus());
   }
 }

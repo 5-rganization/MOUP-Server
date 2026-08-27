@@ -101,6 +101,11 @@ public interface RoutineRepository {
     ///
     /// @param id 삭제할 루틴의 ID
     /// @param userId 삭제할 루틴의 사용자 ID
+    /// 탈퇴 확정 시 루틴 전체를 지운다. routine_tasks는 CASCADE로 따라간다.
+    /// 하드 삭제를 없앴으므로 users CASCADE가 더 이상 발화하지 않는다.
+    @Delete("DELETE FROM routines WHERE user_id = #{userId}")
+    void deleteAllByUserId(Long userId);
+
     @Delete("DELETE FROM routines WHERE id = #{id} AND user_id = #{userId}")
     void delete(Long id, Long userId);
 }

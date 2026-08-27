@@ -14,6 +14,11 @@ CREATE TABLE `users`
     `created_at`  TIMESTAMP                                                          DEFAULT CURRENT_TIMESTAMP(),
     `deleted_at`  TIMESTAMP,
     `is_deleted`  TINYINT(1)                                                         DEFAULT 0,
+    -- 탈퇴 확정 처리(가명처리)가 끝난 시각.
+    -- 하드 삭제를 없앴으므로 `is_deleted = 1` 행이 영구히 남는다. 이 컬럼이 없으면
+    -- 배치가 이미 처리한 사용자를 매일 다시 집어 소셜 연동 해제를 무한 재시도한다.
+    -- `is_deleted = 1 AND anonymized_at IS NULL` = "탈퇴 신청됨, 아직 처리 안 됨".
+    `anonymized_at` TIMESTAMP                                                        NULL,
     UNIQUE KEY `unique_provider` (`provider`, `provider_id`)
 );
 

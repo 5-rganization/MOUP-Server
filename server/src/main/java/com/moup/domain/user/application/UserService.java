@@ -48,6 +48,10 @@ public class UserService {
   private final UserTokenService userTokenService;
 
   private final UserRepository userRepository;
+  // 하드 삭제를 없애 users의 CASCADE가 더 이상 발화하지 않는다. 지울 것을 직접 지운다.
+  private final com.moup.domain.alarm.mapper.AlarmRepository alarmRepository;
+  private final com.moup.domain.routine.mapper.RoutineRepository routineRepository;
+  private final com.moup.global.security.token.SocialTokenRepository socialTokenRepository;
 
   private final NameVerifyUtil nameVerifyUtil;
   private final JwtUtil jwtUtil;
@@ -189,9 +193,42 @@ public class UserService {
         .build();
   }
 
+  /// 탈퇴 확정 — 행을 지우지 않고 **개인정보만 제거**한다 (확정 정책 5·7).
+  ///
+  /// 예전에는 `DELETE FROM users`였다. 그러면 `workplaces.owner_id`가 SET NULL이 되고
+  /// 사장님이 만든 근무지에 남아 있던 알바생들의 근무·급여 이력이 함께 무너진다.
+  /// 그 데이터는 사장님만의 것이 아니다 — 알바생의 임금·소득 증빙이기도 하다.
+  ///
+  /// 하드 삭제를 없앴으므로 `users`의 CASCADE가 더 이상 발화하지 않는다.
+  /// **지워야 할 것을 직접 지운다.** 빠뜨리면 탈퇴자의 자격증명과 알림이 그대로 남는다.
   @Transactional
-  public void deleteUserHardlyByUserId(Long userId) {
-    userRepository.hardDeleteUserById(userId);
+  public void anonymizeUserByUserId(Long userId) {
+    User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+
+    // 1. 개인 데이터 — 보존 대상이 아니다 (예전에는 CASCADE가 처리하던 것들)
+    socialTokenRepository.deleteByUserId(userId);      // 소셜 자격증명
+    userTokenService.deleteToken(userId);              // refresh 토큰
+    fcmTokenService.deleteAllUserFCMTokens(userId);    // 푸시 토큰 = 기기 식별자
+    routineRepository.deleteAllByUserId(userId);       // routine_tasks는 CASCADE로 따라감
+    alarmRepository.deleteAllNormalAlarmByUserId(userId);
+    alarmRepository.deleteAllAdminAlarmMappingsByUserId(userId);
+
+    // 2. S3 프로필 이미지 — 예전 하드 삭제도 이걸 지우지 않아 객체가 영구히 남았다(기존 결함).
+    //    삭제 실패로 탈퇴 처리를 되돌리지는 않는다. 고아 파일 하나가 낫다.
+    String profileImg = user.getProfileImg();
+    if (profileImg != null) {
+      try {
+        if (s3Service.doesFileExist(profileImg)) {
+          s3Service.deleteFile(profileImg);
+        }
+      } catch (RuntimeException e) {
+        log.warn("탈퇴 사용자 프로필 이미지 삭제 실패 - 고아 파일이 남습니다. userId={}, url={}",
+            userId, profileImg, e);
+      }
+    }
+
+    // 3. 보존: workplaces · workers · works · salaries
+    userRepository.anonymizeUserById(userId);
   }
 
   @Transactional
@@ -199,6 +236,12 @@ public class UserService {
     User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
     if (!user.isDeleted()) {
       throw new UserAlreadyExistsException();
+    }
+    // 가명처리가 끝났으면 되돌릴 것이 없다. 개인정보는 이미 제거됐고 provider_id도
+    // 난수로 바뀌어 같은 소셜 계정으로 로그인하면 새 계정이 생긴다.
+    // 여기서 막지 않으면 is_deleted만 0으로 돌아가 '이름 없는 유령 계정'이 살아난다.
+    if (user.getAnonymizedAt() != null) {
+      throw new AlreadyDeletedException();
     }
 
     userRepository.undeleteUserById(userId);

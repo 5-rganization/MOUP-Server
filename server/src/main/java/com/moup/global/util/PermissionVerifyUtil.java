@@ -1,7 +1,9 @@
 package com.moup.global.util;
 
 import com.moup.domain.user.domain.Worker;
+import com.moup.domain.user.mapper.UserRepository;
 import com.moup.global.error.InvalidPermissionAccessException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.Objects;
@@ -12,7 +14,10 @@ import java.util.Objects;
 /// (탈퇴 시 `ON DELETE SET NULL`). `equals`를 직접 호출하면 NPE(500)가 나므로
 /// `Objects.equals`로 NULL을 "불일치"로 취급해 fail-closed(403)로 만든다.
 @Component
+@RequiredArgsConstructor
 public class PermissionVerifyUtil {
+
+    private final UserRepository userRepository;
 
     /// 근무 행위(등록·출퇴근·수정·삭제·조회)에 대한 검증.
     ///
@@ -43,6 +48,22 @@ public class PermissionVerifyUtil {
         if (!Objects.equals(workerUserId, requesterUserId)
                 && !Objects.equals(workplaceOwnerId, requesterUserId)) {
             throw new InvalidPermissionAccessException();
+        }
+    }
+
+    /// 사장님이 탈퇴한 근무지에서는 **쓰기만** 막는다 (확정 정책 5 — 데이터 보존, 접근만 차단).
+    ///
+    /// 조회는 허용한다. 근무·급여 기록은 사장님만의 것이 아니라 **알바생의 임금·소득
+    /// 증빙**이기도 하다. 데이터를 보존하는 목적이 그것인데 정작 당사자가 못 보면
+    /// 보존의 의미가 없다.
+    ///
+    /// 쓰기를 막는 이유는 승인할 사장님이 없어 근무·급여 변경이 무의미하기 때문이다.
+    /// 근무지 **탈퇴**는 막지 않는다 — 막으면 알바생이 사라진 근무지에 영원히 묶인다.
+    ///
+    /// 소유자가 하드 삭제된 과거 데이터(`owner_id IS NULL`)도 같이 막는다.
+    public void verifyWorkplaceIsWritable(Long workplaceOwnerId) {
+        if (workplaceOwnerId == null || userRepository.isWithdrawn(workplaceOwnerId)) {
+            throw new InvalidPermissionAccessException("사장님이 탈퇴한 근무지입니다. 기록 조회만 가능합니다.");
         }
     }
 

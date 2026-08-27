@@ -1,18 +1,21 @@
 package com.moup.server.util;
 
 import com.moup.global.error.InvalidPermissionAccessException;
+import com.moup.domain.user.mapper.UserRepository;
 import com.moup.global.util.PermissionVerifyUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
 /// 스코프 7 C2 회귀 테스트.
 /// 탈퇴로 `owner_id` / `user_id`가 NULL이 된 행에서 NPE(500)가 아니라
 /// 403(`InvalidPermissionAccessException`)이 나와야 한다.
 class PermissionVerifyUtilTest {
 
-    private final PermissionVerifyUtil util = new PermissionVerifyUtil();
+    // 이 테스트는 NULL 처리만 본다 — 소유자 탈퇴 조회는 일어나지 않는다.
+    private final PermissionVerifyUtil util = new PermissionVerifyUtil(mock(UserRepository.class));
 
     @Test
     @DisplayName("사장님이 탈퇴해 owner_id가 NULL이면 NPE가 아니라 403")

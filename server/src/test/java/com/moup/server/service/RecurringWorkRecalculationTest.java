@@ -56,12 +56,14 @@ class RecurringWorkRecalculationTest {
     @Mock private SalaryCalculationService salaryCalculationService;
 
     // 실제 구현을 쓴다. 권한 검증까지 함께 통과해야 의미가 있다.
-    private final PermissionVerifyUtil permissionVerifyUtil = new PermissionVerifyUtil();
+    // userRepository는 @Mock이라 isWithdrawn이 기본값 false를 돌려준다 = 소유자 정상.
+    private PermissionVerifyUtil permissionVerifyUtil;
 
     private WorkService workService;
 
     private WorkService service() {
         if (workService == null) {
+            permissionVerifyUtil = new PermissionVerifyUtil(userRepository);
             workService = new WorkService(workRepository, salaryRepository, workerRepository,
                     workplaceRepository, userRepository, routineService,
                     salaryCalculationService, permissionVerifyUtil);

@@ -51,6 +51,7 @@ import java.util.Objects;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.Map;
 
@@ -64,6 +65,7 @@ public class WorkplaceService {
     private final WorkerRepository workerRepository;
     private final SalaryRepository salaryRepository;
     private final WorkRepository workRepository;
+    private final com.moup.domain.user.mapper.UserRepository userRepository;
 
     private final InviteCodeService inviteCodeService;
     private final SalaryCalculationService salaryCalculationService;
@@ -168,22 +170,39 @@ public class WorkplaceService {
                 .workplaceId(workplaceId)
                 .workplaceName(workplace.getWorkplaceName())
                 .isShared(workplace.isShared())
-                .status(resolveStatus(workplace, worker))
+                .status(resolveStatus(workplace, worker, findWithdrawnOwnerIds(List.of(workplace))))
                 .build();
     }
 
     /// 알바생 시점의 근무지 상태를 판정한다.
     ///
-    /// `owner_id`가 NULL이면 사장님이 하드 삭제된 것이다(FK가 `ON DELETE SET NULL`).
-    /// 별도 컬럼 없이 이 값 하나로 "사장님 탈퇴"를 알 수 있다.
-    private WorkplaceStatus resolveStatus(Workplace workplace, Worker worker) {
-        if (workplace.getOwnerId() == null) {
+    /// 탈퇴가 하드 삭제였을 때는 `owner_id IS NULL`(FK가 `ON DELETE SET NULL`)이 곧
+    /// "사장님 탈퇴"였다. 이제 탈퇴는 가명처리라 `owner_id`가 살아남으므로 그 검사만으로는
+    /// **OWNER_WITHDRAWN이 영영 뜨지 않는다.** 소유자의 `is_deleted`를 함께 본다.
+    /// NULL 검사는 과거 하드 삭제로 생긴 행을 위해 유지한다.
+    private WorkplaceStatus resolveStatus(Workplace workplace, Worker worker,
+                                          Set<Long> withdrawnOwnerIds) {
+        if (workplace.getOwnerId() == null || withdrawnOwnerIds.contains(workplace.getOwnerId())) {
             return WorkplaceStatus.OWNER_WITHDRAWN;
         }
         if (worker != null && !Boolean.TRUE.equals(worker.getIsAccepted())) {
             return WorkplaceStatus.PENDING_APPROVAL;
         }
         return WorkplaceStatus.ACTIVE;
+    }
+
+    /// 근무지들의 소유자 중 탈퇴한 사람의 id 집합. 쿼리 1회로 끝낸다.
+    private Set<Long> findWithdrawnOwnerIds(List<Workplace> workplaces) {
+        List<Long> ownerIds = workplaces.stream()
+                .map(Workplace::getOwnerId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        // foreach가 빈 컬렉션을 받으면 `IN ()`이라는 깨진 SQL이 된다.
+        if (ownerIds.isEmpty()) {
+            return Set.of();
+        }
+        return Set.copyOf(userRepository.findWithdrawnIdsIn(ownerIds));
     }
 
     @Transactional(readOnly = true)
@@ -204,6 +223,9 @@ public class WorkplaceService {
         // 3. [쿼리 2] workplaceId 리스트로 모든 Workplace 정보를 '한 번에' 가져온다.
         List<Workplace> workplaces = workplaceRepository.findAllByIdListIn(workplaceIds);
 
+        // 3-1. [쿼리 3] 소유자 탈퇴 여부를 한 번에 가져온다. 근무지마다 조회하면 N+1이 된다.
+        Set<Long> withdrawnOwnerIds = findWithdrawnOwnerIds(workplaces);
+
         // 4. 이제 DB 조회가 아닌 '메모리'에서 필터링 및 DTO 변환을 수행한다.
         Map<Long, Worker> workerByWorkplaceId = userAllWorkers.stream()
                 .collect(Collectors.toMap(Worker::getWorkplaceId, w -> w, (a, b) -> a));
@@ -214,7 +236,7 @@ public class WorkplaceService {
                         .workplaceId(workplace.getId())
                         .workplaceName(workplace.getWorkplaceName())
                         .isShared(workplace.isShared())
-                        .status(resolveStatus(workplace, workerByWorkplaceId.get(workplace.getId())))
+                        .status(resolveStatus(workplace, workerByWorkplaceId.get(workplace.getId()), withdrawnOwnerIds))
                         .build())
                 .sorted(Comparator.comparing(WorkplaceSummaryResponse::getWorkplaceName))
                 .toList();
@@ -236,6 +258,10 @@ public class WorkplaceService {
                 if (!(request instanceof WorkerWorkplaceUpdateRequest workerRequest)) {
                     throw new InvalidPermissionAccessException();
                 }
+                // 사장님이 탈퇴한 근무지에서는 급여 설정을 바꿀 수 없다 (확정 정책 5).
+                // 승인할 사장님이 없으므로 변경이 무의미하다. 조회는 허용된다.
+                permissionVerifyUtil.verifyWorkplaceIsWritable(workplaceRepository.findOwnerId(workplaceId));
+
                 Long workerId = findWorkerId(user.getId(), workplaceId);
                 workerRepository.updateWorkerBasedLabelColor(workerId, user.getId(), workplaceId,
                         workerRequest.getWorkerBasedLabelColor());

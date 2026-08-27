@@ -49,18 +49,18 @@ public class UserDeletionServiceTest {
   private UserDeletionService userDeletionService;
 
   @Test
-  @DisplayName("revoke에 성공하면 유저를 삭제한다")
+  @DisplayName("revoke에 성공하면 유저를 가명처리한다")
   void revoke_성공시_삭제() throws Exception {
     when(authServiceFactory.getService(Login.LOGIN_GOOGLE)).thenReturn(authService);
 
     userDeletionService.processUserDeletion(user());
 
     verify(authService, times(1)).revokeToken(USER_ID);
-    verify(userService, times(1)).deleteUserHardlyByUserId(USER_ID);
+    verify(userService, times(1)).anonymizeUserByUserId(USER_ID);
   }
 
   @Test
-  @DisplayName("revoke가 실패하면 삭제를 보류한다 (다음 배치에서 재시도)")
+  @DisplayName("revoke가 실패하면 가명처리를 보류한다 (다음 배치에서 재시도)")
   void revoke_실패시_삭제_보류() throws Exception {
     when(authServiceFactory.getService(Login.LOGIN_GOOGLE)).thenReturn(authService);
     doThrow(new AuthException("소셜 리프레시 토큰이 없습니다."))
@@ -68,11 +68,11 @@ public class UserDeletionServiceTest {
 
     userDeletionService.processUserDeletion(user());
 
-    verify(userService, never()).deleteUserHardlyByUserId(anyLong());
+    verify(userService, never()).anonymizeUserByUserId(anyLong());
   }
 
   @Test
-  @DisplayName("네트워크 오류로 revoke가 실패해도 삭제를 보류한다")
+  @DisplayName("네트워크 오류로 revoke가 실패해도 가명처리를 보류한다")
   void 네트워크_오류시_삭제_보류() throws Exception {
     when(authServiceFactory.getService(Login.LOGIN_GOOGLE)).thenReturn(authService);
     doThrow(new IOException("connection reset"))
@@ -80,7 +80,7 @@ public class UserDeletionServiceTest {
 
     userDeletionService.processUserDeletion(user());
 
-    verify(userService, never()).deleteUserHardlyByUserId(anyLong());
+    verify(userService, never()).anonymizeUserByUserId(anyLong());
   }
 
   @Test
@@ -90,7 +90,7 @@ public class UserDeletionServiceTest {
 
     userDeletionService.processUserDeletion(user());
 
-    verify(userService, times(1)).deleteUserHardlyByUserId(USER_ID);
+    verify(userService, times(1)).anonymizeUserByUserId(USER_ID);
   }
 
   @Test
@@ -100,7 +100,7 @@ public class UserDeletionServiceTest {
 
     // revoke를 아예 시도하지 않는다 — 이미 30일간 실패했으므로
     verify(authService, never()).revokeToken(anyLong());
-    verify(userService, times(1)).deleteUserHardlyByUserId(USER_ID);
+    verify(userService, times(1)).anonymizeUserByUserId(USER_ID);
   }
 
   private static User user() {

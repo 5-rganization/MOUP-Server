@@ -2,10 +2,12 @@ package com.moup.server.util;
 
 import com.moup.domain.user.domain.Worker;
 import com.moup.global.error.InvalidPermissionAccessException;
+import com.moup.domain.user.mapper.UserRepository;
 import com.moup.global.util.PermissionVerifyUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import static org.mockito.Mockito.mock;
 import static org.junit.jupiter.api.Assertions.*;
 
 /// Phase 2 회귀 테스트 — `is_accepted` 승인 게이트.
@@ -19,7 +21,8 @@ class IsAcceptedGateTest {
     private static final Long OWNER_USER_ID = 2L;
     private static final Long STRANGER_USER_ID = 99L;
 
-    private final PermissionVerifyUtil util = new PermissionVerifyUtil();
+    // 승인 게이트만 본다 — 소유자 탈퇴 조회는 일어나지 않는다.
+    private final PermissionVerifyUtil util = new PermissionVerifyUtil(mock(UserRepository.class));
 
     private Worker worker(Boolean accepted) {
         return Worker.builder().id(10L).userId(WORKER_USER_ID).workplaceId(20L).isAccepted(accepted).build();
