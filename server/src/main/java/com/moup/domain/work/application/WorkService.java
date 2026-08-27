@@ -619,7 +619,7 @@ public class WorkService {
     /// 출근 처리 전체를 **하나의 트랜잭션**으로 묶는다.
     ///
     /// 예전에는 컨트롤러가 `updateActualStartTime` → `createMyWork` →
-    /// `updateWorkerIsNowWorking`을 각각 호출했고 컨트롤러에 `@Transactional`이 없어
+    /// 출근 기록과 `is_now_working` 갱신을 각각 호출했고 컨트롤러에 `@Transactional`이 없어
     /// **세 개의 독립 트랜잭션**이었다. 근무 생성이 커밋된 뒤 상태 갱신이 실패하면
     /// `actual_start_time`은 기록됐는데 `is_now_working = false`가 되어,
     /// 이후 퇴근 호출이 "현재 진행 중인 근무가 없습니다"에 걸려 **영구 퇴근 불가**가 됐다.
