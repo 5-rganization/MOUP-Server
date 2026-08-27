@@ -222,25 +222,29 @@ public void updateUserFCMToken(Long userId, String fcmToken) {
 
 ## 확정 정책 6~9 (Q12~Q16 답변)
 
-### 확정 정책 6 — 루틴 가시성·적용 범위 (Q12 답변)
+### 확정 정책 6 — 루틴 가시성 (Q12 답변)
+
+**루틴은 알바생 개인의 것이다.** 사장님은 알바생 근무에 연결된 루틴의 **제목만** 볼 수 있고
+내용(할 일 목록)은 볼 수 없다.
 
 | 주체 | 할 수 있는 것 |
 |---|---|
-| 사장님 → 알바생 근무 | **자기 루틴을 적용할 수 있다** |
-| 사장님 ← 알바생이 적용한 루틴 | **제목만 보인다. 내용(할 일 목록)은 안 보인다** |
-| 알바생 | 자기 루틴 전체 |
+| 알바생 | 자기 루틴 전체 (생성·수정·삭제·근무 연결) |
+| 사장님 | 알바생 근무에 연결된 루틴의 **제목만 조회** |
 
-⚠️ **"사장님이 자기 루틴을 알바생 근무에 적용"은 버그 수정이 아니라 신규 기능이다.**
-`WorkService:734`에 `// (사장님은 루틴을 연결하지 않음)` 주석과 함께 **의도적으로 빠져 있고**,
-`createWorkForWorkerHelper`의 단일 근무 경로는 `saveWorkRoutineMapping`을 아예 호출하지 않는다.
-반복 근무 경로도 `worker.getUserId()`를 넘긴다. `WorkersWorkCreateRequest`에 `routineIdList`
-필드가 있는지부터 확인해야 한다.
+> **"사장님이 자기 루틴을 알바생 근무에 적용"은 하지 않는다** (제품 소유자 결정).
+> 검토 중 `WorkService:734`에 `// (사장님은 루틴을 연결하지 않음)` 주석이 있어
+> 현재 동작이 의도된 설계임이 확인됐고, 그대로 유지하기로 했다.
+> **따라서 I1은 순수 조회 수정이며 쓰기 경로는 건드리지 않는다.**
 
-⚠️ **I1 수정 시 `linkedWorks`를 빼야 한다.** `getAllRoutineByWorkRoutineMapping`이 반환하는
+⚠️ **I1 수정 시 응답에서 빼야 할 것.** `getAllRoutineByWorkRoutineMapping`이 반환하는
 `RoutineSummaryResponse`에는 `linkedWorks`(그 루틴이 걸린 **다른 근무들**)가 들어 있다
 (`RoutineService:443`). 사장님에게 그대로 주면 **알바생의 다른 근무지 근무까지 노출**된다.
-"제목만 보인다"는 정책은 `routineName`만 남기고 `alarmTime`·`linkedWorks`·할 일 목록을
-모두 제거하는 것을 뜻한다.
+"제목만"은 `routineName`만 남기고 `alarmTime`·`linkedWorks`·할 일 목록을 모두 빼는 것을 뜻한다.
+
+**수정 방향**: `:436`의 `findAllByIdListInAndUserId(routineIdList, userId)`를 요청자가
+사장님이면 `findAllByIdListIn(routineIdList)`(소유자 무관)로 분기하고, 사장님 응답은
+`routineName`만 담은 축소 DTO로 반환한다. `:412`의 권한 검증은 그대로 둔다.
 
 ### 확정 정책 7 — 미승인 근무자의 루틴 연결 금지 (Q13 답변)
 
