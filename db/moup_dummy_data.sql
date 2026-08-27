@@ -56,13 +56,13 @@ INSERT INTO user_tokens (user_id, refresh_token, expiry_date, created_at) VALUES
 -- 3) WORKPLACES
 -- =====================================
 INSERT INTO workplaces (owner_id, workplace_name, category_name, is_shared, address, latitude, longitude) VALUES
-                                                                                                              (@u_owner_park, 'GS25 역삼점', '편의점', 1, '서울 강남구 역삼동 123-45', 37.5009, 127.0374),
-                                                                                                              (@u_owner_park, '메가커피 선릉점', '카페', 1, '서울 강남구 대치동 678-90', 37.5042, 127.0488),
-                                                                                                              (@u_owner_park, '홍콩반점 홍대입구역점', '음식점', 1, '서울 마포구 서교동 345-67', 37.5567, 126.9237),
+                                                                                                              (@u_owner_park, 'GS25 역삼점', 'CVS', 1, '서울 강남구 역삼동 123-45', 37.5009, 127.0374),
+                                                                                                              (@u_owner_park, '메가커피 선릉점', 'CAFE', 1, '서울 강남구 대치동 678-90', 37.5042, 127.0488),
+                                                                                                              (@u_owner_park, '홍콩반점 홍대입구역점', 'RESTAURANT', 1, '서울 마포구 서교동 345-67', 37.5567, 126.9237),
                                                                                                               (@u_owner_park, '올리브영 신촌점', '판매점', 1, '서울 서대문구 창천동 543-21', 37.5598, 126.9423),
-                                                                                                              (@u_owner_park, '개인 스터디 카페', '카페', 1, '서울 관악구 신림동 111-22', 37.4844, 126.9294),
+                                                                                                              (@u_owner_park, '개인 스터디 카페', 'CAFE', 1, '서울 관악구 신림동 111-22', 37.4844, 126.9294),
                                                                                                               -- 알바생이 소유한 개인 근무지 (is_shared = 0)
-                                                                                                              (@u_choi_worker, '최알바 개인 근무지', '기타', 0, '서울 서대문구 (개인)', 37.5599, 126.9424);
+                                                                                                              (@u_choi_worker, '최알바 개인 근무지', 'OTHERS', 0, '서울 서대문구 (개인)', 37.5599, 126.9424);
 
 SET @wp_gs25 = 1;
 SET @wp_mega = 2;

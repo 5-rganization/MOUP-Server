@@ -18,6 +18,7 @@ import com.moup.domain.salary.dto.SalaryCreateRequest;
 import com.moup.domain.workplace.dto.WorkplaceJoinRequest;
 import com.moup.domain.user.domain.User;
 import com.moup.domain.workplace.domain.Workplace;
+import com.moup.domain.workplace.domain.WorkplaceCategory;
 import com.moup.domain.user.domain.Worker;
 import com.moup.domain.salary.mapper.SalaryRepository;
 import com.moup.domain.workplace.mapper.WorkplaceRepository;
@@ -266,7 +267,7 @@ class WorkplaceServiceTest {
 
     WorkerWorkplaceUpdateRequest request = WorkerWorkplaceUpdateRequest.builder()
         .workplaceName("이름을 바꿔달라고 보내더라도")
-        .categoryName("편의점")
+        .categoryName(WorkplaceCategory.CVS)
         .address("기본 주소")
         .latitude(0.0)
         .longitude(0.0)
@@ -303,7 +304,7 @@ class WorkplaceServiceTest {
 
     OwnerWorkplaceUpdateRequest request = OwnerWorkplaceUpdateRequest.builder()
         .workplaceName("새 이름")
-        .categoryName("편의점")
+        .categoryName(WorkplaceCategory.CVS)
         .address("경기 화성시 동탄중심상가1길 8")
         .latitude(37.2)
         .longitude(127.07)

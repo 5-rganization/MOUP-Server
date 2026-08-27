@@ -125,7 +125,9 @@ CREATE TABLE `workplaces`
     `id`             BIGINT AUTO_INCREMENT NOT NULL PRIMARY KEY,
     `owner_id`       BIGINT                NULL,
     `workplace_name` VARCHAR(50)           NOT NULL,
-    `category_name`  VARCHAR(10)           NOT NULL,
+    -- 표시용 한글이 아니라 WorkplaceCategory 코드가 들어간다.
+    -- VARCHAR(10)이었는데 가장 긴 코드 MOVIE_THEATER가 13자라 들어가지 않았다.
+    `category_name`  VARCHAR(20)           NOT NULL,
     `is_shared`      TINYINT(1) DEFAULT 0  NOT NULL,
     `address`        VARCHAR(100)          NULL,
     `latitude`       DECIMAL(9, 6)         NULL,

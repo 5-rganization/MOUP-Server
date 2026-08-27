@@ -50,7 +50,7 @@ public interface WorkplaceSpecification {
                                             value = """
                                                     {
                                                         "workplaceName": "세븐일레븐 동탄중심상가점",
-                                                        "categoryName": "편의점",
+                                                        "categoryName": "CVS",
                                                         "address": "경기 화성시 동탄중심상가1길 8 1층",
                                                         "latitude": 37.200089,
                                                         "longitude": 127.072006,
@@ -75,7 +75,7 @@ public interface WorkplaceSpecification {
                                             value = """
                                                     {
                                                         "workplaceName": "세븐일레븐 동탄중심상가점",
-                                                        "categoryName": "편의점",
+                                                        "categoryName": "CVS",
                                                         "address": "경기 화성시 동탄중심상가1길 8 1층",
                                                         "latitude": 37.200089,
                                                         "longitude": 127.072006,
@@ -97,7 +97,7 @@ public interface WorkplaceSpecification {
                                             value = """
                                                     {
                                                         "workplaceName": "세븐일레븐 동탄중심상가점",
-                                                        "categoryName": "편의점",
+                                                        "categoryName": "CVS",
                                                         "address": "경기 화성시 동탄중심상가1길 8 1층",
                                                         "latitude": 37.200089,
                                                         "longitude": 127.072006,
@@ -122,7 +122,7 @@ public interface WorkplaceSpecification {
                                             value = """
                                                     {
                                                         "workplaceName": "세븐일레븐 동탄중심상가점",
-                                                        "categoryName": "편의점",
+                                                        "categoryName": "CVS",
                                                         "address": "경기 화성시 동탄중심상가1길 8 1층",
                                                         "latitude": 37.200089,
                                                         "longitude": 127.072006,
@@ -183,7 +183,7 @@ public interface WorkplaceSpecification {
                                             value = """
                                                     {
                                                         "workplaceName": "세븐일레븐 동탄중심상가점",
-                                                        "categoryName": "편의점",
+                                                        "categoryName": "CVS",
                                                         "address": "경기 화성시 동탄중심상가1길 8 1층",
                                                         "latitude": 37.200089,
                                                         "longitude": 127.072006,
@@ -208,7 +208,7 @@ public interface WorkplaceSpecification {
                                             value = """
                                                     {
                                                         "workplaceName": "세븐일레븐 동탄중심상가점",
-                                                        "categoryName": "편의점",
+                                                        "categoryName": "CVS",
                                                         "address": "경기 화성시 동탄중심상가1길 8 1층",
                                                         "latitude": 37.200089,
                                                         "longitude": 127.072006,

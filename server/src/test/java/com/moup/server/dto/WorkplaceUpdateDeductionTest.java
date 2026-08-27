@@ -20,7 +20,7 @@ public class WorkplaceUpdateDeductionTest {
   private final ObjectMapper mapper = Jackson2ObjectMapperBuilder.json().build();
 
   private static final String COMMON = """
-      "workplaceName":"세븐일레븐","categoryName":"편의점",
+      "workplaceName":"세븐일레븐","categoryName":"CVS",
       "address":"기본 주소","latitude":0.0,"longitude":0.0
       """;
 

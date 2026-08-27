@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.moup.domain.user.dto.OwnerWorkplaceUpdateRequest;
 import com.moup.domain.user.dto.WorkerWorkplaceUpdateRequest;
 import com.moup.domain.workplace.domain.Workplace;
+import com.moup.domain.workplace.domain.WorkplaceCategory;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -29,10 +30,10 @@ public abstract class BaseWorkplaceUpdateRequest {
     @Size(max = 50, message = "50자 이내로 입력해야 합니다.")
     @Schema(description = "근무지(매장) 이름 — 생략 시 기존 값 유지", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String workplaceName;
-    @Pattern(regexp = ".*\\S.*", flags = Pattern.Flag.DOTALL, message = "빈 값이나 공백 문자는 받을 수 없습니다.")
-    @Size(max = 10, message = "10자 이내로 입력해야 합니다.")
-    @Schema(description = "근무지(매장) 카테고리 이름 — 생략 시 기존 값 유지", example = "편의점", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    private String categoryName;
+    // 열거형이므로 허용값 검증이 따로 필요 없다. PATCH라 생략(null)은 "변경 없음"이고,
+    // 값을 보냈는데 목록 밖이면 역직렬화 단계에서 422가 난다.
+    @Schema(description = "근무지(매장) 카테고리 코드 — 생략 시 기존 값 유지", example = "CVS", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    private WorkplaceCategory categoryName;
     @Size(max = 100, message = "100자 이내로 입력해야 합니다.")
     @Schema(description = "주소 — 생략 시 기존 값 유지", example = "경기 화성시 동탄중심상가1길 8 1층", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String address;

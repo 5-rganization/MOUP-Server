@@ -7,7 +7,9 @@ import com.moup.domain.user.dto.WorkerWorkplaceCreateRequest;
 import com.moup.domain.user.domain.Worker;
 import com.moup.domain.workplace.domain.Workplace;
 import io.swagger.v3.oas.annotations.media.Schema;
+import com.moup.domain.workplace.domain.WorkplaceCategory;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -21,9 +23,11 @@ public abstract class BaseWorkplaceCreateRequest {
     @NotBlank(message = "빈 값 혹은 공백 문자는 받을 수 없습니다.")
     @Schema(description = "근무지(매장) 이름", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.REQUIRED)
     private String workplaceName;
-    @NotBlank(message = "빈 값 혹은 공백 문자는 받을 수 없습니다.")
-    @Schema(description = "근무지(매장) 카테고리 이름", example = "편의점", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String categoryName;
+    // 표시용 한글이 아니라 코드로 받는다. 열거형이라 허용값 밖은 422로 걸린다
+    // (GlobalExceptionHandler가 InvalidFormatException을 422로 매핑한다).
+    @NotNull(message = "필수 입력값입니다.")
+    @Schema(description = "근무지(매장) 카테고리 코드", example = "CVS", requiredMode = Schema.RequiredMode.REQUIRED)
+    private WorkplaceCategory categoryName;
     @Schema(description = "주소", example = "경기 화성시 동탄중심상가1길 8 1층", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String address;
     @Schema(description = "위도", example = "37.2000891334382", requiredMode = Schema.RequiredMode.NOT_REQUIRED)

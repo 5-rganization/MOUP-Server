@@ -11,7 +11,7 @@ public class Workplace {
     private Long id;
     private Long ownerId;
     private String workplaceName;
-    private String categoryName;
+    private WorkplaceCategory categoryName;
     private boolean isShared;
     private String address;
     private Double latitude;

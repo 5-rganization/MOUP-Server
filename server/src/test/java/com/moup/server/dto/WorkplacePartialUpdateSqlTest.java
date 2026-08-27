@@ -1,6 +1,7 @@
 package com.moup.server.dto;
 
 import com.moup.domain.workplace.domain.Workplace;
+import com.moup.domain.workplace.domain.WorkplaceCategory;
 import com.moup.domain.workplace.mapper.WorkplaceRepository;
 import org.apache.ibatis.mapping.BoundSql;
 import org.apache.ibatis.mapping.MappedStatement;
@@ -47,7 +48,7 @@ public class WorkplacePartialUpdateSqlTest {
   void 전체_필드_전송() {
     String sql = renderUpdateSql(Workplace.builder()
         .id(1L).ownerId(2L)
-        .workplaceName("이름").categoryName("편의점")
+        .workplaceName("이름").categoryName(WorkplaceCategory.CVS)
         .address("경기 화성시").latitude(37.2).longitude(127.07).build());
 
     assertAll(
