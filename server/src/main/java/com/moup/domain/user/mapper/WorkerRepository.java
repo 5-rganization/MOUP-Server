@@ -149,7 +149,10 @@ public interface WorkerRepository {
     /// @param id 업데이트할 근무자의 ID
     /// @param workplaceId 업데이트할 근무자의 근무지 ID
     /// @param ownerBasedLabelColor 업데이트할 라벨 색상
-    @Update("UPDATE workers SET owner_based_label_color = #{ownerBasedLabelColor} WHERE id = #{id} AND user_id = #{userId} AND workplace_id = #{workplaceId}")
+    /// `user_id` 조건을 넣으면 안 된다. 호출자가 넘기는 것은 **사장님의 userId**인데
+    /// 대상 행의 `user_id`는 **알바생의 userId**라 절대 매치되지 않고, 서버는 204를 주지만
+    /// 실제로는 아무것도 바뀌지 않는다. `id`가 PK이고 `workplace_id`가 테넌시 가드다.
+    @Update("UPDATE workers SET owner_based_label_color = #{ownerBasedLabelColor} WHERE id = #{id} AND workplace_id = #{workplaceId}")
     void updateOwnerBasedLabelColor(Long id, Long userId, Long workplaceId, String ownerBasedLabelColor);
 
     /// 근무자 ID, 사용자 ID, 근무지 ID에 해당하는 근무자의 초대 승인 여부를 업데이트하는 메서드.
