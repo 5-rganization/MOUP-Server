@@ -41,3 +41,9 @@ out/
 data/
 mysql-data/
 redis-data/
+# 배치 로그 (예전에 실수로 커밋됐다)
+delete_old_users.log
+
+# Firebase 서비스 계정 키 — 절대 커밋 금지.
+# Jenkins가 빌드 시점에 이 경로로 복사한다.
+server/src/main/resources/keys/*.json
