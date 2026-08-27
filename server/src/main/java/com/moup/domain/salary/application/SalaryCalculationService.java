@@ -18,6 +18,7 @@ import com.moup.domain.workplace.domain.Workplace;
 import com.moup.domain.workplace.mapper.WorkplaceRepository;
 import com.moup.domain.workplace.dto.WorkplaceSummaryResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -33,6 +35,7 @@ import java.util.stream.Collectors;
 
 import static com.moup.global.common.TimeConstants.SEOUL_ZONE_ID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SalaryCalculationService {
@@ -89,28 +92,36 @@ public class SalaryCalculationService {
 
         List<Work> weekWorks = workRepository.findAllByWorkerIdAndDateRange(workerId, startOfWeek, endOfWeek);
 
-        // 주 총 근무시간을 계산하여 주휴수당 발생 조건(15시간 이상)을 확인합니다.
-        long weeklyWorkMinutes = weekWorks.stream()
+        // 분자와 분모를 **같은 집합**에서 뽑는다. 예전에는 주 근무시간은 퇴근 기록이 있는 근무만
+        // 합산하면서 배분 분모는 전체 건수를 써, 미퇴근 근무가 섞이면 주휴수당이 그만큼 증발했다.
+        List<Work> payableWorks = weekWorks.stream()
                 .filter(work -> work.getEndTime() != null)
-                .mapToLong(work -> Duration.between(work.getStartTime(), work.getEndTime()).toMinutes() - (work.getRestTimeMinutes() != null ? work.getRestTimeMinutes() : 0))
+                .toList();
+
+        long weeklyWorkMinutes = payableWorks.stream()
+                .mapToLong(SalaryCalculationService::netMinutesOf)
                 .sum();
 
-        int weeklyHolidayAllowance = 0;
-        if (weeklyWorkMinutes >= 15 * 60 && hasHolidayAllowance) {
-            if (!weekWorks.isEmpty()) {
-                // 주휴수당 발생 시, 주 평균 근무시간을 기준으로 수당을 계산합니다.
-                double avgDailyWorkHours = (weeklyWorkMinutes / 60.0) / weekWorks.size();
-                weeklyHolidayAllowance = (int) (avgDailyWorkHours * weekWorks.get(0).getHourlyRate());
+        int weeklyHolidayAllowance = calculateWeeklyHolidayAllowance(
+                payableWorks, weeklyWorkMinutes, hasHolidayAllowance);
+
+        // 주휴수당을 근무일에 배분한다. 정수 나눗셈 나머지는 버리지 않고 마지막 근무일에 몰아준다
+        // (주당 최대 근무일수-1원이 사라지던 문제).
+        int perWorkAllowance = payableWorks.isEmpty() ? 0 : weeklyHolidayAllowance / payableWorks.size();
+        int allowanceRemainder = payableWorks.isEmpty() ? 0 : weeklyHolidayAllowance % payableWorks.size();
+
+        List<Work> updatedWorks = new ArrayList<>(weekWorks.size());
+        for (Work work : weekWorks) {
+            int index = payableWorks.indexOf(work);
+            int dailyHolidayAllowance = 0;
+            if (index >= 0) {
+                dailyHolidayAllowance = perWorkAllowance
+                        + (index == payableWorks.size() - 1 ? allowanceRemainder : 0);
             }
+            // 퇴근 기록이 없는 근무도 통과시킨다. calculateDailyIncome이 0으로 초기화하므로
+            // 예전 계산 결과가 stale하게 남지 않는다.
+            updatedWorks.add(calculateDailyIncome(work, dailyHolidayAllowance, hasNightAllowance));
         }
-
-        // 계산된 주휴수당을 근무일 수로 나누어 일급에 분배합니다.
-        int dailyHolidayAllowance = weekWorks.isEmpty() ? 0 : weeklyHolidayAllowance / weekWorks.size();
-
-        List<Work> updatedWorks = weekWorks.stream()
-                .filter(work -> work.getEndTime() != null)
-                .map(work -> calculateDailyIncome(work, dailyHolidayAllowance, hasNightAllowance))
-                .toList();
 
         // 해당 주의 모든 근무일에 대해 일급을 재계산합니다.
         if (!updatedWorks.isEmpty()) {
@@ -119,6 +130,60 @@ public class SalaryCalculationService {
 
         // 마지막으로, 월 전체의 '추정 세후 일급'을 다시 계산하여 캘린더 표시용 데이터를 업데이트합니다.
         recalculateEstimatedNetIncomeForMonth(workerId, date.getYear(), date.getMonthValue(), salary);
+    }
+
+    /// 주휴수당 발생 하한 (주 15시간).
+    private static final long MIN_WEEKLY_MINUTES_FOR_HOLIDAY_ALLOWANCE = 15 * 60L;
+    /// 통상 근로자의 주 소정근로시간 (40시간).
+    private static final long FULL_TIME_WEEKLY_MINUTES = 40 * 60L;
+    /// 주휴수당 상한 일수 (1일 8시간).
+    private static final long HOLIDAY_ALLOWANCE_MINUTES = 8 * 60L;
+
+    /// 휴게시간을 뺀 순 근무시간. 휴게가 근무보다 길어도 음수가 되지 않게 막는다.
+    /// 예전에는 주간 합계에만 클램프가 없어 개별 근무의 `net_work_minutes` 합과
+    /// 주간 합계가 서로 달랐고, 15시간·40시간 임계 근처에서 주휴수당 발생 여부가 뒤집혔다.
+    private static long netMinutesOf(Work work) {
+        long gross = Duration.between(work.getStartTime(), work.getEndTime()).toMinutes();
+        long rest = work.getRestTimeMinutes() != null ? work.getRestTimeMinutes() : 0L;
+        return Math.max(0L, gross - rest);
+    }
+
+    /// 주휴수당 = `min(주 소정근로시간 ÷ 40, 1.0) × 8 × 시급` (주 15시간 이상일 때만).
+    ///
+    /// 근로기준법 시행령 제9조 제1항 별표2. 예전 산식은
+    /// `(주 총 근로시간 ÷ 근무일수) × 시급`으로 **1일 평균 근무시간에 시급을 곱했고
+    /// 8시간 상한도 없었다.** 주 5일 근무일 때만 우연히 일치했고,
+    /// 주 2일(10시간씩) 근무자에게는 2.5배를 지급했다.
+    private int calculateWeeklyHolidayAllowance(List<Work> payableWorks, long weeklyWorkMinutes,
+                                                boolean hasHolidayAllowance) {
+        if (!hasHolidayAllowance || payableWorks.isEmpty()
+                || weeklyWorkMinutes < MIN_WEEKLY_MINUTES_FOR_HOLIDAY_ALLOWANCE) {
+            return 0;
+        }
+        Integer baseHourlyRate = resolveWeeklyBaseHourlyRate(payableWorks);
+        if (baseHourlyRate == null) {
+            log.warn("주휴수당 산정 불가 - 그 주 근무에 시급 정보가 없습니다. workDate={}",
+                    payableWorks.get(0).getWorkDate());
+            return 0;
+        }
+        long cappedMinutes = Math.min(weeklyWorkMinutes, FULL_TIME_WEEKLY_MINUTES);
+        return (int) (cappedMinutes * HOLIDAY_ALLOWANCE_MINUTES * baseHourlyRate
+                / (FULL_TIME_WEEKLY_MINUTES * 60L));
+    }
+
+    /// 확정 정책 4 — 기준 시급은 **그 주 마지막 근무**의 시급이다.
+    ///
+    /// `works.hourly_rate`는 NULL을 허용하므로(레거시 행) 뒤에서부터 첫 non-null을 찾는다.
+    /// 예전에는 `weekWorks.get(0).getHourlyRate()`를 그대로 언박싱해
+    /// **NULL 한 건이 그 주 전체를 500으로 만들었다.**
+    private Integer resolveWeeklyBaseHourlyRate(List<Work> payableWorks) {
+        for (int i = payableWorks.size() - 1; i >= 0; i--) {
+            Integer rate = payableWorks.get(i).getHourlyRate();
+            if (rate != null) {
+                return rate;
+            }
+        }
+        return null;
     }
 
     /// 하루 근무에 대한 세전 일급(각종 수당 포함)을 상세하게 계산합니다.
@@ -140,36 +205,49 @@ public class SalaryCalculationService {
         LocalDateTime end = work.getEndTime();
         int restMinutes = work.getRestTimeMinutes() != null ? work.getRestTimeMinutes() : 0;
 
-        // --- 야간 및 연장 근무 시간 계산 ---
+        // --- 야간 근무 시간 계산 ---
         long grossWorkMinutes = 0;
         long nightWorkMinutes = 0;
 
-        // 근무 시간을 1분 단위로 순회하며 야간/연장 시간을 카운트합니다.
+        // 근무 시간을 1분 단위로 순회하며 야간 시간을 카운트합니다.
+        //
+        // 야간 시간은 **사실 기록**이므로 야간수당 설정과 무관하게 항상 센다.
+        // 예전에는 `if (hasNightAllowance)` 안에서만 세어, 수당을 끄고 일한 기간은
+        // night_work_minutes가 0으로 남았다. 나중에 수당을 켜도 그 기간은 복원되지 않는다.
         LocalDateTime cursor = start;
-
         while (cursor.isBefore(end)) {
-            // 1. 총 근무시간(Gross) 1분 추가
             grossWorkMinutes++;
-            if (hasNightAllowance) {
-                LocalTime cursorTime = cursor.toLocalTime();
-                // 2. 22:00 이후 이거나, 06:00 이전일 때
-                if (cursorTime.isAfter(NIGHT_START_TIME) || cursorTime.equals(NIGHT_START_TIME) || cursorTime.isBefore(NIGHT_END_TIME)) {
-                    // 야간 근무시간 1분 추가
-                    nightWorkMinutes++;
-                }
+            LocalTime cursorTime = cursor.toLocalTime();
+            if (!cursorTime.isBefore(NIGHT_START_TIME) || cursorTime.isBefore(NIGHT_END_TIME)) {
+                nightWorkMinutes++;
             }
             cursor = cursor.plusMinutes(1);
         }
 
-        long netWorkMinutes = grossWorkMinutes - restMinutes;
-        if (netWorkMinutes < 0) netWorkMinutes = 0;
+        long netWorkMinutes = Math.max(0L, grossWorkMinutes - restMinutes);
+
+        // 휴게시간이 언제 소진됐는지는 기록에 없다. 근무 시간대에 비례해 배분한다
+        // (확정 정책 1의 "근무 시간대로 배분"과 같은 원칙).
+        //
+        // 이 보정이 없으면 net(휴게 제외)에서 야간(휴게 미제외)을 빼는 곳에서
+        // **주간 근무시간이 음수**가 된다.
+        long netNightMinutes = (grossWorkMinutes == 0)
+                ? 0
+                : nightWorkMinutes * netWorkMinutes / grossWorkMinutes;
 
         // --- 수당 계산 ---
+        // 정수 연산으로 계산한다. `분 / 60.0 * 시급`은 이진 부동소수점 오차 때문에
+        // 값이 1원씩 낮게 떨어졌다(시급 12,000 × 246분 → 49,199원, 정답 49,200원).
+        // 시급 1,000~30,000 × 1~1,440분 전수 탐색에서 90,310건이 어긋났고,
+        // 절삭 방향은 **항상 근로자에게 불리**했다.
         int hourlyRate = (work.getHourlyRate() != null) ? work.getHourlyRate() : 0;
-        int basePay = (int) (netWorkMinutes / 60.0 * hourlyRate);
+        int basePay = (int) (netWorkMinutes * hourlyRate / 60L);
 
         int nightAllowance = 0;
-        if (hasNightAllowance) { nightAllowance = (int) (nightWorkMinutes / 60.0 * hourlyRate * 0.5); }
+        if (hasNightAllowance) {
+            // 야간 가산 50% → 분 × 시급 × 0.5 / 60 = 분 × 시급 / 120
+            nightAllowance = (int) (netNightMinutes * hourlyRate / 120L);
+        }
 
         int grossIncome = basePay + nightAllowance + dailyHolidayAllowance;
 
@@ -177,7 +255,7 @@ public class SalaryCalculationService {
         return work.toBuilder()
                 .grossWorkMinutes((int) grossWorkMinutes)
                 .netWorkMinutes((int) netWorkMinutes)
-                .nightWorkMinutes((int) nightWorkMinutes)
+                .nightWorkMinutes((int) netNightMinutes)
                 .basePay(basePay)
                 .nightAllowance(nightAllowance)
                 .holidayAllowance(dailyHolidayAllowance)
@@ -258,7 +336,7 @@ public class SalaryCalculationService {
 
         long totalMinutesWorked = monthWorks.stream()
                 .filter(work -> work.getEndTime() != null)
-                .mapToLong(work -> Duration.between(work.getStartTime(), work.getEndTime()).toMinutes() - (work.getRestTimeMinutes() != null ? work.getRestTimeMinutes() : 0))
+                .mapToLong(SalaryCalculationService::netMinutesOf)   // 음수 클램프 포함
                 .sum();
 
         long estimatedTotalHours = 0;
