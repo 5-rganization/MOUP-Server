@@ -352,7 +352,7 @@ public class WorkService {
         // --- 근무지 및 근무자 관련 정보 로드 ---
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
         Optional<Worker> requesterWorkerOpt = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId);
-        if (requesterWorkerOpt.isEmpty() && !workplace.getOwnerId().equals(user.getId())) { throw new InvalidPermissionAccessException(); }
+        if (requesterWorkerOpt.isEmpty() && !Objects.equals(workplace.getOwnerId(), user.getId())) { throw new InvalidPermissionAccessException(); }
         WorkplaceSummaryResponse workplaceSummaryInfo = WorkplaceSummaryResponse.builder()
                 .workplaceId(workplace.getId()).workplaceName(workplace.getWorkplaceName()).isShared(workplace.isShared()).build();
         List<Worker> workplaceWorkerList = workerRepository.findAllByWorkplaceId(workplaceId);

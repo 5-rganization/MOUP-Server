@@ -47,6 +47,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Objects;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -250,7 +251,7 @@ public class WorkplaceService {
     public void deleteWorkplace(Long userId, Long workplaceId) {
         Workplace workplace = workplaceRepository.findById(workplaceId)
                 .orElseThrow(WorkplaceNotFoundException::new);
-        if (workplace.getOwnerId().equals(userId)) {
+        if (Objects.equals(workplace.getOwnerId(), userId)) {
             // 근무지(매장)을 만든 사용자가 삭제하는 경우
             workplaceRepository.delete(workplaceId, userId);
         } else {
