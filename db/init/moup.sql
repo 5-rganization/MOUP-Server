@@ -161,6 +161,12 @@ CREATE TABLE `works`
     `night_work_minutes`      INT                   DEFAULT 0,  -- 야간 근무시간(분, 휴게시간 제외)
     `memo`                    VARCHAR(200)          NULL,
     `hourly_rate`             INT                   NULL,
+    -- 수당 적용 여부 스냅샷. hourly_rate와 달리 예전에는 salaries의 **현재값**을 읽어,
+    -- 나중에 수당을 켜면 그 주의 근무 하나만 수정해도 그 주 전체가 새 정책으로 재계산됐다.
+    -- salaries는 제자리 UPDATE라 이력이 없어 옛 설정을 복원할 방법도 없었다.
+    -- 확정 정책 3(급여 스냅샷) 위반.
+    `has_night_allowance`     TINYINT(1)            NOT NULL DEFAULT 0,
+    `has_holiday_allowance`   TINYINT(1)            NOT NULL DEFAULT 0,
     `base_pay`                INT                   DEFAULT 0,  -- 기본급 (휴게시간 제외)
     `night_allowance`         INT                   DEFAULT 0,  -- 야간수당
     `holiday_allowance`       INT                   DEFAULT 0,  -- 주휴수당 (해당 주에 발생한 수당을 N등분하여 일별로 저장)

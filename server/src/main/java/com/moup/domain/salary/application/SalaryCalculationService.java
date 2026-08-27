@@ -84,8 +84,11 @@ public class SalaryCalculationService {
             return;
         }
 
-        boolean hasHolidayAllowance = (salary != null) && salary.getHasHolidayAllowance();
-        boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
+        // 수당 적용 여부는 **근무 행의 스냅샷**을 쓴다. `salaries`의 현재값을 읽으면
+        // 나중에 수당을 켰을 때 그 주의 근무 하나만 수정해도 그 주 전체가 새 정책으로
+        // 재계산되어, 같은 알바생의 근무가 주마다 다른 정책으로 계산된다.
+        // 어느 주가 어느 정책인지가 "수정을 건드렸는지"라는 무관한 이력에 좌우된다.
+        // 확정 정책 3(급여 스냅샷).
 
         LocalDate startOfWeek = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         LocalDate endOfWeek = date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
@@ -101,6 +104,10 @@ public class SalaryCalculationService {
         long weeklyWorkMinutes = payableWorks.stream()
                 .mapToLong(SalaryCalculationService::netMinutesOf)
                 .sum();
+
+        // 확정 정책 4의 기준 시급과 같은 규칙 — 그 주 **마지막 근무**의 설정을 따른다.
+        boolean hasHolidayAllowance = !payableWorks.isEmpty()
+                && Boolean.TRUE.equals(payableWorks.get(payableWorks.size() - 1).getHasHolidayAllowance());
 
         int weeklyHolidayAllowance = calculateWeeklyHolidayAllowance(
                 payableWorks, weeklyWorkMinutes, hasHolidayAllowance);
@@ -120,7 +127,8 @@ public class SalaryCalculationService {
             }
             // 퇴근 기록이 없는 근무도 통과시킨다. calculateDailyIncome이 0으로 초기화하므로
             // 예전 계산 결과가 stale하게 남지 않는다.
-            updatedWorks.add(calculateDailyIncome(work, dailyHolidayAllowance, hasNightAllowance));
+            updatedWorks.add(calculateDailyIncome(work, dailyHolidayAllowance,
+                    Boolean.TRUE.equals(work.getHasNightAllowance())));
         }
 
         // 해당 주의 모든 근무일에 대해 일급을 재계산합니다.

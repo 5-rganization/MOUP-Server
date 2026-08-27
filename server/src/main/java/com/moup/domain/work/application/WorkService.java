@@ -601,6 +601,48 @@ public class WorkService {
         }
     }
 
+    /// 출근 처리 결과. `created`가 true면 근무를 새로 만든 것이라 201을 반환해야 한다.
+    public record ClockInResult(boolean created, WorkCreateResponse response) {}
+
+    /// 출근 처리 전체를 **하나의 트랜잭션**으로 묶는다.
+    ///
+    /// 예전에는 컨트롤러가 `updateActualStartTime` → `createMyWork` →
+    /// `updateWorkerIsNowWorking`을 각각 호출했고 컨트롤러에 `@Transactional`이 없어
+    /// **세 개의 독립 트랜잭션**이었다. 근무 생성이 커밋된 뒤 상태 갱신이 실패하면
+    /// `actual_start_time`은 기록됐는데 `is_now_working = false`가 되어,
+    /// 이후 퇴근 호출이 "현재 진행 중인 근무가 없습니다"에 걸려 **영구 퇴근 불가**가 됐다.
+    /// 그 근무는 `actual_end_time IS NULL`이라 다음 출근 대상에서도 제외돼
+    /// **자가 복구 경로가 없었다.**
+    @Transactional
+    public ClockInResult clockIn(Long userId, Long workplaceId) {
+        // 예정된 근무가 있으면 거기에 출근 기록만 남긴다 (내부에서 is_now_working도 함께 갱신).
+        if (updateActualStartTime(userId, workplaceId)) {
+            return new ClockInResult(false, null);
+        }
+
+        // 예정된 근무가 없으면 즉석 근무를 만든다.
+        Instant currentTime = Instant.now();
+        MyWorkCreateRequest request = MyWorkCreateRequest.builder()
+                .routineIdList(Collections.emptyList())
+                .startTime(currentTime)
+                .actualStartTime(currentTime)
+                .endTime(null)
+                .actualEndTime(null)
+                .restTimeMinutes(0)
+                .memo(null)
+                .repeatDays(Collections.emptyList())
+                .repeatEndDate(null)
+                .build();
+
+        WorkCreateResponse response = createMyWork(userId, workplaceId, request);
+
+        Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
+                .orElseThrow(WorkerNotFoundException::new);
+        workerRepository.updateIsNowWorking(worker.getId(), userId, workplaceId, true);
+
+        return new ClockInResult(true, response);
+    }
+
     /// 사용자의 실제 퇴근 시간을 기록합니다.
     @Transactional
     public void updateActualEndTime(Long userId, Long workplaceId) {
@@ -781,12 +823,16 @@ public class WorkService {
 
         int hourlyRate = (salary != null && salary.getHourlyRate() != null) ? salary.getHourlyRate() : 0;
         boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
+        boolean hasHolidayAllowance = (salary != null) && salary.getHasHolidayAllowance();
         verifyStartEndTime(startTime, endTime);
 
         Work tempWork = Work.builder().startTime(startTime).endTime(endTime).restTimeMinutes(restTimeMinutes).hourlyRate(hourlyRate).build();
         Work workWithDailyIncome = salaryCalculationService.calculateDailyIncome(tempWork, 0, hasNightAllowance);
 
         Work workToCreate = workWithDailyIncome.toBuilder()
+                // 확정 정책 3 — 등록 시점의 수당 설정을 근무 행에 고정한다.
+                .hasNightAllowance(hasNightAllowance)
+                .hasHolidayAllowance(hasHolidayAllowance)
                 .workerId(worker.getId()).workDate(startTime.toLocalDate())
                 .startTime(startTime).endTime(endTime)
                 .actualStartTime(actualStartTime).actualEndTime(actualEndTime)
@@ -813,6 +859,7 @@ public class WorkService {
 
         int hourlyRate = (salary != null && salary.getHourlyRate() != null) ? salary.getHourlyRate() : 0;
         boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
+        boolean hasHolidayAllowance = (salary != null) && salary.getHasHolidayAllowance();
 
         verifyStartEndTime(startTime, endTime);
         LocalDate startDate = startTime.toLocalDate();
@@ -838,6 +885,9 @@ public class WorkService {
 
                 // Work 엔티티 생성 (일급 정보 재사용, 실제 시간은 null)
                 Work recurringWork = workWithDailyIncome.toBuilder()
+                        // 확정 정책 3 — 등록 시점의 수당 설정을 근무 행에 고정한다.
+                        .hasNightAllowance(hasNightAllowance)
+                        .hasHolidayAllowance(hasHolidayAllowance)
                         .id(null).workerId(worker.getId()).workDate(currentDate)
                         .startTime(newStartTime).endTime(newEndTime)
                         .actualStartTime(null) // 반복 생성 시 실제 시간 null

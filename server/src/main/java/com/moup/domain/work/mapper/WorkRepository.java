@@ -31,13 +31,15 @@ public interface WorkRepository {
       INSERT INTO works (
           worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time,
           rest_time_minutes, gross_work_minutes, net_work_minutes, night_work_minutes,
-          memo, hourly_rate, base_pay, night_allowance, holiday_allowance,
+          memo, hourly_rate, has_night_allowance, has_holiday_allowance,
+          base_pay, night_allowance, holiday_allowance,
           gross_income, estimated_net_income, repeat_group_id
       )
       VALUES (
           #{workerId}, #{workDate}, #{startTime}, #{actualStartTime}, #{endTime}, #{actualEndTime},
           #{restTimeMinutes}, #{grossWorkMinutes}, #{netWorkMinutes}, #{nightWorkMinutes},
-          #{memo}, #{hourlyRate}, #{basePay}, #{nightAllowance}, #{holidayAllowance},
+          #{memo}, #{hourlyRate}, #{hasNightAllowance}, #{hasHolidayAllowance},
+          #{basePay}, #{nightAllowance}, #{holidayAllowance},
           #{grossIncome}, #{estimatedNetIncome}, #{repeatGroupId}
       )
       """)
@@ -50,7 +52,8 @@ public interface WorkRepository {
           INSERT INTO works (
               worker_id, work_date, start_time, end_time, rest_time_minutes,
               gross_work_minutes, net_work_minutes, night_work_minutes,
-              memo, hourly_rate, base_pay, night_allowance, holiday_allowance,
+              memo, hourly_rate, has_night_allowance, has_holiday_allowance,
+              base_pay, night_allowance, holiday_allowance,
               gross_income, estimated_net_income, repeat_group_id
           )
           VALUES
@@ -58,7 +61,8 @@ public interface WorkRepository {
               (
                   #{work.workerId}, #{work.workDate}, #{work.startTime}, #{work.endTime}, #{work.restTimeMinutes},
                   #{work.grossWorkMinutes}, #{work.netWorkMinutes}, #{work.nightWorkMinutes},
-                  #{work.memo}, #{work.hourlyRate}, #{work.basePay}, #{work.nightAllowance}, #{work.holidayAllowance},
+                  #{work.memo}, #{work.hourlyRate}, #{work.hasNightAllowance}, #{work.hasHolidayAllowance},
+                  #{work.basePay}, #{work.nightAllowance}, #{work.holidayAllowance},
                   #{work.grossIncome}, #{work.estimatedNetIncome}, #{work.repeatGroupId}
               )
           </foreach>

@@ -226,32 +226,21 @@ public class WorkController implements WorkSpecification {
     ) {
         Long userId = identityService.getCurrentUserId();
 
-        if (workService.updateActualStartTime(userId, workplaceId)) {
-            // API 명세: 204 No Content (업데이트 성공)
-            return ResponseEntity.noContent().build();
-        } else {
-            // API 명세: 201 Created (근무 생성 성공)
-            Instant currentTime = Instant.now();
-            MyWorkCreateRequest request = MyWorkCreateRequest.builder()
-                    .routineIdList(Collections.emptyList())
-                    .startTime(currentTime)
-                    .actualStartTime(currentTime)
-                    .endTime(null)
-                    .actualEndTime(null)
-                    .restTimeMinutes(0)
-                    .memo(null)
-                    .repeatDays(Collections.emptyList())
-                    .repeatEndDate(null)
-                    .build();
+        // 출근 처리 전체가 하나의 트랜잭션이어야 한다. 예전에는 여기서 세 번 나눠 호출해
+        // 중간에 실패하면 "출근은 됐는데 퇴근이 안 되는" 상태로 영구히 고착됐다.
+        WorkService.ClockInResult result = workService.clockIn(userId, workplaceId);
 
-            WorkCreateResponse response = workService.createMyWork(userId, workplaceId, request);
-            workerService.updateWorkerIsNowWorking(userId, workplaceId, true);
-            URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
-                    .path("/works/{id}")
-                    .buildAndExpand(response.getWorkIdList().get(0))
-                    .toUri();
-            return ResponseEntity.created(location).body(response);
+        if (!result.created()) {
+            // API 명세: 204 No Content (예정된 근무에 출근 기록만 갱신)
+            return ResponseEntity.noContent().build();
         }
+
+        // API 명세: 201 Created (근무 생성 성공)
+        URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/works/{id}")
+                .buildAndExpand(result.response().getWorkIdList().get(0))
+                .toUri();
+        return ResponseEntity.created(location).body(result.response());
     }
 
     @Override

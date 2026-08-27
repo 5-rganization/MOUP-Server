@@ -24,6 +24,9 @@ public class Work {
     private Integer nightWorkMinutes;
     private String memo;
     private Integer hourlyRate;
+    /// 등록 시점의 수당 적용 여부 스냅샷 (확정 정책 3).
+    private Boolean hasNightAllowance;
+    private Boolean hasHolidayAllowance;
     private Integer basePay;
     private Integer nightAllowance;
     private Integer holidayAllowance;

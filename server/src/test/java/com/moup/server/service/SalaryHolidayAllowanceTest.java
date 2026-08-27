@@ -228,6 +228,56 @@ class SalaryHolidayAllowanceTest {
         assertEquals(48_000, total, "NULL은 건너뛰고 마지막 non-null 시급을 쓴다");
     }
 
+
+    // ================= C-7 — 수당 플래그 스냅샷 =================
+
+    @Test
+    @DisplayName("주휴수당 여부는 salaries의 현재값이 아니라 근무 행의 스냅샷을 따른다")
+    void 주휴수당_플래그는_스냅샷을_따른다() {
+        LocalDate monday = LocalDate.of(2025, 11, 10);
+        List<Work> works = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            LocalDate date = monday.plusDays(i);
+            // 등록 당시 주휴수당을 쓰지 않기로 한 근무들
+            works.add(work((long) (i + 1), date, date.atTime(9, 0), date.atTime(17, 0), 0)
+                    .toBuilder().hasHolidayAllowance(false).build());
+        }
+
+        // salaries는 지금 주휴수당이 켜져 있다(hourlySalary()의 hasHolidayAllowance = true).
+        List<Work> written = runWeek(monday, works);
+        int total = written.stream().mapToInt(Work::getHolidayAllowance).sum();
+
+        assertEquals(0, total,
+                "현재 설정을 읽으면 옛 근무에 주휴수당이 소급 적용된다. 확정 정책 3 위반");
+    }
+
+    @Test
+    @DisplayName("야간수당 여부도 근무별 스냅샷을 따른다")
+    void 야간수당_플래그도_스냅샷을_따른다() {
+        LocalDate monday = LocalDate.of(2025, 11, 10);
+        List<Work> works = new ArrayList<>();
+        // 22:00~06:00 야간 근무 2건. 첫 건만 야간수당 스냅샷이 켜져 있다.
+        for (int i = 0; i < 2; i++) {
+            LocalDate date = monday.plusDays(i);
+            works.add(work((long) (i + 1), date, date.atTime(22, 0), date.plusDays(1).atTime(6, 0), 0)
+                    .toBuilder()
+                    .hasNightAllowance(i == 0)
+                    .hasHolidayAllowance(false)
+                    .build());
+        }
+
+        List<Work> written = runWeek(monday, works);
+
+        assertAll(
+                () -> assertEquals(40_000, written.get(0).getNightAllowance(),
+                        "스냅샷이 켜진 근무는 야간수당을 받는다 (480분 × 10,000 × 0.5)"),
+                () -> assertEquals(0, written.get(1).getNightAllowance(),
+                        "스냅샷이 꺼진 근무는 같은 주여도 야간수당이 없다"),
+                () -> assertEquals(480, written.get(1).getNightWorkMinutes(),
+                        "수당과 무관하게 야간 시간은 사실로 기록된다")
+        );
+    }
+
     // ================= 헬퍼 =================
 
     /// 주 단위 재계산을 돌리고 DB에 쓰인 결과를 돌려준다.
@@ -246,7 +296,10 @@ class SalaryHolidayAllowanceTest {
 
     private static Work work(Long id, LocalDate workDate, LocalDateTime start, LocalDateTime end, int rest) {
         return Work.builder().id(id).workerId(WORKER_ID).workDate(workDate)
-                .startTime(start).endTime(end).restTimeMinutes(rest).hourlyRate(HOURLY_RATE).build();
+                .startTime(start).endTime(end).restTimeMinutes(rest).hourlyRate(HOURLY_RATE)
+                // 수당 스냅샷 (확정 정책 3). 기본은 켜진 상태로 둔다.
+                .hasNightAllowance(true).hasHolidayAllowance(true)
+                .build();
     }
 
     private static Salary hourlySalary() {
