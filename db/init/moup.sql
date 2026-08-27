@@ -25,6 +25,7 @@ CREATE TABLE `social_tokens`
     `user_id`       BIGINT                NOT NULL,
     `refresh_token` TEXT                  NULL,
     `updated_at`    TIMESTAMP,
+    UNIQUE KEY `uk_social_tokens_user` (`user_id`),
     FOREIGN KEY (`user_id`) REFERENCES users (`id`) ON DELETE CASCADE
 );
 
@@ -35,6 +36,7 @@ CREATE TABLE `user_tokens`
     `refresh_token` TEXT                  NOT NULL,
     `expiry_date`   DATETIME              NULL,
     `created_at`    DATETIME              NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    UNIQUE KEY `uk_user_tokens_user` (`user_id`),
     FOREIGN KEY (`user_id`) REFERENCES users (`id`) ON DELETE CASCADE
 );
 

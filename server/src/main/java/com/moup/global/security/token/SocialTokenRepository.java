@@ -15,6 +15,8 @@ public interface SocialTokenRepository {
     @Update("UPDATE social_tokens SET refresh_token = #{refreshToken}, updated_at = CURRENT_TIMESTAMP() WHERE id = #{id}")
     void updateById(Long id, String refreshToken);
 
-    @Insert("INSERT INTO social_tokens (user_id, refresh_token) VALUES (#{userId}, #{refreshToken})")
+    /// `UNIQUE (user_id)` + upsert. 사유는 `UserTokenRepository.save` 참조.
+    @Insert("INSERT INTO social_tokens (user_id, refresh_token) VALUES (#{userId}, #{refreshToken}) "
+            + "ON DUPLICATE KEY UPDATE refresh_token = VALUES(refresh_token), updated_at = CURRENT_TIMESTAMP()")
     void save(SocialToken socialToken);
 }
