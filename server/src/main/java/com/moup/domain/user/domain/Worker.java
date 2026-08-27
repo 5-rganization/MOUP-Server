@@ -1,10 +1,10 @@
 package com.moup.domain.user.domain;
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.ToString;
+import lombok.*;
 
 @Getter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 @ToString
 public class Worker {

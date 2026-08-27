@@ -1,12 +1,12 @@
 package com.moup.global.security.token;
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.ToString;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Getter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 @ToString
 public class UserToken {

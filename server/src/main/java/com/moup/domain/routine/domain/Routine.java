@@ -1,12 +1,12 @@
 package com.moup.domain.routine.domain;
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.ToString;
+import lombok.*;
 
 import java.time.LocalTime;
 
 @Getter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 @ToString
 public class Routine {

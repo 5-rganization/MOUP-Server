@@ -3,6 +3,8 @@ package com.moup.domain.workplace.domain;
 import lombok.*;
 
 @Getter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 @ToString
 public class Workplace {

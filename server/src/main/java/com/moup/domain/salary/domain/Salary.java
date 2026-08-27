@@ -7,6 +7,8 @@ import lombok.*;
 import java.time.DayOfWeek;
 
 @Getter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 @ToString
 public class Salary {

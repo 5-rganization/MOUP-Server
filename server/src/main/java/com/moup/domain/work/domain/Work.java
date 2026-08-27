@@ -6,6 +6,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder(toBuilder = true)
 @ToString
 public class Work {
