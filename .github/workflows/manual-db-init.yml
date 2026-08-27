@@ -1,57 +1,92 @@
-name: Manual DB Initialization (Docker)
+name: Manual DB Initialization (DESTRUCTIVE)
+
+# ⚠️ 이 워크플로는 DB를 통째로 날린다.
+# db/moup.sql의 첫 줄이 `DROP SCHEMA IF EXISTS moup;`이다.
+#
+# 예전에는 확인 절차가 하나도 없었고 더미 데이터 삽입이 기본값 true였다.
+# 저장소 쓰기 권한이 있으면 두 번의 클릭으로 프로덕션 DB가 사라졌고,
+# 되돌릴 방법이 없었다. 이제 두 가지로 막는다:
+#   1. 정해진 문구를 정확히 입력해야 진행된다 (실수 차단)
+#   2. DROP 직전에 mysqldump로 백업한다 (고의로 눌러도 복구 가능)
+#
+# 추가로 권장: GitHub Settings > Environments에서 `db-destructive` 환경에
+# required reviewer를 걸면 승인 없이는 실행되지 않는다.
 
 on:
-  workflow_dispatch: # Allows manual triggering from GitHub Actions UI
+  workflow_dispatch:
     inputs:
+      confirm:
+        description: '되돌릴 수 없는 작업입니다. 진행하려면 DROP AND RECREATE 를 정확히 입력하세요.'
+        required: true
+        type: string
       insert_dummy_data:
-        description: '기본 DB 생성 후 더미 데이터를 추가로 삽입합니다. (Execute moup_dummy_data.sql)'
+        description: '스키마 재생성 후 더미 데이터를 삽입합니다. (moup_dummy_data.sql)'
         required: true
         type: boolean
-        default: true # Default to inserting dummy data
+        default: false
 
 jobs:
   manual-db-init:
-    runs-on: ubuntu-latest # GitHub Actions runner environment
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Execute SQL on Docker container via SSH
-        # Connects to the Raspberry Pi via SSH and runs commands
+      # 러너에서 먼저 막는다 — 서버에 접속조차 하지 않는다.
+      # 입력값을 run: 안에 직접 보간하면 셸 주입이 되므로 env로 받는다.
+      - name: Verify confirmation phrase
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [[ "$CONFIRM" != "DROP AND RECREATE" ]]; then
+            echo "::error::확인 문구가 일치하지 않습니다. 아무것도 실행하지 않았습니다."
+            exit 1
+          fi
+          echo "::warning::DB 스키마를 삭제하고 재생성합니다. 직전 상태는 서버에 백업됩니다."
+
+      - name: Backup, then drop and recreate schema via SSH
         run: |
           sshpass -p "${{ secrets.RPI_PASSWORD }}" ssh -o StrictHostKeyChecking=no -p ${{ secrets.RPI_PORT }} ${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }} << 'EOF'
-            # === Script Start ===
-            set -e # Exit immediately if a command exits with a non-zero status.
+            set -euo pipefail
 
-            echo "Connecting to server and navigating to project directory..."
-            # Navigate to the project directory where docker-compose.yml is located
             cd /home/${{ secrets.RPI_USER }}/MOUP-Server
 
-            # Define SQL file paths relative to the project root
-            SCHEMA_SQL="db/moup.sql" # Corrected path for schema
-            DUMMY_DATA_SQL="db/moup_dummy_data.sql" # Corrected path for dummy data
+            SCHEMA_SQL="db/moup.sql"
+            DUMMY_DATA_SQL="db/moup_dummy_data.sql"
+            BACKUP_DIR="/home/${{ secrets.RPI_USER }}/moup-db-backups"
+            BACKUP_FILE="$BACKUP_DIR/pre-init-$(date +%Y%m%d-%H%M%S).sql.gz"
 
-            # Execute Base Schema SQL using docker compose exec
-            echo "Executing Base Schema SQL script ($SCHEMA_SQL)..."
-            # Executes the mysql command inside the 'mysql' container
-            # Reads the SQL file from the host path mounted into the container
-            # Adds --default-character-set=utf8mb4 to ensure correct encoding
+            # 1. 백업이 먼저다. 여기서 실패하면 DROP도 하지 않는다 (set -e).
+            #    이게 없으면 잘못 누른 순간 끝이다.
+            mkdir -p "$BACKUP_DIR"
+            echo "Backing up current schema to $BACKUP_FILE ..."
+            docker compose exec -T \
+              -e MYSQL_PWD="${{ secrets.DATABASE_PASSWORD }}" \
+              mysql mysqldump --default-character-set=utf8mb4 --single-transaction \
+              -u root "${{ secrets.DATABASE_NAME }}" | gzip > "$BACKUP_FILE"
+
+            # 빈 백업은 백업이 아니다 — 파이프 뒤라 mysqldump 실패가 감춰질 수 있다.
+            if [[ ! -s "$BACKUP_FILE" ]]; then
+              echo "백업 파일이 비어 있습니다. 중단합니다." >&2
+              exit 1
+            fi
+            echo "Backup complete: $(du -h "$BACKUP_FILE" | cut -f1)"
+
+            # 최근 10개만 남긴다 — SD 카드가 차면 서버가 죽는다.
+            ls -1t "$BACKUP_DIR"/pre-init-*.sql.gz | tail -n +11 | xargs -r rm --
+
+            # 2. 여기서부터 파괴적이다.
+            echo "Executing schema script ($SCHEMA_SQL) — this DROPs the database..."
             docker compose exec -T \
               -e MYSQL_PWD="${{ secrets.DATABASE_PASSWORD }}" \
               mysql mysql --default-character-set=utf8mb4 -u root "${{ secrets.DATABASE_NAME }}" < "$SCHEMA_SQL"
-            echo "Base Schema SQL execution attempted."
 
-            # (Optional) Execute Dummy Data SQL if the input checkbox was checked
-            if [[ "${{ github.event.inputs.insert_dummy_data }}" == "true" ]]; then
-              echo "Checkbox is checked. Inserting dummy data from $DUMMY_DATA_SQL..."
-              # Adds --default-character-set=utf8mb4 here as well
+            if [[ "${{ inputs.insert_dummy_data }}" == "true" ]]; then
+              echo "Inserting dummy data from $DUMMY_DATA_SQL..."
               docker compose exec -T \
                 -e MYSQL_PWD="${{ secrets.DATABASE_PASSWORD }}" \
                 mysql mysql --default-character-set=utf8mb4 -u root "${{ secrets.DATABASE_NAME }}" < "$DUMMY_DATA_SQL"
-              echo "Dummy Data SQL execution attempted."
             else
-              echo "Checkbox is not checked. Skipping dummy data insertion."
+              echo "Skipping dummy data insertion."
             fi
 
-            echo "Manual DB Initialization complete."
-            # === Script End ===
+            echo "Done. Rollback: gunzip -c $BACKUP_FILE | docker compose exec -T mysql mysql -u root ${{ secrets.DATABASE_NAME }}"
           EOF
-
