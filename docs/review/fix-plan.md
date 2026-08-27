@@ -438,10 +438,13 @@ prod nginx는 NPM 뒤에 있어 `$remote_addr`이 항상 NPM의 컨테이너 IP�
 
 리뷰 과정에서 **미구현임이 드러난 것**들. 결함 수정이 아니라 개발이므로 Phase 0~9와 분리한다.
 
-### 10-1. 루틴 완료(체크) 상태 서버 보관 ✅ 진행 결정 (D4 답변)
+### ✅ 10-1. 루틴 완료(체크) 상태 서버 보관 — 완료 (`805f803`)
 
-`db/moup.sql` 전체에 `is_done`/`completed`/`checked` 계열 컬럼이 **0건**이다.
-"오늘 이 근무의 이 할 일을 완료했다"를 서버가 보관하지 않아 **기기를 바꾸면 사라진다.**
+`is_done`/`completed`/`checked` 계열 컬럼이 스키마 전체에 0건이었다.
+"오늘 이 근무의 이 할 일을 완료했다"를 서버가 보관하지 않아 **기기를 바꾸면 사라졌다.**
+
+완료는 반드시 **(근무, 할 일) 쌍**이다. 같은 루틴이 여러 근무에 연결되므로 할 일 하나에
+플래그를 두면 어제 근무의 체크가 오늘 근무에 그대로 비친다.
 
 ```sql
 CREATE TABLE `routine_task_completions` (
@@ -449,20 +452,47 @@ CREATE TABLE `routine_task_completions` (
     `work_id`         BIGINT   NOT NULL,
     `routine_task_id` BIGINT   NOT NULL,
     `completed_at`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(),
-    UNIQUE KEY `uk_completion` (`work_id`, `routine_task_id`),
+    UNIQUE KEY `uk_routine_task_completion` (`work_id`, `routine_task_id`),
     FOREIGN KEY (`work_id`)         REFERENCES works (`id`)         ON DELETE CASCADE,
     FOREIGN KEY (`routine_task_id`) REFERENCES routine_tasks (`id`) ON DELETE CASCADE
 );
 ```
 
-**규모는 작다.** 테이블 1개 + 토글 API 1개 + 조회 응답에 필드 추가.
+### API
 
-⚠️ **Phase 0-1 필수 전제** — 신규 테이블이고 기존 엔티티에 필드가 추가되므로,
-위치 기반 매핑 상태에서 하면 조용히 어긋난다.
+| | |
+|---|---|
+| `PUT /routines/works/{workId}/tasks/{taskId}/completion` | 본문 `{"completed": true\|false}`. **원하는 상태를 그대로 보낸다** — 토글이 아니라 멱등이라 재시도해도 화면과 서버가 어긋나지 않는다. UNIQUE + `ON DUPLICATE KEY UPDATE`가 더블탭도 흡수한다 |
+| `GET /routines/works/{workId}/routines` | 응답에 `routineTaskList`(각 항목에 `isCompleted`) 추가. **가산적 변경** — 기존 필드는 그대로다 |
 
-⚠️ **`updateMyRecurringWork`가 근무를 삭제·재생성한다.** 지금은 잃을 상태가 없어서
-무해했지만, 완료 상태가 생기면 `work_id` CASCADE로 **근무 수정 시 체크가 전부 날아간다.**
-Phase 5(반복 근무 C3)와 함께 설계해야 한다.
+루틴 상세 조회(`GET /routines/{routineId}`)에는 완료 여부가 없다. 그 API는 근무를 모르고,
+완료는 (근무, 할 일) 쌍이라 줄 수가 없다. 근무별 조회가 체크박스를 그릴 수 있는 유일한 지점이다.
+
+### 계획서의 경고가 맞았다 — 반복 근무 교체가 체크를 날린다
+
+`replaceWithNewRecurringWorks`가 기존 근무를 지우고 새로 만든다. 완료가 `work_id`를 FK로
+잡으므로 그대로 두면 CASCADE로 전부 사라진다. 사용자가 한 일은 "근무 시간을 바꾼 것"뿐인데
+**오늘 체크해 둔 항목이 조용히 전부 풀린다.**
+
+삭제 **직전에** (근무일, 할 일)로 스냅샷을 뜨고, 재생성 후 같은 날짜의 새 근무에 붙인다.
+날짜로 매칭하는 이유는 사용자에게 "같은 근무"가 같은 날의 근무이지 같은 행이 아니기 때문이다.
+새 반복이 그 요일을 더 이상 포함하지 않으면 붙일 곳이 없으므로 버린다 — 엉뚱한 날짜로
+옮겨 붙이는 것보다 낫다.
+
+스냅샷 조회 범위를 **실제 삭제 대상**(반복 그룹 + 기준일 이후, 또는 그 근무 하나)으로 좁혔다.
+근무자의 모든 근무를 퍼오면 같은 날짜에 근무가 둘일 때 엉뚱한 근무에 체크가 붙는다.
+
+> 스냅샷을 삭제 **뒤에** 뜨면 이미 CASCADE로 사라진 뒤라 항상 빈 리스트가 온다. 예외도
+> 나지 않고 기능이 조용히 아무것도 하지 않게 된다. `InOrder`로 순서를 고정했다.
+
+### 권한
+
+- 이 근무에 연결되지 않은 루틴의 할 일은 거부한다. FK는 "그 할 일이 존재하는가"만 보장할 뿐,
+  남의 루틴 할 일 id를 넣는 것을 막지 못한다.
+- 체크도 근무 기록이므로 사장님 탈퇴 근무지에서는 막는다 ([확정 정책 5](#-phase-6--완료-abf48ee)).
+- 승인 대기 중인 근무자도 막는다 (확정 정책 6 (c)).
+
+테스트 127개 통과. 뮤테이션 4건이 모두 정확히 잡힌다.
 
 ### 10-2. 루틴 알람 서버 발송 ❓ D3 확인 대기
 
