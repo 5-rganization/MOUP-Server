@@ -36,6 +36,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 // (Assertions, Matchers, Mockito static imports)
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -287,7 +288,8 @@ class WorkplaceServiceTest {
 
     verify(workplaceRepository, never()).update(any(Workplace.class));
     // 알바생 userId를 owner_id로 넣던 중복 이름 검사도 사라져야 한다
-    verify(workplaceRepository, never()).existsByOwnerIdAndWorkplaceName(anyLong(), anyString());
+    // anyString()은 null을 매칭하지 않는다 — 이름을 생략한 호출을 놓치므로 any()를 쓴다
+    verify(workplaceRepository, never()).existsByOwnerIdAndWorkplaceName(anyLong(), any());
     verify(workerRepository).updateWorkerBasedLabelColor(workerId, mockWorkerUser.getId(), workplaceId, "RED");
   }
 
@@ -318,5 +320,57 @@ class WorkplaceServiceTest {
     verify(workplaceRepository).update(captor.capture());
     assertEquals("새 이름", captor.getValue().getWorkplaceName());
     assertEquals(mockOwner.getId(), captor.getValue().getOwnerId());
+  }
+
+  /// PATCH이므로 라벨 색상만 바꾸는 요청이 정당하다. 이때 근무지 필드가 하나도 없어
+  /// 동적 SQL의 `<set>`이 비면 문법 오류가 난다 — update를 아예 호출하지 않아야 한다.
+  @Test
+  @DisplayName("근무지 필드를 모두 생략하면 workplaces UPDATE를 실행하지 않는다")
+  void updateWorkplace_Owner_SkipsUpdateWhenNoWorkplaceField() {
+    Long workplaceId = 10L;
+    Long workerId = 100L;
+
+    OwnerWorkplaceUpdateRequest request = OwnerWorkplaceUpdateRequest.builder()
+        .ownerBasedLabelColor("BLUE")
+        .build();
+
+    when(workplaceRepository.findById(workplaceId))
+        .thenReturn(java.util.Optional.of(Workplace.builder().id(workplaceId).workplaceName("옛 이름").build()));
+    when(workerRepository.findByUserIdAndWorkplaceId(mockOwner.getId(), workplaceId))
+        .thenReturn(java.util.Optional.of(Worker.builder().id(workerId).build()));
+
+    workplaceService.updateWorkplace(mockOwner, workplaceId, request);
+
+    verify(workplaceRepository, never()).update(any(Workplace.class));
+    verify(workerRepository).updateOwnerBasedLabelColor(workerId, mockOwner.getId(), workplaceId, "BLUE");
+  }
+
+  /// 이름을 생략했으면 이름이 바뀌지 않으므로 중복 검사도 하면 안 된다.
+  /// 예전 코드는 null을 기존 이름과 비교해 항상 "다르다"로 보고 검사를 돌렸다.
+  @Test
+  @DisplayName("이름을 생략하면 중복 이름 검사를 하지 않는다")
+  void updateWorkplace_Owner_SkipsNameCheckWhenNameOmitted() {
+    Long workplaceId = 10L;
+
+    OwnerWorkplaceUpdateRequest request = OwnerWorkplaceUpdateRequest.builder()
+        .address("주소만 변경")
+        .ownerBasedLabelColor("BLUE")
+        .build();
+
+    when(workplaceRepository.findById(workplaceId))
+        .thenReturn(java.util.Optional.of(Workplace.builder().id(workplaceId).workplaceName("옛 이름").build()));
+    when(workerRepository.findByUserIdAndWorkplaceId(mockOwner.getId(), workplaceId))
+        .thenReturn(java.util.Optional.of(Worker.builder().id(100L).build()));
+
+    workplaceService.updateWorkplace(mockOwner, workplaceId, request);
+
+    // anyString()은 null을 매칭하지 않는다 — 이름을 생략한 호출을 놓치므로 any()를 쓴다
+    verify(workplaceRepository, never()).existsByOwnerIdAndWorkplaceName(anyLong(), any());
+
+    // 보낸 주소만 담기고 이름은 null이어야 한다 (= SET 절에서 빠진다)
+    ArgumentCaptor<Workplace> captor = ArgumentCaptor.forClass(Workplace.class);
+    verify(workplaceRepository).update(captor.capture());
+    assertEquals("주소만 변경", captor.getValue().getAddress());
+    assertNull(captor.getValue().getWorkplaceName());
   }
 }

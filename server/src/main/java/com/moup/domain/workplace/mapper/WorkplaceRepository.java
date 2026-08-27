@@ -73,10 +73,26 @@ public interface WorkplaceRepository {
     /// 근무지의 ID와 등록자 ID에 해당하는 근무지를 업데이트하는 메서드
     ///
     /// @param workplace 업데이트할 Workplace 객체
+    /// PATCH 의미대로 **전달된 필드만** 갱신한다. 예전에는 모든 컬럼을 무조건 덮어써서,
+    /// 클라이언트가 주소·좌표를 빠뜨리면 저장돼 있던 값이 NULL로 지워졌다.
+    ///
+    /// `address`/`latitude`/`longitude`는 스키마상 NULL 허용이라 "값이 없는 근무지"가
+    /// 정당한 상태다. 그래서 필수로 만들어 막을 수도 없었다.
+    ///
+    /// ponytail: null = "건드리지 않음"이라 주소를 명시적으로 **지울** 수단이 없다.
+    /// 지금 주소 삭제 기능이 없어 무해하다. 필요해지면 빈 문자열을 삭제로 약속하면 된다.
     @Update("""
+            <script>
             UPDATE workplaces
-            SET workplace_name = #{workplaceName}, category_name = #{categoryName}, address = #{address}, latitude = #{latitude}, longitude = #{longitude}
+            <set>
+                <if test="workplaceName != null">workplace_name = #{workplaceName},</if>
+                <if test="categoryName != null">category_name = #{categoryName},</if>
+                <if test="address != null">address = #{address},</if>
+                <if test="latitude != null">latitude = #{latitude},</if>
+                <if test="longitude != null">longitude = #{longitude},</if>
+            </set>
             WHERE id = #{id} AND owner_id = #{ownerId}
+            </script>
             """)
     void update(Workplace workplace);
 

@@ -313,13 +313,25 @@ public class WorkplaceService {
     private void updateWorkplaceFields(Long ownerId, Long workplaceId, BaseWorkplaceUpdateRequest request) {
         Workplace oldWorkplace = workplaceRepository.findById(workplaceId)
                 .orElseThrow(WorkplaceNotFoundException::new);
-        if (!oldWorkplace.getWorkplaceName().equals(request.getWorkplaceName())
+
+        // 이름을 생략했다면 바뀌지 않으므로 중복 검사도 필요 없다.
+        if (request.getWorkplaceName() != null
+                && !oldWorkplace.getWorkplaceName().equals(request.getWorkplaceName())
                 && workplaceRepository.existsByOwnerIdAndWorkplaceName(ownerId,
                 request.getWorkplaceName())) {
             throw new WorkplaceNameAlreadyUsedException();
         }
 
-        workplaceRepository.update(request.toWorkplaceEntity(workplaceId, ownerId));
+        Workplace newWorkplace = request.toWorkplaceEntity(workplaceId, ownerId);
+        // 다섯 필드를 모두 생략하면(예: 라벨 색상만 변경) 동적 SQL의 <set>이 비어
+        // `UPDATE workplaces WHERE ...`라는 깨진 문장이 된다. 아예 실행하지 않는다.
+        if (newWorkplace.getWorkplaceName() == null && newWorkplace.getCategoryName() == null
+                && newWorkplace.getAddress() == null
+                && newWorkplace.getLatitude() == null && newWorkplace.getLongitude() == null) {
+            return;
+        }
+
+        workplaceRepository.update(newWorkplace);
     }
 
     private Long findWorkerId(Long userId, Long workplaceId) {
