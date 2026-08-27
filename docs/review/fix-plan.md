@@ -35,9 +35,9 @@
 
 ---
 
-## 🔴 Phase 0 — 이걸 먼저 안 하면 뒤가 전부 위험하다
+## ✅ Phase 0 — 완료 (`980fcd2` · `135b966` · `572327c`)
 
-### 0-1. `@NoArgsConstructor` 부재 (4 I6 · 5 I-9 · 6 M9)
+### 0-1. `@NoArgsConstructor` 부재 (4 I6 · 5 I-9 · 6 M9) ✅ `980fcd2`
 
 **확인 완료**: 엔티티 10개 중 **9개**에 `@NoArgsConstructor`가 없다.
 `User`만 있다. `mybatis.configuration.arg-name-based-constructor-auto-mapping`도
@@ -56,19 +56,24 @@ MyBatis는 무인자 생성자가 없으면 **위치 기반** 생성자 매핑�
 **예외가 아니라 조용히 잘못된 값**이 들어간다 — 급여 필드에 근무지 ID가 들어가는 식이다.
 테스트가 없으면 못 잡는다.
 
-**작업**: 엔티티 9개에 `@NoArgsConstructor` + `@Setter`(또는
-`arg-name-based-constructor-auto-mapping=true` 한 줄). **후자가 더 짧다** —
-전역 설정 한 줄로 9개 클래스를 안 건드린다. 다만 파라미터 이름이 유지되도록
-`-parameters` 컴파일 옵션 확인이 필요하다.
+**적용**: 엔티티 9개에 `@NoArgsConstructor` + `@AllArgsConstructor`.
+전역 설정(`arg-name-based-constructor-auto-mapping=true`) 한 줄이 더 짧지만
+**`User`가 이미 쓰는 패턴을 따랐다** — 코드베이스 일관성이 있고,
+`-parameters` 컴파일 옵션 유지에 의존하지 않는다.
 
-**검증**: 컬럼 순서를 일부러 뒤섞은 `SELECT`로 매핑 테스트 1개.
+> `@Builder`는 무인자 생성자가 생기면 전체 인자 생성자를 자동 생성하지 않으므로
+> `@AllArgsConstructor`를 함께 붙여야 한다.
 
-### 0-2. 음수 `restTimeMinutes` 하한 (2 C1 · 3 C-5 · 4 C5)
+**검증**: `EntityConstructorMappingTest` 10건. **변이 테스트로 실효성 확인** —
+`Worker`에서 애노테이션을 빼면 해당 케이스가 실패한다.
 
-DTO 6곳에 `@PositiveOrZero`. **급여 계산을 손대기 전에** 해야 한다 — 안 그러면
+### 0-2. 음수 `restTimeMinutes` 하한 (2 C1 · 3 C-5 · 4 C5) ✅ `135b966`
+
+요청 DTO **4곳**에 `@PositiveOrZero` (나머지 4곳은 응답 DTO·엔티티라 대상 아님).
+컨트롤러 6개 엔드포인트에 `@Valid`가 이미 걸려 있어 즉시 동작한다. **급여 계산을 손대기 전에** 해야 한다 — 안 그러면
 Phase 3의 회귀 테스트가 음수 입력을 정상으로 가정한 기대값에 고정된다.
 
-### 0-3. 상한 off-by-one 3건 (6 I8)
+### 0-3. 상한 off-by-one 3건 (6 I8) ✅ `572327c`
 
 `>=` → `>`. `RoutineService:82`, `:333`, `:365`. 한 글자씩 3곳.
 Phase 0에 넣는 이유는 **다른 것과 충돌하지 않고 지금 안 하면 잊혀서**다.
@@ -148,6 +153,9 @@ Q5는 [정책 10](#확정-정책-10--알바생-소득은-근로소득-q5-답변)
 4-4  UNREGISTERED/INVALID_ARGUMENT/SENDER_ID_MISMATCH 시 토큰 행 삭제  ← C1 3단계
 4-5  sendEachForMulticast 전환
 4-6  I2 공지 발송 순서 (커밋 전 푸시 · @Async가 미커밋 FK 참조)
+4-7  토큰 등록 시 서버에서 ADMIN_ALARM 토픽 구독              ← D2 확인 결과
+     앱에 subscribeToTopic이 없어 지금 공지 푸시가 0명에게 간다.
+     서버 측 subscribeToTopic(tokens, topic)이면 앱 수정 없이 해결된다.
 ```
 
 **4-1이 4-4보다 먼저**여야 한다 — 단일 컬럼 구조에서는 "죽은 토큰만 삭제"가 불가능하다.
@@ -348,7 +356,7 @@ UPDATE workers SET is_accepted = 0 WHERE is_accepted IS NULL;
 
 | # | 질문 | 막고 있는 것 |
 |---|---|---|
-| **D2** | 앱에 `subscribeToTopic("ADMIN_ALARM")`이 있는가? 서버에는 **0건**. 없으면 **관리자 공지 푸시가 아무에게도 안 간다**(FCM은 성공 반환, 인앱 목록에는 뜸). **토큰 기반 개별 알림 4곳과는 무관하며 그쪽은 정상 동작한다** | 7 I5 |
+| ~~D2~~ | **앱에 없음이 확인됐다** → 관리자 공지 푸시가 아무에게도 안 간다. 서버에서 토큰 등록 시 구독시키는 방식이 앱 수정 없이 해결한다 (Phase 4에 편입). ~~앱에 `subscribeToTopic("ADMIN_ALARM")`이 있는가?~~ 서버에는 **0건**. 없으면 **관리자 공지 푸시가 아무에게도 안 간다**(FCM은 성공 반환, 인앱 목록에는 뜸). **토큰 기반 개별 알림 4곳과는 무관하며 그쪽은 정상 동작한다** | 7 I5 |
 | **D3** | 루틴 알람 서버 발송 — 앱이 로컬 알림으로 처리 중인지 확인 필요. 아니라면 지금 아무도 못 받고 있다 → [10-2](#10-2-루틴-알람-서버-발송--d3-확인-대기) |
 | ~~D4~~ | ~~루틴 완료 상태 보관~~ → **보관하기로 확정.** [10-1](#10-1-루틴-완료체크-상태-서버-보관--진행-결정-d4-답변) |
 | **D5** | 근로소득세 구현 방식 (정책 10의 a/b/c 중) | Phase 3 세금 |
