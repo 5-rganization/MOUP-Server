@@ -3,6 +3,7 @@ package com.moup.domain.workplace.application;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.moup.domain.workplace.dto.WorkplaceSummaryResponse;
 import com.moup.domain.workplace.domain.Workplace;
+import com.moup.domain.workplace.domain.WorkplaceStatus;
 import com.moup.domain.workplace.domain.WorkplaceJoinPayload;
 import com.moup.domain.workplace.dto.BaseWorkplaceCreateRequest;
 import com.moup.domain.workplace.dto.BaseWorkplaceDetailResponse;
@@ -50,6 +51,8 @@ import java.util.Objects;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.Map;
 
 import static com.moup.global.common.TimeConstants.SEOUL_ZONE_ID;
 
@@ -156,15 +159,31 @@ public class WorkplaceService {
     public WorkplaceSummaryResponse getWorkplace(Long userId, Long workplaceId) {
         Workplace workplace = workplaceRepository.findById(workplaceId)
                 .orElseThrow(WorkplaceNotFoundException::new);
-        if (!workerRepository.existsByUserIdAndWorkplaceId(userId, workplaceId)) {
-            throw new WorkerNotFoundException();
-        }
+        // 정책 6 (a) — 승인 대기 중에도 근무지 이름은 볼 수 있어야 한다.
+        // 차단하는 대신 status로 대기 상태임을 알린다.
+        Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
+                .orElseThrow(WorkerNotFoundException::new);
 
         return WorkplaceSummaryResponse.builder()
                 .workplaceId(workplaceId)
                 .workplaceName(workplace.getWorkplaceName())
                 .isShared(workplace.isShared())
+                .status(resolveStatus(workplace, worker))
                 .build();
+    }
+
+    /// 알바생 시점의 근무지 상태를 판정한다.
+    ///
+    /// `owner_id`가 NULL이면 사장님이 하드 삭제된 것이다(FK가 `ON DELETE SET NULL`).
+    /// 별도 컬럼 없이 이 값 하나로 "사장님 탈퇴"를 알 수 있다.
+    private WorkplaceStatus resolveStatus(Workplace workplace, Worker worker) {
+        if (workplace.getOwnerId() == null) {
+            return WorkplaceStatus.OWNER_WITHDRAWN;
+        }
+        if (worker != null && !Boolean.TRUE.equals(worker.getIsAccepted())) {
+            return WorkplaceStatus.PENDING_APPROVAL;
+        }
+        return WorkplaceStatus.ACTIVE;
     }
 
     @Transactional(readOnly = true)
@@ -186,12 +205,16 @@ public class WorkplaceService {
         List<Workplace> workplaces = workplaceRepository.findAllByIdListIn(workplaceIds);
 
         // 4. 이제 DB 조회가 아닌 '메모리'에서 필터링 및 DTO 변환을 수행한다.
+        Map<Long, Worker> workerByWorkplaceId = userAllWorkers.stream()
+                .collect(Collectors.toMap(Worker::getWorkplaceId, w -> w, (a, b) -> a));
+
         return workplaces.stream()
                 .filter(workplace -> !isSharedOnly || workplace.isShared())
                 .map(workplace -> WorkplaceSummaryResponse.builder()
                         .workplaceId(workplace.getId())
                         .workplaceName(workplace.getWorkplaceName())
                         .isShared(workplace.isShared())
+                        .status(resolveStatus(workplace, workerByWorkplaceId.get(workplace.getId())))
                         .build())
                 .sorted(Comparator.comparing(WorkplaceSummaryResponse::getWorkplaceName))
                 .toList();

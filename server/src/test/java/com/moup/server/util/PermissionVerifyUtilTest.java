@@ -25,19 +25,19 @@ class PermissionVerifyUtilTest {
     @DisplayName("owner_id NULL + worker user_id NULL이어도 NPE가 아니라 403")
     void verifyWorkerPermission_bothNull_throws403() {
         assertThrows(InvalidPermissionAccessException.class,
-                () -> util.verifyWorkerPermission(1L, null, null));
+                () -> util.verifyWorkerIdentityAllowingPending(1L, null, null));
     }
 
     @Test
     @DisplayName("owner_id만 NULL이고 요청자가 해당 근무자면 통과")
     void verifyWorkerPermission_nullOwnerButIsWorker_passes() {
-        assertDoesNotThrow(() -> util.verifyWorkerPermission(1L, 1L, null));
+        assertDoesNotThrow(() -> util.verifyWorkerIdentityAllowingPending(1L, 1L, null));
     }
 
     @Test
     @DisplayName("worker user_id만 NULL이고 요청자가 사장님이면 통과")
     void verifyWorkerPermission_nullWorkerButIsOwner_passes() {
-        assertDoesNotThrow(() -> util.verifyWorkerPermission(2L, null, 2L));
+        assertDoesNotThrow(() -> util.verifyWorkerIdentityAllowingPending(2L, null, 2L));
     }
 
     @Test
@@ -47,6 +47,6 @@ class PermissionVerifyUtilTest {
         assertThrows(InvalidPermissionAccessException.class,
                 () -> util.verifyOwnerPermission(5L, 6L));
         assertThrows(InvalidPermissionAccessException.class,
-                () -> util.verifyWorkerPermission(9L, 1L, 2L));
+                () -> util.verifyWorkerIdentityAllowingPending(9L, 1L, 2L));
     }
 }

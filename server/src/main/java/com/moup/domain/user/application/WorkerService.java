@@ -91,6 +91,7 @@ public class WorkerService {
                             .ownerBasedLabelColor(worker.getOwnerBasedLabelColor())
                             .nickname(nickname)
                             .profileImg(profileImg)
+                            .isAccepted(worker.getIsAccepted())
                             .build();
                 })
                 .toList();
@@ -134,6 +135,7 @@ public class WorkerService {
                             .ownerBasedLabelColor(worker.getOwnerBasedLabelColor())
                             .nickname(user.getNickname())
                             .profileImg(user.getProfileImg())
+                            .isAccepted(worker.getIsAccepted())
                             .build();
                 })
                 .toList();
@@ -190,7 +192,8 @@ public class WorkerService {
     public void updateMyWorker(User user, Long workplaceId, WorkerWorkerUpdateRequest request) {
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId).orElseThrow(WorkerNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        permissionVerifyUtil.verifyWorkerPermission(user.getId(), userWorker.getUserId(), workplaceOwnerId);
+        // 정책 6 (b) — 자기 급여 설정은 승인 대기 중에도 본인이 다룰 수 있다.
+        permissionVerifyUtil.verifyWorkerIdentityAllowingPending(user.getId(), userWorker.getUserId(), workplaceOwnerId);
         workerRepository.updateWorkerBasedLabelColor(userWorker.getId(), user.getId(), workplaceId, request.getWorkerBasedLabelColor());
 
         Long salaryId = salaryRepository.findByWorkerId(userWorker.getId()).orElseThrow(
@@ -263,7 +266,8 @@ public class WorkerService {
     public void deleteMyWorker(Long userId, Long workplaceId) {
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         Worker worker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
-        permissionVerifyUtil.verifyWorkerPermission(userId, worker.getUserId(), workplaceOwnerId);
+        // 참여 취소는 승인 대기 중에도 가능해야 한다. 막으면 대기자가 근무지에서 빠져나올 수 없다.
+        permissionVerifyUtil.verifyWorkerIdentityAllowingPending(userId, worker.getUserId(), workplaceOwnerId);
 
         workerRepository.delete(worker.getId(), worker.getUserId(), workplaceId);
     }

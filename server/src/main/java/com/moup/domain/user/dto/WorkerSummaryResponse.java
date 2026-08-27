@@ -16,6 +16,10 @@ public class WorkerSummaryResponse {
     private String ownerBasedLabelColor;
     @Schema(description = "사용자 닉네임", example = "김사장", requiredMode = Schema.RequiredMode.REQUIRED)
     private String nickname;
+    /// 사장님이 누가 승인 대기자인지 구분하고 승인 버튼을 어디에 띄울지 판단하려면 필요하다.
+    /// 이 필드가 없어 승인 절차가 화면에서 보이지 않았다.
+    @Schema(description = "승인 여부. false면 승인 대기 중이다.", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Boolean isAccepted;
     @Schema(description = "사용자 프로필 이미지", example = "https://moup-bucket.s3.ap-northeast-2.amazonaws.com/5aedbc811d19b48d5151c9d05b48fc6751be282f5e89f478a3b81dbc16e2ada7.png", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String profileImg;
 }

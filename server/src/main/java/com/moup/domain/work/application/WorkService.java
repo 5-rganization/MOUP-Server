@@ -103,7 +103,7 @@ public class WorkService {
                 .orElseThrow(WorkerNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(
             WorkplaceNotFoundException::new).getOwnerId();
-        permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplaceOwnerId);
+        permissionVerifyUtil.verifyWorkerPermission(userId, userWorker, workplaceOwnerId);
 
         List<Work> createdWorks = createMyWorkHelper(userWorker, request);
 
@@ -581,7 +581,7 @@ public class WorkService {
         // 권한 및 근무 중복 확인
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplaceOwnerId);
+        permissionVerifyUtil.verifyWorkerPermission(userId, userWorker, workplaceOwnerId);
         if (workerRepository.existsByUserIdAndIsNowWorking(userId, true)) { throw new WorkerAlreadyWorkingException(); }
 
         // 현재 시간 기준으로 출근 가능한 근무 조회
@@ -605,7 +605,7 @@ public class WorkService {
         // 권한 및 현재 근무 상태 확인
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        permissionVerifyUtil.verifyWorkerPermission(userId, userWorker.getUserId(), workplaceOwnerId);
+        permissionVerifyUtil.verifyWorkerPermission(userId, userWorker, workplaceOwnerId);
         if (!Boolean.TRUE.equals(userWorker.getIsNowWorking())) { throw new WorkNotFoundException("현재 진행 중인 근무가 없습니다."); }
 
         // 가장 최근의 진행 중인 근무 조회
@@ -940,7 +940,7 @@ public class WorkService {
         Worker requestedWorker = workerRepository.findById(work.getWorkerId()).orElseThrow(WorkerNotFoundException::new);
         Workplace workplace = workplaceRepository.findById(requestedWorker.getWorkplaceId()).orElseThrow(WorkplaceNotFoundException::new);
         // 권한 검증
-        permissionVerifyUtil.verifyWorkerPermission(requesterUserId, requestedWorker.getUserId(), workplace.getOwnerId());
+        permissionVerifyUtil.verifyWorkerPermission(requesterUserId, requestedWorker, workplace.getOwnerId());
 
         // 근무자의 User 정보 조회
         User workerUser = null;
@@ -965,7 +965,7 @@ public class WorkService {
         Worker worker = workerRepository.findById(work.getWorkerId()).orElseThrow(WorkerNotFoundException::new);
         Workplace workplace = workplaceRepository.findById(worker.getWorkplaceId()).orElseThrow(WorkplaceNotFoundException::new);
         // 권한 검증
-        permissionVerifyUtil.verifyWorkerPermission(requesterUserId, worker.getUserId(), workplace.getOwnerId());
+        permissionVerifyUtil.verifyWorkerPermission(requesterUserId, worker, workplace.getOwnerId());
         // 결과 반환
         return new VerifiedWorkContextForUD(work, worker);
     }
@@ -978,6 +978,7 @@ public class WorkService {
                 .ownerBasedLabelColor(worker.getOwnerBasedLabelColor())
                 .nickname(user != null ? user.getNickname() : "탈퇴한 근무자")
                 .profileImg(user != null ? user.getProfileImg() : null)
+                .isAccepted(worker.getIsAccepted())
                 .build();
     }
 

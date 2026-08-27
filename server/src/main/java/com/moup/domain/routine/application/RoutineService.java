@@ -28,6 +28,7 @@ import com.moup.domain.workplace.mapper.WorkplaceRepository;
 import com.moup.domain.workplace.dto.WorkplaceSummaryResponse;
 import com.moup.global.error.DataLimitExceedException;
 import com.moup.global.error.InvalidPermissionAccessException;
+import com.moup.global.util.PermissionVerifyUtil;
 import com.moup.domain.work.exception.WorkNotFoundException;
 import com.moup.domain.user.exception.WorkerNotFoundException;
 import com.moup.domain.workplace.exception.WorkplaceNotFoundException;
@@ -58,6 +59,7 @@ public class RoutineService {
   private static final int MAX_TASK_COUNT_PER_ROUTINE = 50; // 루틴당 할 일 연결 최대 개수
   private static final int MAX_ROUTINE_COUNT_PER_WORK = 10; // 근무당 루틴 연결 최대 개수
   private final RoutineRepository routineRepository;
+  private final PermissionVerifyUtil permissionVerifyUtil;
   private final RoutineTaskRepository routineTaskRepository;
   private final WorkRoutineMappingRepository workRoutineMappingRepository;
   private final WorkRepository workRepository;
@@ -409,9 +411,9 @@ public class RoutineService {
     Workplace workplace = workplaceRepository.findById(worker.getWorkplaceId())
         .orElseThrow(WorkplaceNotFoundException::new);
 
-    if (!userId.equals(worker.getUserId()) && !userId.equals(workplace.getOwnerId())) {
-      throw new InvalidPermissionAccessException();
-    }
+    // 확정 정책 15 — 미승인 근무자의 근무에는 루틴을 연결할 수 없고 조회도 막는다.
+    // 사장님은 통과시킨다(자기 근무지 알바생의 근무를 다룰 수 있다).
+    permissionVerifyUtil.verifyWorkerPermission(userId, worker, workplace.getOwnerId());
     // --- END: 권한 확인 ---
 
     // 1. 첫 번째 쿼리 (1번 실행)
