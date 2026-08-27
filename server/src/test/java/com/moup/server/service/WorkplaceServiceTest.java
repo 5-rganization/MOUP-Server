@@ -163,7 +163,9 @@ class WorkplaceServiceTest {
         .build();
 
     // 1. 초대 코드로 workplaceId 찾기
-    when(inviteCodeService.findWorkplaceIdByInviteCode(inviteCode.toUpperCase())).thenReturn(workplaceId);
+    // 초대코드 조회는 레이트 리밋을 거친다 (무차별 대입 방어)
+    when(inviteCodeService.findWorkplaceIdByInviteCodeWithRateLimit(mockWorkerUser.getId(), inviteCode.toUpperCase()))
+        .thenReturn(workplaceId);
     // 2. 근무지 존재 확인
     when(workplaceRepository.existsById(workplaceId)).thenReturn(true);
     // 3. 이미 가입된 유저가 아님
@@ -222,7 +224,9 @@ class WorkplaceServiceTest {
         .salaryCreateRequest(SalaryCreateRequest.builder().build())
         .build();
 
-    when(inviteCodeService.findWorkplaceIdByInviteCode(inviteCode.toUpperCase())).thenReturn(workplaceId);
+    // 초대코드 조회는 레이트 리밋을 거친다 (무차별 대입 방어)
+    when(inviteCodeService.findWorkplaceIdByInviteCodeWithRateLimit(mockWorkerUser.getId(), inviteCode.toUpperCase()))
+        .thenReturn(workplaceId);
     when(workplaceRepository.existsById(workplaceId)).thenReturn(true);
     when(workerRepository.existsByUserIdAndWorkplaceId(mockWorkerUser.getId(), workplaceId)).thenReturn(false);
     when(workplaceRepository.findOwnerId(workplaceId)).thenReturn(ownerId);

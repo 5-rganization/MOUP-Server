@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 public class InviteCodeRepository {
     private static final String INVITE_CODE_KEY_PREFIX = "inviteCode:";
     private static final String WORKPLACE_ID_KEY_PREFIX = "workplaceId:";
+    private static final String ATTEMPT_KEY_PREFIX = "inviteAttempt:";
 
     private final StringRedisTemplate stringRedisTemplate;
 
@@ -86,6 +87,40 @@ public class InviteCodeRepository {
     public Optional<Long> findWorkplaceIdByInviteCode(String inviteCode) {
         String key = INVITE_CODE_KEY_PREFIX + inviteCode;
         return Optional.ofNullable(stringRedisTemplate.opsForValue().get(key)).map(Long::parseLong);
+    }
+
+    /**
+     * 초대 코드 조회 **실패** 1회를 기록하고 창 안의 누적 실패 횟수를 반환한다.
+     *
+     * 성공한 조회는 세지 않는다. 정상 사용자는 코드를 한두 번 잘못 입력할 뿐이고,
+     * 무차별 대입은 정의상 실패가 압도적으로 많다.
+     *
+     * @param userId 요청자 ID
+     * @param windowMinutes 카운터 유지 시간(분)
+     * @return 창 안의 누적 실패 횟수
+     */
+    public long recordFailedAttempt(Long userId, int windowMinutes) {
+        String key = ATTEMPT_KEY_PREFIX + userId;
+        Long count = stringRedisTemplate.opsForValue().increment(key);
+        if (count != null && count == 1L) {
+            stringRedisTemplate.expire(key, windowMinutes, TimeUnit.MINUTES);
+        }
+        return count == null ? 0L : count;
+    }
+
+    /**
+     * 창 안의 누적 실패 횟수를 조회한다.
+     */
+    public long countFailedAttempts(Long userId) {
+        String value = stringRedisTemplate.opsForValue().get(ATTEMPT_KEY_PREFIX + userId);
+        return value == null ? 0L : Long.parseLong(value);
+    }
+
+    /**
+     * 성공적으로 코드를 찾으면 카운터를 지운다.
+     */
+    public void clearFailedAttempts(Long userId) {
+        stringRedisTemplate.delete(ATTEMPT_KEY_PREFIX + userId);
     }
 
     /**

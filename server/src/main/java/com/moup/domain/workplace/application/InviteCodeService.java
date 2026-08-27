@@ -5,15 +5,25 @@ import com.moup.domain.workplace.mapper.InviteCodeRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.text.RandomStringGenerator;
+import com.moup.global.error.TooManyRequestsException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class InviteCodeService {
     private final InviteCodeRepository inviteCodeRepository;
+
+    @Value("${workplace.invite-code.max-failed-attempts}")
+    private int maxFailedAttempts;
+
+    @Value("${workplace.invite-code.attempt-window-minutes}")
+    private int attemptWindowMinutes;
     private RandomStringGenerator inviteCodeGenerator;
 
     /// 초대코드는 근무지 참여 자격이므로 예측 불가능해야 한다.
@@ -81,5 +91,35 @@ public class InviteCodeService {
      */
     public Long findWorkplaceIdByInviteCode(String inviteCode) {
         return inviteCodeRepository.findWorkplaceIdByInviteCode(inviteCode).orElseThrow(WorkplaceNotFoundException::new);
+    }
+
+    /// 초대코드 조회를 레이트 리밋과 함께 수행한다.
+    ///
+    /// **표적 공격은 원래 안전하다** — 키스페이스 32⁶ ≈ 10.7억, TTL 10분이라
+    /// 특정 코드를 맞히려면 초당 100만 회가 필요하다.
+    ///
+    /// **문제는 무표적 공격이다.** 아무 코드나 맞히면 되므로 동시 유효 코드가 L개일 때
+    /// 기댓값이 2³⁰/L회로 줄어든다. 초당 2,000회 기준 L=500이면 약 18분,
+    /// L=5,000이면 약 2분이다. **제품이 성장할수록 나빠진다.**
+    /// 뚫리면 근무지 이름·주소·GPS가 새고, 200/404 응답 자체가 스크래핑 오라클이 된다.
+    ///
+    /// 실패만 세는 이유: 정상 사용자는 코드를 한두 번 잘못 입력할 뿐이고,
+    /// 무차별 대입은 정의상 실패가 압도적이다.
+    /// IP 단위 제한은 여기가 아니라 nginx/ALB에 두는 것이 맞다.
+    public Long findWorkplaceIdByInviteCodeWithRateLimit(Long userId, String inviteCode) {
+        if (inviteCodeRepository.countFailedAttempts(userId) >= maxFailedAttempts) {
+            log.warn("초대코드 조회 제한 초과 - userId={}", userId);
+            throw new TooManyRequestsException(
+                    "초대 코드 조회 시도가 너무 많습니다. " + attemptWindowMinutes + "분 후 다시 시도해주세요.");
+        }
+        try {
+            Long workplaceId = findWorkplaceIdByInviteCode(inviteCode);
+            inviteCodeRepository.clearFailedAttempts(userId);
+            return workplaceId;
+        } catch (WorkplaceNotFoundException e) {
+            long attempts = inviteCodeRepository.recordFailedAttempt(userId, attemptWindowMinutes);
+            log.info("초대코드 조회 실패 - userId={}, 누적={}", userId, attempts);
+            throw e;
+        }
     }
 }

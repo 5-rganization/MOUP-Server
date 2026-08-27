@@ -31,6 +31,7 @@ public enum ErrorCode {
     WORK_NOT_FOUND(HttpStatus.NOT_FOUND, "WORK_404", "해당 근무가 존재하지 않습니다."),
     ROUTINE_NOT_FOUND(HttpStatus.NOT_FOUND, "ROUTINE_404", "해당 루틴이 존재하지 않습니다."),
     ROUTINE_NAME_ALREADY_USED(HttpStatus.CONFLICT, "ROUTINE_NAME_409", "사용자가 이미 등록한 루틴 이름입니다."),
+    TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "COMMON_429", "요청이 너무 잦습니다. 잠시 후 다시 시도해주세요."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_500", "서버에 오류가 발생했습니다."),
     ALREADY_DELETED(HttpStatus.CONFLICT, "DELETE_409", "삭제 처리 중입니다.");
 

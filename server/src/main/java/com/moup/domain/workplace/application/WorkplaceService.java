@@ -339,7 +339,9 @@ public class WorkplaceService {
 
     @Transactional(readOnly = true)
     public InviteCodeInquiryResponse inquireInviteCode(User user, String inviteCode) {
-        Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCode(inviteCode.toUpperCase());
+        // 가장 싼 오라클이다 — body 없이 200(존재)/404(부재)로 즉시 갈린다.
+        Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCodeWithRateLimit(
+                user.getId(), inviteCode.toUpperCase());
         if (workerRepository.existsByUserIdAndWorkplaceId(user.getId(), workplaceId)) {
             throw new WorkerAlreadyExistsException();
         }
@@ -359,7 +361,8 @@ public class WorkplaceService {
 
     @Transactional
     public WorkplaceJoinResponse joinWorkplace(User user, WorkplaceJoinRequest request) {
-        Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCode(request.getInviteCode().toUpperCase());
+        Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCodeWithRateLimit(
+                user.getId(), request.getInviteCode().toUpperCase());
         if (!workplaceRepository.existsById(workplaceId)) { throw new WorkplaceNotFoundException(); }
         if (workerRepository.existsByUserIdAndWorkplaceId(user.getId(), workplaceId)) { throw new WorkerAlreadyExistsException(); }
 
