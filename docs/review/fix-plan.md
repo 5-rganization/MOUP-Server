@@ -100,7 +100,7 @@ Phase 0-1 완료가 **전제**다. 흩어서 하면 운영 DB에 `ALTER`를 여�
 
 ---
 
-## Phase 2 — `is_accepted` 승인 게이트 (5 C-1 대표)
+## ✅ Phase 2 — 완료 (`f5f8cba`)
 
 **코드베이스 전체에서 `is_accepted`를 읽는 곳이 0건**이다. 승인 절차가 장식이다.
 
@@ -115,6 +115,29 @@ Phase 1(스키마) 완료가 전제. 영향 파일이 가장 넓다:
 미승인자의 근무에는 루틴을 연결할 수 없다.
 
 이걸 고치면 **4 I5 / 2 I1(동료 급여 노출)의 절반이 함께 닫힌다** — 미승인자의 접근이 먼저 막힌다.
+
+### 적용 결과
+
+`PermissionVerifyUtil.verifyWorkerPermission`이 `Worker` 객체를 받아 승인 여부까지 확인한다.
+**이름을 기본형으로 둔 것이 설계 결정이다** — 새 호출부가 실수로 골라도 안전한 쪽이 된다.
+승인 대기 중에도 허용해야 하는 것만 `verifyWorkerIdentityAllowingPending`을 쓴다.
+
+| 경로 | 정책 6 항목 | 판정 |
+|---|---|---|
+| `WorkService` 5곳 (근무 등록·출퇴근·수정·삭제·조회) | (c) | **차단** |
+| `RoutineService:416` (루틴 연결·조회) | 정책 15 | **차단** |
+| `WorkerService.updateMyWorker` (자기 급여 설정) | (b) | 허용 |
+| `WorkerService.deleteMyWorker` (참여 취소) | — | 허용. **막으면 대기자가 갇힌다** |
+| `WorkplaceService` 목록·단건 | (a)(d) | 허용하되 `status`로 구분 |
+
+**`WorkplaceStatus` 열거형 하나로 정책 6과 정책 5(사장님 탈퇴)를 함께 만족시킨다.**
+`owner_id IS NULL`이 곧 사장님 탈퇴 신호이므로 **`withdrawn_at` 컬럼이 필요 없다**
+— Phase 6의 DDL이 사라졌다.
+
+`WorkerSummaryResponse.isAccepted`도 추가했다. 이 필드가 없어 **사장님이 누가 대기자인지
+알 수 없고 승인 버튼을 어디에 띄울지 판단할 수 없었다.**
+
+회귀 테스트 7건, 변이 테스트로 실효성 확인. **전체 58건 통과.**
 
 ---
 
@@ -204,9 +227,14 @@ C4는 Phase 3-6과 함께 처리한다.
 
 ## Phase 6 — 사장님 탈퇴 시 가명처리 (4 C4 · 확정 정책 5)
 
-`withdrawn_at` 컬럼 추가 + 접근 차단 로직. **Phase 0-1 필수 전제.**
-FK는 이미 `SET NULL`로 고쳤으므로(`98ac8e9`) 데이터 소실은 멈췄고,
-남은 것은 "남은 데이터를 어떻게 보여줄 것인가"다.
+**DDL이 필요 없다.** `owner_id IS NULL`이 곧 "사장님이 하드 삭제됐다"는 신호이고
+(FK가 `ON DELETE SET NULL`), Phase 2에서 `WorkplaceStatus.OWNER_WITHDRAWN`으로
+이미 표시하고 있다.
+
+남은 것은 **접근 차단 범위**다 — 정책 5의 "접근만 차단"을 어디까지 적용할지.
+`PermissionVerifyUtil`에 `OWNER_WITHDRAWN`일 때의 처리를 넣을지가 핵심이고,
+[스코프 5의 남은 결정 2건](scope-5-workplace.md)이 여기에 걸려 있다:
+알바생이 자기 과거 근무·급여를 계속 볼 수 있어야 하는가, 유예 3일 중 동작은 어떠한가.
 
 ---
 
