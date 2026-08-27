@@ -87,7 +87,7 @@ Phase 0-1 완료가 **전제**다. 흩어서 하면 운영 DB에 `ALTER`를 여�
 | 대상 | 근거 | 내용 |
 |---|---|---|
 | `workers` | 5 C-2 · 7 I11 | `UNIQUE (workplace_id, user_id)` — 중복 참여 경합 차단 |
-| `workers.is_accepted` | 5 C-1 | `NOT NULL DEFAULT 0` + 기존 NULL 행 정리 |
+| `workers.is_accepted` | 5 C-1 | `NOT NULL DEFAULT 0` + **백필**([정책 12](#확정-정책-12--is_accepted-백필-d1-답변)) — NULL보다 기존 `false` 행이 더 위험하다 |
 | `works` | 7 I10 · 2 M7 | `INDEX (worker_id, work_date)` — 13개월 캘린더 filesort 제거 |
 | `normal_alarms` | 6 I5 · 7 I9 | `INDEX (receiver_id, sent_at DESC)` + `receiver_id`/`sender_id` FK CASCADE |
 | `routines` | 6 M5 | `UNIQUE (user_id, routine_name)` |
@@ -95,7 +95,8 @@ Phase 0-1 완료가 **전제**다. 흩어서 하면 운영 DB에 `ALTER`를 여�
 | `admin_alarm_user_mappings` | 6 M12 | `UNIQUE (alarm_id, user_id)` |
 | `salaries` | 7 I14 | `CHECK` — `HOURLY`인데 `hourly_rate IS NULL` 방지 |
 
-`is_accepted` 기존 NULL 행 처리는 [확정 정책 12](#확정-정책-12--is_accepted-null-행-채우기-d1-답변)로 확정됐다.
+`is_accepted` 백필은 [확정 정책 12](#확정-정책-12--is_accepted-백필-d1-답변)로 확정됐다.
+⚠️ **Phase 2의 최대 배포 위험** — 게이트를 켜면 승인받지 않은 채 일해 온 사람이 차단된다.
 
 ---
 
@@ -326,81 +327,49 @@ weeklyHolidayAllowance = (int) (avgDailyWorkHours * weekWorks.get(0).getHourlyRa
 > 이 앱에서 가장 가까운 값은 예정 `end_time − start_time − rest`이며,
 > `actual_*`이 아니다. 확정 정책 1(예정 시간대 기준 배분)과도 일관된다.
 
-### 확정 정책 12 — `is_accepted` NULL 행 채우기 (D1 답변)
+### 확정 정책 12 — `is_accepted` 백필 (D1 답변)
 
-**먼저 확인**: `is_accepted`는 **모든 INSERT 경로에서 명시적으로 설정된다.**
-`WorkplaceJoinRequest:35` → `false`, `OwnerWorkplaceCreateRequest:40` /
-`WorkerWorkplaceCreateRequest:46` → `true`. **NULL 행이 아예 없을 가능성이 높다.**
+⚠️ **원래 질문(NULL 행)보다 `false` 행이 더 큰 문제다.**
 
-```sql
-SELECT is_accepted, COUNT(*) FROM workers GROUP BY is_accepted;
+```
+WorkplaceJoinRequest:35  → is_accepted = false   (초대코드 참여는 무조건 false)
+WorkerService:298        → true                  (사장님이 승인해야만)
 ```
 
-**NULL이 0건이면** → 그냥 `NOT NULL DEFAULT 0`을 걸면 끝이다.
+`is_accepted`를 **읽는 코드가 0건**이었으므로, 사장님이 승인을 누르지 않아도
+알바생은 아무 지장 없이 일해 왔다. 승인 버튼이 실제로 하는 일이 없었으니
+**안 누른 사장님이 있을 수밖에 없다.**
 
-**NULL이 있으면** 근무 이력으로 판별한다:
+→ **게이트를 켜는 순간 잘 쓰고 있던 사용자가 차단된다.** 이것이 Phase 2의 최대 배포 위험이다.
+
+한편 NULL 행은 없을 가능성이 높다 — `is_accepted`는 모든 INSERT 경로에서
+명시적으로 설정된다(`WorkplaceJoinRequest:35` false,
+`OwnerWorkplaceCreateRequest:40` / `WorkerWorkplaceCreateRequest:46` true).
+
+#### 백필 규칙 — NULL이든 `false`든 **근무 이력이 있으면 승인으로 본다**
+
 ```sql
--- 근무 이력이 있으면 실제로 일해 온 사람이므로 승인 상태로 본다
+-- 1. 규모 파악
+SELECT is_accepted, COUNT(*) FROM workers GROUP BY is_accepted;
+
+-- 2. 게이트를 켰을 때 잘못 차단될 사람 수 (0이면 그냥 켜면 된다)
+SELECT COUNT(*) FROM workers w
+ WHERE (w.is_accepted IS NULL OR w.is_accepted = 0)
+   AND EXISTS (SELECT 1 FROM works k WHERE k.worker_id = w.id);
+
+-- 3. 백필
 UPDATE workers w SET is_accepted = 1
- WHERE is_accepted IS NULL AND EXISTS (SELECT 1 FROM works k WHERE k.worker_id = w.id);
+ WHERE (is_accepted IS NULL OR is_accepted = 0)
+   AND EXISTS (SELECT 1 FROM works k WHERE k.worker_id = w.id);
 UPDATE workers SET is_accepted = 0 WHERE is_accepted IS NULL;
 ```
 
-**근거**: `is_accepted`를 읽는 코드가 0건이었으므로 **지금까지 모두가 승인된 것처럼 동작해 왔다.**
-일괄 `0`으로 두면 정상 근무 중인 사람이 차단되고, 일괄 `1`로 두면 미승인자가 승인된다.
-근무 이력은 "실제로 일해 왔다"는 관측 가능한 증거이며, 잘못 판정되어도
-**사장님이 다시 승인하면 복구된다.**
+**근거**: 근무 이력은 "실제로 일해 왔다"는 **관측 가능한 증거**이지 추측이 아니다.
+잘못 판정되어도 **사장님이 승인/거부로 되돌릴 수 있다.** 반대 방향(전부 0)은
+복구 경로가 사장님의 수동 조치뿐이고 그 전까지 사용자는 이유도 모른 채 막힌다.
 
-
-### 확정 정책 13 — 근로소득세는 간이세액표 조회 (D5 답변)
-
-**선택: a안 — 간이세액표를 리소스로 적재해 조회한다.**
-
-#### 좋은 소식 — 구조가 이미 맞다
-
-`calculateDeductions`의 호출부 3곳이 **전부 월 단위 소득**을 넘긴다:
-
-| 호출부 | 인자 |
-|---|---|
-| `SalaryCalculationService:282` | `estimatedMonthlyIncome` |
-| `:435` | `grossIncome` (월간 집계) |
-| `:637` | `grossMonthlyIncome` |
-
-간이세액표는 **월급여액 기준**이므로 별도 구조 변경 없이 `:688`의
-`grossIncome * 0.033`만 표 조회로 바꾸면 된다.
-일별 표시는 이미 월 공제액을 배분하는 방식이다(M-3과 함께 처리).
-
-#### 막는 것 두 가지
-
-**1. 공제대상 가족 수 필드가 없다.** 코드베이스·스키마 전체에 `부양`/`dependent`/
-`공제대상` 관련 필드가 **0건**이다. 간이세액표는 `(월급여액 × 공제대상 가족 수)` 2차원 조회다.
-
-→ **결정 필요 (D6)**: (i) 1명(본인)으로 고정하고 표의 첫 열만 쓴다 —
-알바 대부분이 여기 해당하고 필드·UI 추가가 없다. (ii) `salaries`에 컬럼을 추가하고
-입력받는다 — 정확하지만 Phase 6과 함께 스키마·UI 작업이 붙는다.
-**(i)을 권한다.** 나중에 (ii)로 넓혀도 표는 그대로 쓴다.
-
-**2. 표 데이터 자체는 내가 만들 수 없다.** 국세청이 공표하는 법정 표(소득세법 시행령 별표2)이며
-매년 개정된다. **홈택스에서 받은 파일이 필요하다** —
-`조회/발급 → 기타 조회 → 근로소득 간이세액표`에서 엑셀로 받을 수 있다.
-
-→ 조회 로직·로더·테스트는 데이터 없이도 만들 수 있고, 표는 나중에 끼워 넣으면 된다.
-다만 **표가 없는 동안 임의 요율로 채워 두지 않는다** — 지금 3.63%를 떼는 것과 같은
-종류의 오류를 다시 만드는 일이다.
-
-#### 구현 형태
-
-```
-src/main/resources/tax/simplified-tax-table-2026.csv   ← 홈택스 원본에서 변환
-  월급여하한,월급여상한,가족1,가족2,...,가족11
-```
-- 106만원 미만은 0원 (표에 그대로 있다)
-- 1,000만원 초과는 별도 계산식 — 알바 도메인에서는 사실상 도달하지 않으므로
-  상한 구간 값으로 고정하고 로그를 남긴다
-- 지방소득세는 **조회된 소득세의 10%** (소득세 0이면 0). 현재 `:689` 로직 그대로 유효하다
-- `salary.rates.simple-income-tax=0.033` 설정은 **삭제한다** — 남겨 두면 다시 쓰인다
-
-**검증**: 106만원 경계(미만 0원 / 이상 표 값), 표 구간 경계 몇 개, 지방소득세 10%.
+진짜 미승인자(신청만 하고 일한 적 없는 사람)는 `0`으로 남는다 — 의도한 동작이며
+확정 정책 4대로 근무지 이름·사장님 정보·승인 대기 표시만 보게 된다.
 
 ---
 
