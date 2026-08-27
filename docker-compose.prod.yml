@@ -1,5 +1,13 @@
 name: moup
 
+# Docker 기본 json-file 드라이버는 로그를 무한정 쌓는다. 라즈베리파이 SD 카드에서는
+# 이게 서버가 죽는 방식이다 — 디스크가 차면 MySQL이 먼저 멈춘다.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   # 1. Nginx (내부 리버스 프록시)
   moup-nginx:
@@ -14,11 +22,14 @@ services:
     networks:
       - default
       - npm-connect
+    logging: *default-logging
     restart: unless-stopped
 
   # 2. Spring Server (API 서버)
   server:
-    image: neoskycladdocker/moup
+    # Jenkins가 TAG를 export한다 (main 빌드). 예전에는 태그가 없어 항상 :latest를
+    # 당겼고, 그래서 프로덕션이 develop 이미지를 받았다. export TAG는 죽은 코드였다.
+    image: neoskycladdocker/moup:${TAG:-stable}
     env_file:
       - ./.env # 루트의 .env 파일 로드
     expose:
@@ -32,6 +43,7 @@ services:
         condition: service_started
     networks:
       - default
+    logging: *default-logging
     restart: unless-stopped
 
   # 3. MySQL (데이터베이스)
@@ -62,6 +74,7 @@ services:
       - "127.0.0.1:3306:3306"
     networks:
       - default
+    logging: *default-logging
     restart: unless-stopped # 운영 환경 재시작 정책
 
   # 4. Redis (캐시 서버)
@@ -75,6 +88,7 @@ services:
       - ./data/redis:/data
     networks:
       - default
+    logging: *default-logging
     restart: unless-stopped # 운영 환경 재시작 정책
 
 networks:

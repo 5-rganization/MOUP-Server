@@ -1,6 +1,14 @@
 # 라즈베리파이 운영용 통합 docker-compose.yml (SD 카드 사용)
 name: moup
 
+# Docker 기본 json-file 드라이버는 로그를 무한정 쌓는다. 라즈베리파이 SD 카드에서는
+# 이게 서버가 죽는 방식이다 — 디스크가 차면 MySQL이 먼저 멈춘다.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   # 1. Nginx (Reverse Proxy & SSL)
   nginx:
@@ -17,16 +25,21 @@ services:
       # (Let's Encrypt 사용 시 관련 경로 추가)
     depends_on:
       - server
+    logging: *default-logging
     restart: unless-stopped # 운영 환경 재시작 정책
 
   # 2. Spring Server (API)
   server:
-    image: neoskycladdocker/moup
+    # Jenkins가 TAG를 export한다 (develop 빌드). 예전에는 태그가 없어 항상 :latest를
+    # 당겼고, 그래서 프로덕션이 develop 이미지를 받았다. export TAG는 죽은 코드였다.
+    image: neoskycladdocker/moup:${TAG:-latest}
     container_name: moup-server-dev
     env_file:
       - ./.env # 루트의 .env 파일 로드
     environment:
       SWAGGER_ENABLED: "true" # 개발 서버에서만 Swagger 노출 (prod는 기본값 false)
+      SQL_LOG_LEVEL: DEBUG    # 개발 서버에서만 쿼리 로그 (prod는 기본값 INFO)
+      WEB_LOG_LEVEL: DEBUG
     expose:
       - "8080" # 내부 Nginx 연결용 포트
     depends_on:
@@ -34,6 +47,7 @@ services:
         condition: service_healthy # MySQL 준비 완료 후 시작
       redis:
         condition: service_started # Redis 시작 후 시작
+    logging: *default-logging
     restart: unless-stopped # 운영 환경 재시작 정책
 
   # 3. MySQL Database
@@ -61,6 +75,7 @@ services:
     # ports는 운영 환경에서 노출하지 않음 (로컬 테스트 필요시 임시 추가)
     ports:
       - "127.0.0.1:3306:3306"
+    logging: *default-logging
     restart: unless-stopped # 운영 환경 재시작 정책
 
   # 4. Redis Cache
@@ -71,6 +86,7 @@ services:
       # 라즈베리파이 SD 카드 홈 디렉토리 아래 폴더와 바인드 마운트
       - ~/moup-data/redis:/data
     # ports는 운영 환경에서 노출하지 않음 (로컬 테스트 필요시 임시 추가)
+    logging: *default-logging
     restart: unless-stopped # 운영 환경 재시작 정책
 
 # 볼륨 정의 섹션 (바인드 마운트를 사용하므로 비워둠)
