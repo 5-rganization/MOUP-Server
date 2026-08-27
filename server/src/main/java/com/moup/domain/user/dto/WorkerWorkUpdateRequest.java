@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.moup.domain.work.domain.Work;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -27,6 +28,7 @@ public class WorkerWorkUpdateRequest {
     @Schema(description = "실제 퇴근 시간 (ISO 8601 UTC)", example = "2025-10-11T15:40:00Z", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Instant actualEndTime;
     @NotNull(message = "값이 없을 경우 0을 전달해야 합니다.")
+    @PositiveOrZero(message = "휴게 시간은 0 이상이어야 합니다.")
     @Schema(description = "휴게 시간 (분단위, 없을 경우 0)", example = "15", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer restTimeMinutes;
     @Schema(description = "메모", example = "오늘 재고 정리하는 날", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
