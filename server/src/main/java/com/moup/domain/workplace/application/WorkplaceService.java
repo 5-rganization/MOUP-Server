@@ -227,7 +227,8 @@ public class WorkplaceService {
                 if (!(request instanceof OwnerWorkplaceUpdateRequest ownerRequest)) {
                     throw new InvalidPermissionAccessException();
                 }
-                Long workerId = updateWorkplaceAndWorkerHelper(user.getId(), workplaceId, ownerRequest);
+                updateWorkplaceFields(user.getId(), workplaceId, ownerRequest);
+                Long workerId = findWorkerId(user.getId(), workplaceId);
                 workerRepository.updateOwnerBasedLabelColor(workerId, user.getId(), workplaceId,
                         ownerRequest.getOwnerBasedLabelColor());
             }
@@ -235,7 +236,7 @@ public class WorkplaceService {
                 if (!(request instanceof WorkerWorkplaceUpdateRequest workerRequest)) {
                     throw new InvalidPermissionAccessException();
                 }
-                Long workerId = updateWorkplaceAndWorkerHelper(user.getId(), workplaceId, workerRequest);
+                Long workerId = findWorkerId(user.getId(), workplaceId);
                 workerRepository.updateWorkerBasedLabelColor(workerId, user.getId(), workplaceId,
                         workerRequest.getWorkerBasedLabelColor());
 
@@ -302,18 +303,26 @@ public class WorkplaceService {
         return workerToCreate;
     }
 
-    private Long updateWorkplaceAndWorkerHelper(Long userId, Long workplaceId, BaseWorkplaceUpdateRequest request) {
+    /// 근무지 필드 수정은 사장님 경로에서만 호출한다.
+    ///
+    /// `UPDATE workplaces ... WHERE id = ? AND owner_id = ?`이라 알바생이 호출하면
+    /// 0행 갱신 후 204가 나갔다 — 아무것도 안 됐는데 성공으로 보이는 조용한 무시였다.
+    /// 중복 이름 검사도 알바생의 userId를 owner_id로 넣어, 같은 이름의 매장을 따로
+    /// 소유한 알바생이 라벨 색상만 바꿔도 409를 맞을 수 있었다. 이제 알바생 경로는
+    /// 이 SQL들을 아예 실행하지 않는다.
+    private void updateWorkplaceFields(Long ownerId, Long workplaceId, BaseWorkplaceUpdateRequest request) {
         Workplace oldWorkplace = workplaceRepository.findById(workplaceId)
                 .orElseThrow(WorkplaceNotFoundException::new);
         if (!oldWorkplace.getWorkplaceName().equals(request.getWorkplaceName())
-                && workplaceRepository.existsByOwnerIdAndWorkplaceName(userId,
+                && workplaceRepository.existsByOwnerIdAndWorkplaceName(ownerId,
                 request.getWorkplaceName())) {
             throw new WorkplaceNameAlreadyUsedException();
         }
 
-        Workplace newWorkplace = request.toWorkplaceEntity(workplaceId, userId);
-        workplaceRepository.update(newWorkplace);
+        workplaceRepository.update(request.toWorkplaceEntity(workplaceId, ownerId));
+    }
 
+    private Long findWorkerId(Long userId, Long workplaceId) {
         return workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
                 .orElseThrow(WorkerNotFoundException::new).getId();
     }

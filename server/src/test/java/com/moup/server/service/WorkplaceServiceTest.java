@@ -9,6 +9,11 @@ import com.moup.domain.alarm.domain.AlarmTitle;
 import com.moup.global.common.type.Role;
 import com.moup.domain.workplace.exception.WorkplaceLimitExceededException;
 import com.moup.domain.user.dto.OwnerWorkplaceCreateRequest;
+import com.moup.domain.user.dto.OwnerWorkplaceUpdateRequest;
+import com.moup.domain.user.dto.WorkerWorkplaceUpdateRequest;
+import com.moup.domain.salary.domain.SalaryCalculation;
+import com.moup.domain.salary.domain.SalaryType;
+import com.moup.domain.salary.dto.SalaryUpdateRequest;
 import com.moup.domain.salary.dto.SalaryCreateRequest;
 import com.moup.domain.workplace.dto.WorkplaceJoinRequest;
 import com.moup.domain.user.domain.User;
@@ -52,6 +57,10 @@ class WorkplaceServiceTest {
   private PermissionVerifyUtil permissionVerifyUtil;
   @Mock
   private FCMService fcmService;
+  @Mock
+  private com.moup.domain.work.mapper.WorkRepository workRepository;
+  @Mock
+  private com.moup.domain.salary.application.SalaryCalculationService salaryCalculationService;
 
   @InjectMocks
   private WorkplaceService workplaceService;
@@ -240,5 +249,74 @@ class WorkplaceServiceTest {
     inOrder.verify(workerRepository).create(any(Worker.class));
     inOrder.verify(salaryRepository).create(any(Salary.class));
     inOrder.verify(fcmService).sendToSingleUser(anyLong(), eq(ownerId), anyString(), anyString(), any());
+  }
+
+  // ========== updateWorkplace — 역할별 근무지 필드 수정 권한 ==========
+
+  /// `UPDATE workplaces ... WHERE id = ? AND owner_id = ?`에 알바생 userId가 들어가
+  /// 0행 갱신 후 204가 나가던 조용한 무시를 막는다. 이제 SQL 자체를 실행하지 않는다.
+  @Test
+  @DisplayName("알바생의 근무지 수정은 workplaces 테이블을 건드리지 않는다")
+  void updateWorkplace_Worker_DoesNotTouchWorkplaceTable() {
+    Long workplaceId = 10L;
+    Long workerId = 100L;
+
+    WorkerWorkplaceUpdateRequest request = WorkerWorkplaceUpdateRequest.builder()
+        .workplaceName("이름을 바꿔달라고 보내더라도")
+        .categoryName("편의점")
+        .address("기본 주소")
+        .latitude(0.0)
+        .longitude(0.0)
+        .workerBasedLabelColor("RED")
+        .salaryUpdateRequest(SalaryUpdateRequest.builder()
+            .salaryType(SalaryType.SALARY_MONTHLY)
+            .salaryCalculation(SalaryCalculation.SALARY_CALCULATION_HOURLY)
+            .hourlyRate(10_030)
+            .salaryDate(25)
+            .build())
+        .build();
+
+    when(workerRepository.findByUserIdAndWorkplaceId(mockWorkerUser.getId(), workplaceId))
+        .thenReturn(java.util.Optional.of(Worker.builder().id(workerId).build()));
+    when(salaryRepository.findByWorkerId(workerId))
+        .thenReturn(java.util.Optional.of(Salary.builder().id(200L).build()));
+    when(workRepository.findDistinctWorkMonthsAfter(eq(workerId), any()))
+        .thenReturn(java.util.List.of());
+
+    workplaceService.updateWorkplace(mockWorkerUser, workplaceId, request);
+
+    verify(workplaceRepository, never()).update(any(Workplace.class));
+    // 알바생 userId를 owner_id로 넣던 중복 이름 검사도 사라져야 한다
+    verify(workplaceRepository, never()).existsByOwnerIdAndWorkplaceName(anyLong(), anyString());
+    verify(workerRepository).updateWorkerBasedLabelColor(workerId, mockWorkerUser.getId(), workplaceId, "RED");
+  }
+
+  @Test
+  @DisplayName("사장님의 근무지 수정은 workplaces 테이블을 갱신한다")
+  void updateWorkplace_Owner_UpdatesWorkplaceTable() {
+    Long workplaceId = 10L;
+    Long workerId = 100L;
+
+    OwnerWorkplaceUpdateRequest request = OwnerWorkplaceUpdateRequest.builder()
+        .workplaceName("새 이름")
+        .categoryName("편의점")
+        .address("경기 화성시 동탄중심상가1길 8")
+        .latitude(37.2)
+        .longitude(127.07)
+        .ownerBasedLabelColor("BLUE")
+        .build();
+
+    when(workplaceRepository.findById(workplaceId))
+        .thenReturn(java.util.Optional.of(Workplace.builder().id(workplaceId).workplaceName("옛 이름").build()));
+    when(workplaceRepository.existsByOwnerIdAndWorkplaceName(mockOwner.getId(), "새 이름")).thenReturn(false);
+    when(workerRepository.findByUserIdAndWorkplaceId(mockOwner.getId(), workplaceId))
+        .thenReturn(java.util.Optional.of(Worker.builder().id(workerId).build()));
+
+    workplaceService.updateWorkplace(mockOwner, workplaceId, request);
+
+    ArgumentCaptor<Workplace> captor = ArgumentCaptor.forClass(Workplace.class);
+    verify(workplaceRepository).update(captor.capture());
+    assertEquals("새 이름", captor.getValue().getWorkplaceName());
+    assertEquals(mockOwner.getId(), captor.getValue().getOwnerId());
   }
 }
