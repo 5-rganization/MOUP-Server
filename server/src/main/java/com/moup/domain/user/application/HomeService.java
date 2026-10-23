@@ -69,20 +69,12 @@ public class HomeService {
                 // 현재 달 인건비 계산
                 List<OwnerMonthlyWorkplaceSummaryResponse> currentSummaries =
                         salaryCalculationService.getOwnerMonthlyWorkplaceSummaryList(user.getId(), nowYear, nowMonth);
-                int currentTotalSalary = currentSummaries.stream()
-                        .mapToInt(monthlySummary ->
-                                monthlySummary.getMonthlyWorkerSummaryInfoList().stream()
-                                        .mapToInt(OwnerMonthlyWorkerSummaryResponse::getNetIncome).sum()
-                        ).sum();
+                int currentTotalSalary = sumLaborCost(currentSummaries);
 
                 // 이전 달 인건비 계산 (없으면 0)
                 List<OwnerMonthlyWorkplaceSummaryResponse> previousSummaries =
                         salaryCalculationService.getOwnerMonthlyWorkplaceSummaryList(user.getId(), prevYear, prevMonth);
-                int previousTotalSalary = previousSummaries.stream()
-                        .mapToInt(monthlySummary ->
-                                monthlySummary.getMonthlyWorkerSummaryInfoList().stream()
-                                        .mapToInt(OwnerMonthlyWorkerSummaryResponse::getNetIncome).sum()
-                        ).sum(); // 비어있으면 sum()은 0 반환
+                int previousTotalSalary = sumLaborCost(previousSummaries); // 비어있으면 0
 
                 // 차액 계산
                 int salaryDifference = currentTotalSalary - previousTotalSalary;
@@ -98,5 +90,21 @@ public class HomeService {
             case ROLE_ADMIN ->
                     throw new InvalidPermissionAccessException();
         };
+    }
+
+    /// 사장님 인건비 = 근무자 **세전** 소득 합계.
+    ///
+    /// 세후는 알바생 통장에 들어가는 금액일 뿐이고, 원천징수한 세금·근로자 몫 4대보험도
+    /// 사장님이 대신 납부하므로 사장님이 내는 돈이다. 예전에는 세후를 더해 실제 부담보다
+    /// 약 17% 작게 보였다. 사업주 몫 4대보험은 넣지 않는다 — 산재(업종별)·고용안정(규모별)
+    /// 요율을 몰라 추정치가 된다.
+    ///
+    /// 이번 달과 지난달이 반드시 같은 기준이어야 한다. 한쪽만 바뀌면 전월 대비 차이에
+    /// 세전·세후 차액이 그대로 섞인다.
+    private static int sumLaborCost(List<OwnerMonthlyWorkplaceSummaryResponse> summaries) {
+        return summaries.stream()
+                .flatMap(summary -> summary.getMonthlyWorkerSummaryInfoList().stream())
+                .mapToInt(OwnerMonthlyWorkerSummaryResponse::getGrossIncome)
+                .sum();
     }
 }

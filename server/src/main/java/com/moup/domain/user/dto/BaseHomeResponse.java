@@ -13,7 +13,7 @@ import lombok.experimental.SuperBuilder;
 public abstract class BaseHomeResponse {
     @Schema(description = "기준 달 (현재 월)", example = "10", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer nowMonth;
-    @Schema(description = "기준 달 급여(인건비) 정보", example = "549000", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "기준 달 급여(인건비) 정보. 알바생은 세후 급여, 사장님은 세전 인건비(사업주 부담 4대보험 제외)", example = "549000", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer totalSalary;
     @Schema(description = "이전달 급여(인건비)와의 차이 (원)", example = "100000", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer prevMonthSalaryDiff;
