@@ -1,57 +1,110 @@
-name: Manual DB Initialization (Docker)
+name: Manual DB Initialization (DESTRUCTIVE)
+
+# ⚠️ 이 워크플로는 DB를 통째로 날린다.
+# db/moup.sql의 첫 줄이 `DROP SCHEMA IF EXISTS moup;`이다.
+#
+# 예전에는 확인 절차가 하나도 없었고 더미 데이터 삽입이 기본값 true였다.
+# 저장소 쓰기 권한이 있으면 두 번의 클릭으로 프로덕션 DB가 사라졌고,
+# 되돌릴 방법이 없었다. 이제 두 가지로 막는다:
+#   1. 정해진 문구를 정확히 입력해야 진행된다 (실수 차단)
+#   2. DROP 직전에 mysqldump로 백업한다 (고의로 눌러도 복구 가능)
+#
+# 추가로 권장: GitHub Settings > Environments에서 `db-destructive` 환경에
+# required reviewer를 걸면 승인 없이는 실행되지 않는다.
 
 on:
-  workflow_dispatch: # Allows manual triggering from GitHub Actions UI
+  workflow_dispatch:
     inputs:
+      confirm:
+        description: '되돌릴 수 없는 작업입니다. 진행하려면 DROP AND RECREATE 를 정확히 입력하세요.'
+        required: true
+        type: string
       insert_dummy_data:
-        description: '기본 DB 생성 후 더미 데이터를 추가로 삽입합니다. (Execute moup_dummy_data.sql)'
+        description: '스키마 재생성 후 더미 데이터를 삽입합니다. (moup_dummy_data.sql)'
         required: true
         type: boolean
-        default: true # Default to inserting dummy data
+        default: false
 
 jobs:
   manual-db-init:
-    runs-on: ubuntu-latest # GitHub Actions runner environment
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Execute SQL on Docker container via SSH
-        # Connects to the Raspberry Pi via SSH and runs commands
+      # 러너에서 먼저 막는다 — 서버에 접속조차 하지 않는다.
+      # 입력값을 run: 안에 직접 보간하면 셸 주입이 되므로 env로 받는다.
+      - name: Verify confirmation phrase
+        env:
+          CONFIRM: ${{ inputs.confirm }}
         run: |
-          sshpass -p "${{ secrets.RPI_PASSWORD }}" ssh -o StrictHostKeyChecking=no -p ${{ secrets.RPI_PORT }} ${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }} << 'EOF'
-            # === Script Start ===
-            set -e # Exit immediately if a command exits with a non-zero status.
+          if [[ "$CONFIRM" != "DROP AND RECREATE" ]]; then
+            echo "::error::확인 문구가 일치하지 않습니다. 아무것도 실행하지 않았습니다."
+            exit 1
+          fi
+          echo "::warning::DB 스키마를 삭제하고 재생성합니다. 직전 상태는 서버에 백업됩니다."
 
-            echo "Connecting to server and navigating to project directory..."
-            # Navigate to the project directory where docker-compose.yml is located
+      - name: Backup, then drop and recreate schema via SSH
+        run: |
+          # 원격 셸은 이 스크립트를 ssh 표준입력(heredoc)으로 한 줄씩 읽는다.
+          # 그래서 표준입력을 읽는 명령이 중간에 있으면 **스크립트의 나머지를 먹어 버리고**,
+          # bash는 읽을 줄이 없어 종료 코드 0으로 끝난다 — 단계가 성공으로 보이는데 DROP·재생성이
+          # 실행되지 않는다. 실제로 백업 직후에서 멈춘 채 성공으로 표시된 적이 있다.
+          # 아래 두 겹으로 막는다:
+          #   ① 입력을 따로 지정하지 않는 docker compose exec에는 전부 `< /dev/null`을 붙인다.
+          #   ② 마지막 줄의 완료 표시가 출력에 없으면 러너에서 실패시킨다.
+          set -o pipefail
+          sshpass -p "${{ secrets.RPI_PASSWORD }}" ssh -o StrictHostKeyChecking=no -p ${{ secrets.RPI_PORT }} ${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }} << 'EOF' | tee db-init.log
+            set -euo pipefail
+
             cd /home/${{ secrets.RPI_USER }}/MOUP-Server
 
-            # Define SQL file paths relative to the project root
-            SCHEMA_SQL="db/moup.sql" # Corrected path for schema
-            DUMMY_DATA_SQL="db/moup_dummy_data.sql" # Corrected path for dummy data
+            # 저장소에 기본 docker-compose.yml이 없다. -f 없이 `docker compose`를 부르면
+            # "no configuration file provided"로 실패한다. deploy.yml과 같은 파일을 쓴다.
+            COMPOSE="docker compose -f docker-compose.dev.yml"
 
-            # Execute Base Schema SQL using docker compose exec
-            echo "Executing Base Schema SQL script ($SCHEMA_SQL)..."
-            # Executes the mysql command inside the 'mysql' container
-            # Reads the SQL file from the host path mounted into the container
-            # Adds --default-character-set=utf8mb4 to ensure correct encoding
-            docker compose exec -T \
+            SCHEMA_SQL="db/moup.sql"
+            DUMMY_DATA_SQL="db/moup_dummy_data.sql"
+            BACKUP_DIR="/home/${{ secrets.RPI_USER }}/moup-db-backups"
+            BACKUP_FILE="$BACKUP_DIR/pre-init-$(date +%Y%m%d-%H%M%S).sql.gz"
+
+            # 1. 백업이 먼저다. 여기서 실패하면 DROP도 하지 않는다 (set -e).
+            #    이게 없으면 잘못 누른 순간 끝이다.
+            mkdir -p "$BACKUP_DIR"
+            echo "Backing up current schema to $BACKUP_FILE ..."
+            $COMPOSE exec -T \
+              -e MYSQL_PWD="${{ secrets.DATABASE_PASSWORD }}" \
+              mysql mysqldump --default-character-set=utf8mb4 --single-transaction \
+              -u root "${{ secrets.DATABASE_NAME }}" < /dev/null | gzip > "$BACKUP_FILE"
+
+            # 빈 백업은 백업이 아니다 — 파이프 뒤라 mysqldump 실패가 감춰질 수 있다.
+            if [[ ! -s "$BACKUP_FILE" ]]; then
+              echo "백업 파일이 비어 있습니다. 중단합니다." >&2
+              exit 1
+            fi
+            echo "Backup complete: $(du -h "$BACKUP_FILE" | cut -f1)"
+
+            # 최근 10개만 남긴다 — SD 카드가 차면 서버가 죽는다.
+            ls -1t "$BACKUP_DIR"/pre-init-*.sql.gz | tail -n +11 | xargs -r rm --
+
+            # 2. 여기서부터 파괴적이다.
+            echo "Executing schema script ($SCHEMA_SQL) — this DROPs the database..."
+            $COMPOSE exec -T \
               -e MYSQL_PWD="${{ secrets.DATABASE_PASSWORD }}" \
               mysql mysql --default-character-set=utf8mb4 -u root "${{ secrets.DATABASE_NAME }}" < "$SCHEMA_SQL"
-            echo "Base Schema SQL execution attempted."
 
-            # (Optional) Execute Dummy Data SQL if the input checkbox was checked
-            if [[ "${{ github.event.inputs.insert_dummy_data }}" == "true" ]]; then
-              echo "Checkbox is checked. Inserting dummy data from $DUMMY_DATA_SQL..."
-              # Adds --default-character-set=utf8mb4 here as well
-              docker compose exec -T \
+            if [[ "${{ inputs.insert_dummy_data }}" == "true" ]]; then
+              echo "Inserting dummy data from $DUMMY_DATA_SQL..."
+              $COMPOSE exec -T \
                 -e MYSQL_PWD="${{ secrets.DATABASE_PASSWORD }}" \
                 mysql mysql --default-character-set=utf8mb4 -u root "${{ secrets.DATABASE_NAME }}" < "$DUMMY_DATA_SQL"
-              echo "Dummy Data SQL execution attempted."
             else
-              echo "Checkbox is not checked. Skipping dummy data insertion."
+              echo "Skipping dummy data insertion."
             fi
 
-            echo "Manual DB Initialization complete."
-            # === Script End ===
+            echo "Done. Rollback: gunzip -c $BACKUP_FILE | $COMPOSE exec -T mysql mysql -u root ${{ secrets.DATABASE_NAME }}"
+            echo "DB_INIT_COMPLETE"
           EOF
 
+          if ! grep -qx "DB_INIT_COMPLETE" db-init.log; then
+            echo "::error::원격 스크립트가 끝까지 실행되지 않았습니다. 위 로그에서 마지막으로 찍힌 줄을 확인하세요."
+            exit 1
+          fi

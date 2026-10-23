@@ -71,14 +71,11 @@ jobs:
             echo "Pruning unused Docker images..."
             docker image prune -af
             
-            # 6. Crontab 설정 (사용자 삭제 스크립트)
-            # echo "Setting up crontab..."
-            # DELETE_SCRIPT="/home/${{ secrets.RPI_USER }}/MOUP-Server/src/main/resources/delete_old_users.sh"
-            # chmod +x "$DELETE_SCRIPT" # 실행 권한 부여
-            
-            # # 기존 스케줄 삭제 후 새로 등록 (멱등성 확보)
-            # (crontab -l 2>/dev/null | grep -v "delete_old_users.sh"; echo "0 0 * * * /bin/bash $DELETE_SCRIPT >> /home/${{ secrets.RPI_USER }}/MOUP-Server/delete_old_users.log 2>&1") | crontab -
-            
-            # echo "Crontab setup complete."
+            # 6. 탈퇴 사용자 영구 삭제는 서버 내부 @Scheduled로 옮겼다.
+            #    여기 있던 crontab 등록 블록은 통째로 주석 처리된 상태였고,
+            #    cron이 가리키던 스크립트는 그 경로에 존재하지도 않았다.
+            #    (delete_old_users.log에 No such file or directory만 쌓여 있었다)
+            #    자세한 경위는 SchedulerConfig 주석 참고.
+
             # === 스크립트 종료 ===
           EOF
