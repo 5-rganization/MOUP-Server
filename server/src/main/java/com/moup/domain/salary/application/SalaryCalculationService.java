@@ -109,7 +109,11 @@ public class SalaryCalculationService {
         boolean hasHolidayAllowance = !payableWorks.isEmpty()
                 && Boolean.TRUE.equals(payableWorks.get(payableWorks.size() - 1).getHasHolidayAllowance());
 
-        int weeklyHolidayAllowance = calculateWeeklyHolidayAllowance(
+        // 개근 요건 — 그 주에 결근이 하나라도 있으면 주휴수당이 없다 (근로기준법 시행령 제30조 제1항).
+        // 15시간 판정(weeklyWorkMinutes)은 결근한 날의 예정 시간도 포함한다. 기준이 실근로시간이 아니라
+        // 소정근로시간이기 때문이다. 결근이 있으면 어차피 0이라 지금은 결과에 영향이 없다.
+        boolean hasAbsence = weekWorks.stream().anyMatch(SalaryCalculationService::isAbsent);
+        int weeklyHolidayAllowance = hasAbsence ? 0 : calculateWeeklyHolidayAllowance(
                 payableWorks, weeklyWorkMinutes, hasHolidayAllowance);
 
         // 주휴수당을 근무일에 배분한다. 정수 나눗셈 나머지는 버리지 않고 마지막 근무일에 몰아준다
@@ -146,6 +150,10 @@ public class SalaryCalculationService {
     private static final long FULL_TIME_WEEKLY_MINUTES = 40 * 60L;
     /// 주휴수당 상한 일수 (1일 8시간).
     private static final long HOLIDAY_ALLOWANCE_MINUTES = 8 * 60L;
+
+    private static boolean isAbsent(Work work) {
+        return Boolean.TRUE.equals(work.getIsAbsent());
+    }
 
     /// 휴게시간을 뺀 순 근무시간. 휴게가 근무보다 길어도 음수가 되지 않게 막는다.
     /// 예전에는 주간 합계에만 클램프가 없어 개별 근무의 `net_work_minutes` 합과
@@ -196,8 +204,9 @@ public class SalaryCalculationService {
 
     /// 하루 근무에 대한 세전 일급(각종 수당 포함)을 상세하게 계산합니다.
     public Work calculateDailyIncome(Work work, int dailyHolidayAllowance, boolean hasNightAllowance) {
-        // end_time이 없으면 (아직 근무 중) 급여를 0으로 계산하고 반환
-        if (work.getEndTime() == null) {
+        // end_time이 없으면 (아직 근무 중) 급여를 0으로 계산하고 반환.
+        // 결근도 같다 — 일하지 않았으므로 시간도 급여도 0이다. 예정 시간은 행에 그대로 남는다.
+        if (work.getEndTime() == null || isAbsent(work)) {
             return work.toBuilder()
                     .grossWorkMinutes(0)
                     .netWorkMinutes(0)
@@ -305,7 +314,9 @@ public class SalaryCalculationService {
         int currentGrossSum = monthWorks.stream()
                 .mapToInt(work -> work.getGrossIncome() != null ? work.getGrossIncome() : 0)
                 .sum();
-        long daysWorked = monthWorks.size();
+        // 결근한 날은 근무일이 아니다. 세면 공제액이 0원짜리 날에도 배분되어 하루치가 사라지고,
+        // 일급제 고정급이 결근일까지 지급된다.
+        long daysWorked = monthWorks.stream().filter(work -> !isAbsent(work)).count();
 
         int estimatedMonthlyIncome = 0;
 
@@ -343,7 +354,7 @@ public class SalaryCalculationService {
         }
 
         long totalMinutesWorked = monthWorks.stream()
-                .filter(work -> work.getEndTime() != null)
+                .filter(work -> work.getEndTime() != null && !isAbsent(work))
                 .mapToLong(SalaryCalculationService::netMinutesOf)   // 음수 클램프 포함
                 .sum();
 
@@ -378,6 +389,10 @@ public class SalaryCalculationService {
                 endZoned.toLocalDate(),
                 estimatedDailyDeduction
         );
+    }
+
+    private static int countAttendedDays(List<Work> works) {
+        return (int) works.stream().filter(work -> !isAbsent(work)).count();
     }
 
     /// 보험 적용 대상인지 판단하는 헬퍼 메서드
@@ -502,8 +517,8 @@ public class SalaryCalculationService {
                             grossIncome = fixedRate * payDayCount;
                             break;
                         case SALARY_DAILY:
-                            // 일급: 고정급(fixedRate) * 해당 월의 근무일 수 (이미 workList.size() 기반)
-                            grossIncome = fixedRate * workList.size();
+                            // 일급: 고정급(fixedRate) * 해당 월의 근무일 수 (결근일 제외)
+                            grossIncome = fixedRate * countAttendedDays(workList);
                             break;
                     }
                 }
@@ -708,8 +723,8 @@ public class SalaryCalculationService {
                             grossMonthlyIncome = fixedRate * payDayCount;
                             break;
                         case SALARY_DAILY:
-                            // 일급: 고정급(fixedRate) * 해당 월의 근무일 수
-                            grossMonthlyIncome = fixedRate * workerWorkList.size();
+                            // 일급: 고정급(fixedRate) * 해당 월의 근무일 수 (결근일 제외)
+                            grossMonthlyIncome = fixedRate * countAttendedDays(workerWorkList);
                             break;
                     }
                 } else {

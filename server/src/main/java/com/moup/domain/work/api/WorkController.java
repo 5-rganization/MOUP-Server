@@ -7,6 +7,7 @@ import com.moup.domain.work.dto.WorkSummaryResponse;
 import com.moup.domain.work.domain.WorkCalendarListResponse;
 import com.moup.domain.work.dto.MyWorkCreateRequest;
 import com.moup.domain.work.dto.MyWorkUpdateRequest;
+import com.moup.domain.work.dto.WorkAbsenceRequest;
 import com.moup.global.security.IdentityService;
 import com.moup.domain.user.application.UserService;
 import com.moup.domain.user.application.WorkerService;
@@ -193,6 +194,18 @@ public class WorkController implements WorkSpecification {
                 .workIdList(result.resultingWorkIds())
                 .build();
         return ResponseEntity.ok().body(response);
+    }
+
+    @Override
+    @PutMapping("/works/{workId}/absence")
+    public ResponseEntity<?> setWorkAbsence(
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
+            @RequestBody @Valid WorkAbsenceRequest request
+    ) {
+        Long userId = identityService.getCurrentUserId();
+
+        workService.setWorkAbsence(userId, workId, request.getIsAbsent());
+        return ResponseEntity.noContent().build();
     }
 
     @Override

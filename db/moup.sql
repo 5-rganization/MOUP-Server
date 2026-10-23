@@ -174,6 +174,10 @@ CREATE TABLE `works`
     -- 확정 정책 3(급여 스냅샷) 위반.
     `has_night_allowance`     TINYINT(1)            NOT NULL DEFAULT 0,
     `has_holiday_allowance`   TINYINT(1)            NOT NULL DEFAULT 0,
+    -- 결근. 출근 기록이 없다고 결근으로 볼 수는 없다 — 출퇴근 기능을 안 쓰는 사용자가 있다.
+    -- 그래서 명시적으로 표시한다. 결근한 근무는 급여 0원이고, 그 주는 주휴수당이 없다(개근 요건).
+    -- 예정 시간(start_time/end_time)은 지우지 않는다. 주휴수당 15시간 판정은 소정근로시간 기준이다.
+    `is_absent`               TINYINT(1)            NOT NULL DEFAULT 0,
     `base_pay`                INT                   DEFAULT 0,  -- 기본급 (휴게시간 제외)
     `night_allowance`         INT                   DEFAULT 0,  -- 야간수당
     `holiday_allowance`       INT                   DEFAULT 0,  -- 주휴수당 (해당 주에 발생한 수당을 N등분하여 일별로 저장)

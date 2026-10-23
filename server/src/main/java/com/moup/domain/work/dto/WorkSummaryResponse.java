@@ -40,6 +40,8 @@ public class WorkSummaryResponse {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     @Schema(description = "반복 종료 날짜 (yyyy-MM-dd)", example = "2025-11-11", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private LocalDate repeatEndDate;
+    @Schema(description = "결근 여부. 결근한 근무는 급여 0원이고 그 주는 주휴수당이 없다", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Boolean isAbsent;
     @Schema(description = "사용자의 근무 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean isMyWork;
     @Schema(description = "사용자의 수정 가능 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)

@@ -145,6 +145,7 @@ public interface WorkRepository {
   /// 1. 현재 시간(`currentDateTime`) 기준으로 1시간 전 ~ 1시간 후 사이에 시작하고 (`start_time`)
   /// 2. 아직 '실제 출근'을 기록하지 않았으며 (`actual_start_time IS NULL`)
   /// 3. 아직 '실제 퇴근'도 기록되지 않은 (`actual_end_time IS NULL`) 가장 빠른 근무 1건을 조회하는 메서드 (`start_time` 오름차순)
+  /// 4. 결근 처리된 근무는 제외한다. 결근한 근무에 출근이 찍히면 "결근인데 출근함"이 된다.
   ///
   /// @param workerId        조회할 근무자 ID
   /// @param currentDateTime 기준이 되는 현재 시간
@@ -154,6 +155,7 @@ public interface WorkRepository {
       WHERE worker_id = #{workerId}
           AND actual_start_time IS NULL
           AND actual_end_time IS NULL
+          AND is_absent = 0
           AND start_time BETWEEN DATE_SUB(#{currentDateTime}, INTERVAL 1 HOUR) AND DATE_ADD(#{currentDateTime}, INTERVAL 1 HOUR)
       ORDER BY start_time
       LIMIT 1
@@ -276,6 +278,20 @@ public interface WorkRepository {
   /// @param actualStartTime 업데이트할 실제 출근 시간
   @Update("UPDATE works SET actual_start_time = #{actualStartTime} WHERE id = #{id}")
   void updateActualStartTimeById(Long id, LocalDateTime actualStartTime);
+
+  /// 근무의 결근 여부를 설정합니다. 급여 컬럼은 건드리지 않으므로 호출 후 재계산해야 합니다.
+  @Update("UPDATE works SET is_absent = #{isAbsent} WHERE id = #{id}")
+  void updateIsAbsentById(@Param("id") Long id, @Param("isAbsent") boolean isAbsent);
+
+  /// 반복 교체로 지워질 근무 중 결근 처리된 근무의 날짜를 조회합니다 (기준일 포함 이후).
+  @Select("""
+      SELECT work_date FROM works
+      WHERE repeat_group_id = #{repeatGroupId}
+          AND work_date >= #{date}
+          AND is_absent = 1
+      """)
+  List<LocalDate> findAbsentWorkDatesByRepeatGroupFrom(@Param("repeatGroupId") String repeatGroupId,
+      @Param("date") LocalDate date);
 
   /// 근무 ID에 해당하는 근무의 실제 퇴근 시간을 업데이트하는 메서드 'end_time'(예정 퇴근 시간)이 비어있을(`NULL`) 경우, 'end_time'도
   /// 'actual_end_time'과 동일한 값으로 함께 업데이트합니다.

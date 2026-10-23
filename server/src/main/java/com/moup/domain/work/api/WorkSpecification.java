@@ -7,6 +7,7 @@ import com.moup.domain.work.dto.WorkSummaryResponse;
 import com.moup.domain.work.domain.WorkCalendarListResponse;
 import com.moup.domain.work.dto.MyWorkCreateRequest;
 import com.moup.domain.work.dto.MyWorkUpdateRequest;
+import com.moup.domain.work.dto.WorkAbsenceRequest;
 import com.moup.domain.work.dto.WorkCreateResponse;
 import com.moup.domain.work.dto.WorkDetailResponse;
 import com.moup.global.common.response.ErrorResponse;
@@ -261,6 +262,24 @@ public interface WorkSpecification {
             @Parameter(name = "workId", description = "업데이트할 근무 ID", example = "1", required = true, in = ParameterIn.PATH)
             @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
             @RequestBody @Valid WorkerWorkUpdateRequest request
+    );
+
+    @PutMapping("/works/{workId}/absence")
+    @Operation(summary = "근무 결근 설정/해제",
+            description = "결근한 근무는 급여가 0원이 되고, 그 주는 주휴수당이 없어진다(개근 요건). "
+                    + "예정 시간은 지우지 않는다. 원하는 상태를 그대로 보내는 방식이라 멱등하다. "
+                    + "알바생 본인(승인된 경우)과 사장님이 할 수 있다. "
+                    + "출퇴근 기록이 있는 근무는 결근 처리할 수 없고, 결근한 근무는 출근 대상에서 빠진다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "반영 성공"),
+            @ApiResponse(responseCode = "400", description = "출퇴근 기록이 있는 근무 · 유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "권한 없음 · 승인 대기 중 · 사장님이 탈퇴한 근무지", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "존재하지 않는 근무", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
+    ResponseEntity<?> setWorkAbsence(
+            @Parameter(name = "workId", description = "근무 ID", example = "1", required = true, in = ParameterIn.PATH)
+            @PathVariable @Positive(message = "1 이상의 값만 입력해야 합니다.") Long workId,
+            @RequestBody @Valid WorkAbsenceRequest request
     );
 
     @DeleteMapping("/works/{workId}")

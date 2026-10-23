@@ -257,6 +257,7 @@ public class WorkService {
                 .memo(context.work().getMemo())
                 .repeatDays(repeatDays)
                 .repeatEndDate(repeatEndDate)
+                .isAbsent(Boolean.TRUE.equals(context.work().getIsAbsent()))
                 .isMyWork(checkIsMyWork(userId, context.worker().getUserId()))
                 .isEditable(context.isEditable())
                 .build();
@@ -299,6 +300,7 @@ public class WorkService {
                 .estimatedNetIncome(isFixedSalary ? null : finalNetIncome)
                 .repeatDays(repeatDays)
                 .repeatEndDate(repeatEndDate)
+                .isAbsent(Boolean.TRUE.equals(context.work().getIsAbsent()))
                 .isMyWork(checkIsMyWork(userId, context.worker().getUserId()))
                 .isEditable(context.isEditable())
                 .build();
@@ -453,19 +455,18 @@ public class WorkService {
         LocalDateTime newEndTime = (request.getEndTime() != null) ? request.getEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
         LocalDateTime newActualStartTime = (request.getActualStartTime() != null) ? request.getActualStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
         LocalDateTime newActualEndTime = (request.getActualEndTime() != null) ? request.getActualEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
+        verifyNoAttendanceOnAbsentWork(context.work(), newActualStartTime, newActualEndTime);
 
         // 'repeatGroupId'를 유지하면서 updateSingleWorkInternal 헬퍼를 직접 호출
         updateSingleWorkInternal(
                 context.worker(),
-                context.work().getId(), // 수정할 workId
-                context.work().getWorkDate(), // 수정 전 근무일 (주 경계 이동 대비)
+                context.work(), // 수정 전 근무 (주 경계 이동 대비)
                 newStartTime,
                 newEndTime,
                 newActualStartTime,
                 newActualEndTime,
                 request.getRestTimeMinutes(),
-                request.getMemo(),
-                context.work().getRepeatGroupId()
+                request.getMemo()
         );
 
         // 루틴 연결 (단일 근무에)
@@ -528,19 +529,18 @@ public class WorkService {
         LocalDateTime newEndTime = (request.getEndTime() != null) ? request.getEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
         LocalDateTime newActualStartTime = (request.getActualStartTime() != null) ? request.getActualStartTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
         LocalDateTime newActualEndTime = (request.getActualEndTime() != null) ? request.getActualEndTime().atZone(SEOUL_ZONE_ID).toLocalDateTime() : null;
+        verifyNoAttendanceOnAbsentWork(work, newActualStartTime, newActualEndTime);
 
         // 'repeatGroupId'를 유지하면서 updateSingleWorkInternal 헬퍼를 직접 호출
         updateSingleWorkInternal(
                 worker,
-                work.getId(),
-                work.getWorkDate(), // 수정 전 근무일 (주 경계 이동 대비)
+                work,
                 newStartTime,
                 newEndTime,
                 newActualStartTime,
                 newActualEndTime,
                 request.getRestTimeMinutes(),
-                request.getMemo(),
-                work.getRepeatGroupId()
+                request.getMemo()
         );
     }
 
@@ -585,6 +585,29 @@ public class WorkService {
                 .collect(Collectors.toList());
 
         return new UpdateWorkResult(recurringReplaced, resultingWorkIds);
+    }
+
+    /// 근무의 결근 여부를 설정합니다. 원하는 상태를 그대로 받으므로 멱등하다.
+    ///
+    /// 결근은 명시적으로 표시해야 한다. 출근 기록이 없는 것만 보고 결근으로 볼 수는 없다 —
+    /// 출퇴근 기능을 쓰지 않고 예정 근무만 등록하는 사용자가 있다.
+    ///
+    /// 근무 수정과 같은 권한이다. 알바생 본인(승인된 경우)과 사장님이 할 수 있고,
+    /// 사장님이 탈퇴한 근무지에서는 막는다 (확정 정책 5).
+    @Transactional
+    public void setWorkAbsence(Long requesterUserId, Long workId, boolean isAbsent) {
+        VerifiedWorkContextForUD context = getVerifiedWorkContextForUD(requesterUserId, workId);
+        Work work = context.work();
+
+        if (isAbsent && (work.getActualStartTime() != null || work.getActualEndTime() != null)) {
+            throw new BadRequestException("출퇴근 기록이 있는 근무는 결근 처리할 수 없습니다.");
+        }
+
+        applyAbsence(work, isAbsent);
+
+        // 결근 하나가 그 주 전체의 주휴수당을 없앤다 (개근 요건).
+        Salary salary = salaryRepository.findByWorkerId(context.worker().getId()).orElse(null);
+        salaryCalculationService.recalculateWorkWeek(context.worker().getId(), work.getWorkDate(), salary);
     }
 
     /// 사용자의 실제 출근 시간을 기록합니다.
@@ -970,6 +993,13 @@ public class WorkService {
                                 currentWork.getRepeatGroupId(), currentWork.getWorkDate())
                         : routineTaskCompletionRepository.findSnapshotsByWorkId(currentWork.getId());
 
+        // 결근도 같은 이유로 먼저 뜬다. 근무를 지우고 다시 만들면 is_absent가 기본값(0)으로 돌아가
+        // 근무 시간만 바꿨는데 결근이 풀리고, 그 주 주휴수당이 되살아난다.
+        Set<LocalDate> absentDates = currentWork.getRepeatGroupId() != null
+                ? new HashSet<>(workRepository.findAbsentWorkDatesByRepeatGroupFrom(
+                        currentWork.getRepeatGroupId(), currentWork.getWorkDate()))
+                : (Boolean.TRUE.equals(currentWork.getIsAbsent()) ? Set.of(currentWork.getWorkDate()) : Set.of());
+
         // 1. 기존에 반복 그룹이 있었는지 확인
         if (currentWork.getRepeatGroupId() != null) {
             // 삭제 전에 그룹의 마지막 근무일을 잡아둔다.
@@ -992,6 +1022,7 @@ public class WorkService {
         // 3-1. 체크 상태를 같은 날짜의 새 근무에 되붙인다.
         // 새 반복에 그 요일이 없으면 매칭되는 근무가 없어 버려진다 — 근무 자체가 사라졌으니 맞다.
         restoreCompletions(completionSnapshots, created);
+        restoreAbsences(absentDates, created, worker, salary);
 
         // 4. 새 반복이 더 짧아졌다면 그 뒤 구간은 아무도 재계산하지 않는다. 여기서 채운다.
         if (deletedRangeEnd != null) {
@@ -1019,14 +1050,48 @@ public class WorkService {
         }
     }
 
+    /// 결근 여부를 저장하고 **그 근무 한 건**의 시간·급여 컬럼을 다시 계산한다. 주 재계산은 호출자가 한다.
+    ///
+    /// 주 재계산만으로는 부족하다. 고정급은 `recalculateWorkWeek`이 조기 반환하므로
+    /// 결근한 근무의 근무시간이 그대로 남아 4대보험 시간 기준(월 60시간)에 섞인다.
+    private void applyAbsence(Work work, boolean isAbsent) {
+        workRepository.updateIsAbsentById(work.getId(), isAbsent);
+        Work toggled = work.toBuilder().isAbsent(isAbsent).build();
+        Work recalculated = salaryCalculationService.calculateDailyIncome(
+                toggled, 0, Boolean.TRUE.equals(toggled.getHasNightAllowance()));
+        workRepository.updateWorkWeekDetailsBatch(List.of(recalculated));
+    }
+
+    /// 반복 교체로 다시 만들어진 근무에 이전 결근 표시를 되붙이고, 그 주를 다시 계산한다.
+    /// 체크 상태와 같이 날짜로 매칭한다. 새 반복에 그 요일이 없으면 근무가 없으니 버린다.
+    private void restoreAbsences(Set<LocalDate> absentDates, List<Work> created, Worker worker, Salary salary) {
+        if (absentDates.isEmpty()) {
+            return;
+        }
+        Set<LocalDate> weeksToRecalculate = new HashSet<>();
+        for (Work work : created) {
+            if (work.getId() != null && absentDates.contains(work.getWorkDate())) {
+                applyAbsence(work, true);
+                weeksToRecalculate.add(work.getWorkDate().with(DayOfWeek.MONDAY));
+            }
+        }
+        // createRecurringWorks가 이미 재계산했지만 결근 전 상태로 했다. 결근이 든 주만 다시 한다.
+        for (LocalDate monday : weeksToRecalculate) {
+            salaryCalculationService.recalculateWorkWeek(worker.getId(), monday, salary);
+        }
+    }
+
     /// '단일' 근무 업데이트 공통 로직
-    /// `previousWorkDate`는 수정 **전**의 근무일이다. 근무일이 주 경계를 넘어 이동하면
-    /// (예: 금요일 → 다음 주 월요일) 원래 주의 주휴수당이 재계산되지 않고 그대로 남는다.
-    private void updateSingleWorkInternal(Worker worker, Long workId, LocalDate previousWorkDate,
+    /// `currentWork`는 수정 **전**의 근무다. 근무일이 주 경계를 넘어 이동하면
+    /// (예: 금요일 → 다음 주 월요일) 원래 주의 주휴수당이 재계산되지 않고 그대로 남으므로
+    /// 수정 전 근무일부터 재계산한다. 반복 그룹과 결근 여부는 유지한다.
+    private void updateSingleWorkInternal(Worker worker, Work currentWork,
                                           LocalDateTime startTime, LocalDateTime endTime,
                                           LocalDateTime actualStartTime, LocalDateTime actualEndTime,
-                                          Integer restTimeMinutes, String memo,
-                                          String repeatGroupId) {
+                                          Integer restTimeMinutes, String memo) {
+        Long workId = currentWork.getId();
+        LocalDate previousWorkDate = currentWork.getWorkDate();
+        String repeatGroupId = currentWork.getRepeatGroupId();
 
         // 1. 여기서 Salary 미리 조회
         Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElse(null);
@@ -1035,7 +1100,10 @@ public class WorkService {
         boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
         verifyStartEndTime(startTime, endTime);
 
-        Work tempWork = Work.builder().startTime(startTime).endTime(endTime).restTimeMinutes(restTimeMinutes).hourlyRate(hourlyRate).build();
+        // 결근 여부를 넘겨야 결근한 근무가 0원으로 계산된다. 고정급은 주 재계산이 조기 반환하므로
+        // 여기서 계산한 값이 그대로 남는다.
+        Work tempWork = Work.builder().startTime(startTime).endTime(endTime).restTimeMinutes(restTimeMinutes).hourlyRate(hourlyRate)
+                .isAbsent(currentWork.getIsAbsent()).build();
         Work workWithDailyIncome = salaryCalculationService.calculateDailyIncome(tempWork, 0, hasNightAllowance);
 
         Work workToUpdate = workWithDailyIncome.toBuilder()
@@ -1117,6 +1185,14 @@ public class WorkService {
                 .build();
     }
 
+    /// 결근한 근무에 출퇴근 기록을 남기지 못하게 한다. 둘 다 있으면 "결근인데 출근함"이 되어
+    /// 급여가 어느 쪽을 따라야 하는지 정할 수 없다. 출근했다면 결근을 먼저 해제해야 한다.
+    private void verifyNoAttendanceOnAbsentWork(Work currentWork, LocalDateTime actualStartTime, LocalDateTime actualEndTime) {
+        if (Boolean.TRUE.equals(currentWork.getIsAbsent()) && (actualStartTime != null || actualEndTime != null)) {
+            throw new BadRequestException("결근 처리된 근무에는 출퇴근 기록을 남길 수 없습니다. 결근을 먼저 해제하세요.");
+        }
+    }
+
     /// 출/퇴근 시간 유효성 검증 헬퍼 (퇴근이 출근보다 빠르면 예외)
     private void verifyStartEndTime(LocalDateTime startTime, LocalDateTime endTime) {
         if (endTime != null && endTime.isBefore(startTime)) { throw new InvalidFieldFormatException("퇴근 시간은 출근 시간보다 미래여야 합니다."); }
@@ -1163,6 +1239,7 @@ public class WorkService {
                 .estimatedNetIncome(isFixedSalary ? null : finalNetIncome)
                 .repeatDays(repeatDays)
                 .repeatEndDate(repeatEndDate)
+                .isAbsent(Boolean.TRUE.equals(work.getIsAbsent()))
                 .isMyWork(isMyWork)
                 .isEditable(isEditable)
                 .build();
