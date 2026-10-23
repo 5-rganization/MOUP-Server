@@ -44,7 +44,15 @@ jobs:
 
       - name: Backup, then drop and recreate schema via SSH
         run: |
-          sshpass -p "${{ secrets.RPI_PASSWORD }}" ssh -o StrictHostKeyChecking=no -p ${{ secrets.RPI_PORT }} ${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }} << 'EOF'
+          # 원격 셸은 이 스크립트를 ssh 표준입력(heredoc)으로 한 줄씩 읽는다.
+          # 그래서 표준입력을 읽는 명령이 중간에 있으면 **스크립트의 나머지를 먹어 버리고**,
+          # bash는 읽을 줄이 없어 종료 코드 0으로 끝난다 — 단계가 성공으로 보이는데 DROP·재생성이
+          # 실행되지 않는다. 실제로 백업 직후에서 멈춘 채 성공으로 표시된 적이 있다.
+          # 아래 두 겹으로 막는다:
+          #   ① 입력을 따로 지정하지 않는 docker compose exec에는 전부 `< /dev/null`을 붙인다.
+          #   ② 마지막 줄의 완료 표시가 출력에 없으면 러너에서 실패시킨다.
+          set -o pipefail
+          sshpass -p "${{ secrets.RPI_PASSWORD }}" ssh -o StrictHostKeyChecking=no -p ${{ secrets.RPI_PORT }} ${{ secrets.RPI_USER }}@${{ secrets.RPI_HOST }} << 'EOF' | tee db-init.log
             set -euo pipefail
 
             cd /home/${{ secrets.RPI_USER }}/MOUP-Server
@@ -65,7 +73,7 @@ jobs:
             $COMPOSE exec -T \
               -e MYSQL_PWD="${{ secrets.DATABASE_PASSWORD }}" \
               mysql mysqldump --default-character-set=utf8mb4 --single-transaction \
-              -u root "${{ secrets.DATABASE_NAME }}" | gzip > "$BACKUP_FILE"
+              -u root "${{ secrets.DATABASE_NAME }}" < /dev/null | gzip > "$BACKUP_FILE"
 
             # 빈 백업은 백업이 아니다 — 파이프 뒤라 mysqldump 실패가 감춰질 수 있다.
             if [[ ! -s "$BACKUP_FILE" ]]; then
@@ -93,4 +101,10 @@ jobs:
             fi
 
             echo "Done. Rollback: gunzip -c $BACKUP_FILE | $COMPOSE exec -T mysql mysql -u root ${{ secrets.DATABASE_NAME }}"
+            echo "DB_INIT_COMPLETE"
           EOF
+
+          if ! grep -qx "DB_INIT_COMPLETE" db-init.log; then
+            echo "::error::원격 스크립트가 끝까지 실행되지 않았습니다. 위 로그에서 마지막으로 찍힌 줄을 확인하세요."
+            exit 1
+          fi
