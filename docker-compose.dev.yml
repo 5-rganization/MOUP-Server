@@ -1,4 +1,6 @@
-# 라즈베리파이 운영용 통합 docker-compose.yml (SD 카드 사용)
+# 개발 서버(라즈베리파이, test.moup-server.com)용 docker-compose (SD 카드 사용)
+# develop → Jenkins가 이미지 빌드 후 여기서 pull/재시작, deploy.yml이 저장소 갱신.
+# 운영은 docker-compose.prod.yml이다 (main → Jenkins → 운영 서버).
 name: moup
 
 # Docker 기본 json-file 드라이버는 로그를 무한정 쌓는다. 라즈베리파이 SD 카드에서는
@@ -30,8 +32,8 @@ services:
 
   # 2. Spring Server (API)
   server:
-    # Jenkins가 TAG를 export한다 (develop 빌드). 예전에는 태그가 없어 항상 :latest를
-    # 당겼고, 그래서 프로덕션이 develop 이미지를 받았다. export TAG는 죽은 코드였다.
+    # Jenkins가 TAG를 export한다 (develop-빌드번호). 예전에는 어느 compose도 ${TAG}를
+    # 참조하지 않아 export TAG가 죽은 코드였다. 없으면 :latest(가장 최근 develop 빌드).
     image: neoskycladdocker/moup:${TAG:-latest}
     container_name: moup-server-dev
     env_file:

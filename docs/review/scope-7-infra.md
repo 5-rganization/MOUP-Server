@@ -9,6 +9,14 @@
 
 ---
 
+## ⚠️ 2026-10-23 정정 — 워크플로가 접속하는 Pi는 개발 서버다
+
+`deploy.yml`·`manual-db-init`이 접속하는 `RPI_HOST`는 **개발 서버**(`test.moup-server.com`)다.
+운영은 `main` → Jenkins → `docker-compose.prod.yml`이며 develop과 무관하다(사용자 확인, `Jenkinsfile`).
+이 문서에서 워크플로 대상을 "프로덕션"이라 부른 대목(C4)은 개발 서버로 읽어야 한다.
+`docker-compose.prod.yml`·`Jenkinsfile`에 관한 결론(C6)과 이미지 공개 문제(C7)는 운영에 그대로 유효하다.
+아래 cron 정정의 "프로덕션 라즈베리 파이"는 제품 소유자 확인이므로 손대지 않았다 — 운영도 별도 Pi일 수 있다.
+
 ## ⚠️ 리뷰어 결론 정정 — cron은 실제로 돈다
 
 리뷰어는 **C5(배치 미동작)** 를 "탈퇴 유예기간 하드 삭제 배치가 전혀 돌지 않는다"로
@@ -155,7 +163,7 @@ FOREIGN KEY (`owner_id`) REFERENCES users (`id`) ON DELETE CASCADE
 `db/migrations/2026-08-27-workplaces-owner-set-null.sql`을 수동 적용해야 한다
 ([배포 체크리스트 #4](applied-fixes.md#배포-체크리스트-)).
 
-### C4 — `manual-db-init.yml`이 확인 절차 없이 프로덕션 DB를 날린다
+### C4 — `manual-db-init.yml`이 확인 절차 없이 DB를 날린다 (대상은 개발 서버 — 위 정정 참고)
 
 `db/moup.sql:1-3`이 `DROP SCHEMA IF EXISTS moup; CREATE SCHEMA moup;`로 시작하고,
 `manual-db-init.yml:10`의 `insert_dummy_data` 기본값이 **`true`** 다.

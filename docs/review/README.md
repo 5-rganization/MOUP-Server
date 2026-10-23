@@ -46,12 +46,27 @@
   경로는 `~/Projects/XcodeProjects/5rganization/MOUP/MOUP-iOS`.
   `MOUP-Android`는 테스트용이라 고려 대상이 아니다.
 
+### 배포 구조 — 라즈베리파이(`RPI_HOST`)는 개발 서버다
+
+| 브랜치 | 이미지 (Jenkins) | 대상 | compose |
+|---|---|---|---|
+| `develop` | `develop-빌드번호` · `latest` | **개발 서버** `test.moup-server.com` (iOS Debug) | `docker-compose.dev.yml` |
+| `main` | `release-빌드번호` · `stable` | **운영 서버** `home.moup-server.com` (iOS Release) | `docker-compose.prod.yml` |
+
+- `deploy.yml`(develop push)과 `manual-db-init`은 **개발 서버에만** 접속한다. 운영에는 영향이 없다.
+  서버 이미지 교체는 Jenkins가 한다 — `deploy.yml`은 저장소 갱신과 compose 재적용만 한다.
+- 이 원장의 리뷰 당시에는 워크플로가 접속하는 Pi를 운영 서버로 보고 쓴 대목이 있다(스코프 7 C4 등).
+  2026-10-23에 정정했다. **운영도 별도의 라즈베리파이일 수 있으므로** "운영 = Pi가 아니다"로 읽지 말 것 —
+  틀린 것은 "`RPI_HOST` = 운영"이라는 전제다.
+- 배포 결과는 워크플로 성공 여부가 아니라 서버 응답으로 확인한다: `curl https://test.moup-server.com/health`
+  (`{"status":"UP"}`), `/v3/api-docs`에서 새 엔드포인트. Spring 기동에 약 1분 걸려 직후엔 502가 난다.
+
 ### 브랜치 구분
 
 - **`develop`** — 서버 코드·DDL. 순수 서버 변경은 여기에 직접 커밋한다.
-- **`fix/code-review-findings`** — 이 문서들 + **인프라·배포 변경**(Phase 9).
-  `deploy.yml`이 develop push에 트리거되므로, 배포 파이프라인 자체를 바꾸는 커밋을
-  자동 배포시키지 않기 위해 분리했다.
+- **인프라·배포 변경**은 별도 브랜치에 쌓고 확인 후 머지한다. `deploy.yml`이 develop push에
+  트리거되므로 배포 파이프라인 자체를 바꾸는 커밋이 확인 없이 개발 서버에 적용되지 않게 하기 위해서다.
+- Phase 9와 이 문서들을 담았던 `fix/code-review-findings`는 `c942c94`로 develop에 머지하고 삭제했다(2026-10-23).
 
 ## 왜 리뷰 도중에 고치지 않는가
 

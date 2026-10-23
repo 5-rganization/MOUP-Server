@@ -367,7 +367,7 @@ JSON에서 먼저 나온 키**로 서브타입이 정해진다. 클라이언트�
 | 항목 | 출처 | 커밋 |
 |---|---|---|
 | 🔴 **Firebase 키 폐기·재발급** | 7 C7 | ⬜ **미결 — 코드 아님. 사용자 작업** |
-| `manual-db-init.yml`이 확인 절차 없이 프로덕션 DB를 날림 | 7 C4 | ✅ `1c09428` |
+| `manual-db-init.yml`이 확인 절차 없이 개발 서버 DB를 날림 (당시 운영으로 오인) | 7 C4 | ✅ `1c09428` · `ef18333` |
 | 프로덕션이 develop 이미지를 가져감 | 7 C6 | ✅ `575b780` |
 | 프로파일 분리 부재 · Docker 로그 로테이션 없음 | 7 I2 | ✅ `575b780` |
 | `/health`가 DB·Redis 미확인 | 7 I13 | ✅ `3c08fcd` |
@@ -379,7 +379,8 @@ JSON에서 먼저 나온 키**로 서브타입이 정해진다. 클라이언트�
 
 `db/moup.sql`의 첫 줄이 `DROP SCHEMA IF EXISTS moup;`다. 이 워크플로는 DB를 통째로
 날리는데 확인 절차가 하나도 없었고 더미 데이터 삽입이 기본값 `true`였다. 저장소 쓰기
-권한만 있으면 두 번의 클릭으로 프로덕션 DB가 사라졌다.
+권한만 있으면 두 번의 클릭으로 DB가 사라졌다. (대상은 `RPI_HOST` = **개발 서버**다.
+리뷰 당시 운영 DB로 보고 썼다 — 2026-10-23 정정. 운영 DB는 이 워크플로로 닿지 않는다.)
 
 확인 문구 입력(러너에서 먼저 검사 — 틀리면 서버 접속조차 안 한다)과 DROP 직전
 mysqldump 백업(실패하거나 결과가 비면 중단)으로 막았다. 실수뿐 아니라 고의로 눌러도
@@ -670,6 +671,15 @@ UPDATE workers SET is_accepted = 0 WHERE is_accepted IS NULL;
 
 ## 배포 절차 — 근무지 카테고리 코드 전환
 
+> **2026-10-23 개발 서버에 완료.** 아래 절차는 **개발 서버**(`RPI_HOST`, `test.moup-server.com`) 기준이다.
+> 첫 실행은 `manual-db-init`이 백업 직후 조용히 멈춰 DROP이 실행되지 않았고(`ef18333`에서 수정),
+> 재실행으로 끝났다. 서버 코드는 Jenkins가 develop 이미지로 교체했다(`/health` → `{"status":"UP"}` 확인).
+>
+> ⚠️ **운영에는 아직 반영되지 않았다.** 운영은 `main` 머지 → Jenkins로 배포되며, 이 워크플로가 닿지 않는다.
+> `main`에 머지하면 카테고리 코드 전환과 `works.is_absent` 컬럼이 함께 나간다. 운영 DB를 재초기화할 수
+> 없다면 **마이그레이션 SQL이 먼저 필요하다**(카테고리 매핑은 `ef1e36a`와 `WorkplaceCategory` 주석,
+> `ALTER TABLE works ADD COLUMN is_absent ...`, 그리고 [배포 체크리스트](applied-fixes.md#배포-체크리스트-)의 미적용 마이그레이션).
+
 카테고리를 한글 표시명에서 영문 코드로 바꾸면서 **기존 데이터와 호환되지 않는 변경**이
 생겼다. 신버전 서버는 `category_name`을 `WorkplaceCategory` 열거형으로 읽으므로,
 한글이 남아 있는 DB를 조회하면 매핑 실패로 500이 난다. 조용히 틀리는 것보다 낫다고
@@ -682,16 +692,15 @@ UPDATE workers SET is_accepted = 0 WHERE is_accepted IS NULL;
 
 ### 순서
 
-1. **`develop` 푸시** — `deploy.yml`이 트리거되어 신버전 서버가 뜬다.
+1. **`develop` 푸시** — Jenkins가 새 이미지로 서버를 교체하고, `deploy.yml`이 저장소(`db/moup.sql` 포함)를 갱신한다.
    이 시점부터 재초기화 전까지 기존 근무지 조회가 500이다. 실사용자가 없어 무해하다.
 2. **`manual-db-init` 워크플로 실행** — 확인 문구 `DROP AND RECREATE` 입력.
    실행 직전 mysqldump 백업이 자동으로 뜬다.
 3. 더미 데이터가 필요하면 `insert_dummy_data`를 체크한다(기본값 false).
    `moup_dummy_data.sql`의 카테고리는 이미 코드로 바꿔 뒀다.
 
-> ⚠️ 2번 워크플로는 **이 브랜치(Phase 9 반영)에서 실행**해야 한다.
-> `develop`의 구버전에는 확인 절차도 백업도 없고, `docker compose`에 `-f`가 빠져 있어
-> 애초에 실행되지 않는다 — 저장소에 기본 `docker-compose.yml`이 없다(`ac42313`에서 수정).
+> 2번 워크플로는 이제 **`develop`에서 실행한다**(`c942c94`로 머지됨). 끝까지 돌았는지는
+> 로그 마지막의 `DB_INIT_COMPLETE`로 확인한다 — 없으면 워크플로가 실패로 끝난다.
 
 ### 검증
 
