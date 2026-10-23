@@ -93,7 +93,7 @@ class SalaryAbsenceTest {
     @DisplayName("월 공제액을 결근일에 배분하지 않는다")
     void 월_공제액은_출근일에만_배분된다() {
         ReflectionTestUtils.setField(salaryCalculationService, "incomeTaxRate", 0.033);
-        // 3일 중 하루 결근 → 세전 160,000원. 소득세 5,280 + 지방소득세 528 = 5,808원.
+        // 3일 중 하루 결근 → 세전 160,000원. 소득세 5,280 + 지방소득세 520(528의 10원 미만 절사) = 5,800원.
         List<Work> month = List.of(
                 paid(1L, MONDAY, false), paid(2L, MONDAY.plusDays(1), false), paid(3L, MONDAY.plusDays(2), true));
         when(workRepository.findAllByWorkerIdAndDateRange(anyLong(), any(), any())).thenReturn(month);
@@ -101,8 +101,8 @@ class SalaryAbsenceTest {
         Salary salary = hourlySalary().hasIncomeTax(true).build();
         salaryCalculationService.recalculateEstimatedNetIncomeForMonth(WORKER_ID, 2026, 10, salary);
 
-        // 결근일까지 세면 5,808 / 3 = 1,936원씩 배분되고, 결근일 몫은 0원짜리 날에 붙어 사라진다.
-        verify(workRepository).updateAllEstimatedNetIncomesForMonth(eq(WORKER_ID), any(), any(), eq(2_904));
+        // 결근일까지 세면 5,800 / 3 = 1,933원씩 배분되고, 결근일 몫은 0원짜리 날에 붙어 사라진다.
+        verify(workRepository).updateAllEstimatedNetIncomesForMonth(eq(WORKER_ID), any(), any(), eq(2_900));
     }
 
     @Test

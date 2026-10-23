@@ -23,6 +23,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
@@ -183,8 +185,8 @@ public class SalaryCalculationService {
             return 0;
         }
         long cappedMinutes = Math.min(weeklyWorkMinutes, FULL_TIME_WEEKLY_MINUTES);
-        return (int) (cappedMinutes * HOLIDAY_ALLOWANCE_MINUTES * baseHourlyRate
-                / (FULL_TIME_WEEKLY_MINUTES * 60L));
+        return roundHalfUp(cappedMinutes * HOLIDAY_ALLOWANCE_MINUTES * baseHourlyRate,
+                FULL_TIME_WEEKLY_MINUTES * 60L);
     }
 
     /// 확정 정책 4 — 기준 시급은 **그 주 마지막 근무**의 시급이다.
@@ -258,12 +260,13 @@ public class SalaryCalculationService {
         // 시급 1,000~30,000 × 1~1,440분 전수 탐색에서 90,310건이 어긋났고,
         // 절삭 방향은 **항상 근로자에게 불리**했다.
         int hourlyRate = (work.getHourlyRate() != null) ? work.getHourlyRate() : 0;
-        int basePay = (int) (netWorkMinutes * hourlyRate / 60L);
+        // 지급 항목은 원 단위 반올림이다 (스코프 3 Q7). 예전에는 정수 나눗셈이라 항상 버림이었다.
+        int basePay = roundHalfUp(netWorkMinutes * hourlyRate, 60L);
 
         int nightAllowance = 0;
         if (hasNightAllowance) {
             // 야간 가산 50% → 분 × 시급 × 0.5 / 60 = 분 × 시급 / 120
-            nightAllowance = (int) (netNightMinutes * hourlyRate / 120L);
+            nightAllowance = roundHalfUp(netNightMinutes * hourlyRate, 120L);
         }
 
         int grossIncome = basePay + nightAllowance + dailyHolidayAllowance;
@@ -763,6 +766,23 @@ public class SalaryCalculationService {
         return summaryResponseList;
     }
 
+    /// `numerator / denominator`를 원 단위로 반올림한다(0.5 올림). 지급 항목용 — 값이 음수가 아니라는 전제다.
+    private static int roundHalfUp(long numerator, long denominator) {
+        return (int) ((numerator + denominator / 2) / denominator);
+    }
+
+    /// `amount × rate`를 10원 미만 절사한다. 공제 항목용.
+    ///
+    /// `double`로 곱하면 안 된다. 세전 50,000원 × 고용보험 0.009가 `449.99999999999994`가 되어
+    /// 10원 단위로 자르면 450원이 아니라 **440원**이 된다. `BigDecimal.valueOf`는 요율의
+    /// 십진 표기("0.009")를 그대로 쓰므로 정확하다.
+    private static int truncateToTenWon(int amount, double rate) {
+        return BigDecimal.valueOf(amount)
+                .multiply(BigDecimal.valueOf(rate))
+                .setScale(-1, RoundingMode.DOWN)
+                .intValueExact();
+    }
+
     /// 세전소득, 근무시간, 급여정보를 바탕으로 모든 공제액과 세후소득을 계산합니다.
     private DeductionDetails calculateDeductions(int grossIncome, long totalWorkHours, Salary salaryInfo) {
         int nationalPension = 0;
@@ -771,23 +791,26 @@ public class SalaryCalculationService {
         int incomeTax = 0;
         int localIncomeTax = 0;
 
+        // 공제 항목은 각 공단·국세청 고지 방식대로 **10원 미만 절사**다 (스코프 3 Q7, 국고금 관리법 제47조).
+        // 지급 항목(반올림)과 기준이 다르다 — 공제를 반올림하면 실제 고지액과 몇 원씩 어긋난다.
         if (isInsuranceApplicable(grossIncome, totalWorkHours)) {
             if (Boolean.TRUE.equals(salaryInfo.getHasNationalPension())) {
-                nationalPension = (int) (grossIncome * nationalPensionRate);
+                nationalPension = truncateToTenWon(grossIncome, nationalPensionRate);
             }
             if (Boolean.TRUE.equals(salaryInfo.getHasHealthInsurance())) {
-                int baseHealthInsurance = (int) (grossIncome * healthInsuranceRate);
-                int longTermCareInsurance = (int) (baseHealthInsurance * longTermCareInsuranceRate);
+                int baseHealthInsurance = truncateToTenWon(grossIncome, healthInsuranceRate);
+                // 장기요양은 소득이 아니라 **절사된 건강보험료**에 비율을 곱한다.
+                int longTermCareInsurance = truncateToTenWon(baseHealthInsurance, longTermCareInsuranceRate);
                 healthInsurance = baseHealthInsurance + longTermCareInsurance;
             }
             if (Boolean.TRUE.equals(salaryInfo.getHasEmploymentInsurance())) {
-                employmentInsurance = (int) (grossIncome * employmentInsuranceRate);
+                employmentInsurance = truncateToTenWon(grossIncome, employmentInsuranceRate);
             }
         }
 
         if (Boolean.TRUE.equals(salaryInfo.getHasIncomeTax())) {
-            incomeTax = (int) (grossIncome * incomeTaxRate);
-            localIncomeTax = (int) (incomeTax * 0.1);
+            incomeTax = truncateToTenWon(grossIncome, incomeTaxRate);
+            localIncomeTax = truncateToTenWon(incomeTax, 0.1);
         }
 
         int totalDeductions = nationalPension + healthInsurance + employmentInsurance + incomeTax + localIncomeTax;
