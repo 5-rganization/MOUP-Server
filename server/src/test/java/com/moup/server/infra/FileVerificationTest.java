@@ -31,7 +31,7 @@ class FileVerificationTest {
                 "<html><script>alert(1)</script></html>".getBytes());
 
         assertThrows(InvalidFileExtensionException.class,
-                () -> fileService.verifyImageAndResolveExtension(fake));
+                () -> fileService.verifyImage(fake));
     }
 
     @Test
@@ -40,24 +40,24 @@ class FileVerificationTest {
         MockMultipartFile png = new MockMultipartFile(
                 "file", "misleading-name.gif", "image/gif", PNG_HEADER);
 
-        assertEquals(".png", fileService.verifyImageAndResolveExtension(png),
+        assertEquals(".png", fileService.verifyImage(png).getExtension(),
                 "원본 확장자를 그대로 쓰면 클라이언트가 저장 경로의 확장자를 정하게 된다");
     }
 
     @Test
     @DisplayName("JPEG · GIF도 매직 바이트로 판별한다")
     void 다른_포맷도_판별한다() {
-        assertEquals(".jpg", fileService.verifyImageAndResolveExtension(
-                new MockMultipartFile("file", "a", "application/octet-stream", JPEG_HEADER)));
-        assertEquals(".gif", fileService.verifyImageAndResolveExtension(
-                new MockMultipartFile("file", "a", "application/octet-stream", GIF_HEADER)));
+        assertEquals(".jpg", fileService.verifyImage(
+                new MockMultipartFile("file", "a", "application/octet-stream", JPEG_HEADER)).getExtension());
+        assertEquals(".gif", fileService.verifyImage(
+                new MockMultipartFile("file", "a", "application/octet-stream", GIF_HEADER)).getExtension());
     }
 
     @Test
     @DisplayName("빈 파일은 거부한다")
     void 빈_파일은_거부() {
         assertThrows(InvalidFileExtensionException.class,
-                () -> fileService.verifyImageAndResolveExtension(
+                () -> fileService.verifyImage(
                         new MockMultipartFile("file", "a.png", "image/png", new byte[0])));
     }
 
@@ -65,7 +65,17 @@ class FileVerificationTest {
     @DisplayName("시그니처보다 짧은 파일도 안전하게 거부한다")
     void 너무_짧은_파일도_거부() {
         assertThrows(InvalidFileExtensionException.class,
-                () -> fileService.verifyImageAndResolveExtension(
+                () -> fileService.verifyImage(
                         new MockMultipartFile("file", "a.png", "image/png", new byte[]{(byte) 0x89, 'P'})));
+    }
+
+    /// 시그니처는 진짜 PNG라도 클라이언트가 `text/html`이라고 주장하면, 예전 저장 코드는 그 값을 S3 메타데이터에
+    /// 그대로 넣어 HTML로 서빙했다(스코프 7 I7). 저장에 쓸 Content-Type은 판별 결과에서 나와야 한다.
+    @Test
+    @DisplayName("Content-Type도 클라이언트 값이 아니라 내용에서 나온다")
+    void 콘텐츠_타입은_내용에서_결정된다() {
+        MockMultipartFile polyglot = new MockMultipartFile("file", "a.png", "text/html", PNG_HEADER);
+
+        assertEquals("image/png", fileService.verifyImage(polyglot).getContentType());
     }
 }

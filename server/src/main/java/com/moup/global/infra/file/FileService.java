@@ -18,8 +18,9 @@ public class FileService {
     /// 예전에는 `Content-Type`이 `image/`로 시작하는지만 봤고 저장할 때는 원본 확장자를
     /// 그대로 이어붙여서, `.html`이나 `.js`를 `image/png`라고 주장하며 올릴 수 있었다.
     ///
-    /// @return 판별된 종류의 표준 확장자 (`.jpg` / `.png` / `.gif`)
-    public String verifyImageAndResolveExtension(MultipartFile file) {
+    /// @return 판별된 종류. 저장할 때 확장자와 Content-Type을 **둘 다** 여기서 가져와야 한다 —
+    ///         Content-Type만 클라이언트 값을 쓰면 PNG 시그니처로 시작하는 HTML을 `text/html`로 서빙하게 된다.
+    public ImageType verifyImage(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new InvalidFileExtensionException("파일이 비어 있습니다.");
         }
@@ -40,6 +41,6 @@ public class FileService {
                     file.getContentType(), file.getOriginalFilename());
             throw new InvalidFileExtensionException();
         }
-        return type.getExtension();
+        return type;
     }
 }
