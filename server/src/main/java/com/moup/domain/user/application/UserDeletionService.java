@@ -3,6 +3,7 @@ package com.moup.domain.user.application;
 import com.moup.domain.auth.application.AuthService;
 import com.moup.domain.auth.application.AuthServiceFactory;
 import com.moup.domain.auth.domain.Login;
+import com.moup.domain.auth.exception.PermanentRevokeFailureException;
 import com.moup.domain.user.domain.User;
 import jakarta.security.auth.message.AuthException;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,12 @@ public class UserDeletionService {
         try {
             // 비동기 스레드 내부에서 동기적으로 revokeToken 호출 (레이스 컨디션 방지)
             authService.revokeToken(user.getId());
+        } catch (PermanentRevokeFailureException e) {
+            // 다시 시도해도 같다. 27일을 기다릴 이유가 없다(스코프 1 확정 요건 1-B).
+            log.error("소셜 연동 해제 영구 실패 - 재시도하지 않고 가명처리합니다. 크리덴셜이 없었다면 소셜 연동이 남았으니 "
+                    + "수동 조치가 필요합니다. userId={}, provider={}, error={}", user.getId(), provider, e.getMessage());
+            userService.anonymizeUserByUserId(user.getId());
+            return;
         } catch (AuthException e) {
             log.error("소셜 연동 해제 실패 - 삭제를 보류하고 다음 배치에서 재시도합니다. userId={}, provider={}, error={}",
                     user.getId(), provider, e.getMessage());

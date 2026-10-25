@@ -14,9 +14,12 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.*;
 
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class GoogleAuthService extends BaseAuthService {
 
@@ -26,11 +29,21 @@ public class GoogleAuthService extends BaseAuthService {
     private String googleClientId;
     @Value("${google.client.secret}")
     private String googleClientSecret;
-    @Value("${google.redirect.uri}")
-    private String googleRedirectUri;
+
+    /// 요청마다 만들면 공개키 캐시가 매번 버려져 로그인할 때마다 Google 인증서를 다시 받는다(스코프 1 M10).
+    /// 둘 다 스레드 안전하다.
+    private static final NetHttpTransport HTTP_TRANSPORT = new NetHttpTransport();
+    private static final GsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
+    private GoogleIdTokenVerifier idTokenVerifier;
 
     public GoogleAuthService(SocialTokenRepository socialTokenRepository) {
         super(socialTokenRepository);
+    }
+
+    @PostConstruct
+    void initVerifier() {
+        idTokenVerifier = new GoogleIdTokenVerifier.Builder(HTTP_TRANSPORT, JSON_FACTORY)
+                .setAudience(Collections.singletonList(googleClientId)).build();
     }
 
     @Override
@@ -47,11 +60,8 @@ public class GoogleAuthService extends BaseAuthService {
         // 이 메서드는 Google Client Library를 사용하므로 기존 로직을 그대로 유지합니다.
         try {
             GoogleTokenResponse tokenResponse = new GoogleAuthorizationCodeTokenRequest(
-                    new NetHttpTransport(), new GsonFactory(), googleClientId, googleClientSecret, authCode, "")
+                    HTTP_TRANSPORT, JSON_FACTORY, googleClientId, googleClientSecret, authCode, "")
                     .execute();
-
-            GoogleIdTokenVerifier idTokenVerifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new GsonFactory())
-                    .setAudience(Collections.singletonList(googleClientId)).build();
 
             GoogleIdToken idToken = tokenResponse.parseIdToken();
 
@@ -65,6 +75,9 @@ public class GoogleAuthService extends BaseAuthService {
 
             String accessToken = tokenResponse.getAccessToken();
             String refreshToken = tokenResponse.getRefreshToken();
+            // 이미 동의한 계정이 다시 로그인·가입하면 Google이 refresh token을 주지 않는다는 가정을 실측하기 위한 로그다
+            // (Phase 11 D11-6 ①). 없으면 이 계정은 탈퇴할 때 연동을 해제할 수 없다.
+            log.info("Google 토큰 교환 - refresh token {}. sub={}", refreshToken != null ? "수신" : "없음", userId);
 
             Map<String, Object> userInfo = new HashMap<>();
             userInfo.put("userId", userId);

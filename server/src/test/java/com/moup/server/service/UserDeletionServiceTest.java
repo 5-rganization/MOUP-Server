@@ -2,7 +2,10 @@ package com.moup.server.service;
 
 import com.moup.domain.auth.application.AuthService;
 import com.moup.domain.auth.application.AuthServiceFactory;
+import com.moup.domain.auth.application.GoogleAuthService;
 import com.moup.domain.auth.domain.Login;
+import com.moup.domain.auth.exception.PermanentRevokeFailureException;
+import com.moup.global.security.token.SocialTokenRepository;
 import com.moup.domain.user.application.UserDeletionService;
 import com.moup.domain.user.application.UserService;
 import com.moup.domain.user.domain.User;
@@ -60,10 +63,10 @@ public class UserDeletionServiceTest {
   }
 
   @Test
-  @DisplayName("revoke가 실패하면 가명처리를 보류한다 (다음 배치에서 재시도)")
+  @DisplayName("revoke가 일시 실패하면 가명처리를 보류한다 (다음 배치에서 재시도)")
   void revoke_실패시_삭제_보류() throws Exception {
     when(authServiceFactory.getService(Login.LOGIN_GOOGLE)).thenReturn(authService);
-    doThrow(new AuthException("소셜 리프레시 토큰이 없습니다."))
+    doThrow(new AuthException("Google API 호출 실패 (503)"))
         .when(authService).revokeToken(USER_ID);
 
     userDeletionService.processUserDeletion(user());
@@ -101,6 +104,29 @@ public class UserDeletionServiceTest {
     // revoke를 아예 시도하지 않는다 — 이미 30일간 실패했으므로
     verify(authService, never()).revokeToken(anyLong());
     verify(userService, times(1)).anonymizeUserByUserId(USER_ID);
+  }
+
+  /// 크리덴셜이 없으면 다시 시도해도 같다. 예전에는 일시 실패로 보고 27일 동안 매일 재시도했다(스코프 1 확정 요건 1-B).
+  @Test
+  @DisplayName("영구 실패면 재시도하지 않고 바로 가명처리한다")
+  void 영구_실패시_바로_삭제() throws Exception {
+    when(authServiceFactory.getService(Login.LOGIN_GOOGLE)).thenReturn(authService);
+    doThrow(new PermanentRevokeFailureException("소셜 리프레시 토큰이 없습니다."))
+        .when(authService).revokeToken(USER_ID);
+
+    userDeletionService.processUserDeletion(user());
+
+    verify(userService, times(1)).anonymizeUserByUserId(USER_ID);
+  }
+
+  @Test
+  @DisplayName("소셜 토큰 행이 없으면 revoke는 영구 실패를 던진다")
+  void 토큰_없으면_영구_실패() {
+    SocialTokenRepository repository = org.mockito.Mockito.mock(SocialTokenRepository.class);
+    when(repository.findByUserId(USER_ID)).thenReturn(java.util.Optional.empty());
+
+    org.junit.jupiter.api.Assertions.assertThrows(PermanentRevokeFailureException.class,
+        () -> new GoogleAuthService(repository).revokeToken(USER_ID));
   }
 
   private static User user() {

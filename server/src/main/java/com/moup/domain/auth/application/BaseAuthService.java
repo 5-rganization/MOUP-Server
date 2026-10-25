@@ -1,5 +1,6 @@
 package com.moup.domain.auth.application;
 
+import com.moup.domain.auth.exception.PermanentRevokeFailureException;
 import com.moup.global.security.token.SocialToken;
 import com.moup.global.security.token.SocialTokenRepository;
 import jakarta.security.auth.message.AuthException;
@@ -41,7 +42,7 @@ public abstract class BaseAuthService implements AuthService {
     public void revokeToken(Long userId) throws AuthException, IOException {
         // 1. DB에서 공급자(provider)에 맞는 리프레시 토큰 조회
         SocialToken socialToken = socialTokenRepository.findByUserId(userId)
-                .orElseThrow(() -> new AuthException(getProvider().toString() + " 소셜 리프레시 토큰이 없습니다."));
+                .orElseThrow(() -> new PermanentRevokeFailureException(getProvider().toString() + " 소셜 리프레시 토큰이 없습니다."));
 
         // 2. 각 공급자(provider)에 맞는 요청 본문 생성
         String postData = buildRevokeRequestBody(socialToken.getRefreshToken());
@@ -77,7 +78,13 @@ public abstract class BaseAuthService implements AuthService {
                 while ((line = br.readLine()) != null) {
                     response.append(line);
                 }
-                throw new AuthException(getProvider().toString() + " API 호출 실패 (" + responseCode + "): " + response);
+                // 토큰이 이미 무효라는 답은 다시 시도해도 같다. 그 밖의 실패(설정 오류·장애 등)는 일시 실패로 두고 재시도한다 —
+                // 설정 오류를 영구 실패로 보면 고치기 전에 들어온 탈퇴가 전부 연동이 남은 채 처리된다.
+                String body = response.toString();
+                if (body.contains("invalid_token") || body.contains("invalid_grant")) {
+                    throw new PermanentRevokeFailureException(getProvider().toString() + " 토큰이 이미 무효입니다 (" + responseCode + "): " + body);
+                }
+                throw new AuthException(getProvider().toString() + " API 호출 실패 (" + responseCode + "): " + body);
             }
         }
     }

@@ -110,13 +110,13 @@
 
 | 상태 | ID | 내용 |
 |---|---|---|
-| ⬜ | D11-6 ① | Google 로그인·가입 시 refresh token 수신 여부 로그 |
+| ✅ | D11-6 ① | Google 로그인·가입 시 refresh token 수신 여부 로그(`Google 토큰 교환 - refresh token 수신/없음`). **개발 서버에서 같은 계정으로 두 번 로그인해 실측할 것** |
 | ⏸ | D11-6 ② | ①의 결과에 따라 해제 후 재로그인 흐름 |
-| ⬜ | D11-6 ③ (= 1 확정 요건 1-B) | 크리덴셜 없음 = 영구 실패. 27일 매일 재시도하지 않는다 |
+| ✅ | D11-6 ③ (= 1 확정 요건 1-B) | `PermanentRevokeFailureException` — 크리덴셜 없음, 공급자 응답 `invalid_token`·`invalid_grant`. 재시도 없이 바로 가명처리하고 ERROR 로그. 그 밖의 실패(설정 오류·장애)는 일시 실패로 재시도한다 — 설정 오류를 영구로 보면 고치기 전 탈퇴가 전부 연동이 남은 채 처리된다. 공급자 응답 분류는 HTTP를 띄울 수 없어 테스트하지 못했다 |
 | ⬜ | 1 M2 | CORS 와일드카드 origin + credentials. 지금은 Bearer라 무해하지만 쿠키 도입 즉시 취약 |
 | ⬜ | 1 M6 | `DebugTokenHolder`, `createTestToken`(1년 ADMIN 토큰 발급 도구), `getUsername`, `getUserRole` — cron이 사라져 소비처 0 |
-| ⬜ | 1 M5 · M10 | JWT 요청당 3회 파싱 · Google 검증기 요청마다 생성 |
-| ⬜ | 1 M7 · M9 · Q2 후속 | `AuthServiceFactory` null 반환 · deprecated `setHeaderParam` · 미사용 `google.redirect.uri` |
+| 🔶 | 1 M5 · M10 | JWT 요청당 3회 파싱 · ~~Google 검증기 요청마다 생성~~(M10 ✅ 한 번 만들어 재사용) |
+| 🔶 | 1 M7 · M9 · Q2 후속 | `AuthServiceFactory` null 반환 · deprecated `setHeaderParam` · ~~미사용 `google.redirect.uri`~~(Q2 ✅ 속성·필드 제거. deploy.yml의 `GOOGLE_REDIRECT_URI` 줄은 남아도 무해) |
 
 ## 11-D — 정합성·트랜잭션
 
