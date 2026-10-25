@@ -67,6 +67,18 @@ public class PermissionVerifyUtil {
         }
     }
 
+    /// 근무지 쓰기 검증 — 사장님 탈퇴(확정 정책 5)와 **근무 종료**(Phase 11 D11-5)를 함께 본다.
+    ///
+    /// 둘 다 같은 원칙이다. 기록은 알바생의 임금 증빙이라 남기고 조회도 허용하지만, 끝난 관계에
+    /// 새 근무·출퇴근·급여 변경을 쌓는 것은 의미가 없다. 사장님이 내보낸 알바생의 근무를
+    /// 사장님이 고치는 것도 막는다 — 대상 근무자 기준으로 판정하기 때문이다.
+    public void verifyWritable(Worker worker, Long workplaceOwnerId) {
+        verifyWorkplaceIsWritable(workplaceOwnerId);
+        if (worker.hasLeft()) {
+            throw new InvalidPermissionAccessException("근무가 종료된 근무지입니다. 기록 조회만 가능합니다.");
+        }
+    }
+
     public void verifyOwnerPermission(Long requesterUserId, Long workplaceOwnerId) {
         if (!Objects.equals(workplaceOwnerId, requesterUserId)) {
             throw new InvalidPermissionAccessException();

@@ -70,7 +70,7 @@ class WorkerSalaryUpdatePathTest {
     @DisplayName("사장님이 탈퇴한 근무지에서는 알바생이 급여 설정을 바꿀 수 없다")
     void 탈퇴한_근무지_차단() {
         givenMyWorker();
-        doThrow(new InvalidPermissionAccessException()).when(permissionVerifyUtil).verifyWorkplaceIsWritable(OWNER_ID);
+        doThrow(new InvalidPermissionAccessException()).when(permissionVerifyUtil).verifyWritable(worker, OWNER_ID);
 
         WorkerWorkerUpdateRequest request = WorkerWorkerUpdateRequest.builder().salaryUpdateRequest(raise).build();
 

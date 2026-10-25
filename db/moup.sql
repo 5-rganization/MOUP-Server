@@ -146,6 +146,9 @@ CREATE TABLE `workers`
     -- 승인 게이트의 전제. NULL을 허용하면 "미검사"와 "미승인"이 구분되지 않는다.
     `is_accepted`              TINYINT(1)            NOT NULL DEFAULT 0,
     `is_now_working`           TINYINT(1)            NULL,
+    -- 사장님이 근무 관계를 끝낸 시각. NULL이면 재직 중이다. 행을 지우면 CASCADE로 근무·급여 기록이
+    -- 함께 사라지므로 끝난 관계도 행을 남긴다(Phase 11 D11-5). 다시 참여하면 NULL로 되돌린다.
+    `left_at`                  DATETIME              NULL,
     -- 참여는 check-then-insert였다. 동시 요청 두 건이면 같은 근무지에 행이 2개 생기고
     -- findByUserIdAndWorkplaceId가 TooManyResultsException으로 터져 해당 근무지가 영구 500이 된다.
     UNIQUE KEY `uk_workers_workplace_user` (`workplace_id`, `user_id`),

@@ -11,5 +11,8 @@ public enum WorkplaceStatus {
     /// 목록에서 숨기면 대기자가 **자신이 어디에 승인 대기 중인지조차 알 수 없다.**
     PENDING_APPROVAL,
     /// 사장님이 탈퇴했다(`workplaces.owner_id IS NULL`). 데이터는 남지만 접근은 차단된다.
-    OWNER_WITHDRAWN
+    OWNER_WITHDRAWN,
+    /// 사장님이 근무를 끝냈다(Phase 11 D11-5). 지난 근무·급여 기록은 읽기 전용으로 볼 수 있고 쓰기는 막힌다.
+    /// 같은 초대코드로 다시 참여하면 승인 대기로 돌아간다.
+    WORKER_LEFT
 }

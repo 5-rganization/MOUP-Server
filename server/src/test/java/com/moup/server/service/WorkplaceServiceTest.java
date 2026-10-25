@@ -182,7 +182,7 @@ class WorkplaceServiceTest {
     // 2. 근무지 존재 확인
     when(workplaceRepository.existsById(workplaceId)).thenReturn(true);
     // 3. 이미 가입된 유저가 아님
-    when(workerRepository.existsByUserIdAndWorkplaceId(mockWorkerUser.getId(), workplaceId)).thenReturn(false);
+    when(workerRepository.findByUserIdAndWorkplaceId(mockWorkerUser.getId(), workplaceId)).thenReturn(java.util.Optional.empty());
     // 4. 근무지 사장님 ID 찾기
     when(workplaceRepository.findOwnerId(workplaceId)).thenReturn(ownerId);
 
@@ -241,7 +241,7 @@ class WorkplaceServiceTest {
     when(inviteCodeService.findWorkplaceIdByInviteCodeWithRateLimit(mockWorkerUser.getId(), inviteCode.toUpperCase()))
         .thenReturn(workplaceId);
     when(workplaceRepository.existsById(workplaceId)).thenReturn(true);
-    when(workerRepository.existsByUserIdAndWorkplaceId(mockWorkerUser.getId(), workplaceId)).thenReturn(false);
+    when(workerRepository.findByUserIdAndWorkplaceId(mockWorkerUser.getId(), workplaceId)).thenReturn(java.util.Optional.empty());
     when(workplaceRepository.findOwnerId(workplaceId)).thenReturn(ownerId);
 
     // when

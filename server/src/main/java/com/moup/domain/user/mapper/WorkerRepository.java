@@ -17,14 +17,6 @@ public interface WorkerRepository {
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
     Long create(Worker worker);
 
-    /// 근무지 ID와 사용자 ID를 통해 해당 근무지 사용자가 존재하는지 여부를 반환하는 메서드
-    ///
-    /// @param userId 조회할 사용자 ID
-    /// @param workplaceId 조회할 근무지 ID
-    /// @return 존재하면 true, 그렇지 않으면 false
-    @Select("SELECT EXISTS(SELECT 1 FROM workers WHERE user_id = #{userId} AND workplace_id = #{workplaceId})")
-    boolean existsByUserIdAndWorkplaceId(Long userId, Long workplaceId);
-
     /// 근무자 ID와 근무지 ID를 통해 해당 근무지에 근무자가 존재하는지 여부를 반환하는 메서드
     ///
     /// @param id 조회할 근무자 ID
@@ -180,4 +172,24 @@ public interface WorkerRepository {
     /// @param workplaceId 삭제할 근무자의 근무지 ID
     @Delete("DELETE FROM workers WHERE id = #{id} AND user_id = #{userId} AND workplace_id = #{workplaceId}")
     void delete(Long id, Long userId, Long workplaceId);
+
+    /// 근무자 행을 지운다. `user_id`를 조건에 넣지 않는다 — 과거 하드 삭제로 `user_id`가 NULL인 행은
+    /// `user_id = NULL`이 항상 거짓이라 지워지지 않았다(스코프 4 탈퇴 신호 #5).
+    @Delete("DELETE FROM workers WHERE id = #{id} AND workplace_id = #{workplaceId}")
+    void deleteByIdAndWorkplaceId(@Param("id") Long id, @Param("workplaceId") Long workplaceId);
+
+    /// 사장님이 근무 관계를 끝낸다. **행은 지우지 않는다** — 지우면 CASCADE로 그 알바생의 근무·급여 기록이
+    /// 전부 사라진다(스코프 4 I4). 이미 끝난 관계면 아무것도 바꾸지 않는다.
+    @Update("""
+            UPDATE workers SET left_at = CURRENT_TIMESTAMP(), is_now_working = 0
+            WHERE id = #{id} AND workplace_id = #{workplaceId} AND left_at IS NULL
+            """)
+    void updateLeftAt(@Param("id") Long id, @Param("workplaceId") Long workplaceId);
+
+    /// 끝난 근무 관계를 다시 연다(재참여). 승인은 처음부터 다시 받는다.
+    @Update("""
+            UPDATE workers SET left_at = NULL, is_accepted = 0, worker_based_label_color = #{workerBasedLabelColor}
+            WHERE id = #{id} AND left_at IS NOT NULL
+            """)
+    void reactivate(@Param("id") Long id, @Param("workerBasedLabelColor") String workerBasedLabelColor);
 }

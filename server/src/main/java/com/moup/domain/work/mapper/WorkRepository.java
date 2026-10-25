@@ -79,6 +79,10 @@ public interface WorkRepository {
   @Select("SELECT EXISTS(SELECT 1 FROM works WHERE id = #{id} AND worker_id = #{workerId})")
   boolean existsByIdAndWorkerId(Long id, Long workerId);
 
+  /// 근무자에게 근무 기록이 하나라도 있는지. 근무자 행을 지워도 되는지(기록이 CASCADE로 사라지지 않는지) 판단한다.
+  @Select("SELECT EXISTS(SELECT 1 FROM works WHERE worker_id = #{workerId})")
+  boolean existsByWorkerId(@Param("workerId") Long workerId);
+
   /// 근무 ID를 통해 해당 근무를 찾고, 그 근무의 객체를 반환하는 메서드
   ///
   /// @param id 조회할 근무 ID
@@ -412,6 +416,14 @@ public interface WorkRepository {
   /// @param workerId 삭제할 근무의 근무자 ID
   @Delete("DELETE FROM works WHERE id = #{id} AND worker_id = #{workerId}")
   void delete(Long id, Long workerId);
+
+  /// 근무자의 `date` **이후**(당일 제외) 근무를 모두 삭제합니다. 근무 관계가 끝나 다시 오지 않을 근무다.
+  @Delete("""
+      DELETE FROM works
+      WHERE worker_id = #{workerId}
+          AND work_date > #{date} /* 기준일 제외 */
+      """)
+  int deleteAllByWorkerIdAfterDate(@Param("workerId") Long workerId, @Param("date") LocalDate date);
 
   /// 특정 반복 그룹(`repeatGroupId`)에 속하면서 특정 날짜(`date`) **포함** 이후의 모든 근무를 삭제합니다.
   ///

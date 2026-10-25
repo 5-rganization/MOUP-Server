@@ -20,6 +20,9 @@ public class WorkerSummaryResponse {
     /// 이 필드가 없어 승인 절차가 화면에서 보이지 않았다.
     @Schema(description = "승인 여부. false면 승인 대기 중이다.", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean isAccepted;
+    /// 사장님이 근무를 끝낸 근무자도 기록이 남아 전체 목록에 나온다. 재직자와 구분해야 한다.
+    @Schema(description = "근무 종료 여부. true면 사장님이 근무를 끝낸 근무자다(기록 조회만 가능).", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Boolean hasLeft;
     @Schema(description = "사용자 프로필 이미지", example = "https://moup-bucket.s3.ap-northeast-2.amazonaws.com/5aedbc811d19b48d5151c9d05b48fc6751be282f5e89f478a3b81dbc16e2ada7.png", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String profileImg;
 }

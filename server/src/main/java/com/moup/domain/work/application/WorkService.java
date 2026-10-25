@@ -106,8 +106,8 @@ public class WorkService {
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(
             WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyWorkerPermission(userId, userWorker, workplaceOwnerId);
-        // 사장님이 탈퇴한 근무지에서는 쓰기를 막는다 (확정 정책 5). 조회는 허용된다.
-        permissionVerifyUtil.verifyWorkplaceIsWritable(workplaceOwnerId);
+        // 사장님이 탈퇴했거나 근무가 종료된 근무지에서는 쓰기를 막는다 (확정 정책 5, D11-5). 조회는 허용된다.
+        permissionVerifyUtil.verifyWritable(userWorker, workplaceOwnerId);
 
         List<Work> createdWorks = createMyWorkHelper(userWorker, request);
 
@@ -191,6 +191,10 @@ public class WorkService {
                 User workerUser = worker.getUserId() == null ? null : userMap.get(worker.getUserId());
                 if (workerUser == null || workerUser.isDeleted()) {
                     throw new WorkerNotFoundException("요청한 근무자(ID: " + workerId + ")는 탈퇴했거나 존재하지 않는 근무자입니다.");
+                }
+                // 3-3. 검증: 근무가 끝난 근무자 (Phase 11 D11-5)
+                if (worker.hasLeft()) {
+                    throw new WorkerNotFoundException("요청한 근무자(ID: " + workerId + ")는 근무가 종료된 근무자입니다.");
                 }
 
                 // 4. 기존 헬퍼 메서드를 호출하여 '이 근무자'의 근무 생성 (단일 또는 반복)
@@ -617,8 +621,8 @@ public class WorkService {
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyWorkerPermission(userId, userWorker, workplaceOwnerId);
-        // 사장님이 탈퇴한 근무지에서는 쓰기를 막는다 (확정 정책 5). 조회는 허용된다.
-        permissionVerifyUtil.verifyWorkplaceIsWritable(workplaceOwnerId);
+        // 사장님이 탈퇴했거나 근무가 종료된 근무지에서는 쓰기를 막는다 (확정 정책 5, D11-5). 조회는 허용된다.
+        permissionVerifyUtil.verifyWritable(userWorker, workplaceOwnerId);
         if (workerRepository.existsByUserIdAndIsNowWorking(userId, true)) { throw new WorkerAlreadyWorkingException(); }
 
         // 현재 시간 기준으로 출근 가능한 근무 조회
@@ -685,8 +689,8 @@ public class WorkService {
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId).orElseThrow(WorkerNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         permissionVerifyUtil.verifyWorkerPermission(userId, userWorker, workplaceOwnerId);
-        // 사장님이 탈퇴한 근무지에서는 쓰기를 막는다 (확정 정책 5). 조회는 허용된다.
-        permissionVerifyUtil.verifyWorkplaceIsWritable(workplaceOwnerId);
+        // 사장님이 탈퇴했거나 근무가 종료된 근무지에서는 쓰기를 막는다 (확정 정책 5, D11-5). 조회는 허용된다.
+        permissionVerifyUtil.verifyWritable(userWorker, workplaceOwnerId);
         if (!Boolean.TRUE.equals(userWorker.getIsNowWorking())) { throw new WorkNotFoundException("현재 진행 중인 근무가 없습니다."); }
 
         // 가장 최근의 진행 중인 근무 조회
@@ -1167,8 +1171,8 @@ public class WorkService {
         Workplace workplace = workplaceRepository.findById(worker.getWorkplaceId()).orElseThrow(WorkplaceNotFoundException::new);
         // 권한 검증
         permissionVerifyUtil.verifyWorkerPermission(requesterUserId, worker, workplace.getOwnerId());
-        // 사장님이 탈퇴한 근무지에서는 쓰기를 막는다 (확정 정책 5). 조회는 허용된다.
-        permissionVerifyUtil.verifyWorkplaceIsWritable(workplace.getOwnerId());
+        // 사장님이 탈퇴했거나 근무가 종료된 근무지에서는 쓰기를 막는다 (확정 정책 5, D11-5). 조회는 허용된다.
+        permissionVerifyUtil.verifyWritable(worker, workplace.getOwnerId());
         // 결과 반환
         return new VerifiedWorkContextForUD(work, worker);
     }
@@ -1182,6 +1186,7 @@ public class WorkService {
                 .nickname(user != null ? user.getNickname() : "탈퇴한 근무자")
                 .profileImg(user != null ? user.getProfileImg() : null)
                 .isAccepted(worker.getIsAccepted())
+                .hasLeft(worker.hasLeft())
                 .build();
     }
 

@@ -481,8 +481,8 @@ public class RoutineService {
         .orElseThrow(WorkplaceNotFoundException::new);
 
     permissionVerifyUtil.verifyWorkerPermission(userId, worker, workplace.getOwnerId());
-    // 체크도 근무 기록이다. 사장님이 탈퇴한 근무지에서는 막는다 (확정 정책 5).
-    permissionVerifyUtil.verifyWorkplaceIsWritable(workplace.getOwnerId());
+    // 체크도 근무 기록이다. 사장님이 탈퇴했거나 근무가 끝난 근무지에서는 막는다 (확정 정책 5, D11-5).
+    permissionVerifyUtil.verifyWritable(worker, workplace.getOwnerId());
 
     // 이 근무에 연결되지 않은 루틴의 할 일은 체크할 수 없다.
     // FK는 "그 할 일이 존재하는가"만 보장할 뿐, 남의 루틴 할 일 id를 넣는 것을 막지 못한다.

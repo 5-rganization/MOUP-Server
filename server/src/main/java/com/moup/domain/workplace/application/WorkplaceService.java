@@ -47,6 +47,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -171,6 +172,9 @@ public class WorkplaceService {
         if (workplace.getOwnerId() == null || withdrawnOwnerIds.contains(workplace.getOwnerId())) {
             return WorkplaceStatus.OWNER_WITHDRAWN;
         }
+        if (worker != null && worker.hasLeft()) {
+            return WorkplaceStatus.WORKER_LEFT;
+        }
         if (worker != null && !Boolean.TRUE.equals(worker.getIsAccepted())) {
             return WorkplaceStatus.PENDING_APPROVAL;
         }
@@ -244,11 +248,13 @@ public class WorkplaceService {
                 if (!(request instanceof WorkerWorkplaceUpdateRequest workerRequest)) {
                     throw new InvalidPermissionAccessException();
                 }
-                // 사장님이 탈퇴한 근무지에서는 급여 설정을 바꿀 수 없다 (확정 정책 5).
-                // 승인할 사장님이 없으므로 변경이 무의미하다. 조회는 허용된다.
-                permissionVerifyUtil.verifyWorkplaceIsWritable(workplaceRepository.findOwnerId(workplaceId));
+                Worker worker = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId)
+                        .orElseThrow(WorkerNotFoundException::new);
+                // 사장님이 탈퇴했거나 근무가 끝난 근무지에서는 급여 설정을 바꿀 수 없다 (확정 정책 5, D11-5).
+                // 변경이 무의미하다. 조회는 허용된다.
+                permissionVerifyUtil.verifyWritable(worker, workplaceRepository.findOwnerId(workplaceId));
 
-                Long workerId = findWorkerId(user.getId(), workplaceId);
+                Long workerId = worker.getId();
                 workerRepository.updateWorkerBasedLabelColor(workerId, user.getId(), workplaceId,
                         workerRequest.getWorkerBasedLabelColor());
 
@@ -354,7 +360,9 @@ public class WorkplaceService {
         // 가장 싼 오라클이다 — body 없이 200(존재)/404(부재)로 즉시 갈린다.
         Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCodeWithRateLimit(
                 user.getId(), inviteCode.toUpperCase());
-        if (workerRepository.existsByUserIdAndWorkplaceId(user.getId(), workplaceId)) {
+        // 근무가 끝난 근무지는 다시 참여할 수 있어야 한다(joinWorkplace와 같은 규칙).
+        if (workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId)
+                .filter(worker -> !worker.hasLeft()).isPresent()) {
             throw new WorkerAlreadyExistsException();
         }
 
@@ -376,17 +384,34 @@ public class WorkplaceService {
         Long workplaceId = inviteCodeService.findWorkplaceIdByInviteCodeWithRateLimit(
                 user.getId(), request.getInviteCode().toUpperCase());
         if (!workplaceRepository.existsById(workplaceId)) { throw new WorkplaceNotFoundException(); }
-        if (workerRepository.existsByUserIdAndWorkplaceId(user.getId(), workplaceId)) { throw new WorkerAlreadyExistsException(); }
+        Optional<Worker> previous = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId);
+        if (previous.isPresent() && !previous.get().hasLeft()) { throw new WorkerAlreadyExistsException(); }
 
         Long ownerId = workplaceRepository.findOwnerId(workplaceId);
 
-        // 근무자 정보 생성
-        Worker worker = request.toWorkerEntity(user.getId(), workplaceId);
-        workerRepository.create(worker);
+        Worker worker;
+        if (previous.isPresent()) {
+            // 근무가 끝났던 근무지에 다시 참여한다(Phase 11 D11-5). 행은 기록 보존을 위해 남아 있으므로
+            // 새로 만들 수 없다(UNIQUE). 같은 행을 다시 열고 승인은 처음부터 다시 받는다.
+            worker = previous.get();
+            workerRepository.reactivate(worker.getId(), request.getWorkerBasedLabelColor());
+            // 급여는 새로 입력한 값을 쓴다. 지난 근무는 각자 시급·수당 스냅샷을 들고 있어 바뀌지 않는다.
+            Salary salary = request.toSalaryEntity(worker.getId());
+            Optional<Salary> previousSalary = salaryRepository.findByWorkerId(worker.getId());
+            if (previousSalary.isPresent()) {
+                salaryRepository.update(salary.toBuilder().id(previousSalary.get().getId()).build());
+            } else {
+                salaryRepository.create(salary);
+            }
+        } else {
+            // 근무자 정보 생성
+            worker = request.toWorkerEntity(user.getId(), workplaceId);
+            workerRepository.create(worker);
 
-        // 급여 정보 생성
-        Salary salary = request.toSalaryEntity(worker.getId());
-        salaryRepository.create(salary);
+            // 급여 정보 생성
+            Salary salary = request.toSalaryEntity(worker.getId());
+            salaryRepository.create(salary);
+        }
 
         // 푸시 알림 전달 (best-effort, 커밋 이후 발송)
         // 제목: "근무지 참가 요청" / 본문: "{유저 이름}님이 근무지 참가 요청을 보냈습니다."
