@@ -43,7 +43,7 @@ public class SalaryUpdateRequest {
     private Boolean hasHealthInsurance;
     @Schema(description = "고용보험 여부", example = "true", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Boolean hasEmploymentInsurance;
-    @Schema(description = "산재보험 여부", example = "true", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @Schema(description = "산재보험 여부 — 표시 전용. 산재보험은 전액 사업주 부담이라 근로자 공제에 쓰지 않는다", example = "true", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Boolean hasIndustrialAccident;
     @Schema(description = "소득세 여부", example = "false", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Boolean hasIncomeTax;

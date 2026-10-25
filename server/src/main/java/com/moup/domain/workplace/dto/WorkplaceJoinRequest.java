@@ -3,6 +3,7 @@ package com.moup.domain.workplace.dto;
 import com.moup.domain.salary.dto.SalaryCreateRequest;
 import com.moup.domain.salary.domain.Salary;
 import com.moup.domain.user.domain.Worker;
+import com.moup.domain.workplace.domain.InviteCodeFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.Valid;
@@ -17,7 +18,7 @@ import lombok.Getter;
 @Schema(description = "근무지 참여 요청 DTO")
 public class WorkplaceJoinRequest {
     @NotBlank(message = "빈 값이나 공백 문자는 받을 수 없습니다.")
-    @Pattern(regexp = "^[a-zA-Z0-9]{6}$", message = "초대 코드는 영문 또는 숫자로 이루어진 6자리여야 합니다.")
+    @Pattern(regexp = InviteCodeFormat.REGEX, message = InviteCodeFormat.MESSAGE)
     @Schema(description = "참여할 근무지의 초대 코드", example = "MUP234", requiredMode = Schema.RequiredMode.REQUIRED)
     private String inviteCode;
     @NotBlank(message = "빈 값이나 공백 문자는 받을 수 없습니다.")

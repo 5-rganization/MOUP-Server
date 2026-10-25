@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.moup.domain.workplace.domain.InviteCodeFormat;
 import com.moup.domain.workplace.exception.InviteCodeGenerationException;
 
 import java.security.SecureRandom;
@@ -41,7 +42,7 @@ public class InviteCodeService {
     @PostConstruct
     public void init() {
         // 0, O, 1, I를 제외한 숫자와 대문자 알파벳 조합
-        String baseCharacters = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+        String baseCharacters = InviteCodeFormat.ALPHABET;
         this.inviteCodeGenerator = new RandomStringGenerator.Builder()
                 .selectFrom(baseCharacters.toCharArray())
                 .usingRandom(SECURE_RANDOM::nextInt)

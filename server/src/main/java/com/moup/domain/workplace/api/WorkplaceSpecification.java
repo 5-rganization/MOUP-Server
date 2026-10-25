@@ -221,9 +221,11 @@ public interface WorkplaceSpecification {
 
     @Tag(name = "Workplace", description = "근무지(매장) 정보 관리 API 엔드포인트")
     @DeleteMapping("/{workplaceId}")
-    @Operation(summary = "근무지(매장) 삭제", description = "삭제할 근무지(매장) ID를 경로로 전달받아 삭제")
+    @Operation(summary = "근무지(매장) 삭제", description = "삭제할 근무지(매장) ID를 경로로 전달받아 삭제. 사장님이면 근무지와 모든 기록을 지우고, 알바생이면 그 근무지에서 나간다(자기 근무·급여 기록도 지워진다)")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "근무지(매장) 삭제 성공"),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 경로 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "권한이 없는 접근", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "요청한 정보를 찾을 수 없음 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "서버 오류", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),})
     ResponseEntity<?> deleteWorkplace(

@@ -10,6 +10,7 @@ public class UserUpdateNicknameRequest {
     // users.nickname VARCHAR(20). 넘기면 422가 아니라 DB 오류로 500이 났다.
     @NotBlank(message = "필수 입력값입니다.")
     @Size(max = 20, message = "20자 이내로 입력해야 합니다.")
-    @Schema(description = "변경할 닉네임", example = "moup1234")
+    // 실제 규칙(NameVerifyUtil.verifyNickname)은 1~8자다. @Size(20)은 컬럼 길이 방어선이고 문서는 실제 규칙을 적는다(스코프 4 M2).
+    @Schema(description = "변경할 닉네임 — 1~8자, 한글·영문·숫자", example = "moup1234")
     private String nickname;
 }

@@ -190,9 +190,14 @@ public class UserService {
     // 유예기간 안에 다시 로그인하면 계정이 복구되고, 로그인 요청의 fcmToken으로 다시 등록된다.
     fcmTokenService.deleteAllUserFCMTokens(userId);
 
+    // DB가 찍은 시각을 돌려준다. 예전에는 서버의 now()를 따로 찍어 저장값과 어긋날 수 있었고(스코프 4 M8),
+    // 유예기간(3일) 계산은 DB 값을 기준으로 한다.
+    String deletedAt = userRepository.findById(userId).map(User::getDeletedAt)
+        .orElseGet(() -> String.valueOf(LocalDateTime.now(SEOUL_ZONE_ID)));
+
     return UserDeleteResponse.builder()
         .userId(user.getId())
-        .deletedAt(String.valueOf(LocalDateTime.now(SEOUL_ZONE_ID))) // 현재 시간을 직접 사용
+        .deletedAt(deletedAt)
         .isDeleted(true)
         .build();
   }

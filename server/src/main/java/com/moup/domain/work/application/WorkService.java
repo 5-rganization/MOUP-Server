@@ -716,8 +716,10 @@ public class WorkService {
             Work workToEnd = optWorkToEnd.get();
             LocalDateTime currentDateTime = LocalDateTime.now(SEOUL_ZONE_ID);
 
-            // 예정된 종료 시간(null 포함)과 실제 종료 시간이 다르면 재계산
-            boolean needsRecalculation = !Objects.equals(workToEnd.getEndTime(), currentDateTime);
+            // 예정 종료 시각이 없던 근무(예정 없이 출근)만 퇴근 시각이 종료 시각이 되어 급여가 바뀐다.
+            // 예정이 있던 근무는 급여를 예정 시간으로 계산하므로(스코프 3 Q2) 다시 계산할 것이 없다.
+            // 예전 조건은 나노초까지 있는 now()와의 비교라 사실상 항상 참이었다(스코프 2 M5).
+            boolean needsRecalculation = workToEnd.getEndTime() == null;
 
             // 실제 퇴근 시간 업데이트 (예정 퇴근 시간이 없었다면 같이 업데이트)
             workRepository.updateActualEndTimeById(workToEnd.getId(), currentDateTime);
@@ -1152,9 +1154,8 @@ public class WorkService {
                 workToUpdate.getWorkDate());
     }
 
-    /// '단일' 근무 삭제 헬퍼 (루틴 매핑 포함)
+    /// '단일' 근무 삭제 헬퍼. 루틴 매핑·체크 기록은 `work_id` FK의 ON DELETE CASCADE가 지운다(스코프 6 M4).
     private void deleteWorkHelper(Worker worker, Work work) {
-        routineService.deleteWorkRoutineMappingByWorkId(work.getId());
         workRepository.delete(work.getId(), worker.getId());
 
         Salary salary = salaryRepository.findByWorkerId(worker.getId()).orElse(null);

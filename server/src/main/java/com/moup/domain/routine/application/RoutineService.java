@@ -582,11 +582,6 @@ public class RoutineService {
     }
   }
 
-  @Transactional
-  public void deleteWorkRoutineMappingByWorkId(Long workId) {
-    workRoutineMappingRepository.deleteByWorkId(workId);
-  }
-
   /// 같은 루틴 안에서 정렬 순서가 겹치면 `UNIQUE (routine_id, order_index)`에 걸려 422가 아니라 500이 났다(스코프 6 M6).
   private static void verifyDistinctOrderIndex(List<Integer> orderIndexes) {
     if (orderIndexes.stream().distinct().count() != orderIndexes.size()) {

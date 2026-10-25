@@ -1,6 +1,5 @@
 package com.moup.domain.workplace.dto;
 
-import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.moup.domain.user.dto.OwnerWorkplaceDetailResponse;
 import com.moup.domain.user.dto.WorkerWorkplaceDetailResponse;
 import com.moup.domain.workplace.domain.WorkplaceCategory;
@@ -9,7 +8,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-@JsonSubTypes({@JsonSubTypes.Type(WorkerWorkplaceDetailResponse.class), @JsonSubTypes.Type(OwnerWorkplaceDetailResponse.class)})
 @Getter
 @NoArgsConstructor
 @SuperBuilder

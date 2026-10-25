@@ -1,5 +1,6 @@
 package com.moup.domain.workplace.api;
 
+import com.moup.domain.workplace.domain.InviteCodeFormat;
 import com.moup.domain.workplace.dto.WorkplaceCreateResponse;
 import com.moup.domain.workplace.dto.WorkplaceJoinRequest;
 import com.moup.domain.workplace.dto.WorkplaceJoinResponse;
@@ -143,7 +144,7 @@ public class WorkplaceController implements WorkplaceSpecification, InviteCodeSp
     @GetMapping("/invite-codes/{inviteCode}")
     @PreAuthorize("hasRole('ROLE_WORKER')")
     public ResponseEntity<?> inquireInviteCode(
-            @PathVariable @Pattern(regexp = "^[a-zA-Z0-9]{6}$", message = "초대 코드는 영문 또는 숫자로 이루어진 6자리여야 합니다.") String inviteCode
+            @PathVariable @Pattern(regexp = InviteCodeFormat.REGEX, message = InviteCodeFormat.MESSAGE) String inviteCode
     ) {
         Long userId = identityService.getCurrentUserId();
         User user = userService.findUserById(userId);

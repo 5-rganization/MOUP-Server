@@ -59,4 +59,25 @@ class RequestLengthValidationTest {
         assertEquals("짧은 이름", TextUtil.truncateCodePoints("짧은 이름", 20));
         assertNull(TextUtil.truncateCodePoints(null, 20));
     }
+
+    /// 발급 알파벳에 없는 0·1·O·I가 든 코드는 404가 아니라 형식 오류로 바로 알려 준다(스코프 5 M-9).
+    @Test
+    @DisplayName("초대 코드 형식은 발급 알파벳과 같다 — 0·1·O·I는 형식 오류, 소문자는 허용")
+    void 초대_코드_형식() {
+        java.util.function.Function<String, Set<String>> check = code -> violatedFields(
+                com.moup.domain.workplace.dto.WorkplaceJoinRequest.builder().inviteCode(code).workerBasedLabelColor("RED")
+                        .salaryCreateRequest(com.moup.domain.salary.dto.SalaryCreateRequest.builder()
+                                .salaryType(com.moup.domain.salary.domain.SalaryType.SALARY_MONTHLY)
+                                .salaryCalculation(com.moup.domain.salary.domain.SalaryCalculation.SALARY_CALCULATION_HOURLY)
+                                .hourlyRate(10_320).hasNationalPension(false).hasHealthInsurance(false)
+                                .hasEmploymentInsurance(false).hasIndustrialAccident(false).hasIncomeTax(false)
+                                .hasHolidayAllowance(false).hasNightAllowance(false).build())
+                        .build());
+
+        assertEquals(Set.of(), check.apply("MUP234"));
+        assertEquals(Set.of(), check.apply("mupze4"));
+        for (String bad : List.of("MUP0E4", "MUP1E4", "MUPOE4", "MUPIE4", "MUP23")) {
+            assertEquals(Set.of("inviteCode"), check.apply(bad), bad);
+        }
+    }
 }

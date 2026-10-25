@@ -784,10 +784,10 @@ public class SalaryCalculationService {
 
             // --- 6. 최종 DTO 조립 ---
             // 6-1. DTO에 맞게 nullable 공제 항목 계산
-            Integer nationalPension = salaryInfo.getHasNationalPension() ? deductions.nationalPension() : null;
-            Integer healthInsurance = salaryInfo.getHasHealthInsurance() ? deductions.healthInsurance() : null;
-            Integer employmentInsurance = salaryInfo.getHasEmploymentInsurance() ? deductions.employmentInsurance() : null;
-            Integer incomeTax = salaryInfo.getHasIncomeTax() ? deductions.incomeTax() : null;
+            Integer nationalPension = Boolean.TRUE.equals(salaryInfo.getHasNationalPension()) ? deductions.nationalPension() : null;
+            Integer healthInsurance = Boolean.TRUE.equals(salaryInfo.getHasHealthInsurance()) ? deductions.healthInsurance() : null;
+            Integer employmentInsurance = Boolean.TRUE.equals(salaryInfo.getHasEmploymentInsurance()) ? deductions.employmentInsurance() : null;
+            Integer incomeTax = Boolean.TRUE.equals(salaryInfo.getHasIncomeTax()) ? deductions.incomeTax() : null;
             Integer netIncome = deductions.netIncome();
 
             WorkerMonthlyWorkplaceSummaryResponse summaryInfo = WorkerMonthlyWorkplaceSummaryResponse.builder()
@@ -799,8 +799,8 @@ public class SalaryCalculationService {
                     .restTimeMinutes(totalRestTimeMinutes)
                     .dayTimeIncome(dayTimeIncome)
                     .grossIncome(grossIncome)
-                    .totalHolidayAllowance(salaryInfo.getHasHolidayAllowance() ? totalHolidayAllowance : null)
-                    .totalNightAllowance(salaryInfo.getHasNightAllowance() ? totalNightAllowance : null)
+                    .totalHolidayAllowance(Boolean.TRUE.equals(salaryInfo.getHasHolidayAllowance()) ? totalHolidayAllowance : null)
+                    .totalNightAllowance(Boolean.TRUE.equals(salaryInfo.getHasNightAllowance()) ? totalNightAllowance : null)
                     .totalOvertimeAllowance(Boolean.TRUE.equals(salaryInfo.getHasOvertimeAllowance()) ? totalOvertimeAllowance : null)
                     .overtimeMinutes(totalOvertimeMinutes)
                     .totalPublicHolidayAllowance(Boolean.TRUE.equals(salaryInfo.getHasPublicHolidayAllowance()) ? totalPublicHolidayAllowance : null)

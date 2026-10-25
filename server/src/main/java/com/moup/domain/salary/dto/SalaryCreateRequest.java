@@ -42,7 +42,7 @@ public class SalaryCreateRequest {
     @Schema(description = "고용보험 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean hasEmploymentInsurance;
     @NotNull(message = "필수 입력값입니다.")
-    @Schema(description = "산재보험 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "산재보험 여부 — 표시 전용. 산재보험은 전액 사업주 부담이라 근로자 공제에 쓰지 않는다", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean hasIndustrialAccident;
     @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "소득세 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)

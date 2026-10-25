@@ -177,7 +177,7 @@ public interface WorkSpecification {
             @RequestParam(name = "baseYearMonth") YearMonth baseYearMonth
     );
 
-    @GetMapping("/{workplaceId}/works")
+    @GetMapping("/workplaces/{workplaceId}/works")
     @Operation(summary = "특정 근무지(매장)의 모든 근무 범위 조회", description = "근무지(매장) ID를 경로로, 연-월을 매개변수로 전달받아 해당 날짜를 중간값으로 1년간 해당 근무지(매장)의 모든 근무를 조회")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "근무 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = WorkCalendarListResponse.class))),
@@ -283,7 +283,7 @@ public interface WorkSpecification {
     );
 
     @DeleteMapping("/works/{workId}")
-    @Operation(summary = "단일 근무 삭제", description = "근무 ID를 경로로 전달받아 해당하는 단일 근무를 삭제")
+    @Operation(summary = "단일 근무 삭제", description = "근무 ID를 경로로 전달받아 해당하는 단일 근무를 삭제. 알바생 본인 또는 그 근무지의 사장님이 삭제할 수 있다")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "근무 삭제 성공"),
             @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
@@ -298,7 +298,7 @@ public interface WorkSpecification {
 
     @Tag(name = "Work", description = "근무 정보 관리 API 엔드포인트")
     @DeleteMapping("/works/recurring/{workId}")
-    @Operation(summary = "반복 근무 삭제", description = "기준 근무 ID를 경로로 전달받아 해당 근무 및 반복 그룹 내의 미래 근무를 삭제")
+    @Operation(summary = "반복 근무 삭제", description = "기준 근무 ID를 경로로 전달받아 해당 근무 및 반복 그룹 내의 미래 근무를 삭제. 알바생 본인 또는 그 근무지의 사장님이 삭제할 수 있다")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "근무 삭제 성공"),
             @ApiResponse(responseCode = "400", description = "유효하지 않은 경로/매개변수 (상세 내용은 메세지 참고)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
