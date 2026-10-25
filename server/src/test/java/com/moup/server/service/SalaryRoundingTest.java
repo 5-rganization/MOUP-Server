@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
@@ -160,6 +161,36 @@ class SalaryRoundingTest {
         assertEquals(450, summary.getEmploymentInsurance());
     }
 
+    // ================= 적용 대상 (스코프 3 M-4) =================
+
+    /// 월 60시간 미만이라도 소득이 고시 금액(220만원) 이상이면 국민연금·건강보험 대상이다.
+    /// 고용보험에는 소득 기준이 없다 — 예전에는 220만원 예외를 고용보험에도 적용했다.
+    @Test
+    @DisplayName("월 60시간 미만·월 220만원 이상이면 국민연금·건강보험만 떼고 고용보험은 떼지 않는다")
+    void 단시간_고소득() {
+        setRates();
+        WorkerMonthlyWorkplaceSummaryResponse summary = workerSummary(2_300_000, 30);
+
+        assertAll(
+                () -> assertEquals(109_250, summary.getNationalPension()),   // 2,300,000 × 4.75%
+                () -> assertTrue(summary.getHealthInsurance() > 0),
+                () -> assertEquals(0, summary.getEmploymentInsurance())
+        );
+    }
+
+    @Test
+    @DisplayName("월 60시간 미만·220만원 미만이면 4대보험을 떼지 않는다")
+    void 단시간_저소득() {
+        setRates();
+        WorkerMonthlyWorkplaceSummaryResponse summary = workerSummary(1_000_000, 30);
+
+        assertAll(
+                () -> assertEquals(0, summary.getNationalPension()),
+                () -> assertEquals(0, summary.getHealthInsurance()),
+                () -> assertEquals(0, summary.getEmploymentInsurance())
+        );
+    }
+
     // ================= 헬퍼 =================
 
     private void setRates() {
@@ -169,15 +200,20 @@ class SalaryRoundingTest {
         ReflectionTestUtils.setField(salaryCalculationService, "employmentInsuranceRate", 0.009);
         ReflectionTestUtils.setField(salaryCalculationService, "incomeTaxRate", 0.033);
         ReflectionTestUtils.setField(salaryCalculationService, "insuranceMinHours", 60);
+        ReflectionTestUtils.setField(salaryCalculationService, "shortTimeWorkerMinIncome", 2_200_000);
     }
 
     /// 세전 `gross`원, 순 근무 60시간짜리 한 달을 알바생 홈 요약으로 돌린다.
     private WorkerMonthlyWorkplaceSummaryResponse workerSummary(int gross) {
+        return workerSummary(gross, 60);
+    }
+
+    private WorkerMonthlyWorkplaceSummaryResponse workerSummary(int gross, int hours) {
         Worker worker = Worker.builder().id(WORKER_ID).userId(USER_ID).workplaceId(20L)
                 .isAccepted(true).isNowWorking(false).build();
         Workplace workplace = Workplace.builder().id(20L).ownerId(2L).workplaceName("근무지").build();
         Work paid = Work.builder().id(1L).workerId(WORKER_ID).workDate(MONDAY)
-                .netWorkMinutes(60 * 60).nightWorkMinutes(0).restTimeMinutes(0)
+                .netWorkMinutes(hours * 60).nightWorkMinutes(0).restTimeMinutes(0)
                 .basePay(gross).nightAllowance(0).holidayAllowance(0).grossIncome(gross)
                 .build();
         when(workerRepository.findAllByUserId(USER_ID)).thenReturn(List.of(worker));

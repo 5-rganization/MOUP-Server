@@ -83,6 +83,9 @@ public class SalaryCalculationService {
     @Value("${salary.thresholds.insurance-min-hours}")
     private int insuranceMinHours;
 
+    @Value("${salary.thresholds.short-time-worker-min-income:2200000}")
+    private int shortTimeWorkerMinIncome;
+
     private static final LocalTime NIGHT_START_TIME = LocalTime.of(22, 0);
     private static final LocalTime NIGHT_END_TIME = LocalTime.of(6, 0);
 
@@ -572,11 +575,19 @@ public class SalaryCalculationService {
         return (int) works.stream().filter(work -> !isAbsent(work)).count();
     }
 
-    /// 보험 적용 대상인지 판단하는 헬퍼 메서드
-    private boolean isInsuranceApplicable(int monthlyIncome, long monthlyHours) {
-        // 월 소득 220만원 이상 또는 월 60시간 이상 근무 시 (조건은 정책에 따라 변경 가능)
-        // 실제로는 더 복잡한 조건(고용 기간 등)이 있으나 요청에 따라 간소화
-        return monthlyIncome >= 2_200_000 || monthlyHours >= insuranceMinHours;
+    /// 국민연금·건강보험 적용 대상인지. 월 60시간 이상이거나, 그보다 짧아도 월 소득이 고시 금액(220만원) 이상이면 대상이다.
+    ///
+    /// 220만원은 보건복지부 장관 고시라 바뀔 수 있어 설정으로 뺐다(스코프 3 M-4). 국민연금 기준은 공단 안내로
+    /// 확인했고, 건강보험도 같다는 것은 노무 실무 자료 기준이다(공단 원문 미확인 — Phase 11 원장 참고).
+    private boolean isPensionAndHealthApplicable(int monthlyIncome, long monthlyHours) {
+        return monthlyHours >= insuranceMinHours || monthlyIncome >= shortTimeWorkerMinIncome;
+    }
+
+    /// 고용보험 적용 대상인지. **소득 기준이 없다** — 월 소정근로시간 60시간이 기준이다.
+    /// 예전에는 국민연금의 220만원 예외를 고용보험에도 똑같이 적용했다.
+    /// (3개월 이상 계속 근로하면 60시간 미만이어도 대상이지만, 근속 기간을 알 수 없어 반영하지 못한다.)
+    private boolean isEmploymentInsuranceApplicable(long monthlyHours) {
+        return monthlyHours >= insuranceMinHours;
     }
 
     /// 알바생이 특정 월에 근무지별로 받은 급여 상세 내역(시간, 수당, 공제액)을 조회합니다. (알바생 전용)
@@ -984,7 +995,7 @@ public class SalaryCalculationService {
 
         // 공제 항목은 각 공단·국세청 고지 방식대로 **10원 미만 절사**다 (스코프 3 Q7, 국고금 관리법 제47조).
         // 지급 항목(반올림)과 기준이 다르다 — 공제를 반올림하면 실제 고지액과 몇 원씩 어긋난다.
-        if (isInsuranceApplicable(grossIncome, totalWorkHours)) {
+        if (isPensionAndHealthApplicable(grossIncome, totalWorkHours)) {
             if (Boolean.TRUE.equals(salaryInfo.getHasNationalPension())) {
                 nationalPension = truncateToTenWon(grossIncome, nationalPensionRate);
             }
@@ -994,9 +1005,9 @@ public class SalaryCalculationService {
                 int longTermCareInsurance = truncateToTenWon(baseHealthInsurance, longTermCareInsuranceRate);
                 healthInsurance = baseHealthInsurance + longTermCareInsurance;
             }
-            if (Boolean.TRUE.equals(salaryInfo.getHasEmploymentInsurance())) {
-                employmentInsurance = truncateToTenWon(grossIncome, employmentInsuranceRate);
-            }
+        }
+        if (isEmploymentInsuranceApplicable(totalWorkHours) && Boolean.TRUE.equals(salaryInfo.getHasEmploymentInsurance())) {
+            employmentInsurance = truncateToTenWon(grossIncome, employmentInsuranceRate);
         }
 
         if (Boolean.TRUE.equals(salaryInfo.getHasIncomeTax())) {
