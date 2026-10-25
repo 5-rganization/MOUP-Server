@@ -10,7 +10,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.moup.domain.workplace.exception.InviteCodeGenerationException;
+
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.util.Optional;
 
 @Slf4j
@@ -24,6 +27,10 @@ public class InviteCodeService {
 
     @Value("${workplace.invite-code.attempt-window-minutes}")
     private int attemptWindowMinutes;
+
+    /// 보안 파라미터라 설정으로 뺐다. 예전에는 저장소 코드에 10분이 박혀 있었다(스코프 5 M-3).
+    @Value("${workplace.invite-code.ttl-minutes:10}")
+    private int inviteCodeTtlMinutes;
     private RandomStringGenerator inviteCodeGenerator;
 
     /// 초대코드는 근무지 참여 자격이므로 예측 불가능해야 한다.
@@ -41,47 +48,40 @@ public class InviteCodeService {
                 .get();
     }
 
-    /**
-     * 근무지의 초대 코드를 생성하거나, 이미 존재하면 기존 코드를 반환하는 메서드
-     * @param workplaceId 초대 코드를 생성할 근무지 ID
-     * @return 6자리 초대 코드
-     */
-    public String generateInviteCode(Long workplaceId, boolean forceGenerate) {
-        // 1. 먼저 해당 근무지에 이미 유효한 초대 코드가 있는지 확인합니다.
+    /// 발급 결과. `reused`면 새로 만들지 않고 기존 코드를 돌려준 것이다.
+    public record IssuedInviteCode(String code, boolean reused) {}
+
+    /// 근무지의 초대 코드를 돌려준다. 유효한 코드가 있으면 그대로, 없거나 `forceGenerate`면 새로 만든다.
+    ///
+    /// 기존 코드 여부를 결과에 담는다. 예전에는 호출자가 `existsByWorkplaceId`로 따로 물은 뒤 이 메서드를 불러
+    /// Redis를 두 번 왕복했고, 그 사이 TTL이 끝나면 새 코드인데 "기존 코드"라고 답했다(스코프 5 M-2).
+    public IssuedInviteCode generateInviteCode(Long workplaceId, boolean forceGenerate) {
         Optional<String> existingInviteCode = inviteCodeRepository.findInviteCodeByWorkplaceId(workplaceId);
         if (existingInviteCode.isPresent()) {
-            if (forceGenerate) {
-                // 1-1. 초대 코드 재생성이 요청된 경우, 해당 초대 코드를 삭제합니다.
-                inviteCodeRepository.delete(existingInviteCode.get(), workplaceId);
-            } else {
-                // 1-2. 초대 코드 재생성이 요청되지 않은 경우, 기존 코드를 반환합니다.
-                return existingInviteCode.get();
+            if (!forceGenerate) {
+                return new IssuedInviteCode(existingInviteCode.get(), true);
             }
+            inviteCodeRepository.delete(existingInviteCode.get(), workplaceId);
         }
 
-        // 2. 기존 코드가 없거나 초대 코드 재생성이 요청된 경우, 새로운 코드 생성을 시도합니다.
-        int maxAttempts = 10;  // 중복되지 않는 코드를 찾기 위한 최대 시도 횟수
+        // 32자 알파벳 6자리 = 약 10억 가지. 충돌은 드물지만, 나면 다른 근무지의 코드를 덮어쓰지 않고 다시 뽑는다.
+        Duration ttl = Duration.ofMinutes(inviteCodeTtlMinutes);
+        int maxAttempts = 10;
         for (int i = 0; i < maxAttempts; i++) {
             String inviteCode = inviteCodeGenerator.generate(6);
-
-            // 생성된 코드가 이미 사용 중인지 확인합니다.
-            if (!inviteCodeRepository.existsByInviteCode(inviteCode)) {
-                inviteCodeRepository.save(inviteCode, workplaceId);
-                return inviteCode;
+            if (inviteCodeRepository.claim(inviteCode, workplaceId, ttl)) {
+                return new IssuedInviteCode(inviteCode, false);
             }
         }
 
-        // 최대 시도 횟수를 초과하면 예외를 발생시킵니다.
-        throw new RuntimeException("초대 코드 생성에 실패하였습니다. 잠시 후 다시 시도해주세요.");
+        // 예전에는 RuntimeException이라 사용자에게 "서버에 오류가 발생했습니다."만 갔다(스코프 5 M-1).
+        throw new InviteCodeGenerationException();
     }
 
-    /**
-     * 근무지 ID로 초대 코드를 찾는 메서드
-     * @param workplaceId 조회할 근무지 ID
-     * @return 초대 코드(문자열)를 포함한 Optional 객체
-     */
-    public boolean existsByWorkplaceId(Long workplaceId) {
-        return inviteCodeRepository.existsByWorkplaceId(workplaceId);
+    /// 근무지가 삭제되면 그 코드도 지운다. 예전에는 최대 TTL 동안 Redis에 남았다(스코프 5 M-5).
+    public void deleteByWorkplaceId(Long workplaceId) {
+        inviteCodeRepository.findInviteCodeByWorkplaceId(workplaceId)
+                .ifPresent(code -> inviteCodeRepository.delete(code, workplaceId));
     }
 
     /**

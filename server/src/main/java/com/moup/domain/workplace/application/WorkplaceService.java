@@ -274,6 +274,7 @@ public class WorkplaceService {
         if (Objects.equals(workplace.getOwnerId(), userId)) {
             // 근무지(매장)을 만든 사용자가 삭제하는 경우
             workplaceRepository.delete(workplaceId, userId);
+            inviteCodeService.deleteByWorkplaceId(workplaceId);
         } else {
             // 근무자가 근무지에서 탈퇴하는 경우
             Long workerId = workerRepository.findByUserIdAndWorkplaceId(userId, workplaceId)
@@ -344,14 +345,12 @@ public class WorkplaceService {
                 .orElseThrow(WorkplaceNotFoundException::new);
         permissionVerifyUtil.verifyOwnerPermission(user.getId(), workplace.getOwnerId());
 
-        boolean returnAlreadyExists =
-                !request.isForceGenerate() && inviteCodeService.existsByWorkplaceId(workplaceId);
-        String inviteCode = inviteCodeService.generateInviteCode(workplaceId,
-                request.isForceGenerate());
+        InviteCodeService.IssuedInviteCode issued =
+                inviteCodeService.generateInviteCode(workplaceId, request.isForceGenerate());
 
         return InviteCodeGenerateResponse.builder()
-                .inviteCode(inviteCode)
-                .returnAlreadyExists(returnAlreadyExists)
+                .inviteCode(issued.code())
+                .returnAlreadyExists(issued.reused())
                 .build();
     }
 
