@@ -1,6 +1,7 @@
 package com.moup.domain.salary.dto;
 
 import com.moup.domain.salary.domain.SalaryType;
+import com.moup.domain.salary.domain.Salary;
 import com.moup.domain.salary.domain.SalaryCalculation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -38,4 +39,24 @@ public class SalaryDetailResponse {
     private Boolean hasHolidayAllowance;
     @Schema(description = "야간수당 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean hasNightAllowance;
+
+    /// 저장된 급여 설정 전체. 수정 폼이 이 응답을 채워 되보내므로 **필드를 빠뜨리면 안 된다** —
+    /// 예전 조립 코드는 `fixedRate`·`salaryDay`를 빠뜨려 고정급 금액이 0으로 채워졌다(스코프 3 I-9).
+    public static SalaryDetailResponse from(Salary salary) {
+        return SalaryDetailResponse.builder()
+                .salaryType(salary.getSalaryType())
+                .salaryCalculation(salary.getSalaryCalculation())
+                .hourlyRate(salary.getHourlyRate())
+                .fixedRate(salary.getFixedRate())
+                .salaryDate(salary.getSalaryDate())
+                .salaryDay(salary.getSalaryDay())
+                .hasNationalPension(salary.getHasNationalPension())
+                .hasHealthInsurance(salary.getHasHealthInsurance())
+                .hasEmploymentInsurance(salary.getHasEmploymentInsurance())
+                .hasIndustrialAccident(salary.getHasIndustrialAccident())
+                .hasIncomeTax(salary.getHasIncomeTax())
+                .hasHolidayAllowance(salary.getHasHolidayAllowance())
+                .hasNightAllowance(salary.getHasNightAllowance())
+                .build();
+    }
 }

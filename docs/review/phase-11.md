@@ -29,21 +29,41 @@
 
 | 상태 | ID | 내용 |
 |---|---|---|
-| ⬜ | 3 I-9 | 근무지 상세 응답에 `fixedRate`·`salaryDay`가 없다. iOS는 `salaryDay`를 보내지 않는데 `SalaryRepository.update`가 전 컬럼을 덮어써 **주급제 고정급이 근무지를 한 번 수정하면 그 달 세전 0원**. 고정급 수정 폼은 금액 0으로 채워져 422 |
-| ⬜ | 3 I-8 → D11-4 | 사장님 급여 조회 없음 + 전체 덮어쓰기. 부분 수정으로 바꾸면 I-9의 `salaryDay` 소실도 같이 닫힌다 |
+| ✅ | 3 I-9 | 근무지 상세 응답에 `fixedRate`·`salaryDay`가 없다. iOS는 `salaryDay`를 보내지 않는데 `SalaryRepository.update`가 전 컬럼을 덮어써 **주급제 고정급이 근무지를 한 번 수정하면 그 달 세전 0원**. 고정급 수정 폼은 금액 0으로 채워져 422 |
+| ✅ | 3 I-8 → D11-4 | 사장님 급여 조회 없음 + 전체 덮어쓰기. 부분 수정으로 바꾸면 I-9의 `salaryDay` 소실도 같이 닫힌다 |
 | ⬜ | 4 I4 → D11-5 | 승인된 근무자에게 "거절"을 보내면 `workers` 행 삭제 → CASCADE로 근무·급여 이력 영구 삭제. 재승인도 멱등이 아니라 푸시가 다시 나간다 |
 | ⬜ | 2 I1 · 2 I2 (= 4 I5 · 4 C3 · 5 C-1) | 매장 캘린더(`getAllWorkByWorkplace`)가 동료의 근무별 추정 실수령액을 내려주고, 승인 게이트도 없다. 정책 4에 따라 미승인자는 차단, 동료 금액은 가린다 |
 | ⬜ | 2 I7 = 3 I-10 · 2 M4 | 근무 시간 상한 없음, 분 단위 루프. 24시간 상한 + 0분 근무 거부 + 구간 산술로 교체 |
 | ⬜ | 2 I4 | 근무 겹침 검사 없음 → 급여·주휴 이중 계상. 같은 근무지(같은 worker) 안에서 겹치면 거부 |
-| ⬜ | 4 C4 (부분) | 사장님 탈퇴 근무지에서 `updateMyWorker`로 급여 설정 변경 가능 — `verifyWorkplaceIsWritable` 누락 |
+| ✅ | 4 C4 (부분) | 사장님 탈퇴 근무지에서 `updateMyWorker`로 급여 설정 변경 가능 — `verifyWorkplaceIsWritable` 누락 |
 | ⬜ | 6 I1 | 사장님이 알바생 근무를 열면 루틴이 항상 빈 배열. 정책 14("사장님은 제목만")가 확정됐는데 미구현. 축소 DTO 필요 |
 | ⬜ | 7 I7 (부분) | S3 객체 Content-Type이 여전히 클라이언트 값 — 판별한 `ImageType.contentType`을 쓰지 않는다 |
+
+### 11-A 진행 기록
+
+**급여 수정 경로 통합** — 알바생 2경로(근무지 수정·근무자 수정)와 사장님 1경로가 각자 급여를 통째로
+덮어쓰던 복붙 코드를 `SalaryUpdateService` 하나로 모았다.
+
+- **부분 수정.** 생략한 필드는 기존 값을 유지한다(I-9의 `salaryDay` 소실). 시급/고정급 조합은 **합친 결과**로 검사한다.
+- **적용 시점(D11-1).** `applyFrom`(`TODAY` 기본 / `THIS_MONTH`). 그 이후 근무의 시급·수당 스냅샷을 새 값으로 바꾸고 주 단위로 다시 계산한다.
+  공제는 월 단위라 그 달 전체가 새 설정을 따른다.
+- **구현하며 드러난 것 — 시급을 바꿔도 이미 잡아 둔 근무에 반영되지 않고 있었다.** 예전 코드는 급여 설정만 바꾸고
+  이번 달 1일부터 *공제*만 다시 계산했다. 근무 행의 시급 스냅샷은 그대로라 반복 근무로 잡아 둔 다음 달 근무도 옛 시급이었다.
+- **사장님 조회(D11-4).** `GET /workplaces/{id}/workers/{workerId}` 응답에 `salaryDetailInfo` 추가. 사장님 PATCH는 라벨색·급여 모두 생략 가능.
+- **변경 알림(D11-4).** 실제로 바뀐 경우에만 상대에게 `급여 설정 변경` 알림.
+- `BaseWorkerUpdateRequest`의 `@JsonTypeInfo(DEDUCTION)` 제거 — 컨트롤러가 구체 타입으로 받아 필요가 없고, 라벨색을 생략한 부분 수정을 거부하게 만든다.
+
+테스트 17건 추가(`SalaryUpdateServiceTest`, `WorkerSalaryUpdatePathTest`). 변이 8건 전부 검출. 그중 "고정급 전환 시 근무 행 시급"은
+처음 구현에서 테스트가 실제 결함을 잡았다 — 부분 수정이라 고정급으로 바꿔도 옛 시급이 남아 근무 행에 들어갔다.
+
+**앱 영향** — 앱이 지금 보내는 요청은 그대로 동작한다(필드가 필수에서 선택으로 바뀌었을 뿐). 앱이 할 일:
+① 수정 폼을 응답의 `fixedRate`·`salaryDay`로 채운다 ② "이번 달 전체에 적용할까요?"를 물어 `applyFrom` 전송 ③ 사장님 급여 화면 ④ 급여 요일 입력 수단(주급제).
 
 ## 11-B — 급여 계산
 
 | 상태 | ID | 내용 |
 |---|---|---|
-| ⬜ | D11-1 | 적용 시작 시점. `WorkplaceService.updateWorkplace` 외에 `WorkerService.updateMyWorker`·`updateWorkerForOwner`도 이번 달 1일부터 재계산한다 |
+| ✅ | D11-1 | 적용 시작 시점. `WorkplaceService.updateWorkplace` 외에 `WorkerService.updateMyWorker`·`updateWorkerForOwner`도 이번 달 1일부터 재계산한다 |
 | ⬜ | D11-2 | 연장근로 가산 — `salaries` 플래그 + `works` 스냅샷 + 금액 컬럼 |
 | ⬜ | D11-3 | 고정급 주휴 — 서버는 계산하지 않음을 명시(스키마 설명·Swagger) |
 | ⬜ | 3 Q6 = 3 I-11 | 공휴일 가산(선택사항). [fix-plan](fix-plan.md#제품-결정-7건--답변-반영-2026-10-23)의 필요 목록 그대로 |
@@ -68,7 +88,7 @@
 | 상태 | ID | 내용 |
 |---|---|---|
 | ⬜ | 2 I5 | 사장님 일괄 근무 생성이 예외를 삼켜 부분 커밋되거나 전체가 `UnexpectedRollbackException` 500 |
-| ⬜ | 4 I8 | `WorkerService` 4개 메서드에 `@Transactional` 없음 — 급여는 바뀌고 재계산은 일부만 |
+| 🔶 | 4 I8 | `WorkerService` 4개 메서드에 `@Transactional` 없음 — 급여는 바뀌고 재계산은 일부만. 수정 2개는 완료, 삭제 2개(`deleteMyWorker`·`deleteWorkerForOwner`)는 D11-5와 함께 |
 | ⬜ | 6 I7 | 공지 매핑에 탈퇴자 포함, 전 사용자가 한 트랜잭션 |
 | ⬜ | 4 탈퇴신호 #3 | 활성 근무자 목록에 탈퇴자가 "탈퇴한 사용자"로 포함 |
 | ⬜ | 4 탈퇴신호 #1·2·4·5·6 | 레거시 `workers.user_id IS NULL` 행 — 목록 누락, 삭제 시 NPE, `user_id = NULL` 조건 무동작. 운영 DB에만 해당 |

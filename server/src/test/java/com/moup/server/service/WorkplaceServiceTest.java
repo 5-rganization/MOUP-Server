@@ -60,9 +60,9 @@ class WorkplaceServiceTest {
   @Mock
   private FCMService fcmService;
   @Mock
-  private com.moup.domain.work.mapper.WorkRepository workRepository;
+  private com.moup.domain.salary.application.SalaryUpdateService salaryUpdateService;
   @Mock
-  private com.moup.domain.salary.application.SalaryCalculationService salaryCalculationService;
+  private com.moup.domain.salary.application.SalaryChangeNotifier salaryChangeNotifier;
   @Mock
   private com.moup.domain.user.mapper.UserRepository userRepository;
 
@@ -282,10 +282,6 @@ class WorkplaceServiceTest {
 
     when(workerRepository.findByUserIdAndWorkplaceId(mockWorkerUser.getId(), workplaceId))
         .thenReturn(java.util.Optional.of(Worker.builder().id(workerId).build()));
-    when(salaryRepository.findByWorkerId(workerId))
-        .thenReturn(java.util.Optional.of(Salary.builder().id(200L).build()));
-    when(workRepository.findDistinctWorkMonthsAfter(eq(workerId), any()))
-        .thenReturn(java.util.List.of());
 
     workplaceService.updateWorkplace(mockWorkerUser, workplaceId, request);
 

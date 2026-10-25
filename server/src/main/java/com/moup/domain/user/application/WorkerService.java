@@ -10,7 +10,9 @@ import com.moup.domain.user.dto.WorkerWorkAttendanceResponse;
 import com.moup.domain.user.dto.WorkerWorkerUpdateRequest;
 import com.moup.global.infra.fcm.FCMService;
 import com.moup.domain.user.dto.OwnerWorkerUpdateRequest;
-import com.moup.domain.salary.application.SalaryCalculationService;
+import com.moup.domain.salary.application.SalaryChangeNotifier;
+import com.moup.domain.salary.application.SalaryUpdateService;
+import com.moup.domain.salary.dto.SalaryDetailResponse;
 import com.moup.domain.salary.mapper.SalaryRepository;
 import com.moup.domain.user.mapper.UserRepository;
 import com.moup.domain.work.dto.MyAttendanceInfoResponse;
@@ -21,9 +23,7 @@ import com.moup.domain.alarm.domain.AlarmContent;
 import com.moup.domain.alarm.domain.AlarmTitle;
 import com.moup.global.error.CannotDeleteDataException;
 import com.moup.global.error.ErrorCode;
-import com.moup.domain.salary.exception.SalaryWorkerNotFoundException;
 import com.moup.domain.workplace.exception.WorkplaceNotFoundException;
-import com.moup.domain.salary.domain.Salary;
 import com.moup.domain.user.domain.User;
 import com.moup.domain.workplace.domain.Workplace;
 import com.moup.global.util.PermissionVerifyUtil;
@@ -31,7 +31,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +49,8 @@ public class WorkerService {
 
     private final PermissionVerifyUtil permissionVerifyUtil;
     private final WorkRepository workRepository;
-    private final SalaryCalculationService salaryCalculationService;
+    private final SalaryUpdateService salaryUpdateService;
+    private final SalaryChangeNotifier salaryChangeNotifier;
     private final FCMService fCMService;
 
     public WorkerSummaryListResponse getWorkerList(Long userId, Long workplaceId) {
@@ -182,78 +182,53 @@ public class WorkerService {
                         .build())
                 .toList();
 
+        // 사장님이 급여를 부분 수정하기 전에 현재 값을 볼 수 있어야 한다(스코프 3 I-8).
+        SalaryDetailResponse salaryDetailInfo = salaryRepository.findByWorkerId(workerId)
+                .map(SalaryDetailResponse::from)
+                .orElse(null);
+
         return WorkerAttendanceInfoResponse.builder()
                 .workplaceId(workplaceId)
                 .workerId(workerId)
                 .workerWorkAttendanceInfoList(workerWorkAttendanceInfoList)
+                .salaryDetailInfo(salaryDetailInfo)
                 .build();
     }
 
+    @Transactional
     public void updateMyWorker(User user, Long workplaceId, WorkerWorkerUpdateRequest request) {
         Worker userWorker = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId).orElseThrow(WorkerNotFoundException::new);
         Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
         // 정책 6 (b) — 자기 급여 설정은 승인 대기 중에도 본인이 다룰 수 있다.
         permissionVerifyUtil.verifyWorkerIdentityAllowingPending(user.getId(), userWorker.getUserId(), workplaceOwnerId);
-        workerRepository.updateWorkerBasedLabelColor(userWorker.getId(), user.getId(), workplaceId, request.getWorkerBasedLabelColor());
+        // 사장님이 탈퇴한 근무지에서는 급여 설정을 바꿀 수 없다 (확정 정책 5). 근무지 수정 경로에만 있고
+        // 이 경로에는 빠져 있어, 같은 변경을 URL만 바꿔 할 수 있었다(스코프 4 C4).
+        permissionVerifyUtil.verifyWorkplaceIsWritable(workplaceOwnerId);
 
-        Long salaryId = salaryRepository.findByWorkerId(userWorker.getId()).orElseThrow(
-            SalaryWorkerNotFoundException::new).getId();
-        Salary newSalary = request.getSalaryUpdateRequest().toEntity(salaryId, userWorker.getId());
-
-        salaryRepository.update(newSalary);
-
-        // '현재' 및 '미래'의 모든 근무 월을 재계산합니다.
-
-        // 재계산 기준일 (이번 달 1일)
-        LocalDate today = LocalDate.now(SEOUL_ZONE_ID);
-        LocalDate startDate = today.withDayOfMonth(1); // 예: 2025-11-01
-
-        // DB에서 'yyyy-MM-01' 이후로 근무가 잡힌 '모든 고유한 년/월' 목록 조회 (예: [2025-11], [2025-12])
-        List<WorkRepository.WorkMonthDto> monthsToRecalculate =
-                workRepository.findDistinctWorkMonthsAfter(userWorker.getId(), startDate);
-
-        // 각 '연/월'별로 재계산을 실행합니다.
-        for (WorkRepository.WorkMonthDto monthInfo : monthsToRecalculate) {
-            // ⭐️ [수정 포인트] 4번째 인자로 'newSalary'를 전달합니다.
-            salaryCalculationService.recalculateEstimatedNetIncomeForMonth(
-                    userWorker.getId(),
-                    monthInfo.year(),
-                    monthInfo.month(),
-                    newSalary
-            );
+        if (request.getWorkerBasedLabelColor() != null) {
+            workerRepository.updateWorkerBasedLabelColor(userWorker.getId(), user.getId(), workplaceId, request.getWorkerBasedLabelColor());
+        }
+        if (request.getSalaryUpdateRequest() != null
+                && salaryUpdateService.update(userWorker.getId(), request.getSalaryUpdateRequest())) {
+            salaryChangeNotifier.notifyOwner(user, workplaceId);
         }
     }
 
+    @Transactional
     public void updateWorkerForOwner(User user, Long workplaceId, Long workerId, OwnerWorkerUpdateRequest request) {
-        Long workplaceOwnerId = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new).getOwnerId();
-        permissionVerifyUtil.verifyOwnerPermission(user.getId(), workplaceOwnerId);
+        Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
+        permissionVerifyUtil.verifyOwnerPermission(user.getId(), workplace.getOwnerId());
         // 권한 검증 후 대상 근무자가 이 근무지 소속인지 확인한다. 없으면 남의 근무지 근무자의 급여를 덮어쓸 수 있다.
-        if (!workerRepository.existsByIdAndWorkplaceId(workerId, workplaceId)) { throw new WorkerNotFoundException(); }
-        workerRepository.updateOwnerBasedLabelColor(workerId, user.getId(), workplaceId, request.getOwnerBasedLabelColor());
+        Worker worker = workerRepository.findByIdAndWorkplaceId(workerId, workplaceId).orElseThrow(WorkerNotFoundException::new);
 
-        Long salaryId = salaryRepository.findByWorkerId(workerId).orElseThrow(SalaryWorkerNotFoundException::new).getId();
-        Salary newSalary = request.getSalaryUpdateRequest().toEntity(salaryId, workerId);
-
-        salaryRepository.update(newSalary);
-
-        // '현재' 및 '미래'의 모든 근무 월을 재계산합니다.
-
-        // 재계산 기준일 (이번 달 1일)
-        LocalDate today = LocalDate.now(SEOUL_ZONE_ID);
-        LocalDate startDate = today.withDayOfMonth(1);
-
-        // DB에서 '이번 달 1일' 이후의 모든 근무 연/월 조회
-        List<WorkRepository.WorkMonthDto> monthsToRecalculate =
-                workRepository.findDistinctWorkMonthsAfter(workerId, startDate);
-
-        // 각 '연/월'별로 재계산을 실행합니다.
-        for (WorkRepository.WorkMonthDto monthInfo : monthsToRecalculate) {
-            salaryCalculationService.recalculateEstimatedNetIncomeForMonth(
-                    workerId,
-                    monthInfo.year(),
-                    monthInfo.month(),
-                    newSalary
-            );
+        if (request.getOwnerBasedLabelColor() != null) {
+            workerRepository.updateOwnerBasedLabelColor(workerId, user.getId(), workplaceId, request.getOwnerBasedLabelColor());
+        }
+        // 확정 정책 2 — 사장님도 알바생 급여를 다룰 수 있다(Phase 11 D11-4). 보낸 필드만 바뀌고,
+        // 현재 값은 GET /workplaces/{workplaceId}/workers/{workerId}의 salaryDetailInfo로 확인한다.
+        if (request.getSalaryUpdateRequest() != null
+                && salaryUpdateService.update(workerId, request.getSalaryUpdateRequest())) {
+            salaryChangeNotifier.notifyWorker(user.getId(), worker.getUserId(), workplace);
         }
     }
 

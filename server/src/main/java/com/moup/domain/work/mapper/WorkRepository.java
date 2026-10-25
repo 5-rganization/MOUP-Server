@@ -255,6 +255,36 @@ public interface WorkRepository {
       @Param("startDate") LocalDate startDate
   );
 
+  /// `fromDate` 이후 근무의 급여 스냅샷(시급·수당 여부)을 새 급여 설정으로 바꿉니다.
+  /// 급여 컬럼은 건드리지 않으므로 호출 후 그 주들을 재계산해야 합니다.
+  @Update("""
+      UPDATE works
+      SET hourly_rate = #{hourlyRate},
+          has_night_allowance = #{hasNightAllowance},
+          has_holiday_allowance = #{hasHolidayAllowance}
+      WHERE worker_id = #{workerId}
+          AND work_date >= #{fromDate}
+      """)
+  void updateSalarySnapshotFrom(
+      @Param("workerId") Long workerId,
+      @Param("fromDate") LocalDate fromDate,
+      @Param("hourlyRate") int hourlyRate,
+      @Param("hasNightAllowance") boolean hasNightAllowance,
+      @Param("hasHolidayAllowance") boolean hasHolidayAllowance
+  );
+
+  /// `fromDate` 이후 근무가 있는 날짜 목록 (재계산할 주를 고르는 용도).
+  @Select("""
+      SELECT DISTINCT work_date FROM works
+      WHERE worker_id = #{workerId}
+          AND work_date >= #{fromDate}
+      ORDER BY work_date
+      """)
+  List<LocalDate> findWorkDatesFrom(
+      @Param("workerId") Long workerId,
+      @Param("fromDate") LocalDate fromDate
+  );
+
   /// 근무 ID와 근무자 ID에 해당하는 근무를 업데이트하는 메서드
   ///
   /// @param work 업데이트할 Work 객체

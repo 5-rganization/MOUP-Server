@@ -22,7 +22,8 @@ import com.moup.domain.workplace.dto.InviteCodeInquiryResponse;
 import com.moup.domain.user.dto.OwnerWorkplaceCreateRequest;
 import com.moup.domain.user.dto.OwnerWorkplaceDetailResponse;
 import com.moup.domain.user.dto.OwnerWorkplaceUpdateRequest;
-import com.moup.domain.salary.application.SalaryCalculationService;
+import com.moup.domain.salary.application.SalaryChangeNotifier;
+import com.moup.domain.salary.application.SalaryUpdateService;
 import com.moup.domain.salary.dto.SalaryDetailResponse;
 import com.moup.domain.user.dto.WorkerWorkplaceCreateRequest;
 import com.moup.domain.user.dto.WorkerWorkplaceDetailResponse;
@@ -38,7 +39,6 @@ import com.moup.domain.salary.domain.Salary;
 import com.moup.domain.user.domain.User;
 import com.moup.domain.user.domain.Worker;
 import com.moup.domain.salary.mapper.SalaryRepository;
-import com.moup.domain.work.mapper.WorkRepository;
 import com.moup.domain.user.mapper.WorkerRepository;
 import com.moup.global.util.PermissionVerifyUtil;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +46,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.Objects;
 import java.util.Collections;
 import java.util.Comparator;
@@ -55,7 +54,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.Map;
 
-import static com.moup.global.common.TimeConstants.SEOUL_ZONE_ID;
 
 @Service
 @RequiredArgsConstructor
@@ -64,11 +62,11 @@ public class WorkplaceService {
     private final WorkplaceRepository workplaceRepository;
     private final WorkerRepository workerRepository;
     private final SalaryRepository salaryRepository;
-    private final WorkRepository workRepository;
     private final com.moup.domain.user.mapper.UserRepository userRepository;
 
     private final InviteCodeService inviteCodeService;
-    private final SalaryCalculationService salaryCalculationService;
+    private final SalaryUpdateService salaryUpdateService;
+    private final SalaryChangeNotifier salaryChangeNotifier;
     private final PermissionVerifyUtil permissionVerifyUtil;
     private final FCMService fcmService;
     @Value("${workplace.creation.limit}")
@@ -119,19 +117,7 @@ public class WorkplaceService {
             case ROLE_WORKER -> {
                 Salary salary = salaryRepository.findByWorkerId(worker.getId())
                         .orElseThrow(SalaryWorkerNotFoundException::new);
-                SalaryDetailResponse salaryInfo = SalaryDetailResponse.builder()
-                        .salaryType(salary.getSalaryType())
-                        .salaryCalculation(salary.getSalaryCalculation())
-                        .hourlyRate(salary.getHourlyRate())
-                        .salaryDate(salary.getSalaryDate())
-                        .hasNationalPension(salary.getHasNationalPension())
-                        .hasHealthInsurance(salary.getHasHealthInsurance())
-                        .hasEmploymentInsurance(salary.getHasEmploymentInsurance())
-                        .hasIndustrialAccident(salary.getHasIndustrialAccident())
-                        .hasIncomeTax(salary.getHasIncomeTax())
-                        .hasHolidayAllowance(salary.getHasHolidayAllowance())
-                        .hasNightAllowance(salary.getHasNightAllowance())
-                        .build();
+                SalaryDetailResponse salaryInfo = SalaryDetailResponse.from(salary);
 
                 yield WorkerWorkplaceDetailResponse.builder()
                         .workplaceId(workplaceId)
@@ -266,30 +252,9 @@ public class WorkplaceService {
                 workerRepository.updateWorkerBasedLabelColor(workerId, user.getId(), workplaceId,
                         workerRequest.getWorkerBasedLabelColor());
 
-                Long salaryId = salaryRepository.findByWorkerId(workerId)
-                        .orElseThrow(SalaryWorkerNotFoundException::new).getId();
-                Salary newSalary = workerRequest.getSalaryUpdateRequest().toEntity(salaryId, workerId);
-                salaryRepository.update(newSalary);
-
-                // '현재' 및 '미래'의 모든 근무 월을 재계산합니다.
-
-                // 재계산 기준일 (이번 달 1일) - ⭐️ SEOUL_ZONE_ID 적용
-                LocalDate today = LocalDate.now(SEOUL_ZONE_ID);
-                LocalDate startDate = today.withDayOfMonth(1);
-
-                // DB에서 'yyyy-MM-01' 이후로 근무가 잡힌 '모든 고유한 년/월' 목록 조회 (예: [2025-11], [2025-12])
-                List<WorkRepository.WorkMonthDto> monthsToRecalculate = workRepository.findDistinctWorkMonthsAfter(
-                        workerId, startDate);
-
-                // 각 '연/월'별로 재계산을 실행합니다.
-                for (WorkRepository.WorkMonthDto monthInfo : monthsToRecalculate) {
-                    // ⭐️ [수정 포인트] 4번째 인자로 'newSalary' 전달
-                    salaryCalculationService.recalculateEstimatedNetIncomeForMonth(
-                            workerId,
-                            monthInfo.year(),
-                            monthInfo.month(),
-                            newSalary
-                    );
+                if (workerRequest.getSalaryUpdateRequest() != null
+                        && salaryUpdateService.update(workerId, workerRequest.getSalaryUpdateRequest())) {
+                    salaryChangeNotifier.notifyOwner(user, workplaceId);
                 }
             }
             case ROLE_ADMIN -> throw new InvalidPermissionAccessException();
