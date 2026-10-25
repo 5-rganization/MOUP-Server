@@ -22,4 +22,17 @@ class AnnouncementTargetSqlTest {
 
         assertTrue(sql.contains("is_deleted = 0"), sql);
     }
+
+    /// 정렬도 상한도 없어 알림이 쌓일수록 응답이 무한정 커지고 순서도 정해지지 않았다(스코프 6 I5).
+    @Test
+    @DisplayName("알림함 조회는 최근 순이고 상한이 있다")
+    void 알림_정렬과_상한() {
+        Configuration configuration = new Configuration();
+        configuration.addMapper(com.moup.domain.alarm.mapper.AlarmRepository.class);
+        for (String id : new String[]{"findAllNormalAlarmsByUserId", "findAllAdminAlarmsByUserId"}) {
+            String sql = configuration.getMappedStatement(com.moup.domain.alarm.mapper.AlarmRepository.class.getName() + "." + id)
+                    .getBoundSql(Map.of("userId", 1L)).getSql();
+            assertTrue(sql.contains("ORDER BY") && sql.contains("DESC") && sql.contains("LIMIT"), id + ": " + sql);
+        }
+    }
 }

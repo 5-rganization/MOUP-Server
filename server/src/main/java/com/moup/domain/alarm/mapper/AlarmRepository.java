@@ -21,7 +21,9 @@ public interface AlarmRepository {
     @Options(useGeneratedKeys = true, keyProperty = "id")
     void saveAdminAlarm(Announcement announcement);
 
-    @Select("SELECT * FROM normal_alarms WHERE receiver_id = #{userId}")
+    /// 최근 순, 최대 200건. 예전에는 정렬도 상한도 없어 순서가 정해지지 않았고 알림이 쌓일수록 응답이 무한정 커졌다(스코프 6 I5).
+    /// `idx_normal_alarms_receiver (receiver_id, sent_at)`를 그대로 탄다.
+    @Select("SELECT * FROM normal_alarms WHERE receiver_id = #{userId} ORDER BY sent_at DESC, id DESC LIMIT 200")
     List<NormalAlarm> findAllNormalAlarmsByUserId(Long userId);
 
     @Select("SELECT * FROM normal_alarms WHERE id = #{notificationId} AND receiver_id = #{userId}")
@@ -54,7 +56,7 @@ public interface AlarmRepository {
     @Select("SELECT * FROM admin_alarms JOIN admin_alarm_user_mappings ON admin_alarms.id = admin_alarm_user_mappings.alarm_id WHERE user_id = #{userId} AND alarm_id = #{announcementId} AND deleted_at IS NULL")
     Optional<AdminAlarm> findAdminAlarmById(Long userId, Long announcementId);
 
-    @Select("SELECT * FROM admin_alarms JOIN admin_alarm_user_mappings ON admin_alarms.id = admin_alarm_user_mappings.alarm_id WHERE user_id = #{userId} AND deleted_at IS NULL")
+    @Select("SELECT * FROM admin_alarms JOIN admin_alarm_user_mappings ON admin_alarms.id = admin_alarm_user_mappings.alarm_id WHERE user_id = #{userId} AND deleted_at IS NULL ORDER BY admin_alarms.sent_at DESC, admin_alarms.id DESC LIMIT 200")
     List<AdminAlarm> findAllAdminAlarmsByUserId(Long userId);
 
     @Update("UPDATE admin_alarm_user_mappings SET read_at = CURRENT_TIMESTAMP() WHERE user_id = #{userId} AND alarm_id = #{announcementId} AND read_at IS NULL AND deleted_at IS NULL")

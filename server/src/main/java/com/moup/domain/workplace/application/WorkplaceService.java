@@ -73,6 +73,11 @@ public class WorkplaceService {
     @Value("${workplace.creation.limit}")
     private int workplaceCreationLimit;
 
+    /// 참여할 수 있는 근무지 수. 예전에는 생성만 세고 참여는 무제한이라, 초대코드만 있으면 한 사용자가
+    /// 근무지를 끝없이 늘릴 수 있었고 근무지 목록 응답에도 상한이 없었다(스코프 5 M-10).
+    @Value("${workplace.join.limit:20}")
+    private int workplaceJoinLimit;
+
     // ========== 근무지 메서드 ==========
 
     @Transactional
@@ -385,6 +390,10 @@ public class WorkplaceService {
         if (!workplaceRepository.existsById(workplaceId)) { throw new WorkplaceNotFoundException(); }
         Optional<Worker> previous = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId);
         if (previous.isPresent() && !previous.get().hasLeft()) { throw new WorkerAlreadyExistsException(); }
+        if (workerRepository.countJoinedWorkplacesByUserId(user.getId()) >= workplaceJoinLimit) {
+            throw new WorkplaceLimitExceededException(ErrorCode.WORKPLACE_LIMIT_EXCEEDED,
+                    "근무지는 최대 " + workplaceJoinLimit + "곳까지 참여할 수 있습니다.");
+        }
 
         Long ownerId = workplaceRepository.findOwnerId(workplaceId);
 

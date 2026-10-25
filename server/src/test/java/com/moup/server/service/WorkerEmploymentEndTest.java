@@ -82,6 +82,11 @@ class WorkerEmploymentEndTest {
         when(workerRepository.findByIdAndWorkplaceId(WORKER_ID, WORKPLACE_ID)).thenReturn(Optional.of(worker));
     }
 
+    @org.junit.jupiter.api.BeforeEach
+    void setLimits() {
+        org.springframework.test.util.ReflectionTestUtils.setField(workplaceService, "workplaceJoinLimit", 20);
+    }
+
     private void verifyNoRowDeleted() {
         verify(workerRepository, never()).deleteByIdAndWorkplaceId(anyLong(), anyLong());
         verify(workerRepository, never()).delete(any(), any(), any());
@@ -276,6 +281,19 @@ class WorkerEmploymentEndTest {
         verify(salaryRepository).update(saved.capture());
         assertEquals(7L, saved.getValue().getId());
         assertEquals(11_000, saved.getValue().getHourlyRate());
+    }
+
+    @Test
+    @DisplayName("참여 중인 근무지가 상한(20곳)이면 더 참여할 수 없다 (스코프 5 M-10)")
+    void 참여_상한() {
+        when(inviteCodeService.findWorkplaceIdByInviteCodeWithRateLimit(WORKER_USER_ID, "MUP234")).thenReturn(WORKPLACE_ID);
+        when(workplaceRepository.existsById(WORKPLACE_ID)).thenReturn(true);
+        when(workerRepository.findByUserIdAndWorkplaceId(WORKER_USER_ID, WORKPLACE_ID)).thenReturn(Optional.empty());
+        when(workerRepository.countJoinedWorkplacesByUserId(WORKER_USER_ID)).thenReturn(20);
+
+        assertThrows(com.moup.domain.workplace.exception.WorkplaceLimitExceededException.class,
+                () -> workplaceService.joinWorkplace(workerUser(), joinRequest()));
+        verify(workerRepository, never()).create(any());
     }
 
     @Test

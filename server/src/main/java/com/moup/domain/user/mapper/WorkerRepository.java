@@ -50,6 +50,11 @@ public interface WorkerRepository {
     @Select("SELECT id FROM workers WHERE user_id = #{userId} ORDER BY id FOR UPDATE")
     List<Long> lockAllByUserId(@Param("userId") Long userId);
 
+    /// 지금 참여 중인(근무가 끝나지 않은) 근무지 수. 자기가 만든 근무지의 사장님 행도 센다.
+    @Select("SELECT COUNT(*) FROM workers w JOIN workplaces p ON p.id = w.workplace_id "
+            + "WHERE w.user_id = #{userId} AND w.left_at IS NULL AND (p.owner_id IS NULL OR p.owner_id != #{userId})")
+    int countJoinedWorkplacesByUserId(@Param("userId") Long userId);
+
     /// 근무자 ID를 통해 해당 사용자의 근무자 객체를 반환하는 메서드
     ///
     /// @param id 조회할 근무자 ID

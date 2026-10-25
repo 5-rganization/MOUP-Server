@@ -77,6 +77,7 @@ class WorkplaceServiceTest {
   void setUp() {
     // @Value로 주입되는 필드 값을 테스트용으로 수동 설정
     ReflectionTestUtils.setField(workplaceService, "workplaceCreationLimit", TEST_WORKPLACE_LIMIT);
+    ReflectionTestUtils.setField(workplaceService, "workplaceJoinLimit", 20);
 
     mockOwner = User.builder()
         .id(1L)
