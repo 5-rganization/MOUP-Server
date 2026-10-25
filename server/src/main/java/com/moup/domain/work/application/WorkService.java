@@ -894,6 +894,7 @@ public class WorkService {
                 .repeatGroupId(null)
                 .build();
 
+        verifyNoOverlap(worker.getId(), List.of(workToCreate), null);
         workRepository.create(workToCreate);
 
         salaryCalculationService.recalculateWorkWeek(worker.getId(), workToCreate.getWorkDate(), salary);
@@ -955,6 +956,7 @@ public class WorkService {
 
         if (worksToCreate.isEmpty()) { throw new BadRequestException("반복 규칙에 해당하는 근무일이 없습니다."); }
 
+        verifyNoOverlap(worker.getId(), worksToCreate, null);
         // DB에 배치 삽입
         workRepository.createBatch(worksToCreate);
 
@@ -1131,6 +1133,7 @@ public class WorkService {
                 .repeatGroupId(repeatGroupId)
                 .build();
 
+        verifyNoOverlap(worker.getId(), List.of(workToUpdate), workId);
         workRepository.update(workToUpdate);
 
         recalculateWeeksInRange(worker.getId(), salary,
@@ -1210,6 +1213,44 @@ public class WorkService {
     }
 
     /// 출/퇴근 시간 유효성 검증 헬퍼 (퇴근이 출근보다 빠르면 예외)
+    /// 같은 근무지(같은 근무자)에서 시간이 겹치는 근무를 막는다 (스코프 2 I4).
+    ///
+    /// 예전에는 검사가 없어 10–18시와 12–20시가 둘 다 저장됐고, 겹친 시간만큼 급여와 주 15시간
+    /// 판정이 이중으로 잡혔다. 다른 근무지끼리는 막지 않는다 — 근무지마다 기록이 따로이고,
+    /// 서로 다른 사장님의 기록을 한쪽이 거부할 근거가 없다.
+    ///
+    /// 반복 생성은 최대 365일치를 한 번에 만들므로 기존 근무를 한 번에 읽어 메모리에서 비교한다.
+    /// 퇴근 기록이 없는 근무(진행 중)는 출근 시각의 1분으로 본다. 근무는 24시간을 넘지 않으므로
+    /// 하루 앞 근무까지만 읽으면 자정을 넘는 근무도 놓치지 않는다.
+    private void verifyNoOverlap(Long workerId, List<Work> candidates, Long excludeWorkId) {
+        if (candidates.isEmpty()) {
+            return;
+        }
+        LocalDate from = candidates.stream().map(Work::getWorkDate).min(LocalDate::compareTo).orElseThrow().minusDays(1);
+        LocalDate to = candidates.stream().map(work -> occupiedUntil(work).toLocalDate()).max(LocalDate::compareTo).orElseThrow();
+        List<Work> existing = workRepository.findAllByWorkerIdAndDateRange(workerId, from, to).stream()
+                .filter(work -> !Objects.equals(work.getId(), excludeWorkId))
+                .toList();
+
+        List<Work> all = new ArrayList<>(existing);
+        for (Work candidate : candidates) {
+            for (Work other : all) {
+                if (candidate.getStartTime().isBefore(occupiedUntil(other))
+                        && other.getStartTime().isBefore(occupiedUntil(candidate))) {
+                    throw new InvalidFieldFormatException(String.format("이미 등록된 근무와 시간이 겹칩니다 (%s %s~%s).",
+                            other.getWorkDate(), other.getStartTime().toLocalTime(),
+                            other.getEndTime() != null ? other.getEndTime().toLocalTime() : "근무 중"));
+                }
+            }
+            // 한 요청 안의 근무끼리도 겹치면 안 된다(예: 매일 반복인데 근무가 24시간).
+            all.add(candidate);
+        }
+    }
+
+    private static LocalDateTime occupiedUntil(Work work) {
+        return work.getEndTime() != null ? work.getEndTime() : work.getStartTime().plusMinutes(1);
+    }
+
     /// 한 근무의 최대 길이. 밤샘 근무도 하루를 넘지 않는다.
     private static final Duration MAX_WORK_DURATION = Duration.ofHours(24);
 

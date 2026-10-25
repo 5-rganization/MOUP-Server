@@ -147,4 +147,101 @@ class WorkTimeBoundsTest {
         assertThrows(InvalidFieldFormatException.class, () -> workService.createMyWork(2L, 10L, request), reason);
         verify(workRepository, never()).create(any());
     }
+
+    // ================= 겹침 (스코프 2 I4) =================
+
+    private static final LocalDate MON = LocalDate.of(2026, 10, 5);
+
+    private MyWorkCreateRequest request(LocalDateTime start, LocalDateTime end, List<java.time.DayOfWeek> repeatDays,
+                                        LocalDate repeatEnd) {
+        return MyWorkCreateRequest.builder()
+                .routineIdList(List.of()).repeatDays(repeatDays).repeatEndDate(repeatEnd)
+                .startTime(start.atZone(SEOUL_ZONE_ID).toInstant())
+                .endTime(end.atZone(SEOUL_ZONE_ID).toInstant())
+                .restTimeMinutes(0).build();
+    }
+
+    private void givenWorkerWithWorks(Work... existing) {
+        Worker worker = Worker.builder().id(100L).userId(2L).workplaceId(10L).isAccepted(true).build();
+        when(workerRepository.findByUserIdAndWorkplaceId(2L, 10L)).thenReturn(Optional.of(worker));
+        when(workplaceRepository.findById(10L)).thenReturn(Optional.of(Workplace.builder().id(10L).ownerId(1L).build()));
+        // 실제 쿼리처럼 work_date 범위로 거른다. 범위를 무시하면 "전날 근무까지 읽는다"를 검증할 수 없다.
+        when(workRepository.findAllByWorkerIdAndDateRange(org.mockito.ArgumentMatchers.eq(100L), any(), any()))
+                .thenAnswer(invocation -> {
+                    LocalDate from = invocation.getArgument(1);
+                    LocalDate to = invocation.getArgument(2);
+                    return java.util.Arrays.stream(existing)
+                            .filter(work -> !work.getWorkDate().isBefore(from) && !work.getWorkDate().isAfter(to))
+                            .toList();
+                });
+        org.mockito.Mockito.lenient().when(mockedSalaryCalculationService.calculateDailyIncome(any(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyBoolean()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    private static Work existing(long id, LocalDateTime start, LocalDateTime end) {
+        return Work.builder().id(id).workerId(100L).workDate(start.toLocalDate()).startTime(start).endTime(end).build();
+    }
+
+    @Test
+    @DisplayName("이미 있는 근무와 시간이 겹치면 거부한다")
+    void 겹침_거부() {
+        givenWorkerWithWorks(existing(1L, MON.atTime(10, 0), MON.atTime(18, 0)));
+
+        assertThrows(InvalidFieldFormatException.class,
+                () -> workService.createMyWork(2L, 10L, request(MON.atTime(12, 0), MON.atTime(20, 0), List.of(), null)));
+        verify(workRepository, never()).create(any());
+    }
+
+    @Test
+    @DisplayName("끝나는 시각에 바로 시작하는 근무는 겹치지 않는다")
+    void 맞닿음_허용() {
+        givenWorkerWithWorks(existing(1L, MON.atTime(10, 0), MON.atTime(18, 0)));
+
+        workService.createMyWork(2L, 10L, request(MON.atTime(18, 0), MON.atTime(22, 0), List.of(), null));
+
+        verify(workRepository).create(any());
+    }
+
+    @Test
+    @DisplayName("전날 시작해 자정을 넘긴 근무와 겹쳐도 잡는다")
+    void 전날_밤샘_근무() {
+        givenWorkerWithWorks(existing(1L, MON.minusDays(1).atTime(22, 0), MON.atTime(6, 0)));
+
+        assertThrows(InvalidFieldFormatException.class,
+                () -> workService.createMyWork(2L, 10L, request(MON.atTime(5, 0), MON.atTime(9, 0), List.of(), null)));
+    }
+
+    /// 반복 근무 하나라도 기존 근무와 겹치면 전체를 거부한다. 일부만 만들면 사용자는 어느 날이 빠졌는지 모른다.
+    @Test
+    @DisplayName("반복 근무 중 하루라도 기존 근무와 겹치면 아무것도 만들지 않는다")
+    void 반복_중_하루_겹침() {
+        givenWorkerWithWorks(existing(1L, MON.plusDays(2).atTime(8, 0), MON.plusDays(2).atTime(10, 0)));
+
+        assertThrows(InvalidFieldFormatException.class, () -> workService.createMyWork(2L, 10L,
+                request(MON.atTime(9, 0), MON.atTime(13, 0), List.of(java.time.DayOfWeek.values()), MON.plusDays(6))));
+        verify(workRepository, never()).createBatch(any());
+    }
+
+    /// 수정하는 근무 자신과는 겹침으로 보지 않는다. 안 그러면 시간을 조금만 옮겨도 전부 거부된다.
+    @Test
+    @DisplayName("근무를 수정할 때 그 근무 자신과는 겹침으로 보지 않는다")
+    void 수정_시_자기_제외() {
+        Work current = existing(1L, MON.atTime(10, 0), MON.atTime(18, 0)).toBuilder().restTimeMinutes(0).build();
+        Worker worker = Worker.builder().id(100L).userId(2L).workplaceId(10L).isAccepted(true).build();
+        when(workRepository.findById(1L)).thenReturn(Optional.of(current));
+        when(workerRepository.findById(100L)).thenReturn(Optional.of(worker));
+        when(workplaceRepository.findById(10L)).thenReturn(Optional.of(Workplace.builder().id(10L).ownerId(1L).build()));
+        when(workRepository.findAllByWorkerIdAndDateRange(org.mockito.ArgumentMatchers.eq(100L), any(), any()))
+                .thenReturn(List.of(current));
+        when(mockedSalaryCalculationService.calculateDailyIncome(any(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyBoolean()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        workService.updateMySingleWork(2L, 1L, com.moup.domain.work.dto.MyWorkUpdateRequest.builder()
+                .routineIdList(List.of()).repeatDays(List.of())
+                .startTime(MON.atTime(11, 0).atZone(SEOUL_ZONE_ID).toInstant())
+                .endTime(MON.atTime(19, 0).atZone(SEOUL_ZONE_ID).toInstant())
+                .restTimeMinutes(0).build());
+
+        verify(workRepository).update(any());
+    }
 }
