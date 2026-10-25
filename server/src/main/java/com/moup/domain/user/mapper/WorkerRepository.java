@@ -42,6 +42,14 @@ public interface WorkerRepository {
             @Param("isNowWorking") boolean isNowWorking
     );
 
+    /// 사용자의 근무자 행 전부에 쓰기 잠금을 건다(트랜잭션이 끝날 때까지).
+    ///
+    /// 출근은 "근무 중인 근무지가 없는지 확인 → 근무 중으로 표시"인데 둘 사이에 잠금이 없어, 출근을 두 번
+    /// 동시에 누르면(또는 두 근무지에서 동시에) 둘 다 확인을 통과해 근무 중이 2건이 됐다(스코프 2 M6).
+    /// 같은 사용자의 출근 요청을 이 잠금으로 줄 세운다. 근무지가 달라도 막아야 하므로 사용자 단위로 잡는다.
+    @Select("SELECT id FROM workers WHERE user_id = #{userId} ORDER BY id FOR UPDATE")
+    List<Long> lockAllByUserId(@Param("userId") Long userId);
+
     /// 근무자 ID를 통해 해당 사용자의 근무자 객체를 반환하는 메서드
     ///
     /// @param id 조회할 근무자 ID
@@ -124,7 +132,9 @@ public interface WorkerRepository {
     /// @param workplaceId 조회할 근무지 ID
     /// @param excludeUserId 제외할 사용자 ID
     /// @return 조회된 Worker 객체 리스트, 없으면 빈 배열
-    @Select("SELECT * FROM workers WHERE workplace_id = #{workplaceId} AND user_id != #{excludeUserId}")
+    /// `user_id != ?`만 쓰면 NULL 행이 빠진다(NULL과의 비교는 참이 아니다). 과거 하드 삭제로 `user_id`가 NULL이 된
+    /// 근무자는 기록이 남아 있는데 사장님 목록에서 사라졌다(스코프 4 탈퇴 신호 #1). "탈퇴한 근무자"로 보여야 한다.
+    @Select("SELECT * FROM workers WHERE workplace_id = #{workplaceId} AND (user_id IS NULL OR user_id != #{excludeUserId})")
     List<Worker> findAllByWorkplaceIdAndUserIdNot(Long workplaceId, Long excludeUserId);
 
 

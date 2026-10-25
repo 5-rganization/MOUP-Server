@@ -284,6 +284,11 @@ public class WorkerService {
         if (worker.hasLeft()) {
             throw new WorkerStateConflictException("근무가 종료된 근무자입니다. 다시 참여 요청을 보내야 승인할 수 있습니다.");
         }
+        // 과거 하드 삭제로 사용자가 없는 행이다. 예전에는 `user_id = NULL` 조건이라 갱신이 무동작이었고,
+        // 이어서 수신자 NULL로 알림을 저장하다 NOT NULL 위반(500)이 났다(스코프 4 탈퇴 신호 #2).
+        if (worker.getUserId() == null) {
+            throw new WorkerStateConflictException("탈퇴한 근무자는 승인할 수 없습니다.");
+        }
         // 멱등 — 이미 승인된 근무자를 다시 승인해도 아무것도 하지 않는다. 예전에는 누를 때마다 푸시가 다시 나갔다.
         if (Boolean.TRUE.equals(worker.getIsAccepted())) {
             return;

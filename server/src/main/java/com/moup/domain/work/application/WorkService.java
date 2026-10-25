@@ -637,6 +637,8 @@ public class WorkService {
         permissionVerifyUtil.verifyWorkerPermission(userId, userWorker, workplaceOwnerId);
         // 사장님이 탈퇴했거나 근무가 종료된 근무지에서는 쓰기를 막는다 (확정 정책 5, D11-5). 조회는 허용된다.
         permissionVerifyUtil.verifyWritable(userWorker, workplaceOwnerId);
+        // 확인과 표시 사이에 다른 출근 요청이 끼지 못하게 먼저 잠근다(스코프 2 M6).
+        workerRepository.lockAllByUserId(userId);
         if (workerRepository.existsByUserIdAndIsNowWorking(userId, true)) { throw new WorkerAlreadyWorkingException(); }
 
         // 현재 시간 기준으로 출근 가능한 근무 조회

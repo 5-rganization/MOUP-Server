@@ -148,6 +148,16 @@ class WorkerEmploymentEndTest {
                 () -> workerService.acceptWorker(OWNER_ID, WORKPLACE_ID, WORKER_ID));
     }
 
+    @Test
+    @DisplayName("사용자가 없는 과거 행은 승인할 수 없다 (스코프 4 탈퇴 신호 #2)")
+    void 레거시_행_승인_불가() {
+        given(worker().userId(null).isAccepted(false).build());
+
+        assertThrows(WorkerStateConflictException.class,
+                () -> workerService.acceptWorker(OWNER_ID, WORKPLACE_ID, WORKER_ID));
+        verifyNoInteractions(fcmService);
+    }
+
     // ================= 근무 종료 =================
 
     @Test
@@ -304,12 +314,14 @@ class WorkerEmploymentEndTest {
     void SQL() {
         String endSql = render(WorkerRepository.class, "updateLeftAt");
         String deleteSql = render(WorkerRepository.class, "deleteByIdAndWorkplaceId");
+        String listSql = render(WorkerRepository.class, "findAllByWorkplaceIdAndUserIdNot");
         String futureSql = render(WorkRepository.class, "deleteAllByWorkerIdAfterDate");
 
         assertAll(
                 () -> assertTrue(endSql.contains("left_at IS NULL"), "이미 끝난 관계의 종료 시각을 덮어쓴다: " + endSql),
                 () -> assertFalse(deleteSql.contains("user_id"), "user_id가 NULL인 행이 안 지워진다: " + deleteSql),
-                () -> assertTrue(futureSql.contains("work_date > ?"), "오늘 근무까지 지운다: " + futureSql)
+                () -> assertTrue(futureSql.contains("work_date > ?"), "오늘 근무까지 지운다: " + futureSql),
+                () -> assertTrue(listSql.contains("user_id IS NULL OR"), "user_id가 NULL인 근무자가 목록에서 빠진다: " + listSql)
         );
     }
 }
