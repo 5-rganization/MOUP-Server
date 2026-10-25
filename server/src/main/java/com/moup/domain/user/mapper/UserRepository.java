@@ -114,6 +114,8 @@ public interface UserRepository {
     @Update("UPDATE users SET nickname = #{nickname} WHERE id = #{id}")
     void updateNicknameById(Long id, String nickname);
 
-    @Select("SELECT * FROM users ORDER BY id LIMIT #{batchSize} OFFSET #{offset}")
+    /// 공지 대상. 탈퇴(신청 포함)한 사용자는 뺀다 — 가명처리로 행이 영구히 남으므로 빼지 않으면
+    /// 공지마다 탈퇴자 매핑이 쌓인다(스코프 6 I7).
+    @Select("SELECT * FROM users WHERE is_deleted = 0 ORDER BY id LIMIT #{batchSize} OFFSET #{offset}")
     List<User> findUsersWithPaging(@Param("offset") int page, @Param("batchSize") int batchSize);
 }

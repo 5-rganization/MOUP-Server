@@ -186,6 +186,9 @@ public class UserService {
     // 탈퇴 신청 즉시 refresh token을 폐기한다. 유예기간 동안 토큰이 살아 있으면
     // 계정 탈취 시 "탈퇴"라는 자구책이 무력화된다.
     userTokenService.deleteToken(userId);
+    // 푸시도 끊는다. 예전에는 가명처리 때에야 지워 유예 3일 동안 탈퇴 신청자에게 승인·공지 푸시가 계속 갔다(스코프 4 M6).
+    // 유예기간 안에 다시 로그인하면 계정이 복구되고, 로그인 요청의 fcmToken으로 다시 등록된다.
+    fcmTokenService.deleteAllUserFCMTokens(userId);
 
     return UserDeleteResponse.builder()
         .userId(user.getId())

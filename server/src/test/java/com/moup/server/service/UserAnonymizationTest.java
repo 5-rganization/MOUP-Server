@@ -61,6 +61,18 @@ public class UserAnonymizationTest {
             .isDeleted(true).anonymizedAt(anonymizedAt).build()));
   }
 
+  /// 예전에는 가명처리 때에야 지워 유예 3일 동안 탈퇴 신청자에게 푸시가 계속 갔다(스코프 4 M6).
+  @Test
+  @DisplayName("탈퇴를 신청하면 그 즉시 푸시 토큰을 지운다")
+  void 탈퇴_신청시_푸시_중단() {
+    when(userRepository.findById(USER_ID)).thenReturn(Optional.of(
+        User.builder().id(USER_ID).nickname("홍길동").isDeleted(false).build()));
+
+    userService.deleteUserSoftlyByUserId(USER_ID);
+
+    verify(fcmTokenService).deleteAllUserFCMTokens(USER_ID);
+  }
+
   @Test
   @DisplayName("CASCADE로 지워지던 개인 데이터를 전부 직접 지운다")
   void 의존_테이블을_직접_지운다() {

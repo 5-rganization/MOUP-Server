@@ -129,8 +129,9 @@ public class AlarmService {
   /// **`@Async`를 떼고 호출자 트랜잭션에 참여시킨다.** 비동기로 돌면 아직 커밋되지 않은
   /// `admin_alarms` 행을 FK로 참조해 잠금 대기에 걸리고, 실패해도 `void`라 예외가 삼켜졌다.
   ///
-  /// ponytail: 전 사용자를 한 트랜잭션에 담는다. 사용자가 수만 명을 넘어 요청이 길어지면
-  /// 배치별 REQUIRES_NEW로 쪼개고 커밋 이후 비동기 실행으로 옮길 것.
+  /// 전 사용자를 한 트랜잭션에 담는다. 공지 행과 매핑이 함께 커밋돼야 "공지는 있는데 받은 사람이 없는"
+  /// 상태가 생기지 않는다. 지금 규모(수백 명, 배치 1,000건)에서는 한 번의 INSERT다.
+  /// 사용자가 수만 명을 넘어 요청이 길어지면 배치별 REQUIRES_NEW로 쪼개고 커밋 이후 비동기 실행으로 옮길 것.
   @Transactional
   public void createAnnouncementMappingForAllUsers(Long announcementId) {
     log.info("공지 대상 매핑 생성 시작 announcementId={}", announcementId);
