@@ -31,6 +31,9 @@ import java.time.temporal.TemporalAdjusters;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -123,6 +126,9 @@ public class SalaryCalculationService {
         int perWorkAllowance = payableWorks.isEmpty() ? 0 : weeklyHolidayAllowance / payableWorks.size();
         int allowanceRemainder = payableWorks.isEmpty() ? 0 : weeklyHolidayAllowance % payableWorks.size();
 
+        // 연장 근무시간(1일 8시간·주 40시간 초과분)은 주 전체를 봐야 정해진다. 수당은 근무 행의 스냅샷을 따른다.
+        Map<Work, Long> overtimeByWork = allocateOvertimeMinutes(weekWorks);
+
         List<Work> updatedWorks = new ArrayList<>(weekWorks.size());
         for (Work work : weekWorks) {
             int index = payableWorks.indexOf(work);
@@ -134,7 +140,9 @@ public class SalaryCalculationService {
             // 퇴근 기록이 없는 근무도 통과시킨다. calculateDailyIncome이 0으로 초기화하므로
             // 예전 계산 결과가 stale하게 남지 않는다.
             updatedWorks.add(calculateDailyIncome(work, dailyHolidayAllowance,
-                    Boolean.TRUE.equals(work.getHasNightAllowance())));
+                    Boolean.TRUE.equals(work.getHasNightAllowance()),
+                    overtimeByWork.getOrDefault(work, 0L),
+                    Boolean.TRUE.equals(work.getHasOvertimeAllowance())));
         }
 
         // 해당 주의 모든 근무일에 대해 일급을 재계산합니다.
@@ -144,6 +152,50 @@ public class SalaryCalculationService {
 
         // 마지막으로, 월 전체의 '추정 세후 일급'을 다시 계산하여 캘린더 표시용 데이터를 업데이트합니다.
         recalculateEstimatedNetIncomeForMonth(workerId, date.getYear(), date.getMonthValue(), salary);
+    }
+
+    /// 연장근로 기준 (1일 8시간).
+    private static final long DAILY_REGULAR_MINUTES = 8 * 60L;
+
+    /// 연장 근무시간 배분 (Phase 11 D11-2). 근로기준법 제50·56조 — 1일 8시간 또는 1주 40시간을 넘는 시간.
+    ///
+    /// 1. 날마다 8시간을 넘는 분을 그날 **뒤쪽 근무**부터 연장으로 뗀다(같은 날 근무가 둘이면 나중 근무).
+    /// 2. 그러고 남은 시간의 주 합계가 40시간을 넘으면, 그 초과분을 주의 **뒤쪽 근무**부터 연장으로 뗀다.
+    ///    40시간을 넘기는 것은 시간상 마지막 근무들이다. 1에서 뗀 분은 다시 세지 않는다(이중 가산 방지).
+    ///
+    /// 결근·퇴근 기록 없는 근무는 일하지 않았으므로 세지 않는다. 고정급은 `recalculateWorkWeek`이 조기 반환해 여기까지 오지 않는다.
+    private static Map<Work, Long> allocateOvertimeMinutes(List<Work> weekWorks) {
+        List<Work> worked = weekWorks.stream()
+                .filter(work -> work.getEndTime() != null && !isAbsent(work))
+                .sorted(Comparator.comparing(Work::getStartTime))
+                .toList();
+        Map<Work, Long> net = new IdentityHashMap<>();
+        Map<Work, Long> overtime = new IdentityHashMap<>();
+        for (Work work : worked) {
+            net.put(work, netMinutesOf(work));
+            overtime.put(work, 0L);
+        }
+
+        Map<LocalDate, List<Work>> byDay = worked.stream()
+                .collect(Collectors.groupingBy(Work::getWorkDate, LinkedHashMap::new, Collectors.toList()));
+        for (List<Work> day : byDay.values()) {
+            long dayMinutes = day.stream().mapToLong(net::get).sum();
+            assignOvertimeFromLatest(day, dayMinutes - DAILY_REGULAR_MINUTES, net, overtime);
+        }
+
+        long regularMinutes = worked.stream().mapToLong(work -> net.get(work) - overtime.get(work)).sum();
+        assignOvertimeFromLatest(worked, regularMinutes - FULL_TIME_WEEKLY_MINUTES, net, overtime);
+        return overtime;
+    }
+
+    private static void assignOvertimeFromLatest(List<Work> works, long excessMinutes,
+                                                 Map<Work, Long> net, Map<Work, Long> overtime) {
+        for (int i = works.size() - 1; i >= 0 && excessMinutes > 0; i--) {
+            Work work = works.get(i);
+            long take = Math.min(net.get(work) - overtime.get(work), excessMinutes);
+            overtime.merge(work, take, Long::sum);
+            excessMinutes -= take;
+        }
     }
 
     /// 주휴수당 발생 하한 (주 15시간).
@@ -204,8 +256,15 @@ public class SalaryCalculationService {
         return null;
     }
 
-    /// 하루 근무에 대한 세전 일급(각종 수당 포함)을 상세하게 계산합니다.
+    /// 하루 근무에 대한 세전 일급(각종 수당 포함)을 상세하게 계산합니다. 연장 근무시간은 주를 봐야 정해지므로
+    /// 0으로 둔다 — 근무를 만들거나 고친 뒤에는 항상 `recalculateWorkWeek`이 이어서 채운다.
     public Work calculateDailyIncome(Work work, int dailyHolidayAllowance, boolean hasNightAllowance) {
+        return calculateDailyIncome(work, dailyHolidayAllowance, hasNightAllowance, 0L, false);
+    }
+
+    /// `overtimeMinutes`는 `allocateOvertimeMinutes`가 정한 이 근무의 연장 근무시간이다.
+    public Work calculateDailyIncome(Work work, int dailyHolidayAllowance, boolean hasNightAllowance,
+                                     long overtimeMinutes, boolean hasOvertimeAllowance) {
         // end_time이 없으면 (아직 근무 중) 급여를 0으로 계산하고 반환.
         // 결근도 같다 — 일하지 않았으므로 시간도 급여도 0이다. 예정 시간은 행에 그대로 남는다.
         if (work.getEndTime() == null || isAbsent(work)) {
@@ -213,9 +272,11 @@ public class SalaryCalculationService {
                     .grossWorkMinutes(0)
                     .netWorkMinutes(0)
                     .nightWorkMinutes(0)
+                    .overtimeWorkMinutes(0)
                     .basePay(0)
                     .nightAllowance(0)
                     .holidayAllowance(0)
+                    .overtimeAllowance(0)
                     .grossIncome(0)
                     .build();
         }
@@ -258,16 +319,22 @@ public class SalaryCalculationService {
             nightAllowance = roundHalfUp(netNightMinutes * hourlyRate, 120L);
         }
 
-        int grossIncome = basePay + nightAllowance + dailyHolidayAllowance;
+        // 연장 가산 50% → 분 × 시급 / 120. 야간과 겹치면 둘 다 붙는다(가산 사유가 다르다).
+        long overtimeWorkMinutes = Math.min(Math.max(0L, overtimeMinutes), netWorkMinutes);
+        int overtimeAllowance = hasOvertimeAllowance ? roundHalfUp(overtimeWorkMinutes * hourlyRate, 120L) : 0;
+
+        int grossIncome = basePay + nightAllowance + dailyHolidayAllowance + overtimeAllowance;
 
         // 계산된 모든 급여 항목을 Work 객체로 반환합니다.
         return work.toBuilder()
                 .grossWorkMinutes((int) grossWorkMinutes)
                 .netWorkMinutes((int) netWorkMinutes)
                 .nightWorkMinutes((int) netNightMinutes)
+                .overtimeWorkMinutes((int) overtimeWorkMinutes)
                 .basePay(basePay)
                 .nightAllowance(nightAllowance)
                 .holidayAllowance(dailyHolidayAllowance)
+                .overtimeAllowance(overtimeAllowance)
                 .grossIncome(grossIncome)
                 .hourlyRate(work.getHourlyRate())
                 .build();
@@ -514,6 +581,13 @@ public class SalaryCalculationService {
                     .mapToInt(work -> work.getNightAllowance() != null ? work.getNightAllowance() : 0)
                     .sum();
 
+            int totalOvertimeAllowance = workList.stream()
+                    .mapToInt(work -> work.getOvertimeAllowance() != null ? work.getOvertimeAllowance() : 0)
+                    .sum();
+            long totalOvertimeMinutes = workList.stream()
+                    .mapToLong(work -> work.getOvertimeWorkMinutes() != null ? work.getOvertimeWorkMinutes() : 0)
+                    .sum();
+
 
             // 4-1. 급여 계산 방식(SalaryCalculation)에 따른 세전 총 소득(grossIncome) 계산
             int grossIncome = 0;
@@ -629,6 +703,8 @@ public class SalaryCalculationService {
                     .grossIncome(grossIncome)
                     .totalHolidayAllowance(salaryInfo.getHasHolidayAllowance() ? totalHolidayAllowance : null)
                     .totalNightAllowance(salaryInfo.getHasNightAllowance() ? totalNightAllowance : null)
+                    .totalOvertimeAllowance(Boolean.TRUE.equals(salaryInfo.getHasOvertimeAllowance()) ? totalOvertimeAllowance : null)
+                    .overtimeMinutes(totalOvertimeMinutes)
                     .nationalPension(nationalPension)
                     .healthInsurance(healthInsurance)
                     .employmentInsurance(employmentInsurance)

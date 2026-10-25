@@ -169,6 +169,7 @@ CREATE TABLE `works`
     `gross_work_minutes`      INT                   DEFAULT 0,  -- 총 근무시간(분)
     `net_work_minutes`        INT                   DEFAULT 0,  -- 순 근무시간(분, 휴게시간 제외)
     `night_work_minutes`      INT                   DEFAULT 0,  -- 야간 근무시간(분, 휴게시간 제외)
+    `overtime_work_minutes`   INT                   DEFAULT 0,  -- 연장 근무시간(분). 1일 8시간·주 40시간 초과분. 야간처럼 수당 설정과 무관한 사실 기록
     `memo`                    VARCHAR(200)          NULL,
     `hourly_rate`             INT                   NULL,
     -- 수당 적용 여부 스냅샷. hourly_rate와 달리 예전에는 salaries의 **현재값**을 읽어,
@@ -177,6 +178,8 @@ CREATE TABLE `works`
     -- 확정 정책 3(급여 스냅샷) 위반.
     `has_night_allowance`     TINYINT(1)            NOT NULL DEFAULT 0,
     `has_holiday_allowance`   TINYINT(1)            NOT NULL DEFAULT 0,
+    -- 연장근로 가산(50%) 적용 여부. 5인 이상 사업장만 의무라 선택 설정이다(Phase 11 D11-2).
+    `has_overtime_allowance`  TINYINT(1)            NOT NULL DEFAULT 0,
     -- 결근. 출근 기록이 없다고 결근으로 볼 수는 없다 — 출퇴근 기능을 안 쓰는 사용자가 있다.
     -- 그래서 명시적으로 표시한다. 결근한 근무는 급여 0원이고, 그 주는 주휴수당이 없다(개근 요건).
     -- 예정 시간(start_time/end_time)은 지우지 않는다. 주휴수당 15시간 판정은 소정근로시간 기준이다.
@@ -184,7 +187,8 @@ CREATE TABLE `works`
     `base_pay`                INT                   DEFAULT 0,  -- 기본급 (휴게시간 제외)
     `night_allowance`         INT                   DEFAULT 0,  -- 야간수당
     `holiday_allowance`       INT                   DEFAULT 0,  -- 주휴수당 (해당 주에 발생한 수당을 N등분하여 일별로 저장)
-    `gross_income`            INT                   DEFAULT 0,  -- 세전 일급 (위 4가지의 합)
+    `overtime_allowance`      INT                   DEFAULT 0,  -- 연장근로수당 (연장 근무시간 × 시급 × 50%)
+    `gross_income`            INT                   DEFAULT 0,  -- 세전 일급 (기본급·야간·주휴·연장의 합)
     `estimated_net_income`    INT                   DEFAULT 0,  -- 추정 세후 일급 (캘린더 표시용)
     `repeat_group_id`         VARCHAR(36)           NULL,
     FOREIGN KEY (`worker_id`) REFERENCES workers (`id`) ON DELETE CASCADE,
@@ -242,6 +246,8 @@ CREATE TABLE `salaries`
     `has_income_tax`           TINYINT(1)                                                                          NOT NULL,
     `has_holiday_allowance`    TINYINT(1)                                                                          NOT NULL,
     `has_night_allowance`      TINYINT(1)                                                                          NOT NULL,
+    -- 연장근로 가산. 기존 클라이언트가 보내지 않으므로 기본값을 둔다(Phase 11 D11-2).
+    `has_overtime_allowance`   TINYINT(1)                                                                          NOT NULL DEFAULT 0,
     -- 시급제인데 hourly_rate가 NULL이면 급여 전체가 0원이 되거나 언박싱 NPE로 500이 난다.
     CONSTRAINT `ck_salaries_rate` CHECK (
         (`salary_calculation` = 'SALARY_CALCULATION_HOURLY' AND `hourly_rate` IS NOT NULL)

@@ -876,6 +876,7 @@ public class WorkService {
         int hourlyRate = (salary != null && salary.getHourlyRate() != null) ? salary.getHourlyRate() : 0;
         boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
         boolean hasHolidayAllowance = (salary != null) && salary.getHasHolidayAllowance();
+        boolean hasOvertimeAllowance = (salary != null) && Boolean.TRUE.equals(salary.getHasOvertimeAllowance());
         verifyWorkTime(startTime, endTime, restTimeMinutes);
 
         Work tempWork = Work.builder().startTime(startTime).endTime(endTime).restTimeMinutes(restTimeMinutes).hourlyRate(hourlyRate).build();
@@ -885,6 +886,7 @@ public class WorkService {
                 // 확정 정책 3 — 등록 시점의 수당 설정을 근무 행에 고정한다.
                 .hasNightAllowance(hasNightAllowance)
                 .hasHolidayAllowance(hasHolidayAllowance)
+                .hasOvertimeAllowance(hasOvertimeAllowance)
                 .workerId(worker.getId()).workDate(startTime.toLocalDate())
                 .startTime(startTime).endTime(endTime)
                 .actualStartTime(actualStartTime).actualEndTime(actualEndTime)
@@ -913,6 +915,7 @@ public class WorkService {
         int hourlyRate = (salary != null && salary.getHourlyRate() != null) ? salary.getHourlyRate() : 0;
         boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
         boolean hasHolidayAllowance = (salary != null) && salary.getHasHolidayAllowance();
+        boolean hasOvertimeAllowance = (salary != null) && Boolean.TRUE.equals(salary.getHasOvertimeAllowance());
 
         verifyWorkTime(startTime, endTime, restTimeMinutes);
         LocalDate startDate = startTime.toLocalDate();
@@ -941,6 +944,7 @@ public class WorkService {
                         // 확정 정책 3 — 등록 시점의 수당 설정을 근무 행에 고정한다.
                         .hasNightAllowance(hasNightAllowance)
                         .hasHolidayAllowance(hasHolidayAllowance)
+                        .hasOvertimeAllowance(hasOvertimeAllowance)
                         .id(null).workerId(worker.getId()).workDate(currentDate)
                         .startTime(newStartTime).endTime(newEndTime)
                         .actualStartTime(null) // 반복 생성 시 실제 시간 null

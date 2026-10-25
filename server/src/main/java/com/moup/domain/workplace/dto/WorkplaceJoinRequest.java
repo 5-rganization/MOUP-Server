@@ -53,6 +53,7 @@ public class WorkplaceJoinRequest {
                 .hasIncomeTax(salaryCreateRequest.getHasIncomeTax())
                 .hasHolidayAllowance(salaryCreateRequest.getHasHolidayAllowance())
                 .hasNightAllowance(salaryCreateRequest.getHasNightAllowance())
+                .hasOvertimeAllowance(Boolean.TRUE.equals(salaryCreateRequest.getHasOvertimeAllowance()))
                 .build();
     }
 }

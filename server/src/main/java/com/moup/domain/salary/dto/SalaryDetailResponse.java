@@ -39,6 +39,8 @@ public class SalaryDetailResponse {
     private Boolean hasHolidayAllowance;
     @Schema(description = "야간수당 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean hasNightAllowance;
+    @Schema(description = "연장근로 가산 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Boolean hasOvertimeAllowance;
 
     /// 저장된 급여 설정 전체. 수정 폼이 이 응답을 채워 되보내므로 **필드를 빠뜨리면 안 된다** —
     /// 예전 조립 코드는 `fixedRate`·`salaryDay`를 빠뜨려 고정급 금액이 0으로 채워졌다(스코프 3 I-9).
@@ -57,6 +59,7 @@ public class SalaryDetailResponse {
                 .hasIncomeTax(salary.getHasIncomeTax())
                 .hasHolidayAllowance(salary.getHasHolidayAllowance())
                 .hasNightAllowance(salary.getHasNightAllowance())
+                .hasOvertimeAllowance(Boolean.TRUE.equals(salary.getHasOvertimeAllowance()))
                 .build();
     }
 }
