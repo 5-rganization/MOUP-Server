@@ -344,12 +344,32 @@ public class RoutineService {
     }
     verifyDistinctOrderIndex(routineTaskUpdateRequestList.stream().map(RoutineTaskUpdateRequest::getOrderIndex).toList());
 
+    // ID가 온 할 일은 제자리에서 고친다. 예전에는 전부 지우고 다시 만들어, 루틴 이름만 고쳐도 그 할 일들의
+    // 오늘 체크가 CASCADE로 전부 풀렸다. ID 없이 보내는 기존 앱은 예전과 똑같이 동작한다(전부 새 할 일).
+    Set<Long> existingTaskIds = routineTaskRepository.findAllByRoutineId(routineId).stream()
+        .map(RoutineTask::getId)
+        .collect(Collectors.toSet());
+    List<Long> keptTaskIds = routineTaskUpdateRequestList.stream()
+        .map(RoutineTaskUpdateRequest::getTaskId)
+        .filter(Objects::nonNull)
+        .toList();
+    if (!existingTaskIds.containsAll(keptTaskIds) || keptTaskIds.stream().distinct().count() != keptTaskIds.size()) {
+      throw new InvalidFieldFormatException("이 루틴의 할 일이 아닌 ID가 있거나 같은 ID가 두 번 있습니다.");
+    }
+
     Routine newRoutine = request.toEntity(routineId, userId);
     routineRepository.update(newRoutine);
 
-    routineTaskRepository.deleteAllByRoutineId(routineId);
+    routineTaskRepository.deleteAllByRoutineIdExcept(routineId, keptTaskIds);
+    routineTaskRepository.moveOrderIndexesOutOfTheWay(routineId);
+    for (RoutineTaskUpdateRequest task : routineTaskUpdateRequestList) {
+      if (task.getTaskId() != null) {
+        routineTaskRepository.updateContentAndOrder(task.getTaskId(), routineId, task.getContent(), task.getOrderIndex());
+      }
+    }
 
     List<RoutineTask> taskListToCreate = routineTaskUpdateRequestList.stream()
+        .filter(task -> task.getTaskId() == null)
         .map(routineTaskUpdateRequest -> routineTaskUpdateRequest.toEntity(routineId))
         .toList();
 

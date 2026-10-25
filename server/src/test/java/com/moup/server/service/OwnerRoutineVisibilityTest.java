@@ -108,4 +108,61 @@ class OwnerRoutineVisibilityTest {
                 () -> routineService.createRoutine(WORKER_USER_ID, request));
         verify(routineRepository, never()).create(any());
     }
+
+    // ================= 루틴 수정과 체크 기록 =================
+
+    private void givenRoutineWithTasks() {
+        when(routineRepository.findByIdAndUserId(7L, WORKER_USER_ID)).thenReturn(Optional.of(
+                Routine.builder().id(7L).userId(WORKER_USER_ID).routineName("오픈").build()));
+        when(routineTaskRepository.findAllByRoutineId(7L)).thenReturn(List.of(
+                com.moup.domain.routine.domain.RoutineTask.builder().id(10L).routineId(7L).content("A").orderIndex(0).build(),
+                com.moup.domain.routine.domain.RoutineTask.builder().id(11L).routineId(7L).content("B").orderIndex(1).build()));
+    }
+
+    private static com.moup.domain.routine.dto.RoutineUpdateRequest update(com.moup.domain.routine.dto.RoutineTaskUpdateRequest... tasks) {
+        return com.moup.domain.routine.dto.RoutineUpdateRequest.builder()
+                .routineName("오픈").alarmTime(LocalTime.of(8, 0)).routineTaskList(List.of(tasks)).build();
+    }
+
+    /// 예전에는 할 일을 전부 지우고 다시 만들어, 루틴을 고칠 때마다 그 할 일들의 오늘 체크가 CASCADE로 풀렸다.
+    @Test
+    @DisplayName("ID를 보낸 할 일은 지우지 않고 제자리에서 고친다 — 순서를 맞바꿔도 UNIQUE에 걸리지 않게 먼저 비켜 둔다")
+    void 제자리_수정() {
+        givenRoutineWithTasks();
+
+        routineService.updateRoutine(WORKER_USER_ID, 7L, update(
+                com.moup.domain.routine.dto.RoutineTaskUpdateRequest.builder().taskId(11L).content("B").orderIndex(0).build(),
+                com.moup.domain.routine.dto.RoutineTaskUpdateRequest.builder().content("C").orderIndex(1).build()));
+
+        var order = inOrder(routineTaskRepository);
+        order.verify(routineTaskRepository).deleteAllByRoutineIdExcept(7L, List.of(11L));
+        order.verify(routineTaskRepository).moveOrderIndexesOutOfTheWay(7L);
+        order.verify(routineTaskRepository).updateContentAndOrder(11L, 7L, "B", 0);
+        order.verify(routineTaskRepository).createBatch(argThat(list -> list.size() == 1 && list.get(0).getContent().equals("C")));
+        verify(routineTaskRepository, never()).deleteAllByRoutineId(anyLong());
+    }
+
+    @Test
+    @DisplayName("다른 루틴의 할 일 ID를 보내면 아무것도 바꾸지 않고 422")
+    void 남의_할_일_ID() {
+        givenRoutineWithTasks();
+
+        assertThrows(com.moup.global.error.InvalidFieldFormatException.class, () -> routineService.updateRoutine(WORKER_USER_ID, 7L,
+                update(com.moup.domain.routine.dto.RoutineTaskUpdateRequest.builder().taskId(999L).content("X").orderIndex(0).build())));
+        verify(routineRepository, never()).update(any());
+    }
+
+    @Test
+    @DisplayName("ID를 남기지 않으면(기존 앱) 할 일 삭제 SQL이 루틴 전체를 지운다")
+    void 기존_앱_호환_SQL() {
+        org.apache.ibatis.session.Configuration configuration = new org.apache.ibatis.session.Configuration();
+        configuration.addMapper(RoutineTaskRepository.class);
+        var statement = configuration.getMappedStatement(RoutineTaskRepository.class.getName() + ".deleteAllByRoutineIdExcept");
+        java.util.Map<String, Object> none = new java.util.HashMap<>();
+        none.put("routineId", 7L);
+        none.put("keepIds", List.of());
+
+        assertFalse(statement.getBoundSql(none).getSql().contains("NOT IN"));
+        assertTrue(statement.getBoundSql(java.util.Map.of("routineId", 7L, "keepIds", List.of(11L))).getSql().contains("NOT IN"));
+    }
 }

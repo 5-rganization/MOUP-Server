@@ -39,4 +39,25 @@ public interface RoutineTaskRepository {
     /// @param routineId 삭제할 할 일들의 루틴 ID
     @Delete("DELETE FROM routine_tasks WHERE routine_id = #{routineId}")
     void deleteAllByRoutineId(Long routineId);
+
+    /// 루틴의 할 일 중 `keepIds`에 없는 것을 지운다. `keepIds`가 비면 전부 지운다.
+    @Delete("""
+            <script>
+                DELETE FROM routine_tasks WHERE routine_id = #{routineId}
+                <if test="keepIds != null and !keepIds.isEmpty()">
+                    AND id NOT IN
+                    <foreach item="id" collection="keepIds" open="(" separator="," close=")">#{id}</foreach>
+                </if>
+            </script>
+            """)
+    void deleteAllByRoutineIdExcept(@Param("routineId") Long routineId, @Param("keepIds") List<Long> keepIds);
+
+    /// 남은 할 일의 정렬 순서를 음수로 비켜 둔다. 순서를 맞바꾸는 수정이 `UNIQUE (routine_id, order_index)`에
+    /// 중간에 걸리지 않게 하려는 것이다(0 → -1, 1 → -2 …, 서로 겹치지 않고 새 순서(0 이상)와도 겹치지 않는다).
+    @Update("UPDATE routine_tasks SET order_index = -order_index - 1 WHERE routine_id = #{routineId}")
+    void moveOrderIndexesOutOfTheWay(@Param("routineId") Long routineId);
+
+    @Update("UPDATE routine_tasks SET content = #{content}, order_index = #{orderIndex} WHERE id = #{id} AND routine_id = #{routineId}")
+    void updateContentAndOrder(@Param("id") Long id, @Param("routineId") Long routineId,
+                               @Param("content") String content, @Param("orderIndex") Integer orderIndex);
 }
