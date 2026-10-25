@@ -436,6 +436,22 @@ public class RoutineService {
       return Collections.emptyList();
     }
 
+    // 확정 정책 14 — 사장님은 알바생 근무에 연결된 루틴의 **제목만** 본다. 예전에는 루틴을 요청자(사장님)
+    // 소유로만 찾아 항상 빈 배열이었다(스코프 6 I1). 루틴은 그 근무의 알바생 것이므로 알바생 소유로 찾는다.
+    boolean isOwnerView = Objects.equals(workplace.getOwnerId(), userId) && !Objects.equals(worker.getUserId(), userId);
+    if (isOwnerView) {
+      if (worker.getUserId() == null) {
+        return Collections.emptyList();
+      }
+      // 할 일·알람 시각·연결된 다른 근무는 뺀다. linkedWorks에는 알바생의 **다른 근무지** 근무까지 들어 있다.
+      return routineRepository.findAllByIdListInAndUserId(routineIdList, worker.getUserId()).stream()
+          .map(routine -> RoutineSummaryResponse.builder()
+              .routineId(routine.getId())
+              .routineName(routine.getRoutineName())
+              .build())
+          .toList();
+    }
+
     // 3. 두 번째 쿼리 (1번 실행) - IN 절을 사용해 한 번에 모든 루틴 조회
     List<Routine> routineList = routineRepository.findAllByIdListInAndUserId(routineIdList, userId);
 
