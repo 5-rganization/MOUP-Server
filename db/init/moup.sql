@@ -196,6 +196,9 @@ CREATE TABLE `works`
     `gross_income`            INT                   DEFAULT 0,  -- 세전 일급 (기본급·야간·주휴·연장·휴일의 합)
     `estimated_net_income`    INT                   DEFAULT 0,  -- 추정 세후 일급 (캘린더 표시용)
     `repeat_group_id`         VARCHAR(36)           NULL,
+    -- 급여 스냅샷이 언제 찍혔고 마지막으로 언제 다시 계산됐는지 감사할 수 있게 둔다(스코프 7 Minor).
+    `created_at`              DATETIME              NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    `updated_at`              DATETIME              NOT NULL DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
     FOREIGN KEY (`worker_id`) REFERENCES workers (`id`) ON DELETE CASCADE,
     INDEX `idx_repeat_group_id` (`repeat_group_id`),
     -- 조회는 거의 전부 worker_id + work_date 범위다. FK가 만드는 단일 인덱스로는 filesort가 남는다.

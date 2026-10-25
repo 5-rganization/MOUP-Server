@@ -24,7 +24,8 @@ repositories {
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    // JPA는 쓰지 않는다(영속성은 MyBatis). starter-data-jpa가 있으면 기동 때 Hibernate가 초기화되고 트랜잭션 매니저도
+    // JpaTransactionManager가 된다. JDBC·HikariCP는 mybatis-spring-boot-starter가 가져온다(스코프 7 Minor).
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     implementation 'org.springframework.boot:spring-boot-starter-security'
