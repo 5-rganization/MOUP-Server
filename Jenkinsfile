@@ -18,21 +18,10 @@ pipeline {
             }
         }
 
-        stage('Prepare Env') {
-            steps {
-                withCredentials([file(credentialsId: 'moup-env-file', variable: 'ENV_FILE')]) {
-                    sh 'cp $ENV_FILE ./server/.env'
-                }
-                withCredentials([file(credentialsId: 'moup-firebase-key', variable: 'FIRE_KEY')]) {
-                        // (1) 파일을 넣을 디렉토리가 없으면 생성
-                        sh 'mkdir -p ./server/src/main/resources/keys'
-                        
-                        // (2) Jenkins가 준 비밀 파일을 소스 코드 경로로 복사
-                        sh 'cp $FIRE_KEY ./server/src/main/resources/keys/moup-e5326-firebase-adminsdk-fbsvc-6ec6692e3b.json'
-                    }
-            }
-        }
-
+        // 예전 'Prepare Env' 스테이지는 Firebase 서비스 계정 키를 src/main/resources/keys/에 복사했다.
+        // 키가 jar에 들어가 public Docker 이미지로 push됐다(스코프 7 C7). 이제 키는 각 서버의
+        // secrets/firebase-key.json에 두고 compose가 마운트한다. 같은 스테이지의 .env 복사도
+        // 이미지에 들어가지 않는 죽은 단계였고, Dockerfile을 `COPY .`로 바꾸는 순간 시크릿이 새는 함정이라 뺐다.
         stage('Build Gradle') {
             steps {
                 dir('server') {

@@ -32,6 +32,8 @@ jobs:
             ssh-agent -k
             
             # 3. .env 파일 생성 (Secrets -> .env)
+            #    KEYSTORE_PASSWORD·ADMIN_AUTH_TOKEN은 소비처가 없어 뺐다(TLS는 nginx, 배치는 @Scheduled).
+            #    FIREBASE_ACCOUNT_KEY_PATH는 compose가 마운트 경로로 고정한다.
             echo "Creating .env file..."
             # [중요] Docker 내부 통신용 주소로 설정
             echo "DATABASE_URL=jdbc:mysql://mysql:3306/${{ secrets.DATABASE_NAME }}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul" > .env
@@ -42,7 +44,6 @@ jobs:
             echo "REDIS_PORT=${{ secrets.REDIS_PORT }}" >> .env
             echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" >> .env
             echo "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" >> .env
-            echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> .env # Nginx에서 SSL 처리하므로 이 변수는 Spring에서 필요 없을 수 있음
             echo "S3_BUCKET_NAME=${{ secrets.S3_BUCKET_NAME }}" >> .env
             echo "AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }}" >> .env
             echo "AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }}" >> .env
@@ -54,22 +55,19 @@ jobs:
             echo "APPLE_KEY_ID=${{ secrets.APPLE_KEY_ID }}" >> .env
             echo "APPLE_PRIVATE_KEY=${{ secrets.APPLE_PRIVATE_KEY }}" >> .env
             echo "APPLE_REDIRECT_URI=${{ secrets.APPLE_REDIRECT_URI }}" >> .env
-            echo "ADMIN_AUTH_TOKEN=${{ secrets.ADMIN_AUTH_TOKEN }}" >> .env
-            echo "FIREBASE_ACCOUNT_KEY_PATH=${{ secrets.FIREBASE_ACCOUNT_KEY_PATH }}" >> .env # Spring에서 classpath: 경로 사용하는지 확인
             
-            # 4. Docker Compose로 빌드 및 배포
+            # 4. 인프라 컨테이너(nginx·mysql·redis)만 맞춘다. server는 Jenkins가 develop-N 태그로 교체한다.
+            #    예전에는 여기서 TAG 없이 전체를 up 해서, Jenkins가 고정한 develop-N 컨테이너를
+            #    :latest로 다시 만들었다(두 파이프라인이 같은 컨테이너를 다른 태그로 다툼).
+            #    .env가 바뀌면 다음 Jenkins 배포의 up이 server를 새 설정으로 다시 만든다.
             echo "Starting Docker Compose deployment..."
-            # (선택) 베이스 이미지 최신화 (배포 시간 단축 원하면 주석 처리)
-            # docker compose pull mysql redis nginx
-            # 이미지 빌드 (변경 사항 있을 시) 및 컨테이너 재시작/생성
-            # --build: Dockerfile 또는 context 변경 시 server 이미지 리빌드
-            # up -d: 변경된 컨테이너만 업데이트하고 백그라운드 실행
-            docker compose -f docker-compose.dev.yml up -d --build
+            docker compose -f docker-compose.dev.yml up -d nginx mysql redis
             echo "Deployment complete."
-            
-            # 5. (선택) 불필요한 Docker 이미지 정리 (용량 확보)
-            echo "Pruning unused Docker images..."
-            docker image prune -af
+
+            # 5. 태그 없는(dangling) 이미지만 정리한다. 예전의 -a는 지금 안 쓰는 develop-N 이미지까지
+            #    지워 TAG=로 롤백할 수 없게 만들었다.
+            echo "Pruning dangling Docker images..."
+            docker image prune -f
             
             # 6. 탈퇴 사용자 영구 삭제는 서버 내부 @Scheduled로 옮겼다.
             #    여기 있던 crontab 등록 블록은 통째로 주석 처리된 상태였고,

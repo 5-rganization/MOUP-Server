@@ -32,6 +32,21 @@ services:
     image: neoskycladdocker/moup:${TAG:-stable}
     env_file:
       - ./.env # 루트의 .env 파일 로드
+    environment:
+      # .env의 값보다 우선한다. 키 파일은 아래 volumes로 들어온다.
+      FIREBASE_ACCOUNT_KEY_PATH: file:/run/secrets/firebase-key.json
+    volumes:
+      # Firebase 서비스 계정 키는 이미지에 넣지 않고 서버의 파일을 마운트한다(스코프 7 C7).
+      # 예전에는 Jenkins가 빌드 전에 키를 src/main/resources/keys/에 복사해 jar → public 이미지에
+      # 들어갔다. 이 파일이 없으면 Docker가 같은 경로에 빈 디렉터리를 만들어 서버가 뜨지 않는다.
+      - ./secrets/firebase-key.json:/run/secrets/firebase-key.json:ro
+    healthcheck:
+      # 액추에이터 헬스(/health)는 DB·Redis까지 본다. Spring 기동에 약 1분 걸려 start_period를 넉넉히 둔다.
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
     expose:
       - "8080" # 내부 Nginx 연결용 포트
     labels:

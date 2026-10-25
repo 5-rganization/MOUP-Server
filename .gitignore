@@ -47,3 +47,6 @@ delete_old_users.log
 # Firebase 서비스 계정 키 — 절대 커밋 금지.
 # Jenkins가 빌드 시점에 이 경로로 복사한다.
 server/src/main/resources/keys/*.json
+
+# 서버에만 두는 비밀 파일 (compose가 마운트한다)
+secrets/
