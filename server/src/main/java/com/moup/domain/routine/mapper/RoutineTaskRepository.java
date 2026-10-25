@@ -60,4 +60,14 @@ public interface RoutineTaskRepository {
     @Update("UPDATE routine_tasks SET content = #{content}, order_index = #{orderIndex} WHERE id = #{id} AND routine_id = #{routineId}")
     void updateContentAndOrder(@Param("id") Long id, @Param("routineId") Long routineId,
                                @Param("content") String content, @Param("orderIndex") Integer orderIndex);
+
+    /// 여러 루틴의 할 일을 한 번에 (루틴 ID, `order_index` 순).
+    @Select("""
+            <script>
+                SELECT * FROM routine_tasks WHERE routine_id IN
+                <foreach item="id" collection="routineIds" open="(" separator="," close=")">#{id}</foreach>
+                ORDER BY routine_id, order_index
+            </script>
+            """)
+    List<RoutineTask> findAllByRoutineIdIn(@Param("routineIds") List<Long> routineIds);
 }

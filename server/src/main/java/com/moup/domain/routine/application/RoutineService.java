@@ -125,69 +125,77 @@ public class RoutineService {
   }
 
   private List<RoutineSummaryResponse.LinkedWorkRoutine> getLinkedWorksFromRoutine(Long routineId) {
-    // 1. 루틴 기준으로 연동된 일 ID 리스트 검색
-    List<WorkRoutineMapping> workRoutineMappingList = workRoutineMappingRepository.findWorksByRoutineId(
-        routineId);
+    return getLinkedWorksByRoutineIds(List.of(routineId)).getOrDefault(routineId, List.of());
+  }
 
-    // 2. 근무에서 요일 추출
-    // 2-1. 매핑 결과에서 근무 ID만 추출
-    List<Long> workIdList = workRoutineMappingList.stream()
-        .map(WorkRoutineMapping::getWorkId)
-        .toList();
-
-    // 2-2. 근무 ID로 근무 반환
-    List<Work> workList = new ArrayList<>();
-    if (!workIdList.isEmpty()) {
-      workList = workRepository.findAllByIdIn(workIdList);
+  /// 루틴별로 연결된 근무와 그 근무의 반복 요일. **루틴 수와 무관하게 쿼리 3번**이다.
+  ///
+  /// 예전에는 루틴마다 매핑·근무·요일을 따로 조회해, 루틴 20개(상한)면 약 61쿼리였다(스코프 6 I4).
+  private Map<Long, List<RoutineSummaryResponse.LinkedWorkRoutine>> getLinkedWorksByRoutineIds(List<Long> routineIds) {
+    if (routineIds.isEmpty()) {
+      return Map.of();
     }
+    List<WorkRoutineMapping> mappings = workRoutineMappingRepository.findAllByRoutineIdIn(routineIds);
+    List<Long> workIdList = mappings.stream().map(WorkRoutineMapping::getWorkId).distinct().toList();
+    Map<Long, Work> workById = workIdList.isEmpty() ? Map.of()
+        : workRepository.findAllByIdIn(workIdList).stream().collect(Collectors.toMap(Work::getId, work -> work));
 
-    List<String> groupIds = workList.stream()
+    // 반복 그룹이 없는 단일 근무는 반복 요일이 없다(빈 배열). NULL을 IN에 넣지 않는다.
+    List<String> groupIds = workById.values().stream()
         .map(Work::getRepeatGroupId)
+        .filter(Objects::nonNull)
         .distinct()
         .toList();
-
-    List<WorkRepository.GroupIdAndDayName> dtos = new ArrayList<>();
+    Map<String, List<DayOfWeek>> groupDayMap = new java.util.HashMap<>();
     if (!groupIds.isEmpty()) {
-      dtos = workRepository.findDayNamesByGroupIdsIn(groupIds);
-    }
-
-    Map<String, List<String>> groupDayMap = dtos.stream()
-        .collect(Collectors.groupingBy(GroupIdAndDayName::groupId, Collectors.mapping(GroupIdAndDayName::dayName, Collectors.toList())));
-
-    List<RoutineSummaryResponse.LinkedWorkRoutine> linkedWorks = new ArrayList<>();
-
-    for (Work work : workList) {
-      // 2. 반복 요일 조회 (DB 함수 결과 문자열 -> DayOfWeek Enum 변환)
-      List<String> dayNames = groupDayMap.getOrDefault(work.getRepeatGroupId(), new ArrayList<>());
-      List<DayOfWeek> repeatDays = new ArrayList<>();
-      for (String dayName : dayNames) {
-        if (dayName == null) {
-          repeatDays.add(null);
-        }
-        try {
-          // DAYNAME()은 보통 'Monday' 처럼 나오므로 대문자로 변환 필수
-          repeatDays.add(DayOfWeek.valueOf(dayName.toUpperCase()));
-        } catch (IllegalArgumentException e) {
-          // 로그 처리
+      for (GroupIdAndDayName row : workRepository.findDayNamesByGroupIdsIn(groupIds)) {
+        DayOfWeek day = parseDayName(row.dayName());
+        if (day != null) {
+          groupDayMap.computeIfAbsent(row.groupId(), key -> new ArrayList<>()).add(day);
         }
       }
-      linkedWorks.add(new RoutineSummaryResponse.LinkedWorkRoutine(work.getId(), repeatDays));
     }
-    
-    // 3. 요일 정보 반환
-    return linkedWorks;
+
+    Map<Long, List<RoutineSummaryResponse.LinkedWorkRoutine>> result = new java.util.HashMap<>();
+    for (WorkRoutineMapping mapping : mappings) {
+      Work work = workById.get(mapping.getWorkId());
+      if (work == null) {
+        continue;
+      }
+      List<DayOfWeek> repeatDays = work.getRepeatGroupId() == null ? List.of()
+          : groupDayMap.getOrDefault(work.getRepeatGroupId(), List.of());
+      result.computeIfAbsent(mapping.getRoutineId(), key -> new ArrayList<>())
+          .add(new RoutineSummaryResponse.LinkedWorkRoutine(work.getId(), repeatDays));
+    }
+    return result;
+  }
+
+  /// MySQL `DAYNAME()`은 'Monday' 형식이다. 예전 코드는 null 블록에 `continue`가 없어 바로 다음 줄에서
+  /// NPE가 났고(스코프 6 M1), 변환 실패는 주석만 있고 로그가 없어 흔적 없이 사라졌다(M2).
+  private static DayOfWeek parseDayName(String dayName) {
+    if (dayName == null) {
+      return null;
+    }
+    try {
+      return DayOfWeek.valueOf(dayName.toUpperCase());
+    } catch (IllegalArgumentException e) {
+      log.warn("알 수 없는 요일 이름입니다: {}", dayName);
+      return null;
+    }
   }
 
   @Transactional(readOnly = true)
   public RoutineSummaryListResponse getAllRoutine(Long userId) {
     List<Routine> routineList = routineRepository.findAllByUserId(userId);
+    Map<Long, List<RoutineSummaryResponse.LinkedWorkRoutine>> linkedWorksByRoutine =
+        getLinkedWorksByRoutineIds(routineList.stream().map(Routine::getId).toList());
 
     List<RoutineSummaryResponse> routineSummaryResponseList = routineList.stream()
         .map(routine -> RoutineSummaryResponse.builder()
             .routineId(routine.getId())
             .routineName(routine.getRoutineName())
             .alarmTime(routine.getAlarmTime())
-            .linkedWorks(getLinkedWorksFromRoutine(routine.getId()))  // N + 1 발생
+            .linkedWorks(linkedWorksByRoutine.getOrDefault(routine.getId(), List.of()))
             .build())
         .toList();
 
@@ -426,6 +434,31 @@ public class RoutineService {
     workRoutineMappingRepository.createBatch(mappingsToCreate);
   }
 
+  /// 방금 만든 근무들에 같은 루틴을 한 번에 연결한다. 검증 1번 + INSERT 1번.
+  ///
+  /// 예전에는 반복 근무마다 `saveWorkRoutineMapping`을 불러 근무당 DELETE·SELECT·INSERT 3개,
+  /// 365일 반복이면 한 트랜잭션에서 약 780~1,100쿼리였다(스코프 2 I9). 새 근무라 지울 매핑도 없다.
+  @Transactional
+  public void linkRoutinesToNewWorks(Long userId, List<Long> routineIdList, List<Long> workIds) {
+    if (routineIdList.isEmpty() || workIds.isEmpty()) {
+      return;
+    }
+    if (routineIdList.size() > MAX_ROUTINE_COUNT_PER_WORK) {
+      throw new DataLimitExceedException(
+          "루틴은 한 근무당 최대 " + MAX_ROUTINE_COUNT_PER_WORK + "개까지 연결할 수 있습니다.");
+    }
+    if (routineRepository.findAllByIdListInAndUserId(routineIdList, userId).size() != routineIdList.size()) {
+      throw new RoutineNotFoundException("유효하지 않거나 권한이 없는 루틴 ID가 포함되어 있습니다.");
+    }
+    List<WorkRoutineMapping> mappings = new ArrayList<>(workIds.size() * routineIdList.size());
+    for (Long workId : workIds) {
+      for (Long routineId : routineIdList) {
+        mappings.add(WorkRoutineMapping.builder().workId(workId).routineId(routineId).build());
+      }
+    }
+    workRoutineMappingRepository.createBatch(mappings);
+  }
+
   @Transactional(readOnly = true)
   public List<RoutineSummaryResponse> getAllRoutineByWorkRoutineMapping(Long userId, Long workId) {
     // --- START: 권한 확인 ---
@@ -483,6 +516,12 @@ public class RoutineService {
     // 4. [쿼리 1회] 이 근무에서 완료된 할 일. 근무 하나당 한 번이면 충분하다.
     Set<Long> completedTaskIds =
         Set.copyOf(routineTaskCompletionRepository.findCompletedTaskIdsByWorkId(workId));
+    // 루틴마다 할 일·연결 근무를 따로 읽지 않는다(스코프 6 I4).
+    List<Long> loadedRoutineIds = routineList.stream().map(Routine::getId).toList();
+    Map<Long, List<RoutineSummaryResponse.LinkedWorkRoutine>> linkedWorksByRoutine = getLinkedWorksByRoutineIds(loadedRoutineIds);
+    Map<Long, List<RoutineTask>> tasksByRoutine = loadedRoutineIds.isEmpty() ? Map.of()
+        : routineTaskRepository.findAllByRoutineIdIn(loadedRoutineIds).stream()
+            .collect(Collectors.groupingBy(RoutineTask::getRoutineId));
 
     // 5. 가져온 데이터를 매핑. 할 일과 완료 여부를 함께 내려준다 —
     //    루틴 상세 조회는 근무를 모르므로 체크 상태를 줄 수 없고,
@@ -492,8 +531,8 @@ public class RoutineService {
             .routineId(routine.getId())
             .routineName(routine.getRoutineName())
             .alarmTime(routine.getAlarmTime())
-            .linkedWorks(getLinkedWorksFromRoutine(routine.getId()))
-            .routineTaskList(routineTaskRepository.findAllByRoutineId(routine.getId()).stream()
+            .linkedWorks(linkedWorksByRoutine.getOrDefault(routine.getId(), List.of()))
+            .routineTaskList(tasksByRoutine.getOrDefault(routine.getId(), List.of()).stream()
                 .map(task -> RoutineTaskDetailResponse.builder()
                     .taskId(task.getId())
                     .routineId(task.getRoutineId())

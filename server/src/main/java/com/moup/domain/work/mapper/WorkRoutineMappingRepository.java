@@ -8,8 +8,14 @@ import java.util.List;
 @Mapper
 public interface WorkRoutineMappingRepository {
 
-    @Select("SELECT * FROM work_routine_mappings WHERE routine_id = #{routineId}")
-    List<WorkRoutineMapping> findWorksByRoutineId(Long routineId);
+    /// 여러 루틴의 매핑을 한 번에. 루틴 목록 조회가 루틴마다 쿼리 3개(루틴 20개면 약 61개)였다(스코프 6 I4).
+    @Select("""
+            <script>
+                SELECT * FROM work_routine_mappings WHERE routine_id IN
+                <foreach item="id" collection="routineIds" open="(" separator="," close=")">#{id}</foreach>
+            </script>
+            """)
+    List<WorkRoutineMapping> findAllByRoutineIdIn(@Param("routineIds") List<Long> routineIds);
 
     record WorkRoutineCount(Long workId, long count) {}
 

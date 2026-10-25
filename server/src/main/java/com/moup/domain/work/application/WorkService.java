@@ -985,9 +985,8 @@ public class WorkService {
 
         // 생성된 모든 반복 근무에 루틴 연결
         if (userIdForRoutine != null && routineIdList != null && !routineIdList.isEmpty()) {
-            for (Work work : createdWorks) {
-                routineService.saveWorkRoutineMapping(userIdForRoutine, routineIdList, work.getId());
-            }
+            routineService.linkRoutinesToNewWorks(userIdForRoutine, routineIdList,
+                    createdWorks.stream().map(Work::getId).toList());
         }
 
         return createdWorks;

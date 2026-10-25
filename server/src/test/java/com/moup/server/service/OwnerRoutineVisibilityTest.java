@@ -85,7 +85,7 @@ class OwnerRoutineVisibilityTest {
     void 알바생은_전체() {
         givenWorkWithRoutine();
         when(routineTaskCompletionRepository.findCompletedTaskIdsByWorkId(WORK_ID)).thenReturn(List.of());
-        when(routineTaskRepository.findAllByRoutineId(7L)).thenReturn(List.of());
+        when(routineTaskRepository.findAllByRoutineIdIn(List.of(7L))).thenReturn(List.of());
 
         List<RoutineSummaryResponse> routines = routineService.getAllRoutineByWorkRoutineMapping(WORKER_USER_ID, WORK_ID);
 
@@ -164,5 +164,54 @@ class OwnerRoutineVisibilityTest {
 
         assertFalse(statement.getBoundSql(none).getSql().contains("NOT IN"));
         assertTrue(statement.getBoundSql(java.util.Map.of("routineId", 7L, "keepIds", List.of(11L))).getSql().contains("NOT IN"));
+    }
+
+    /// 루틴마다 매핑·근무·요일을 따로 조회해 루틴 20개면 약 61쿼리였다(스코프 6 I4).
+    @Test
+    @DisplayName("루틴 목록은 루틴 수와 무관하게 연결 근무를 한 번에 읽는다")
+    void 루틴_목록_N_플러스_1_없음() {
+        when(routineRepository.findAllByUserId(WORKER_USER_ID)).thenReturn(List.of(
+                Routine.builder().id(1L).routineName("A").build(),
+                Routine.builder().id(2L).routineName("B").build(),
+                Routine.builder().id(3L).routineName("C").build()));
+        when(workRoutineMappingRepository.findAllByRoutineIdIn(List.of(1L, 2L, 3L))).thenReturn(List.of(
+                WorkRoutineMapping.builder().workId(50L).routineId(1L).build(),
+                WorkRoutineMapping.builder().workId(51L).routineId(3L).build()));
+        when(workRepository.findAllByIdIn(List.of(50L, 51L))).thenReturn(List.of(
+                Work.builder().id(50L).repeatGroupId("g").build(), Work.builder().id(51L).build()));
+        when(workRepository.findDayNamesByGroupIdsIn(List.of("g"))).thenReturn(List.of(
+                new WorkRepository.GroupIdAndDayName("g", "Monday"), new WorkRepository.GroupIdAndDayName("g", null)));
+
+        var routines = routineService.getAllRoutine(WORKER_USER_ID).getRoutineSummaryInfoList();
+
+        verify(workRoutineMappingRepository, times(1)).findAllByRoutineIdIn(any());
+        verify(workRepository, times(1)).findAllByIdIn(any());
+        assertEquals(List.of(java.time.DayOfWeek.MONDAY), routines.get(0).getLinkedWorks().get(0).repeatDays());
+        assertEquals(List.of(), routines.get(1).getLinkedWorks());
+        assertEquals(List.of(), routines.get(2).getLinkedWorks().get(0).repeatDays(), "단일 근무는 반복 요일이 없다");
+    }
+
+    /// 예전에는 반복 근무마다 DELETE·SELECT·INSERT를 따로 해 365일 반복이면 약 1,000쿼리였다(스코프 2 I9).
+    @Test
+    @DisplayName("새 반복 근무에 루틴을 연결할 때 검증 1번, INSERT 1번으로 끝낸다")
+    void 반복_근무_루틴_일괄_연결() {
+        when(routineRepository.findAllByIdListInAndUserId(List.of(7L, 8L), WORKER_USER_ID)).thenReturn(List.of(
+                Routine.builder().id(7L).build(), Routine.builder().id(8L).build()));
+
+        routineService.linkRoutinesToNewWorks(WORKER_USER_ID, List.of(7L, 8L), List.of(1L, 2L, 3L));
+
+        verify(workRoutineMappingRepository, times(1)).createBatch(argThat(list -> list.size() == 6));
+        verify(workRoutineMappingRepository, never()).deleteByWorkId(anyLong());
+    }
+
+    @Test
+    @DisplayName("남의 루틴이 섞이면 아무것도 연결하지 않는다")
+    void 남의_루틴_연결_불가() {
+        when(routineRepository.findAllByIdListInAndUserId(List.of(7L, 99L), WORKER_USER_ID)).thenReturn(List.of(
+                Routine.builder().id(7L).build()));
+
+        assertThrows(com.moup.domain.routine.exception.RoutineNotFoundException.class,
+                () -> routineService.linkRoutinesToNewWorks(WORKER_USER_ID, List.of(7L, 99L), List.of(1L)));
+        verify(workRoutineMappingRepository, never()).createBatch(any());
     }
 }
