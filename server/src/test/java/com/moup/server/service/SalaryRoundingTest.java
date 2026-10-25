@@ -55,6 +55,8 @@ class SalaryRoundingTest {
     @Mock private SalaryRepository salaryRepository;
     @Mock private UserRepository userRepository;
 
+    @Mock private com.moup.domain.salary.mapper.PublicHolidayRepository publicHolidayRepository;
+
     @InjectMocks private SalaryCalculationService salaryCalculationService;
 
     // ================= 지급 — 반올림 =================

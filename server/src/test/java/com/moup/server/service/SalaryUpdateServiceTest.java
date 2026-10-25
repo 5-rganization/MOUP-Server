@@ -130,7 +130,7 @@ class SalaryUpdateServiceTest {
         assertTrue(salaryUpdateService.update(WORKER_ID,
                 SalaryUpdateRequest.builder().hourlyRate(11_000).hasNightAllowance(true).build()));
 
-        verify(workRepository).updateSalarySnapshotFrom(WORKER_ID, today(), 11_000, true, true, false);
+        verify(workRepository).updateSalarySnapshotFrom(WORKER_ID, today(), 11_000, true, true, false, false);
         verify(workRepository).findWorkDatesFrom(WORKER_ID, today());
     }
 
@@ -143,7 +143,7 @@ class SalaryUpdateServiceTest {
                 .hourlyRate(11_000).applyFrom(SalaryApplyFrom.THIS_MONTH).build());
 
         verify(workRepository).updateSalarySnapshotFrom(
-                eq(WORKER_ID), eq(today().withDayOfMonth(1)), eq(11_000), anyBoolean(), anyBoolean(), anyBoolean());
+                eq(WORKER_ID), eq(today().withDayOfMonth(1)), eq(11_000), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean());
     }
 
     @Test
@@ -154,7 +154,7 @@ class SalaryUpdateServiceTest {
         salaryUpdateService.update(WORKER_ID, SalaryUpdateRequest.builder()
                 .salaryCalculation(SalaryCalculation.SALARY_CALCULATION_FIXED).fixedRate(2_000_000).build());
 
-        verify(workRepository).updateSalarySnapshotFrom(eq(WORKER_ID), any(), eq(0), anyBoolean(), anyBoolean(), anyBoolean());
+        verify(workRepository).updateSalarySnapshotFrom(eq(WORKER_ID), any(), eq(0), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean());
     }
 
     /// 주마다 한 번만, 그리고 **그 주의 첫 근무일**로 재계산한다. 월요일을 넘기면 주가 월 경계에 걸칠 때

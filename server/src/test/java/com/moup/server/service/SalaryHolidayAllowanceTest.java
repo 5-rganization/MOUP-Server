@@ -50,6 +50,8 @@ class SalaryHolidayAllowanceTest {
     @Mock private SalaryRepository salaryRepository;
     @Mock private UserRepository userRepository;
 
+    @Mock private com.moup.domain.salary.mapper.PublicHolidayRepository publicHolidayRepository;
+
     @InjectMocks private SalaryCalculationService salaryCalculationService;
 
     // ================= C-1 — 법정 산식 =================

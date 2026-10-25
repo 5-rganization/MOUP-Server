@@ -46,6 +46,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class WorkTimeBoundsTest {
 
+    @Mock private com.moup.domain.salary.mapper.PublicHolidayRepository publicHolidayRepository;
+
     @InjectMocks private SalaryCalculationService salaryCalculationService;
 
     @Mock private WorkRepository workRepository;

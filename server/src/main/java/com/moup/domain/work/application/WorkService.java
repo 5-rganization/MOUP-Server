@@ -877,6 +877,7 @@ public class WorkService {
         boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
         boolean hasHolidayAllowance = (salary != null) && salary.getHasHolidayAllowance();
         boolean hasOvertimeAllowance = (salary != null) && Boolean.TRUE.equals(salary.getHasOvertimeAllowance());
+        boolean hasPublicHolidayAllowance = (salary != null) && Boolean.TRUE.equals(salary.getHasPublicHolidayAllowance());
         verifyWorkTime(startTime, endTime, restTimeMinutes);
 
         Work tempWork = Work.builder().startTime(startTime).endTime(endTime).restTimeMinutes(restTimeMinutes).hourlyRate(hourlyRate).build();
@@ -887,6 +888,7 @@ public class WorkService {
                 .hasNightAllowance(hasNightAllowance)
                 .hasHolidayAllowance(hasHolidayAllowance)
                 .hasOvertimeAllowance(hasOvertimeAllowance)
+                .hasPublicHolidayAllowance(hasPublicHolidayAllowance)
                 .workerId(worker.getId()).workDate(startTime.toLocalDate())
                 .startTime(startTime).endTime(endTime)
                 .actualStartTime(actualStartTime).actualEndTime(actualEndTime)
@@ -916,6 +918,7 @@ public class WorkService {
         boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
         boolean hasHolidayAllowance = (salary != null) && salary.getHasHolidayAllowance();
         boolean hasOvertimeAllowance = (salary != null) && Boolean.TRUE.equals(salary.getHasOvertimeAllowance());
+        boolean hasPublicHolidayAllowance = (salary != null) && Boolean.TRUE.equals(salary.getHasPublicHolidayAllowance());
 
         verifyWorkTime(startTime, endTime, restTimeMinutes);
         LocalDate startDate = startTime.toLocalDate();
@@ -945,6 +948,7 @@ public class WorkService {
                         .hasNightAllowance(hasNightAllowance)
                         .hasHolidayAllowance(hasHolidayAllowance)
                         .hasOvertimeAllowance(hasOvertimeAllowance)
+                        .hasPublicHolidayAllowance(hasPublicHolidayAllowance)
                         .id(null).workerId(worker.getId()).workDate(currentDate)
                         .startTime(newStartTime).endTime(newEndTime)
                         .actualStartTime(null) // 반복 생성 시 실제 시간 null

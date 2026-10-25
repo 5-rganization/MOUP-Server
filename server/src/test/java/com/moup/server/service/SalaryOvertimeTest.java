@@ -47,6 +47,8 @@ class SalaryOvertimeTest {
     @Mock private SalaryRepository salaryRepository;
     @Mock private UserRepository userRepository;
 
+    @Mock private com.moup.domain.salary.mapper.PublicHolidayRepository publicHolidayRepository;
+
     @InjectMocks private SalaryCalculationService salaryCalculationService;
 
     private static Work work(long id, LocalDateTime start, LocalDateTime end, boolean hasOvertime) {

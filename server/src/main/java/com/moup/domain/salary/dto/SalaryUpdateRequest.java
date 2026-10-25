@@ -53,6 +53,8 @@ public class SalaryUpdateRequest {
     private Boolean hasNightAllowance;
     @Schema(description = "연장근로 가산 여부 (1일 8시간·주 40시간 초과분 50%). 고정급은 계산하지 않는다", example = "false", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Boolean hasOvertimeAllowance;
+    @Schema(description = "공휴일 근로 가산 여부 (8시간까지 50%, 초과분 100%). 고정급은 계산하지 않는다", example = "false", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    private Boolean hasPublicHolidayAllowance;
     @Schema(description = """
             변경을 어느 근무부터 적용할지 (오늘 근무부터: TODAY, 이번 달 1일 근무부터: THIS_MONTH). 생략하면 TODAY.
             그 이전 근무의 시급·수당은 바뀌지 않는다. 4대보험·세금은 월 단위라 이번 달 전체에 반영된다.""",
@@ -80,6 +82,7 @@ public class SalaryUpdateRequest {
                 .hasHolidayAllowance(hasHolidayAllowance != null ? hasHolidayAllowance : current.getHasHolidayAllowance())
                 .hasNightAllowance(hasNightAllowance != null ? hasNightAllowance : current.getHasNightAllowance())
                 .hasOvertimeAllowance(hasOvertimeAllowance != null ? hasOvertimeAllowance : current.getHasOvertimeAllowance())
+                .hasPublicHolidayAllowance(hasPublicHolidayAllowance != null ? hasPublicHolidayAllowance : current.getHasPublicHolidayAllowance())
                 .build();
     }
 }

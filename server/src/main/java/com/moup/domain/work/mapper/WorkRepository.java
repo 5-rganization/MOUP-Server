@@ -31,14 +31,14 @@ public interface WorkRepository {
       INSERT INTO works (
           worker_id, work_date, start_time, actual_start_time, end_time, actual_end_time,
           rest_time_minutes, gross_work_minutes, net_work_minutes, night_work_minutes,
-          memo, hourly_rate, has_night_allowance, has_holiday_allowance, has_overtime_allowance,
+          memo, hourly_rate, has_night_allowance, has_holiday_allowance, has_overtime_allowance, has_public_holiday_allowance,
           base_pay, night_allowance, holiday_allowance,
           gross_income, estimated_net_income, repeat_group_id
       )
       VALUES (
           #{workerId}, #{workDate}, #{startTime}, #{actualStartTime}, #{endTime}, #{actualEndTime},
           #{restTimeMinutes}, #{grossWorkMinutes}, #{netWorkMinutes}, #{nightWorkMinutes},
-          #{memo}, #{hourlyRate}, #{hasNightAllowance}, #{hasHolidayAllowance}, COALESCE(#{hasOvertimeAllowance}, 0),
+          #{memo}, #{hourlyRate}, #{hasNightAllowance}, #{hasHolidayAllowance}, COALESCE(#{hasOvertimeAllowance}, 0), COALESCE(#{hasPublicHolidayAllowance}, 0),
           #{basePay}, #{nightAllowance}, #{holidayAllowance},
           #{grossIncome}, #{estimatedNetIncome}, #{repeatGroupId}
       )
@@ -52,7 +52,7 @@ public interface WorkRepository {
           INSERT INTO works (
               worker_id, work_date, start_time, end_time, rest_time_minutes,
               gross_work_minutes, net_work_minutes, night_work_minutes,
-              memo, hourly_rate, has_night_allowance, has_holiday_allowance, has_overtime_allowance,
+              memo, hourly_rate, has_night_allowance, has_holiday_allowance, has_overtime_allowance, has_public_holiday_allowance,
               base_pay, night_allowance, holiday_allowance,
               gross_income, estimated_net_income, repeat_group_id
           )
@@ -61,7 +61,7 @@ public interface WorkRepository {
               (
                   #{work.workerId}, #{work.workDate}, #{work.startTime}, #{work.endTime}, #{work.restTimeMinutes},
                   #{work.grossWorkMinutes}, #{work.netWorkMinutes}, #{work.nightWorkMinutes},
-                  #{work.memo}, #{work.hourlyRate}, #{work.hasNightAllowance}, #{work.hasHolidayAllowance}, COALESCE(#{work.hasOvertimeAllowance}, 0),
+                  #{work.memo}, #{work.hourlyRate}, #{work.hasNightAllowance}, #{work.hasHolidayAllowance}, COALESCE(#{work.hasOvertimeAllowance}, 0), COALESCE(#{work.hasPublicHolidayAllowance}, 0),
                   #{work.basePay}, #{work.nightAllowance}, #{work.holidayAllowance},
                   #{work.grossIncome}, #{work.estimatedNetIncome}, #{work.repeatGroupId}
               )
@@ -266,7 +266,8 @@ public interface WorkRepository {
       SET hourly_rate = #{hourlyRate},
           has_night_allowance = #{hasNightAllowance},
           has_holiday_allowance = #{hasHolidayAllowance},
-          has_overtime_allowance = #{hasOvertimeAllowance}
+          has_overtime_allowance = #{hasOvertimeAllowance},
+          has_public_holiday_allowance = #{hasPublicHolidayAllowance}
       WHERE worker_id = #{workerId}
           AND work_date >= #{fromDate}
       """)
@@ -276,7 +277,8 @@ public interface WorkRepository {
       @Param("hourlyRate") int hourlyRate,
       @Param("hasNightAllowance") boolean hasNightAllowance,
       @Param("hasHolidayAllowance") boolean hasHolidayAllowance,
-      @Param("hasOvertimeAllowance") boolean hasOvertimeAllowance
+      @Param("hasOvertimeAllowance") boolean hasOvertimeAllowance,
+      @Param("hasPublicHolidayAllowance") boolean hasPublicHolidayAllowance
   );
 
   /// `fromDate` 이후 근무가 있는 날짜 목록 (재계산할 주를 고르는 용도).
@@ -407,6 +409,14 @@ public interface WorkRepository {
               overtime_allowance =
                   <foreach item='work' collection='worksToUpdate' open='CASE id' close=' END'>
                       WHEN #{work.id} THEN #{work.overtimeAllowance}
+                  </foreach>,
+              public_holiday_work_minutes =
+                  <foreach item='work' collection='worksToUpdate' open='CASE id' close=' END'>
+                      WHEN #{work.id} THEN #{work.publicHolidayWorkMinutes}
+                  </foreach>,
+              public_holiday_allowance =
+                  <foreach item='work' collection='worksToUpdate' open='CASE id' close=' END'>
+                      WHEN #{work.id} THEN #{work.publicHolidayAllowance}
                   </foreach>,
               gross_income =
                   <foreach item='work' collection='worksToUpdate' open='CASE id' close=' END'>

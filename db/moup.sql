@@ -170,6 +170,7 @@ CREATE TABLE `works`
     `net_work_minutes`        INT                   DEFAULT 0,  -- 순 근무시간(분, 휴게시간 제외)
     `night_work_minutes`      INT                   DEFAULT 0,  -- 야간 근무시간(분, 휴게시간 제외)
     `overtime_work_minutes`   INT                   DEFAULT 0,  -- 연장 근무시간(분). 1일 8시간·주 40시간 초과분. 야간처럼 수당 설정과 무관한 사실 기록
+    `public_holiday_work_minutes` INT               DEFAULT 0,  -- 공휴일 근무시간(분, 휴게시간 비례 제외). 사실 기록
     `memo`                    VARCHAR(200)          NULL,
     `hourly_rate`             INT                   NULL,
     -- 수당 적용 여부 스냅샷. hourly_rate와 달리 예전에는 salaries의 **현재값**을 읽어,
@@ -180,6 +181,9 @@ CREATE TABLE `works`
     `has_holiday_allowance`   TINYINT(1)            NOT NULL DEFAULT 0,
     -- 연장근로 가산(50%) 적용 여부. 5인 이상 사업장만 의무라 선택 설정이다(Phase 11 D11-2).
     `has_overtime_allowance`  TINYINT(1)            NOT NULL DEFAULT 0,
+    -- 공휴일 근로 가산(8시간까지 50%, 넘으면 100%). 5인 이상 사업장만 의무라 선택 설정이다(Phase 11 Q6).
+    -- `holiday_allowance`는 주휴수당이다. 이름이 겹치지 않게 public_holiday_로 시작한다.
+    `has_public_holiday_allowance` TINYINT(1)       NOT NULL DEFAULT 0,
     -- 결근. 출근 기록이 없다고 결근으로 볼 수는 없다 — 출퇴근 기능을 안 쓰는 사용자가 있다.
     -- 그래서 명시적으로 표시한다. 결근한 근무는 급여 0원이고, 그 주는 주휴수당이 없다(개근 요건).
     -- 예정 시간(start_time/end_time)은 지우지 않는다. 주휴수당 15시간 판정은 소정근로시간 기준이다.
@@ -188,7 +192,8 @@ CREATE TABLE `works`
     `night_allowance`         INT                   DEFAULT 0,  -- 야간수당
     `holiday_allowance`       INT                   DEFAULT 0,  -- 주휴수당 (해당 주에 발생한 수당을 N등분하여 일별로 저장)
     `overtime_allowance`      INT                   DEFAULT 0,  -- 연장근로수당 (연장 근무시간 × 시급 × 50%)
-    `gross_income`            INT                   DEFAULT 0,  -- 세전 일급 (기본급·야간·주휴·연장의 합)
+    `public_holiday_allowance` INT                  DEFAULT 0,  -- 휴일근로수당 (공휴일 근무 8시간까지 50%, 초과분 100%)
+    `gross_income`            INT                   DEFAULT 0,  -- 세전 일급 (기본급·야간·주휴·연장·휴일의 합)
     `estimated_net_income`    INT                   DEFAULT 0,  -- 추정 세후 일급 (캘린더 표시용)
     `repeat_group_id`         VARCHAR(36)           NULL,
     FOREIGN KEY (`worker_id`) REFERENCES workers (`id`) ON DELETE CASCADE,
@@ -248,6 +253,8 @@ CREATE TABLE `salaries`
     `has_night_allowance`      TINYINT(1)                                                                          NOT NULL,
     -- 연장근로 가산. 기존 클라이언트가 보내지 않으므로 기본값을 둔다(Phase 11 D11-2).
     `has_overtime_allowance`   TINYINT(1)                                                                          NOT NULL DEFAULT 0,
+    -- 공휴일 근로 가산. 기존 클라이언트가 보내지 않으므로 기본값을 둔다(Phase 11 Q6).
+    `has_public_holiday_allowance` TINYINT(1)                                                                      NOT NULL DEFAULT 0,
     -- 시급제인데 hourly_rate가 NULL이면 급여 전체가 0원이 되거나 언박싱 NPE로 500이 난다.
     CONSTRAINT `ck_salaries_rate` CHECK (
         (`salary_calculation` = 'SALARY_CALCULATION_HOURLY' AND `hourly_rate` IS NOT NULL)
@@ -256,3 +263,36 @@ CREATE TABLE `salaries`
     FOREIGN KEY (`worker_id`) REFERENCES workers (`id`) ON DELETE CASCADE
 );
 --
+
+-- 관공서 공휴일 (대체·임시공휴일·선거일 포함). 휴일근로 가산(Phase 11 Q6)이 이 표를 본다.
+-- **매년 갱신해야 한다.** 다음 해 공휴일이 없으면 그해 근무에는 휴일 가산이 붙지 않는다(서버가 경고 로그를 남긴다).
+-- 임시공휴일은 지정되는 대로 INSERT 하면 된다(배포 불필요). 2026년은 2026-04-28 국무회의 의결(노동절·제헌절 추가)까지 반영했다.
+CREATE TABLE `public_holidays`
+(
+    `holiday_date` DATE        NOT NULL PRIMARY KEY,
+    `name`         VARCHAR(50) NOT NULL
+);
+
+INSERT INTO `public_holidays` (`holiday_date`, `name`) VALUES
+    ('2026-01-01', '1월 1일'),
+    ('2026-02-16', '설날 연휴'),
+    ('2026-02-17', '설날'),
+    ('2026-02-18', '설날 연휴'),
+    ('2026-03-01', '삼일절'),
+    ('2026-03-02', '대체공휴일(삼일절)'),
+    ('2026-05-01', '노동절'),
+    ('2026-05-05', '어린이날'),
+    ('2026-05-24', '부처님오신날'),
+    ('2026-05-25', '대체공휴일(부처님오신날)'),
+    ('2026-06-03', '전국동시지방선거'),
+    ('2026-06-06', '현충일'),
+    ('2026-07-17', '제헌절'),
+    ('2026-08-15', '광복절'),
+    ('2026-08-17', '대체공휴일(광복절)'),
+    ('2026-09-24', '추석 연휴'),
+    ('2026-09-25', '추석'),
+    ('2026-09-26', '추석 연휴'),
+    ('2026-10-03', '개천절'),
+    ('2026-10-05', '대체공휴일(개천절)'),
+    ('2026-10-09', '한글날'),
+    ('2026-12-25', '기독탄신일');

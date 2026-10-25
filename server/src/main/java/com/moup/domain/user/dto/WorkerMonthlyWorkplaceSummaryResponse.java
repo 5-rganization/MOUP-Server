@@ -30,6 +30,10 @@ public class WorkerMonthlyWorkplaceSummaryResponse {
     private Integer totalOvertimeAllowance;
     @Schema(description = "연장 근무시간 합계(분). 1일 8시간·주 40시간 초과분. 수당 설정과 무관한 사실 기록", example = "180", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long overtimeMinutes;
+    @Schema(description = "휴일근로수당 합계 (공휴일 가산을 끈 경우 null)", example = "40120", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    private Integer totalPublicHolidayAllowance;
+    @Schema(description = "공휴일 근무시간 합계(분). 수당 설정과 무관한 사실 기록", example = "480", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Long publicHolidayMinutes;
     @Schema(description = "세전 총소득 (원)", example = "70210", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer grossIncome;
     @Schema(description = "국민연금 (원)", example = "3160", requiredMode = Schema.RequiredMode.NOT_REQUIRED)

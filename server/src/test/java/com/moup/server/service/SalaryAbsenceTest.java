@@ -52,6 +52,8 @@ class SalaryAbsenceTest {
     @Mock private SalaryRepository salaryRepository;
     @Mock private UserRepository userRepository;
 
+    @Mock private com.moup.domain.salary.mapper.PublicHolidayRepository publicHolidayRepository;
+
     @InjectMocks private SalaryCalculationService salaryCalculationService;
 
     @Test

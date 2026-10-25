@@ -16,12 +16,12 @@ public interface SalaryRepository {
             INSERT INTO salaries (
                                   worker_id, salary_type, salary_calculation, hourly_rate, fixed_rate, salary_date, salary_day,
                                   has_national_pension, has_health_insurance, has_employment_insurance, has_industrial_accident,
-                                  has_income_tax, has_holiday_allowance, has_night_allowance, has_overtime_allowance
+                                  has_income_tax, has_holiday_allowance, has_night_allowance, has_overtime_allowance, has_public_holiday_allowance
                                   )
             VALUES (
                     #{workerId}, #{salaryType}, #{salaryCalculation}, #{hourlyRate}, #{fixedRate}, #{salaryDate}, #{salaryDay},
                     #{hasNationalPension}, #{hasHealthInsurance}, #{hasEmploymentInsurance}, #{hasIndustrialAccident}, #{hasIncomeTax}, #{hasHolidayAllowance}, #{hasNightAllowance},
-                    COALESCE(#{hasOvertimeAllowance}, 0)
+                    COALESCE(#{hasOvertimeAllowance}, 0), COALESCE(#{hasPublicHolidayAllowance}, 0)
                     )
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
@@ -58,7 +58,8 @@ public interface SalaryRepository {
                                 has_national_pension = #{hasNationalPension}, has_health_insurance = #{hasHealthInsurance},
                                 has_employment_insurance = #{hasEmploymentInsurance}, has_industrial_accident = #{hasIndustrialAccident}, 
                                 has_income_tax = #{hasIncomeTax}, has_holiday_allowance = #{hasHolidayAllowance}, has_night_allowance = #{hasNightAllowance},
-                                has_overtime_allowance = COALESCE(#{hasOvertimeAllowance}, has_overtime_allowance)
+                                has_overtime_allowance = COALESCE(#{hasOvertimeAllowance}, has_overtime_allowance),
+                                has_public_holiday_allowance = COALESCE(#{hasPublicHolidayAllowance}, has_public_holiday_allowance)
             WHERE id = #{id} AND worker_id = #{workerId}
             """)
     void update(Salary salary);

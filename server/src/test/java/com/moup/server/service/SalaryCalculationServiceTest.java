@@ -66,6 +66,8 @@ public class SalaryCalculationServiceTest {
   @Mock
   private UserRepository userRepository;
 
+  @Mock private com.moup.domain.salary.mapper.PublicHolidayRepository publicHolidayRepository;
+
   @InjectMocks
   private SalaryCalculationService salaryCalculationService;
 

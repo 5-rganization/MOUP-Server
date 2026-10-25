@@ -57,7 +57,8 @@ public class SalaryUpdateService {
                 isHourly ? updated.getHourlyRate() : 0,
                 Boolean.TRUE.equals(updated.getHasNightAllowance()),
                 Boolean.TRUE.equals(updated.getHasHolidayAllowance()),
-                Boolean.TRUE.equals(updated.getHasOvertimeAllowance()));
+                Boolean.TRUE.equals(updated.getHasOvertimeAllowance()),
+                Boolean.TRUE.equals(updated.getHasPublicHolidayAllowance()));
 
         // 적용 시작일이 든 주부터 다시 계산한다. 그 주의 앞쪽 근무도 주휴수당 배분이 같이 바뀐다.
         // 주마다 월요일이 아니라 **그 주의 첫 근무일**을 넘긴다. recalculateWorkWeek은 넘긴 날짜의 달도

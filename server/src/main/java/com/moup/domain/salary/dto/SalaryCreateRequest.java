@@ -48,7 +48,7 @@ public class SalaryCreateRequest {
     @Schema(description = "소득세 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean hasIncomeTax;
     @NotNull(message = "필수 입력값입니다.")
-    @Schema(description = "주휴수당 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "주휴수당 여부. 고정급은 주휴수당이 포함된 금액으로 보아 서버가 계산하지 않는다", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
     private Boolean hasHolidayAllowance;
     @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "야간수당 여부", example = "false", requiredMode = Schema.RequiredMode.REQUIRED)
@@ -56,6 +56,8 @@ public class SalaryCreateRequest {
     /// 기존 앱은 보내지 않는다. 생략하면 꺼짐이다.
     @Schema(description = "연장근로 가산 여부 (1일 8시간·주 40시간 초과분 50%). 5인 이상 사업장만 의무라 생략하면 false", example = "false", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Boolean hasOvertimeAllowance;
+    @Schema(description = "공휴일 근로 가산 여부 (8시간까지 50%, 초과분 100%). 5인 이상 사업장만 의무라 생략하면 false", example = "false", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    private Boolean hasPublicHolidayAllowance;
 
     /// 스키마의 조합 제약(`ck_salaries_rate`)을 요청 단계에서 잡는다.
     /// 없으면 시급제인데 `hourlyRate`가 비어도 통과해 급여가 통째로 0원이 되거나,
@@ -90,6 +92,7 @@ public class SalaryCreateRequest {
                 .hasHolidayAllowance(hasHolidayAllowance)
                 .hasNightAllowance(hasNightAllowance)
                 .hasOvertimeAllowance(Boolean.TRUE.equals(hasOvertimeAllowance))
+                .hasPublicHolidayAllowance(Boolean.TRUE.equals(hasPublicHolidayAllowance))
                 .build();
     }
 }
