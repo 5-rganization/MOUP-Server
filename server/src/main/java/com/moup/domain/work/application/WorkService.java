@@ -171,45 +171,31 @@ public class WorkService {
         List<Work> allCreatedWorks = new ArrayList<>();
         List<FailedWorkerInfo> failedWorkers = new ArrayList<>();
 
-        // 3. DTO의 workerIdList를 순회하며 각 근무자별로 근무 생성
+        // 3. 먼저 **쓰기 없이** 근무자를 전부 검증한다. 배정할 수 없는 근무자는 실패 목록으로 돌려준다.
+        //
+        // 예전에는 근무 생성까지 한 try 안에 넣고 `catch (Exception)`으로 삼켰다(스코프 2 I5). 그래서
+        // ① INSERT 뒤에 난 예외는 "실패"로 보고된 근무자의 행이 그대로 커밋됐고,
+        // ② @Transactional 빈(급여 재계산) 안에서 난 예외는 트랜잭션을 rollback-only로 만들어
+        //    커밋 시점에 요청 전체가 UnexpectedRollbackException(500)으로 끝났다.
+        // ③ 예상 못 한 예외의 내부 메시지가 그대로 응답에 실렸다(스코프 4 M4).
+        List<Worker> workersToAssign = new ArrayList<>();
         for (Long workerId : requestedWorkerIds) {
-            String nickname = nicknameMap.getOrDefault(workerId, "탈퇴한 근무자");
-
-            try {
-                Worker worker = validWorkerMap.get(workerId);
-
-                // 3-1. 검증: 맵에 없으면 -> 소속이 아니거나 존재하지 않는 근무자
-                if (worker == null) {
-                    throw new WorkerNotFoundException("요청한 근무자(ID: " + workerId + ")가 해당 근무지(ID: " + workplaceId + ") 소속이 아닙니다.");
-                }
-                // 3-2. 검증: 탈퇴한 근무자
-                //
-                // 예전에는 `user_id IS NULL`만 봤다. 하드 삭제 → `ON DELETE SET NULL`이
-                // 탈퇴 신호였기 때문이다. 이제 탈퇴는 가명처리라 `user_id`가 살아남으므로
-                // 이 검사만으로는 **탈퇴한 알바생에게 근무를 배정할 수 있게 된다.**
-                // `is_deleted`를 함께 본다. NULL 검사는 과거 하드 삭제로 생긴 행을 위해 유지한다.
-                User workerUser = worker.getUserId() == null ? null : userMap.get(worker.getUserId());
-                if (workerUser == null || workerUser.isDeleted()) {
-                    throw new WorkerNotFoundException("요청한 근무자(ID: " + workerId + ")는 탈퇴했거나 존재하지 않는 근무자입니다.");
-                }
-                // 3-3. 검증: 근무가 끝난 근무자 (Phase 11 D11-5)
-                if (worker.hasLeft()) {
-                    throw new WorkerNotFoundException("요청한 근무자(ID: " + workerId + ")는 근무가 종료된 근무자입니다.");
-                }
-
-                // 4. 기존 헬퍼 메서드를 호출하여 '이 근무자'의 근무 생성 (단일 또는 반복)
-                List<Work> createdWorksForThisWorker = createWorkForWorkerHelper(worker, request);
-
-                // 5. 최종 결과 리스트에 추가
-                allCreatedWorks.addAll(createdWorksForThisWorker);
-            } catch (Exception e) {
+            String reason = verifyAssignable(validWorkerMap.get(workerId), userMap);
+            if (reason != null) {
                 failedWorkers.add(FailedWorkerInfo.builder()
                         .workerId(workerId)
-                        .nickname(nickname)
-                        .reason(e.getMessage())
-                        .build()
-                );
+                        .nickname(nicknameMap.getOrDefault(workerId, "탈퇴한 근무자"))
+                        .reason(reason)
+                        .build());
+            } else {
+                workersToAssign.add(validWorkerMap.get(workerId));
             }
+        }
+
+        // 4. 검증을 통과한 근무자의 근무를 만든다. 여기서 나는 예외(시간 겹침 등)는 삼키지 않는다 —
+        //    요청 전체가 롤백되고 오류로 돌아가므로 일부만 저장된 상태가 남지 않는다.
+        for (Worker worker : workersToAssign) {
+            allCreatedWorks.addAll(createWorkForWorkerHelper(worker, request));
         }
 
         // 6. 생성된 모든 근무 ID 추출
@@ -223,6 +209,23 @@ public class WorkService {
                 .successWorkIdList(createdWorkIds)
                 .failedWorkerInfoList(failedWorkers)
                 .build();
+    }
+
+    /// 근무를 배정할 수 없으면 그 이유, 배정할 수 있으면 `null`.
+    private static String verifyAssignable(Worker worker, Map<Long, User> userMap) {
+        if (worker == null) {
+            return "해당 근무지 소속이 아닌 근무자입니다.";
+        }
+        // 탈퇴는 가명처리라 `user_id`가 살아남는다. `is_deleted`를 함께 본다.
+        // NULL 검사는 과거 하드 삭제로 생긴 행을 위해 유지한다.
+        User workerUser = worker.getUserId() == null ? null : userMap.get(worker.getUserId());
+        if (workerUser == null || workerUser.isDeleted()) {
+            return "탈퇴했거나 존재하지 않는 근무자입니다.";
+        }
+        if (worker.hasLeft()) {
+            return "근무가 종료된 근무자입니다.";
+        }
+        return null;
     }
 
     // =================================================================
