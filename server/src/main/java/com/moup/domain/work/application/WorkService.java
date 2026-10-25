@@ -352,7 +352,8 @@ public class WorkService {
             List<WorkSummaryResponse> workSummaryList = workerWorkList.stream().map(work -> {
                 long workMinutes = work.getNetWorkMinutes() != null ? work.getNetWorkMinutes() : 0;
                 // 헬퍼 메서드에 salary 전달
-                return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummaryInfo, workMinutes, true, true, repeatInfoCache, salary);
+                // 근무가 끝난 근무지의 기록은 읽기 전용이다(D11-5).
+                return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummaryInfo, workMinutes, true, !userWorker.hasLeft(), true, repeatInfoCache, salary);
             }).toList();
             userWorkSummaryList.addAll(workSummaryList);
         }
@@ -368,10 +369,18 @@ public class WorkService {
         // --- 근무지 및 근무자 관련 정보 로드 ---
         Workplace workplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
         Optional<Worker> requesterWorkerOpt = workerRepository.findByUserIdAndWorkplaceId(user.getId(), workplaceId);
-        if (requesterWorkerOpt.isEmpty() && !Objects.equals(workplace.getOwnerId(), user.getId())) { throw new InvalidPermissionAccessException(); }
+        boolean isOwner = Objects.equals(workplace.getOwnerId(), user.getId());
+        if (requesterWorkerOpt.isEmpty() && !isOwner) { throw new InvalidPermissionAccessException(); }
+        // 확정 정책 4 — 승인 대기자는 근무지 이름·사장님 정보·대기 표시만 본다. 매장 근무표(동료 명단·일정)는
+        // 보지 못한다. 예전에는 근무자 행이 있는지만 봐서 초대코드만 있으면 누구나 봤다(스코프 2 I2).
+        if (!isOwner) { permissionVerifyUtil.verifyWorkerPermission(user.getId(), requesterWorkerOpt.get(), workplace.getOwnerId()); }
+        // 근무가 끝난 알바생은 자기 기록만 본다(D11-5). 매장의 지금 근무표는 더 이상 그 사람의 것이 아니다.
+        Long onlyWorkerId = (!isOwner && requesterWorkerOpt.get().hasLeft()) ? requesterWorkerOpt.get().getId() : null;
         WorkplaceSummaryResponse workplaceSummaryInfo = WorkplaceSummaryResponse.builder()
                 .workplaceId(workplace.getId()).workplaceName(workplace.getWorkplaceName()).isShared(workplace.isShared()).build();
-        List<Worker> workplaceWorkerList = workerRepository.findAllByWorkplaceId(workplaceId);
+        List<Worker> workplaceWorkerList = workerRepository.findAllByWorkplaceId(workplaceId).stream()
+                .filter(worker -> onlyWorkerId == null || worker.getId().equals(onlyWorkerId))
+                .toList();
         if (workplaceWorkerList.isEmpty()) { return WorkCalendarListResponse.builder().workSummaryInfoList(Collections.emptyList()).build(); }
         List<Long> workerIdList = workplaceWorkerList.stream().map(Worker::getId).toList(); // 헬퍼 메서드 호출에 필요
         List<Long> userIdList = workplaceWorkerList.stream().map(Worker::getUserId).filter(Objects::nonNull).distinct().toList();
@@ -403,9 +412,11 @@ public class WorkService {
             List<WorkSummaryResponse> workerWorkSummaryList = workerWorkList.stream().map(work -> {
                 long workMinutes = work.getNetWorkMinutes() != null ? work.getNetWorkMinutes() : 0;
                 boolean isMyWork = checkIsMyWork(user.getId(), workplaceWorker.getUserId());
-                boolean isEditable = checkEditable(user.getId(), workplaceWorker.getUserId(), workplace.getOwnerId());
-                // 헬퍼 메서드에 salary 전달
-                return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummaryInfo, workMinutes, isMyWork, isEditable, repeatInfoCache, salary);
+                boolean isEditable = checkEditable(user.getId(), workplaceWorker.getUserId(), workplace.getOwnerId())
+                        && !workplaceWorker.hasLeft();
+                // 금액은 본인 근무와 사장님에게만 보인다.
+                return convertWorkToSummaryResponse(work, workerSummaryInfo, workplaceSummaryInfo, workMinutes, isMyWork, isEditable,
+                        isOwner || isMyWork, repeatInfoCache, salary);
             }).toList();
             workSummaryInfoList.addAll(workerWorkSummaryList);
         }
@@ -436,7 +447,7 @@ public class WorkService {
         List<WorkSummaryResponse> workSummaryInfoList = userWorkList.stream().map(userWork -> {
             long workMinutes = userWork.getNetWorkMinutes() != null ? userWork.getNetWorkMinutes() : 0;
             // 헬퍼 메서드에 salary 전달
-            return convertWorkToSummaryResponse(userWork, userWorkerSummaryInfo, workplaceSummary, workMinutes, true, true, repeatInfoCache, salary);
+            return convertWorkToSummaryResponse(userWork, userWorkerSummaryInfo, workplaceSummary, workMinutes, true, !userWorker.hasLeft(), true, repeatInfoCache, salary);
         }).toList();
         return WorkCalendarListResponse.builder().workSummaryInfoList(workSummaryInfoList).build();
     }
@@ -1206,8 +1217,8 @@ public class WorkService {
     /// Work 엔티티 -> WorkSummaryResponse DTO 변환 헬퍼 (반복 정보 변환 포함)
     private WorkSummaryResponse convertWorkToSummaryResponse(
             Work work, WorkerSummaryResponse workerSummaryInfo, WorkplaceSummaryResponse workplaceSummaryInfo,
-            long workMinutes, boolean isMyWork, boolean isEditable, Map<String, RepeatInfo> repeatInfoCache,
-            Salary salary) {
+            long workMinutes, boolean isMyWork, boolean isEditable, boolean showIncome,
+            Map<String, RepeatInfo> repeatInfoCache, Salary salary) {
 
         List<DayOfWeek> repeatDays = Collections.emptyList();
         LocalDate repeatEndDate = null;
@@ -1241,7 +1252,8 @@ public class WorkService {
                 .endTime(work.getEndTime() != null ? work.getEndTime().atZone(SEOUL_ZONE_ID).toInstant() : null)
                 .workMinutes(workMinutes)
                 .restTimeMinutes(work.getRestTimeMinutes())
-                .estimatedNetIncome(isFixedSalary ? null : finalNetIncome)
+                // 남의 근무는 금액을 가린다 — 같은 매장 동료의 일별 실수령액이 그대로 보였다(스코프 2 I1).
+                .estimatedNetIncome(isFixedSalary || !showIncome ? null : finalNetIncome)
                 .repeatDays(repeatDays)
                 .repeatEndDate(repeatEndDate)
                 .isAbsent(Boolean.TRUE.equals(work.getIsAbsent()))
