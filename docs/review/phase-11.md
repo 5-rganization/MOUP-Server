@@ -194,7 +194,29 @@
 
 | 시점 | 할 일 |
 |---|---|
+| 🔴 **지금** | **개발 서버 DB 재초기화**(`manual-db-init`, 확인 문구 `DROP AND RECREATE`). Phase 11이 스키마를 바꿨다 — `workers.left_at`, `salaries`·`works`의 연장·휴일 가산 컬럼, `public_holidays` 표, `works.created_at`·`updated_at`, `ck_works_rest_non_negative`. 재초기화 전에는 근무 등록·급여 재계산이 없는 컬럼·표를 찾다 실패한다 |
 | PR #136 머지 **전** | 개발 서버 `~/MOUP-Server/secrets/firebase-key.json`에 지금 키 배치(없으면 서버가 안 뜬다). 머지 후 `/health` 확인 → 기존 키 폐기·재발급·파일 교체 → Jenkins credential·GitHub secret 3개 삭제 → Docker Hub private. 절차는 PR 본문 |
 | D11-6 ① 배포 이후 | 개발 서버에서 같은 Google 계정으로 두 번 로그인 |
 | 아무 때나 | 근로소득 간이세액표 파일 |
 | main 머지 직전 | 운영 DB 보존 데이터 여부 · 운영 `.env`의 DB 계정이 root인지 · 운영 Pi crontab 제거 |
+
+## 앱(MOUP-iOS) 작업 목록
+
+서버 API가 바뀌었거나 새로 생겨 앱이 맞춰야 하는 것. 지금 앱이 보내는 요청은 그대로 동작하도록 서버를 하위 호환으로 바꿨다 — 아래는 **새 기능을 쓰거나 데이터 손실을 막기 위해** 필요한 것이다.
+
+| 우선 | 화면 | 할 일 | 서버 근거 |
+|---|---|---|---|
+| 🔴 | 근무지 수정(알바생) | 응답의 `fixedRate`·`salaryDay`로 폼을 채운다. 지금은 고정급 금액이 0으로 채워져 저장하면 422 | 3 I-9 |
+| 🔴 | 근무지 목록 | `WorkplaceStatus.WORKER_LEFT`를 디코딩한다(모르면 목록 디코딩이 깨질 수 있다). 종료된 근무지는 읽기 전용 | D11-5 |
+| 🔴 | 루틴 수정 | 루틴 상세의 할 일 `taskId`를 수정 요청에 되보낸다. 안 보내면 루틴을 고칠 때마다 오늘 체크가 풀린다 | 11-E 신규 |
+| 🟠 | 급여 수정 | "이번 달 전체에 적용할까요?"를 묻고 `applyFrom`(`TODAY`/`THIS_MONTH`) 전송 | D11-1 |
+| 🟠 | 급여 설정 | 연장근로 가산(`hasOvertimeAllowance`)·공휴일 가산(`hasPublicHolidayAllowance`) 토글. 고정급이면 주휴수당 토글을 숨긴다 | D11-2 · Q6 · D11-3 |
+| 🟠 | 급여 설정 | 주급제 급여 요일(`salaryDay`) 입력 수단 — 지금은 화면이 없어 주급제 고정급 월 급여가 0이 된다 | 3 I-9 |
+| 🟠 | 사장님 근무자 상세 | `salaryDetailInfo`로 급여 설정 표시, 바꾼 필드만 PATCH | D11-4 |
+| 🟠 | 홈(알바생) | 월 요약 새 필드 `totalOvertimeAllowance`·`overtimeMinutes`·`totalPublicHolidayAllowance`·`publicHolidayMinutes` | D11-2 · Q6 |
+| 🟡 | 사장님 근무자 목록 | `hasLeft` 표시. 근무 종료(DELETE `/workplaces/{id}/workers/{workerId}`) 버튼 — 기록은 남는다 | D11-5 |
+| 🟡 | 알림 | 새 알림 제목 "급여 설정 변경" | D11-4 |
+| 🟡 | 오류 처리 | `DUPLICATE_409`, `WORKER_STATE_409`, `INVITE_CODE_503`, 초대 코드 형식 422(0·1·O·I) | 11-E |
+| 🟡 | 로그인 | (D11-6 ② 실측 결과에 따라) 서버가 재로그인을 요청하면 한 번 더 로그인 | D11-6 |
+| — | 이전부터 | 결근 UI, 루틴 로컬 알림, 근무지 수정 폼의 더미 주소·좌표 제거 | fix-plan |
+
