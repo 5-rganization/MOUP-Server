@@ -225,23 +225,12 @@ public class SalaryCalculationService {
         int restMinutes = work.getRestTimeMinutes() != null ? work.getRestTimeMinutes() : 0;
 
         // --- 야간 근무 시간 계산 ---
-        long grossWorkMinutes = 0;
-        long nightWorkMinutes = 0;
-
-        // 근무 시간을 1분 단위로 순회하며 야간 시간을 카운트합니다.
         //
         // 야간 시간은 **사실 기록**이므로 야간수당 설정과 무관하게 항상 센다.
         // 예전에는 `if (hasNightAllowance)` 안에서만 세어, 수당을 끄고 일한 기간은
         // night_work_minutes가 0으로 남았다. 나중에 수당을 켜도 그 기간은 복원되지 않는다.
-        LocalDateTime cursor = start;
-        while (cursor.isBefore(end)) {
-            grossWorkMinutes++;
-            LocalTime cursorTime = cursor.toLocalTime();
-            if (!cursorTime.isBefore(NIGHT_START_TIME) || cursorTime.isBefore(NIGHT_END_TIME)) {
-                nightWorkMinutes++;
-            }
-            cursor = cursor.plusMinutes(1);
-        }
+        long grossWorkMinutes = countStartedMinutes(start, end);
+        long nightWorkMinutes = countNightMinutes(start, grossWorkMinutes);
 
         long netWorkMinutes = Math.max(0L, grossWorkMinutes - restMinutes);
 
@@ -282,6 +271,43 @@ public class SalaryCalculationService {
                 .grossIncome(grossIncome)
                 .hourlyRate(work.getHourlyRate())
                 .build();
+    }
+
+    private static final long MINUTES_PER_DAY = 24 * 60L;
+    /// 야간(22:00~06:00)을 22:00 기준으로 당기면 하루의 앞 8시간(0~480분)이 된다.
+    private static final long NIGHT_SHIFT_MINUTES = MINUTES_PER_DAY - NIGHT_START_TIME.toSecondOfDay() / 60;
+    private static final long NIGHT_LENGTH_MINUTES = NIGHT_SHIFT_MINUTES + NIGHT_END_TIME.toSecondOfDay() / 60;
+
+    /// `start`부터 1분씩 나아가며 `end` 전에 시작하는 분의 개수 (= 근무 분, 초가 있으면 올림).
+    ///
+    /// 예전에는 이것과 야간 분을 1분짜리 루프로 셌다. 근무 시간에 상한이 없어 10년짜리 근무 하나로
+    /// 약 526만 번을 돌았다(스코프 2 I7 · 3 I-10). 같은 값을 상수 시간에 낸다.
+    private static long countStartedMinutes(LocalDateTime start, LocalDateTime end) {
+        if (!start.isBefore(end)) {
+            return 0;
+        }
+        Duration duration = Duration.between(start, end);
+        long whole = duration.toMinutes();
+        return duration.equals(Duration.ofMinutes(whole)) ? whole : whole + 1;
+    }
+
+    /// `start`부터 시작하는 `minutes`개의 분 중 시작 시각이 야간(22:00 이상 또는 06:00 미만)인 분의 개수.
+    ///
+    /// 각 분이 야간인지는 그 분이 시작하는 **시·분**만으로 정해진다(초는 무관). 시작 분을 22:00 기준으로
+    /// 당기면 야간은 매일 [0, 480)분 구간이 되므로, 하루 단위 반복과 남은 구간의 겹침으로 센다.
+    private static long countNightMinutes(LocalDateTime start, long minutes) {
+        long startMinuteOfDay = start.toLocalTime().toSecondOfDay() / 60;
+        long offset = (startMinuteOfDay + NIGHT_SHIFT_MINUTES) % MINUTES_PER_DAY;
+        long fullDays = minutes / MINUTES_PER_DAY;
+        long rest = minutes % MINUTES_PER_DAY;
+        // 남은 구간 [offset, offset + rest)는 하루를 넘지 않으므로 오늘·내일 야간 두 구간과의 겹침만 보면 된다.
+        long tail = overlap(offset, offset + rest, 0, NIGHT_LENGTH_MINUTES)
+                + overlap(offset, offset + rest, MINUTES_PER_DAY, MINUTES_PER_DAY + NIGHT_LENGTH_MINUTES);
+        return fullDays * NIGHT_LENGTH_MINUTES + tail;
+    }
+
+    private static long overlap(long from, long to, long rangeFrom, long rangeTo) {
+        return Math.max(0, Math.min(to, rangeTo) - Math.max(from, rangeFrom));
     }
 
     /// 캘린더에 표시될 '추정 세후 일급'을 월 단위로 재계산합니다.

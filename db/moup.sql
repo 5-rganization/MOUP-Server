@@ -190,7 +190,10 @@ CREATE TABLE `works`
     FOREIGN KEY (`worker_id`) REFERENCES workers (`id`) ON DELETE CASCADE,
     INDEX `idx_repeat_group_id` (`repeat_group_id`),
     -- 조회는 거의 전부 worker_id + work_date 범위다. FK가 만드는 단일 인덱스로는 filesort가 남는다.
-    INDEX `idx_works_worker_date` (`worker_id`, `work_date`)
+    INDEX `idx_works_worker_date` (`worker_id`, `work_date`),
+    -- 음수 휴게시간으로 순 근무시간을 부풀려 자기 급여를 올릴 수 있었다(스코프 2 C1). 서버 검증이 1차 방어,
+    -- 이것이 마지막 방어다. "휴게 ≤ 근무시간"은 서버가 검사한다(퇴근 기록이 없는 근무는 길이를 알 수 없다).
+    CONSTRAINT `ck_works_rest_non_negative` CHECK (`rest_time_minutes` IS NULL OR `rest_time_minutes` >= 0)
 );
 
 CREATE TABLE `work_routine_mappings`

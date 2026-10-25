@@ -876,7 +876,7 @@ public class WorkService {
         int hourlyRate = (salary != null && salary.getHourlyRate() != null) ? salary.getHourlyRate() : 0;
         boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
         boolean hasHolidayAllowance = (salary != null) && salary.getHasHolidayAllowance();
-        verifyStartEndTime(startTime, endTime);
+        verifyWorkTime(startTime, endTime, restTimeMinutes);
 
         Work tempWork = Work.builder().startTime(startTime).endTime(endTime).restTimeMinutes(restTimeMinutes).hourlyRate(hourlyRate).build();
         Work workWithDailyIncome = salaryCalculationService.calculateDailyIncome(tempWork, 0, hasNightAllowance);
@@ -913,7 +913,7 @@ public class WorkService {
         boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
         boolean hasHolidayAllowance = (salary != null) && salary.getHasHolidayAllowance();
 
-        verifyStartEndTime(startTime, endTime);
+        verifyWorkTime(startTime, endTime, restTimeMinutes);
         LocalDate startDate = startTime.toLocalDate();
         if (repeatEndDate == null || repeatEndDate.isBefore(startDate)) { throw new InvalidFieldFormatException("반복 종료 날짜는 시작 날짜 이후여야 합니다."); }
         if (ChronoUnit.DAYS.between(startDate, repeatEndDate) > MAX_REPEAT_DAYS_LIMIT) { throw new DataLimitExceedException("반복 기간은 최대 " + MAX_REPEAT_DAYS_LIMIT + "일까지 설정할 수 있습니다."); }
@@ -1113,7 +1113,7 @@ public class WorkService {
 
         int hourlyRate = (salary != null && salary.getHourlyRate() != null) ? salary.getHourlyRate() : 0;
         boolean hasNightAllowance = (salary != null) && salary.getHasNightAllowance();
-        verifyStartEndTime(startTime, endTime);
+        verifyWorkTime(startTime, endTime, restTimeMinutes);
 
         // 결근 여부를 넘겨야 결근한 근무가 0원으로 계산된다. 고정급은 주 재계산이 조기 반환하므로
         // 여기서 계산한 값이 그대로 남는다.
@@ -1210,8 +1210,25 @@ public class WorkService {
     }
 
     /// 출/퇴근 시간 유효성 검증 헬퍼 (퇴근이 출근보다 빠르면 예외)
-    private void verifyStartEndTime(LocalDateTime startTime, LocalDateTime endTime) {
-        if (endTime != null && endTime.isBefore(startTime)) { throw new InvalidFieldFormatException("퇴근 시간은 출근 시간보다 미래여야 합니다."); }
+    /// 한 근무의 최대 길이. 밤샘 근무도 하루를 넘지 않는다.
+    private static final Duration MAX_WORK_DURATION = Duration.ofHours(24);
+
+    /// 근무 시각·휴게시간 검증.
+    ///
+    /// - 퇴근은 출근보다 **뒤**여야 한다. 예전에는 `isBefore`만 봐 0분 근무가 통과했다(스코프 2 M4).
+    /// - 24시간 상한. 예전에는 길이 제한이 없어 `2020-01-01 → 2030-01-01` 근무 하나로 급여 계산이
+    ///   분 단위 루프를 약 526만 번 돌았다(스코프 2 I7 · 3 I-10).
+    /// - 휴게시간은 근무시간보다 길 수 없다. 계산부가 음수를 0으로 막지만 입력은 거부해야 한다(스코프 2 C1).
+    private void verifyWorkTime(LocalDateTime startTime, LocalDateTime endTime, Integer restTimeMinutes) {
+        if (endTime == null) {
+            return;
+        }
+        if (!endTime.isAfter(startTime)) { throw new InvalidFieldFormatException("퇴근 시간은 출근 시간보다 미래여야 합니다."); }
+        Duration duration = Duration.between(startTime, endTime);
+        if (duration.compareTo(MAX_WORK_DURATION) > 0) { throw new InvalidFieldFormatException("근무 시간은 24시간을 넘을 수 없습니다."); }
+        if (restTimeMinutes != null && restTimeMinutes > duration.toMinutes()) {
+            throw new InvalidFieldFormatException("휴게 시간은 근무 시간보다 길 수 없습니다.");
+        }
     }
 
     /// Work 엔티티 -> WorkSummaryResponse DTO 변환 헬퍼 (반복 정보 변환 포함)
