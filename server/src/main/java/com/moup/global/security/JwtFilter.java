@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,8 +44,9 @@ public class JwtFilter extends OncePerRequestFilter {
 
                 // access token만 인증에 사용한다. refresh token은 /auth/token/refresh 전용이며,
                 // 여기서 막지 않으면 7일짜리 전권 크리덴셜이 된다.
-                if (jwtUtil.isValidAccessToken(token)) {
-                    Long userId = jwtUtil.getUserId(token);
+                Optional<Long> accessUserId = jwtUtil.findAccessTokenUserId(token);
+                if (accessUserId.isPresent()) {
+                    Long userId = accessUserId.get();
 
                     // UserDetails 생성
                     UserDetails userDetails = customUserDetailsService.loadUserByUsername(String.valueOf(userId));

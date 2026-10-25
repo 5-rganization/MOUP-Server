@@ -1,6 +1,7 @@
 package com.moup.global.util;
 
 import com.moup.global.security.token.TokenCreateRequest;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,7 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
+import java.util.Optional;
 
 @Slf4j
 @Component
@@ -116,12 +118,31 @@ public class JwtUtil {
 
     /// 서명·만료가 유효하면서 용도가 access인지 확인한다.
     public boolean isValidAccessToken(String token) {
-        return isValidToken(token) && TYPE_ACCESS.equals(getTokenType(token));
+        return findUserIdIfType(token, TYPE_ACCESS).isPresent();
     }
 
     /// 서명·만료가 유효하면서 용도가 refresh인지 확인한다.
     public boolean isValidRefreshTokenType(String token) {
-        return isValidToken(token) && TYPE_REFRESH.equals(getTokenType(token));
+        return findUserIdIfType(token, TYPE_REFRESH).isPresent();
+    }
+
+    /// 유효한 access token이면 사용자 ID. **한 번만 파싱한다** — 예전 필터는 검증·용도 확인·ID 추출로
+    /// 요청마다 같은 토큰의 HMAC 서명을 세 번 검증했다(스코프 1 M5).
+    public Optional<Long> findAccessTokenUserId(String token) {
+        return findUserIdIfType(token, TYPE_ACCESS);
+    }
+
+    private Optional<Long> findUserIdIfType(String token, String expectedType) {
+        try {
+            Claims claims = Jwts.parser().verifyWith((SecretKey) key).build().parseSignedClaims(token).getPayload();
+            if (!expectedType.equals(claims.get(TOKEN_TYPE_CLAIM))) {
+                return Optional.empty();
+            }
+            return Optional.of(Long.parseLong(claims.getSubject()));
+        } catch (Exception e) {
+            log.warn("Invalid JWT Token: {}", e.getMessage());
+            return Optional.empty();
+        }
     }
 
     public boolean isValidToken(String token) {

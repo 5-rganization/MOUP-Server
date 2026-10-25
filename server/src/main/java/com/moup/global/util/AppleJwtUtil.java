@@ -15,7 +15,6 @@ import java.util.concurrent.TimeUnit;
 public class AppleJwtUtil {
 
     private static final String APPLE_AUDIENCE = "https://appleid.apple.com";
-    private static final String JWT_ALGORITHM = "ES256";
 
     private final String appleTeamId;
     private final String appleKeyId;
@@ -54,8 +53,9 @@ public class AppleJwtUtil {
         Date expiration = new Date(issuedAt.getTime() + TimeUnit.MINUTES.toMillis(5));
 
         return Jwts.builder()
-                // 헤더(Header)
-                .setHeaderParam("kid", appleKeyId).setHeaderParam("alg", JWT_ALGORITHM)
+                // 헤더(Header). alg는 signWith(ES256)가 채운다. 예전의 setHeaderParam은 jjwt 0.12에서
+                // deprecated라 라이브러리를 올리면 컴파일이 깨진다(스코프 1 M9).
+                .header().keyId(appleKeyId).and()
                 // 페이로드(Payload)
                 .claim("iss", appleTeamId)                 // Issuer: 팀 ID
                 .claim("iat", issuedAt.getTime() / 1000)   // Issued At: 발급 시간 (Unix 타임)

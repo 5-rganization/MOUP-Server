@@ -21,7 +21,8 @@ public class SecurityConfig {
 
   private final String[] NO_AUTH_URL = {"/auth/**"};
   private final String[] HEALTH_CHECK_URL = {"/health"};
-  private final String[] USER_AUTH_URL = {"/users/**", "/files/**", "/workplaces/**",
+  // /works/**와 /home/**가 빠져 있어 anyRequest().authenticated()로 떨어졌다 — 역할 검사 없이 인증만 봤다(스코프 1 M8).
+  private final String[] USER_AUTH_URL = {"/users/**", "/files/**", "/workplaces/**", "/works/**", "/home/**",
       "/routines/**", "/alarms/**"};
   private final String[] ADMIN_AUTH_URL = {"/admin/**"};
   private final String[] SWAGGER_URL = {"/v3/api-docs/**", "/swagger-ui/**",
@@ -39,7 +40,9 @@ public class SecurityConfig {
           // WebConfig에 PATCH가 있어도 preflight가 여기서 막혔다.
           corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
           corsConfig.setAllowedHeaders(List.of("*"));
-          corsConfig.setAllowCredentials(true);
+          // 인증은 Authorization 헤더(Bearer)로만 한다. 와일드카드 origin에 credentials까지 열면
+          // 쿠키 인증을 도입하는 순간 어느 사이트에서든 자격 증명이 실린 요청을 보낼 수 있다(스코프 1 M2).
+          corsConfig.setAllowCredentials(false);
           return corsConfig;
         })).sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)

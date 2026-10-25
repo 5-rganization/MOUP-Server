@@ -101,6 +101,11 @@ public class AuthController {
 
     // Factory에서 주입 받아서 공통 로직 수행 -> OCP 지키기
     AuthService service = authServiceFactory.getService(provider);
+    // 공급자 서비스가 없으면 NPE(500) 대신 인증 실패(401)로 끝낸다. 지금 Java enum은 구현된 둘뿐이라
+    // 도달하지 않지만, DB ENUM에는 NAVER·KAKAO가 남아 있다(스코프 1 M7).
+    if (service == null) {
+      throw new AuthException("지원하지 않는 로그인 공급자입니다: " + provider);
+    }
 
     // 1. Auth Code로 유저 정보 교환
     Map<String, Object> userInfo = service.exchangeAuthCode(authCode);
