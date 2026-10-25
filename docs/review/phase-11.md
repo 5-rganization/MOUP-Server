@@ -151,9 +151,9 @@
 
 | 상태 | ID | 내용 |
 |---|---|---|
-| ⬜ | 7 C7 (코드 부분) | Jenkins가 빌드 전 Firebase 키를 `src/main/resources`에 복사 → jar → public 이미지. **이것을 고치기 전에 키를 재발급하면 새 키도 다시 이미지에 들어간다.** 런타임 마운트로 전환 |
-| ⬜ | 7 I13 (부분) | compose `server`에 `healthcheck:` 없음, nginx `depends_on` 조건 없음 |
-| ⬜ | 7 기타 | `prune -af`가 롤백 이미지 삭제 · 소비처 없는 `ADMIN_AUTH_TOKEN`·`KEYSTORE_PASSWORD` · 죽은 `cp .env` 스테이지 · deploy.yml과 Jenkins가 같은 디렉터리를 조작 |
+| 🔶 PR #136 | 7 C7 (코드 부분) | Jenkins가 빌드 전 Firebase 키를 `src/main/resources`에 복사 → jar → public 이미지. **이것을 고치기 전에 키를 재발급하면 새 키도 다시 이미지에 들어간다.** 런타임 마운트로 전환 |
+| 🔶 PR #136 | 7 I13 (부분) | compose `server`에 `healthcheck:` 없음. nginx `depends_on` 조건은 healthcheck를 실측한 뒤에 건다(잘못된 healthcheck가 nginx를 막지 않게) |
+| 🔶 PR #136 | 7 기타 | `prune -af`가 롤백 이미지 삭제 · 소비처 없는 `ADMIN_AUTH_TOKEN`·`KEYSTORE_PASSWORD` · 죽은 `cp .env` 스테이지 · deploy.yml과 Jenkins가 같은 디렉터리를 조작 |
 | ⬜ | 7 기타 | 미사용 `spring-boot-starter-data-jpa` · `AsyncConfig` 종료 대기 없음 · `works` 감사 컬럼 없음 |
 
 ## 11-H — 정리 (동작 영향 없음)
@@ -183,7 +183,7 @@
 
 | 시점 | 할 일 |
 |---|---|
-| 11-G 7 C7 PR 이후 | 두 서버에 Firebase 키 파일 배치 → 기존 키 폐기·재발급 → Docker Hub private 전환 |
+| PR #136 머지 **전** | 개발 서버 `~/MOUP-Server/secrets/firebase-key.json`에 지금 키 배치(없으면 서버가 안 뜬다). 머지 후 `/health` 확인 → 기존 키 폐기·재발급·파일 교체 → Jenkins credential·GitHub secret 3개 삭제 → Docker Hub private. 절차는 PR 본문 |
 | D11-6 ① 배포 이후 | 개발 서버에서 같은 Google 계정으로 두 번 로그인 |
 | 아무 때나 | 근로소득 간이세액표 파일 |
 | main 머지 직전 | 운영 DB 보존 데이터 여부 · 운영 `.env`의 DB 계정이 root인지 · 운영 Pi crontab 제거 |
