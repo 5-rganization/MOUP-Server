@@ -4,6 +4,7 @@ import com.moup.domain.salary.dto.SalaryCreateRequest;
 import com.moup.domain.salary.domain.Salary;
 import com.moup.domain.user.domain.Worker;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -21,6 +22,7 @@ public class WorkplaceJoinRequest {
     private String inviteCode;
     @NotBlank(message = "빈 값이나 공백 문자는 받을 수 없습니다.")
     @Schema(description = "라벨 색상 (알바생 기준)", example = "RED", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Size(max = 10, message = "10자 이내로 입력해야 합니다.")
     private String workerBasedLabelColor;
     @Valid
     @NotNull(message = "필수 입력값입니다.")

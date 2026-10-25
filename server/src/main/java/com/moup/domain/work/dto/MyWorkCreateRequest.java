@@ -3,6 +3,7 @@ package com.moup.domain.work.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.moup.domain.work.domain.Work;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Builder;
@@ -35,6 +36,7 @@ public class MyWorkCreateRequest {
     @Schema(description = "휴게 시간 (분단위, 없을 경우 0)", example = "15", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer restTimeMinutes;
     @Schema(description = "메모", example = "오늘 재고 정리하는 날", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @Size(max = 200, message = "200자 이내로 입력해야 합니다.")
     private String memo;
     @NotNull(message = "값이 없을 경우 빈 배열을 전달해야 합니다.")
     @Schema(description = "반복 요일 (없으면 빈 배열)", example = "[\"MONDAY\", \"WEDNESDAY\"]", requiredMode = Schema.RequiredMode.REQUIRED)

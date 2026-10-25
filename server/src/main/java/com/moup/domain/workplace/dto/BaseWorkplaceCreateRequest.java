@@ -7,6 +7,9 @@ import com.moup.domain.user.dto.WorkerWorkplaceCreateRequest;
 import com.moup.domain.user.domain.Worker;
 import com.moup.domain.workplace.domain.Workplace;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Size;
 import com.moup.domain.workplace.domain.WorkplaceCategory;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -21,6 +24,7 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 public abstract class BaseWorkplaceCreateRequest {
     @NotBlank(message = "빈 값 혹은 공백 문자는 받을 수 없습니다.")
+    @Size(max = 50, message = "50자 이내로 입력해야 합니다.")
     @Schema(description = "근무지(매장) 이름", example = "세븐일레븐 동탄중심상가점", requiredMode = Schema.RequiredMode.REQUIRED)
     private String workplaceName;
     // 표시용 한글이 아니라 코드로 받는다. 열거형이라 허용값 밖은 422로 걸린다
@@ -28,10 +32,15 @@ public abstract class BaseWorkplaceCreateRequest {
     @NotNull(message = "필수 입력값입니다.")
     @Schema(description = "근무지(매장) 카테고리 코드", example = "CVS", requiredMode = Schema.RequiredMode.REQUIRED)
     private WorkplaceCategory categoryName;
+    @Size(max = 100, message = "100자 이내로 입력해야 합니다.")
     @Schema(description = "주소", example = "경기 화성시 동탄중심상가1길 8 1층", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String address;
+    @DecimalMin(value = "-90.0", message = "위도는 -90 ~ 90 범위여야 합니다.")
+    @DecimalMax(value = "90.0", message = "위도는 -90 ~ 90 범위여야 합니다.")
     @Schema(description = "위도", example = "37.2000891334382", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Double latitude;
+    @DecimalMin(value = "-180.0", message = "경도는 -180 ~ 180 범위여야 합니다.")
+    @DecimalMax(value = "180.0", message = "경도는 -180 ~ 180 범위여야 합니다.")
     @Schema(description = "경도", example = "127.072006099274", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Double longitude;
 

@@ -27,6 +27,7 @@ import com.moup.domain.workplace.domain.Workplace;
 import com.moup.domain.workplace.mapper.WorkplaceRepository;
 import com.moup.domain.workplace.dto.WorkplaceSummaryResponse;
 import com.moup.global.error.DataLimitExceedException;
+import com.moup.global.error.InvalidFieldFormatException;
 import com.moup.global.error.InvalidPermissionAccessException;
 import com.moup.global.util.PermissionVerifyUtil;
 import com.moup.domain.work.exception.WorkNotFoundException;
@@ -87,6 +88,7 @@ public class RoutineService {
       throw new DataLimitExceedException(
           "할 일은 루틴당 최대 " + MAX_TASK_COUNT_PER_ROUTINE + "개까지 생성할 수 있습니다.");
     }
+    verifyDistinctOrderIndex(routineTaskCreateRequestList.stream().map(RoutineTaskCreateRequest::getOrderIndex).toList());
 
     // 3. DB Insert Transaction
     // 3-1. 루틴을 먼저 User와 매핑해서 생성
@@ -272,7 +274,9 @@ public class RoutineService {
               .endTime(
                   work.getEndTime() != null ? work.getEndTime().atZone(SEOUL_ZONE_ID).toInstant()
                       : null)
-              .workMinutes(Duration.between(work.getStartTime(), work.getEndTime()).toMinutes())
+              // 바로 위에서 null을 가드한 endTime을 그대로 역참조하고 있었다(스코프 6 I6). 진행 중인 근무는 0분이다.
+              .workMinutes(work.getEndTime() != null
+                  ? Duration.between(work.getStartTime(), work.getEndTime()).toMinutes() : 0L)
               .routineCount(routineCount)
               .build();
         })
@@ -338,6 +342,7 @@ public class RoutineService {
       throw new DataLimitExceedException(
           "할 일은 루틴당 최대 " + MAX_TASK_COUNT_PER_ROUTINE + "개까지 생성할 수 있습니다.");
     }
+    verifyDistinctOrderIndex(routineTaskUpdateRequestList.stream().map(RoutineTaskUpdateRequest::getOrderIndex).toList());
 
     Routine newRoutine = request.toEntity(routineId, userId);
     routineRepository.update(newRoutine);
@@ -521,5 +526,12 @@ public class RoutineService {
   @Transactional
   public void deleteWorkRoutineMappingByWorkId(Long workId) {
     workRoutineMappingRepository.deleteByWorkId(workId);
+  }
+
+  /// 같은 루틴 안에서 정렬 순서가 겹치면 `UNIQUE (routine_id, order_index)`에 걸려 422가 아니라 500이 났다(스코프 6 M6).
+  private static void verifyDistinctOrderIndex(List<Integer> orderIndexes) {
+    if (orderIndexes.stream().distinct().count() != orderIndexes.size()) {
+      throw new InvalidFieldFormatException("할 일의 정렬 순서(orderIndex)가 겹칩니다.");
+    }
   }
 }

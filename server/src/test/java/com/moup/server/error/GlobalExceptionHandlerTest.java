@@ -97,4 +97,35 @@ public class GlobalExceptionHandlerTest {
     // 액세스 토큰이 만료될 때마다 사용자가 그냥 실패를 본다.
     assertEquals(HttpStatus.UNAUTHORIZED, ErrorCode.INVALID_TOKEN.getHttpStatus());
   }
+
+  // ================= Phase 11 =================
+
+  @Test
+  @DisplayName("UNIQUE 위반은 500이 아니라 409다")
+  void UNIQUE_위반은_409() {
+    ResponseEntity<?> response = handler.handleDuplicateKey(
+        new org.springframework.dao.DuplicateKeyException("Duplicate entry '10-2' for key 'uk_workers_workplace_user'"));
+
+    assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+    assertEquals(ErrorCode.DUPLICATE_RESOURCE.getCode(), ((ErrorResponse) response.getBody()).getErrorCode());
+  }
+
+  /// 예전 응답은 `getWorkplace.workplaceId: ...`처럼 내부 메서드 이름을 담았다.
+  @Test
+  @DisplayName("경로 변수 검증 실패 메시지에 내부 메서드 이름이 없다")
+  void 검증_메시지에_메서드명_없음() throws Exception {
+    class Target {
+      @SuppressWarnings("unused")
+      void getWorkplace(@jakarta.validation.constraints.Positive(message = "1 이상의 값만 입력해야 합니다.") Long workplaceId) {}
+    }
+    var validator = jakarta.validation.Validation.buildDefaultValidatorFactory().getValidator().forExecutables();
+    var violations = validator.validateParameters(new Target(),
+        Target.class.getDeclaredMethod("getWorkplace", Long.class), new Object[]{-1L});
+    var e = new jakarta.validation.ConstraintViolationException(violations);
+
+    String message = ((ErrorResponse) handler.handleConstraintViolationException(e).getBody()).getErrorMessage();
+
+    org.junit.jupiter.api.Assertions.assertFalse(message.contains("getWorkplace"), message);
+    org.junit.jupiter.api.Assertions.assertTrue(message.endsWith("1 이상의 값만 입력해야 합니다."), message);
+  }
 }

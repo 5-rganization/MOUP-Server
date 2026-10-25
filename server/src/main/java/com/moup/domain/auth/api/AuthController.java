@@ -23,6 +23,7 @@ import com.moup.global.error.InvalidArgumentException;
 import com.moup.global.security.token.InvalidTokenException;
 import com.moup.domain.user.domain.User;
 import com.moup.global.util.JwtUtil;
+import com.moup.global.util.TextUtil;
 import com.moup.global.util.NameVerifyUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -168,6 +169,9 @@ public class AuthController {
           // Apple 로그인의 경우 클라이언트를 통해 유저 이름 수신
           username = loginRequest.getUsername();
       }
+      // users.username은 VARCHAR(20)이다. 소셜 표시 이름은 그보다 길 수 있어 그대로 넣으면 최초 가입이
+      // 500으로 막혔다(스코프 4 I9). 사용자가 고칠 수 없는 값이므로 거부하지 않고 자른다.
+      username = TextUtil.truncateCodePoints(username, 20);
 
       // 3-b-2. DB에 유저 생성 및 토큰 관리
       UserCreateRequest userCreateRequest = UserCreateRequest.builder()
@@ -253,4 +257,5 @@ public class AuthController {
     return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "no-store")
         .header(HttpHeaders.PRAGMA, "no-cache").body(refreshTokenResponse);
   }
+
 }

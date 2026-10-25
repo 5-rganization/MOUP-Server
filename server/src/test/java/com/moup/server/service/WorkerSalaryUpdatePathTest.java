@@ -150,4 +150,15 @@ class WorkerSalaryUpdatePathTest {
 
         assertEquals(10_030, response.getSalaryDetailInfo().getHourlyRate());
     }
+
+    @Test
+    @DisplayName("남의 근무지면 근무자가 있든 없든 똑같이 403이다 — 소속 확인보다 권한을 먼저 본다")
+    void 권한_먼저() {
+        when(workplaceRepository.findById(WORKPLACE_ID)).thenReturn(Optional.of(workplace));
+        doThrow(new InvalidPermissionAccessException()).when(permissionVerifyUtil).verifyOwnerPermission(99L, OWNER_ID);
+
+        assertThrows(InvalidPermissionAccessException.class,
+                () -> workerService.getWorkerAttendanceInfo(99L, WORKPLACE_ID, WORKER_ID));
+        verify(workerRepository, never()).existsByIdAndWorkplaceId(anyLong(), anyLong());
+    }
 }

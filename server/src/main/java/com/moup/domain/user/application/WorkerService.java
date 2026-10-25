@@ -179,8 +179,9 @@ public class WorkerService {
 
     public WorkerAttendanceInfoResponse getWorkerAttendanceInfo(Long userId, Long workplaceId, Long workerId) {
         Workplace userWorkplace = workplaceRepository.findById(workplaceId).orElseThrow(WorkplaceNotFoundException::new);
-        if (!workerRepository.existsByIdAndWorkplaceId(workerId, workplaceId)) { throw new WorkerNotFoundException(); }
+        // 권한을 먼저 본다. 소속 확인이 먼저면 남의 근무지에서도 404(없음)와 403(있음)이 갈려 근무자 ID를 셀 수 있다(스코프 4 M3).
         permissionVerifyUtil.verifyOwnerPermission(userId, userWorkplace.getOwnerId());
+        if (!workerRepository.existsByIdAndWorkplaceId(workerId, workplaceId)) { throw new WorkerNotFoundException(); }
 
         List<WorkerWorkAttendanceResponse> workerWorkAttendanceInfoList = workRepository.findAllByWorkerId(workerId).stream()
                 .map(work -> WorkerWorkAttendanceResponse.builder()

@@ -18,6 +18,7 @@ import lombok.experimental.SuperBuilder;
 public class WorkerWorkplaceCreateRequest extends BaseWorkplaceCreateRequest {
     @NotBlank(message = "빈 값이나 공백 문자는 받을 수 없습니다.")
     @Schema(description = "라벨 색상 (알바생 기준)", example = "RED", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Size(max = 10, message = "10자 이내로 입력해야 합니다.")
     private String workerBasedLabelColor;
 
     @Valid

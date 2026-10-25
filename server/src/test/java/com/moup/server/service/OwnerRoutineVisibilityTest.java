@@ -92,4 +92,20 @@ class OwnerRoutineVisibilityTest {
         assertEquals(LocalTime.of(8, 30), routines.get(0).getAlarmTime());
         assertNotNull(routines.get(0).getRoutineTaskList());
     }
+
+    /// 겹치면 `UNIQUE (routine_id, order_index)`에 걸려 422가 아니라 500이 났다(스코프 6 M6).
+    @Test
+    @DisplayName("할 일의 정렬 순서가 겹치면 저장하기 전에 422로 거절한다")
+    void 정렬_순서_중복() {
+        var request = com.moup.domain.routine.dto.RoutineCreateRequest.builder()
+                .routineName("오픈").alarmTime(LocalTime.of(8, 0))
+                .routineTaskList(List.of(
+                        com.moup.domain.routine.dto.RoutineTaskCreateRequest.builder().content("A").orderIndex(0).build(),
+                        com.moup.domain.routine.dto.RoutineTaskCreateRequest.builder().content("B").orderIndex(0).build()))
+                .build();
+
+        assertThrows(com.moup.global.error.InvalidFieldFormatException.class,
+                () -> routineService.createRoutine(WORKER_USER_ID, request));
+        verify(routineRepository, never()).create(any());
+    }
 }

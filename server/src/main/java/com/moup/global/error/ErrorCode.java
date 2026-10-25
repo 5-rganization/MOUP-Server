@@ -30,6 +30,7 @@ public enum ErrorCode {
     WORKER_ALREADY_EXISTS(HttpStatus.CONFLICT, "WORKER_409", "근무지에 이미 등록된 근무자입니다."),
     WORKER_ALREADY_WORKING(HttpStatus.CONFLICT, "WORKING_409", "이미 근무 중입니다"),
     WORKER_STATE_CONFLICT(HttpStatus.CONFLICT, "WORKER_STATE_409", "근무자 상태가 요청과 맞지 않습니다."),
+    DUPLICATE_RESOURCE(HttpStatus.CONFLICT, "DUPLICATE_409", "이미 등록된 데이터입니다. 새로고침 후 다시 시도해 주세요."),
     INVITE_CODE_GENERATION_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "INVITE_CODE_503", "초대 코드 생성에 실패했습니다. 잠시 후 다시 시도해 주세요."),
     SALARY_WORKER_NOT_FOUND(HttpStatus.NOT_FOUND, "SALARY_404", "근무자에 해당하는 급여가 존재하지 않습니다."),
     WORK_NOT_FOUND(HttpStatus.NOT_FOUND, "WORK_404", "해당 근무가 존재하지 않습니다."),

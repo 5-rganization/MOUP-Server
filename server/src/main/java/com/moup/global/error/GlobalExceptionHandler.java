@@ -7,6 +7,7 @@ import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import jakarta.security.auth.message.AuthException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.http.ResponseEntity;
@@ -28,9 +29,11 @@ public class GlobalExceptionHandler {
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
+    // 4xx는 클라이언트 입력 문제다. 스택트레이스를 남기면 익명 요청만으로 로그를 무한정 부풀릴 수 있고
+    // (라즈베리파이 SD 카드), 진짜 장애(5xx)의 로그가 묻힌다(스코프 7 Minor). 한 줄 요약만 남긴다.
     @ExceptionHandler(CustomException.class)
     public ResponseEntity<ErrorResponse> handleCustomException(CustomException e) {
-        logger.warn("Custom exception occurred", e);
+        logger.warn("Custom exception: {} {}", e.getErrorCode().getCode(), e.getMessage());
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .errorCode(e.getErrorCode().getCode())
                 .errorMessage(e.getMessage())
@@ -41,7 +44,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
-        logger.warn("Invalid HTTP request body", e);
+        logger.warn("Invalid HTTP request body: {}", e.getMessage());
         ErrorCode errorCode;
         String errorMessage;
         if (e.getCause() instanceof InvalidFormatException cause) {
@@ -74,7 +77,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleValidationExceptions(MethodArgumentNotValidException e) {
-        logger.warn("Invalid field value provided", e);
+        logger.warn("Invalid field value provided: {}", e.getBindingResult().getFieldErrors().size());
         ErrorCode errorCode = ErrorCode.INVALID_FIELD_FORMAT;
         String errorMessage = e.getBindingResult().getFieldErrors().stream()
                 .map(fieldError -> String.format("%s: %s", fieldError.getField(), fieldError.getDefaultMessage()))
@@ -90,7 +93,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<?> handleTypeMismatchException(MethodArgumentTypeMismatchException e) {
-        logger.warn("Invalid parameter type provided", e);
+        logger.warn("Invalid parameter type provided: {}", e.getName());
         ErrorCode errorCode = ErrorCode.INVALID_ARGUMENT;
         String errorMessage = String.format("'%s' 항목에 잘못된 타입을 입력했습니다.", e.getName());
 
@@ -104,13 +107,44 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<?> handleConstraintViolationException(ConstraintViolationException e) {
-        logger.warn("Invalid variable provided", e);
+        logger.warn("Invalid variable provided: {}", e.getMessage());
         ErrorCode errorCode = ErrorCode.INVALID_VARIABLE_FORMAT;
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .errorCode(errorCode.getCode())
-                .errorMessage(e.getMessage())
+                .errorMessage(describeViolations(e))
                 .build();
 
+        return new ResponseEntity<>(errorResponse, errorCode.getHttpStatus());
+    }
+
+    /// `e.getMessage()`는 `getWorkplace.workplaceId: 1 이상의 값만…`처럼 **내부 메서드·파라미터 이름**을 담는다
+    /// (스코프 5 M-8). 마지막 경로(파라미터·필드 이름)와 검증 메시지만 내보낸다.
+    private static String describeViolations(ConstraintViolationException e) {
+        if (e.getConstraintViolations() == null || e.getConstraintViolations().isEmpty()) {
+            return ErrorCode.INVALID_VARIABLE_FORMAT.getMessage();
+        }
+        return e.getConstraintViolations().stream()
+                .map(violation -> {
+                    String leaf = null;
+                    for (jakarta.validation.Path.Node node : violation.getPropertyPath()) {
+                        leaf = node.getName();
+                    }
+                    return (leaf != null ? leaf + ": " : "") + violation.getMessage();
+                })
+                .sorted()
+                .collect(Collectors.joining(", "));
+    }
+
+    /// UNIQUE 위반은 동시 요청(더블탭)이나 중복 입력이다. 서버 오류가 아니라 409다(스코프 5 C-2 · I-7 · 6 M5).
+    /// 검사 후 INSERT 사이에 끼어든 요청이 DB 제약에 걸린 것이라 메시지는 일반화한다 — 어느 제약인지는 로그에만 남긴다.
+    @ExceptionHandler(DuplicateKeyException.class)
+    public ResponseEntity<?> handleDuplicateKey(DuplicateKeyException e) {
+        logger.warn("Duplicate key: {}", e.getMostSpecificCause().getMessage());
+        ErrorCode errorCode = ErrorCode.DUPLICATE_RESOURCE;
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .errorCode(errorCode.getCode())
+                .errorMessage(errorCode.getMessage())
+                .build();
         return new ResponseEntity<>(errorResponse, errorCode.getHttpStatus());
     }
 
