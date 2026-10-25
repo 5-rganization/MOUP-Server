@@ -105,14 +105,6 @@ public interface WorkRepository {
   @Select("SELECT * FROM works WHERE worker_id = #{workerId} ORDER BY start_time DESC")
   List<Work> findAllByWorkerId(Long workerId);
 
-  /// 근무자 ID와 근무 날짜를 통해 해당 날짜의 모든 근무를 조회하는 메서드
-  ///
-  /// @param workerId 조회할 근무자 ID
-  /// @param workDate 조회할 근무 날짜
-  /// @return 조회된 Work 객체 리스트, 없으면 빈 배열
-  @Select("SELECT * FROM works WHERE worker_id = #{workerId} AND work_date = #{workDate}")
-  List<Work> findAllByWorkerIdAndWorkDate(Long workerId, LocalDate workDate);
-
   /// 근무자 ID에 해당하는 근무 중에서 특정 기간동안 모든 근무를 조회하는 메서드 (`work_date` 오름차순)
   ///
   /// @param workerId  조회할 근무자 ID
@@ -184,13 +176,6 @@ public interface WorkRepository {
       LIMIT 1
       """)
   Optional<Work> findMostRecentWorkInProgress(@Param("workerId") Long workerId);
-
-  /// 특정 반복 그룹 ID에 해당하는 근무 중 가장 빠른 날짜의 근무를 조회합니다. (반복 시작일 및 요일 계산 기준 확인용)
-  ///
-  /// @param repeatGroupId 반복 그룹 ID
-  /// @return 가장 빠른 근무 Optional
-  @Select("SELECT * FROM works WHERE repeat_group_id = #{repeatGroupId} ORDER BY work_date , start_time LIMIT 1")
-  Optional<Work> findFirstWorkByRepeatGroupId(@Param("repeatGroupId") String repeatGroupId);
 
   /// 특정 반복 그룹 ID에 해당하는 근무 중 가장 늦은 날짜(반복 종료일)를 조회합니다.
   ///

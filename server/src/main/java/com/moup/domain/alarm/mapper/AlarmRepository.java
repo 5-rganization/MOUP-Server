@@ -47,10 +47,6 @@ public interface AlarmRepository {
     @Delete("DELETE FROM normal_alarms WHERE receiver_id = #{userId}")
     void deleteAllNormalAlarmByUserId(Long userId);
 
-    @Insert("INSERT INTO admin_alarms (title, content) VALUES (#{title}, #{content})")
-    @Options(useGeneratedKeys = true, keyProperty = "id")
-    void saveAnnouncement(Announcement announcement);
-
     void saveAnnouncementMappingForAllUsers(@Param("announcementId") Long announcementId, @Param("users") List<User> users);
 
     @Select("SELECT * FROM admin_alarms JOIN admin_alarm_user_mappings ON admin_alarms.id = admin_alarm_user_mappings.alarm_id WHERE user_id = #{userId} AND alarm_id = #{announcementId} AND deleted_at IS NULL")

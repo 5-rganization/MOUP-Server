@@ -84,7 +84,6 @@ public class WorkService {
 
     /// 캘린더 조회 시 미리 로드된 근무 데이터 및 반복 정보 캐시를 담는 레코드
     private record CalendarWorkData(
-            List<Work> allWorks, // 반복 정보 캐싱에 사용될 전체 근무 목록
             Map<Long, List<Work>> workMapByWorker, // Worker ID별로 그룹화된 근무 목록
             Map<String, RepeatInfo> repeatInfoCache // 미리 생성된 반복 정보 캐시
     ) {}
@@ -1373,7 +1372,7 @@ public class WorkService {
         Map<String, RepeatInfo> repeatInfoCache = prefetchRepeatInfo(allWorks);
 
         // 4. 결과 반환
-        return new CalendarWorkData(allWorks, workMapByWorker, repeatInfoCache);
+        return new CalendarWorkData(workMapByWorker, repeatInfoCache);
     }
 
     /// 근무 목록에서 반복 그룹 ID를 추출하고, 최적화된 쿼리로 반복 정보를 미리 조회하여 캐시를 생성합니다.

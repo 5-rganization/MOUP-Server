@@ -1,7 +1,6 @@
 package com.moup.domain.user.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.moup.domain.work.domain.Work;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.NotEmpty;
@@ -13,7 +12,6 @@ import lombok.Getter;
 import java.time.*;
 import java.util.List;
 
-import static com.moup.global.common.TimeConstants.SEOUL_ZONE_ID;
 
 @Getter
 @Builder
@@ -46,39 +44,4 @@ public class WorkersWorkCreateRequest {
     @Schema(description = "반복 종료 날짜 (yyyy-MM-dd)", example = "2025-11-11", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private LocalDate repeatEndDate;
 
-    public Work toEntity(
-            Long workerId,
-            Integer hourlyRate,
-            int grossWorkMinutes,
-            int netWorkMinutes,
-            int nightWorkMinutes,
-            int basePay,
-            int nightAllowance,
-            int holidayAllowance,
-            String repeatGroupId
-    ) {
-        LocalDate workDate = startTime.atZone(SEOUL_ZONE_ID).toLocalDate();
-
-        return Work.builder()
-                .id(null)
-                .workerId(workerId)
-                .workDate(workDate)
-                .startTime(startTime.atZone(SEOUL_ZONE_ID).toLocalDateTime())
-                .actualStartTime(actualStartTime != null ? actualStartTime.atZone(SEOUL_ZONE_ID).toLocalDateTime() : null)
-                .endTime(endTime.atZone(SEOUL_ZONE_ID).toLocalDateTime())
-                .actualEndTime(actualEndTime != null ? actualEndTime.atZone(SEOUL_ZONE_ID).toLocalDateTime() : null)
-                .restTimeMinutes(restTimeMinutes)
-                .grossWorkMinutes(grossWorkMinutes)
-                .netWorkMinutes(netWorkMinutes)
-                .nightWorkMinutes(nightWorkMinutes)
-                .memo(memo)
-                .hourlyRate(hourlyRate)
-                .basePay(basePay)
-                .nightAllowance(nightAllowance)
-                .holidayAllowance(holidayAllowance)
-                .grossIncome(basePay + nightAllowance + holidayAllowance)
-                .estimatedNetIncome(0)
-                .repeatGroupId(repeatGroupId)
-                .build();
-    }
 }
